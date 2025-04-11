@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 def wake_up_render():
     """Keep the Render service active by sending a request every 14 minutes."""
     try:
-        render_url = os.getenv('RENDER_URL', 'https://remote-jobs-be.onrender.com')
-        response = requests.get(render_url)
+        render_url = os.getenv('RENDER_URL', 'https://remote-jobs-62gn.onrender.com')
+        response = requests.get(f"{render_url}/health")
         if response.status_code == 200:
             logger.info(f"Successfully woke up Render service at {datetime.now()}")
         else:

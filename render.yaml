@@ -30,7 +30,7 @@ services:
       - key: GOOGLE_SHEETS_CLIENT_SECRET
         sync: false
       - key: RENDER_URL
-        value: https://remote-jobs-api.onrender.com
+        value: https://remote-jobs-62gn.onrender.com
       - key: FRONTEND_URL
         value: https://remote-jobs.netlify.app
       - key: ALLOWED_ORIGINS

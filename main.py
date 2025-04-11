@@ -68,7 +68,7 @@ scheduler = BackgroundScheduler()
 scheduler.add_job(wake_up_render, 'interval', minutes=10)
 scheduler.start()
 
-RENDER_URL = os.getenv('RENDER_URL', 'https://remote-jobs-api.onrender.com')
+RENDER_URL = os.getenv('RENDER_URL', 'https://remote-jobs-62gn.onrender.com')
 
 @app.on_event("startup")
 async def startup_event():

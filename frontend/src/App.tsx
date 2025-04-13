@@ -1,22 +1,16 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from 'react-query';
-import './App.css';
-
-// Import page components
 import Home from './pages/Home';
 import Jobs from './pages/Jobs';
 import JobDetail from './pages/JobDetail';
 import Profile from './pages/Profile';
 import Status from './pages/Status';
 import Dashboard from './pages/Dashboard';
-
-// Import components
 import Navigation from './components/Navigation';
-
-// Import contexts
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/theme/ThemeContext';
+import './App.css';
 
 const queryClient = new QueryClient();
 
@@ -49,4 +43,4 @@ const App: React.FC = () => {
   );
 };
 
-export default App; 
+export default App;

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Main circle background -->
+  <circle cx="256" cy="256" r="240" fill="#2D3748" />
+  
+  <!-- Space cat silhouette -->
+  <path d="M320 176C320 176 336 160 352 160C368 160 384 176 384 176C384 176 400 160 416 160C432 160 448 176 448 176V304C448 348 412 384 368 384H144C100 384 64 348 64 304V176C64 176 80 160 96 160C112 160 128 176 128 176C128 176 144 160 160 160C176 160 192 176 192 176C192 176 208 160 224 160C240 160 256 176 256 176C256 176 272 160 288 160C304 160 320 176 320 176Z" fill="#718096" />
+  
+  <!-- Cat features -->
+  <circle cx="176" cy="240" r="16" fill="white" />
+  <circle cx="336" cy="240" r="16" fill="white" />
+  <circle cx="176" cy="240" r="8" fill="#2D3748" />
+  <circle cx="336" cy="240" r="8" fill="#2D3748" />
+  <path d="M256 280C256 280 240 312 256 312C272 312 256 280 256 280Z" fill="white" />
+  
+  <!-- Helmet -->
+  <circle cx="256" cy="256" r="180" stroke="#ECC94B" stroke-width="12" stroke-dasharray="12 24" />
+  
+  <!-- Satellite antenna -->
+  <path d="M256 64V32" stroke="#ECC94B" stroke-width="12" stroke-linecap="round" />
+  <path d="M228 48L284 48" stroke="#ECC94B" stroke-width="8" stroke-linecap="round" />
+  
+  <!-- Stars -->
+  <circle cx="144" cy="112" r="8" fill="#F6E05E" />
+  <circle cx="368" cy="112" r="8" fill="#F6E05E" />
+  <circle cx="112" cy="208" r="6" fill="#F6E05E" />
+  <circle cx="400" cy="208" r="6" fill="#F6E05E" />
+  <circle cx="112" cy="304" r="4" fill="#F6E05E" />
+  <circle cx="400" cy="304" r="4" fill="#F6E05E" />
+</svg> 

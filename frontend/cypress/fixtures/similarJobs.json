@@ -1,0 +1,23 @@
+[
+  {
+    "id": "124",
+    "title": "Frontend Team Lead",
+    "company": "Innovation Labs",
+    "location": "Remote",
+    "type": "Full-time"
+  },
+  {
+    "id": "125",
+    "title": "Senior React Developer",
+    "company": "StartupCo",
+    "location": "Remote",
+    "type": "Full-time"
+  },
+  {
+    "id": "126",
+    "title": "Frontend Architect",
+    "company": "TechGiants",
+    "location": "Remote",
+    "type": "Full-time"
+  }
+] 

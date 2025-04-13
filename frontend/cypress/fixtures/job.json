@@ -1,0 +1,32 @@
+{
+  "id": "123",
+  "title": "Senior Frontend Developer",
+  "company": "Tech Corp",
+  "companyLogo": "https://example.com/logo.png",
+  "location": "Remote",
+  "type": "Full-time",
+  "salary": "$120,000 - $150,000",
+  "description": "We are looking for a Senior Frontend Developer to join our team...",
+  "responsibilities": [
+    "Lead frontend development initiatives",
+    "Mentor junior developers",
+    "Implement new features"
+  ],
+  "requirements": [
+    "5+ years of React experience",
+    "Strong TypeScript skills",
+    "Experience with modern frontend tools"
+  ],
+  "benefits": [
+    "Remote work",
+    "Health insurance",
+    "401k matching"
+  ],
+  "skills": [
+    "React",
+    "TypeScript",
+    "Material-UI",
+    "GraphQL"
+  ],
+  "postedDate": "2025-04-01T00:00:00.000Z"
+} 

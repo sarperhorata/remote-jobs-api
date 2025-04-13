@@ -1,3 +1,71 @@
+:root {
+  /* Light Theme - default */
+  --bg-color: #f5f7fa;
+  --text-color: #333;
+  --card-bg: #fff;
+  --border-color: #e0e0e0;
+  --primary-color: #3b82f6;
+  --secondary-bg: #f0f2f5;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark mode styles */
+body.dark-mode {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+/* Card and component styles */
+.card {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.theme-toggle {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: var(--text-color);
+  font-size: 14px;
+}
+
+/* Dark mode overrides for Tailwind classes */
+.dark-mode .bg-white {
+  background-color: var(--card-bg) !important;
+}
+
+.dark-mode .border-gray-100,
+.dark-mode .border-gray-200,
+.dark-mode .border-gray-300 {
+  border-color: var(--border-color) !important;
+}
+
+.dark-mode .text-gray-600,
+.dark-mode .text-gray-700,
+.dark-mode .text-gray-800,
+.dark-mode .text-gray-900 {
+  color: #a0a0a0 !important;
+}
+
+.dark-mode .bg-gray-50 {
+  background-color: var(--secondary-bg) !important;
+}
+
+.dark-mode .shadow-md,
+.dark-mode .shadow-sm,
+.dark-mode .shadow-lg {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5) !important;
+}
+
 .App {
   text-align: center;
 }
@@ -36,64 +104,3 @@
     transform: rotate(360deg);
   }
 }
-
-/* Custom styles for our remote jobs app */
-.min-h-screen {
-  min-height: 100vh;
-}
-
-main {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-/* Nav styles */
-.navbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 2rem;
-  background-color: #fff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.nav-links {
-  display: flex;
-  gap: 1.5rem;
-}
-
-.nav-links a {
-  text-decoration: none;
-  color: #333;
-  font-weight: 500;
-}
-
-.nav-links a:hover {
-  color: #0070f3;
-}
-
-/* Job card styles */
-.job-card {
-  padding: 1.5rem;
-  margin-bottom: 1rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease;
-}
-
-.job-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.job-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-}
-
-.job-company {
-  font-weight: 500;
-  color: #666;
-} 

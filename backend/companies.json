@@ -1,0 +1,292 @@
+{
+  "companies": [
+    {
+      "name": "Clerky",
+      "url": "https://jobs.lever.co/clerky",
+      "selector": ".content .section-wrapper",
+      "platform": "lever"
+    },
+    {
+      "name": "DNC",
+      "url": "https://jobs.lever.co/dnc?location=Remote",
+      "selector": ".content .section-wrapper",
+      "platform": "lever"
+    },
+    {
+      "name": "Circonus",
+      "url": "https://jobs.lever.co/circonus?location=Remote",
+      "selector": ".content .section-wrapper"
+    },
+    {
+      "name": "15Five",
+      "url": "https://jobs.lever.co/15five?location=Remote",
+      "selector": ".content .section-wrapper"
+    },
+    {
+      "name": "Heetch",
+      "url": "https://jobs.lever.co/heetch/?location=Full%20remote%20in%20Europe",
+      "selector": ".content .section-wrapper"
+    },
+    {
+      "name": "Seer Interactive",
+      "url": "https://jobs.lever.co/seerinteractive?location=Remote",
+      "selector": ".content .section-wrapper"
+    },
+    {
+      "name": "Girls Who Code",
+      "url": "https://jobs.lever.co/girlswhocode?location=Remote",
+      "selector": ".content .section-wrapper"
+    },
+    {
+      "name": "Binance",
+      "url": "https://jobs.lever.co/binance?location=Remote",
+      "selector": ".content .section-wrapper"
+    },
+    {
+      "name": "Kraken",
+      "url": "https://jobs.lever.co/kraken?commitment=Remote%20Full-time",
+      "selector": ".content .section-wrapper"
+    },
+    {
+      "name": "Peerspace",
+      "url": "https://jobs.lever.co/peerspace?location=Remote",
+      "selector": ".content .section-wrapper"
+    },
+    {
+      "name": "CodeCombat",
+      "url": "https://jobs.lever.co/codecombat?location=Remote",
+      "selector": ".content .section-wrapper"
+    },
+    {
+      "name": "RoofStacks",
+      "url": "https://jobs.lever.co/roofstacks",
+      "selector": ".content .section-wrapper"
+    },
+    {
+      "name": "Token Metrics",
+      "url": "https://jobs.lever.co/tokenmetrics?workplaceType=remote",
+      "selector": ".content .section-wrapper"
+    },
+    {
+      "name": "Appen",
+      "url": "https://jobs.lever.co/appen-2?workplaceType=remote",
+      "selector": ".content .section-wrapper"
+    },
+    {
+      "name": "Lendbuzz",
+      "url": "https://jobs.lever.co/lendbuzz?location=Remote",
+      "selector": ".content .section-wrapper"
+    },
+
+    {
+      "name": "PADI Travel",
+      "url": "https://padi.breezy.hr/",
+      "selector": ".portal-content",
+      "platform": "breezy"
+    },
+    {
+      "name": "Dotsub",
+      "url": "https://dotsub.breezy.hr/",
+      "selector": ".portal-content"
+    },
+    {
+      "name": "Parashift",
+      "url": "https://parashift-ag.breezy.hr/",
+      "selector": ".portal-content"
+    },
+    {
+      "name": "Connected Women",
+      "url": "https://connected-women.breezy.hr/",
+      "selector": ".portal-content"
+    },
+    {
+      "name": "Dollar Flight Club",
+      "url": "https://dollar-flight-club.breezy.hr/",
+      "selector": ".portal-content"
+    },
+    {
+      "name": "Social Discovery Group",
+      "url": "https://social-discovery-ventures.breezy.hr/?&location=Worldwide",
+      "selector": ".portal-content"
+    },
+    {
+      "name": "TA Monroe",
+      "url": "https://ta-monroe.breezy.hr/",
+      "selector": ".portal-content"
+    },
+    {
+      "name": "BAD Marketing",
+      "url": "https://bad-marketing.breezy.hr/",
+      "selector": ".portal-content"
+    },
+    {
+      "name": "GAMURS Group",
+      "url": "https://gamurs.breezy.hr/",
+      "selector": ".portal-content"
+    },
+
+    {
+      "name": "Cameo",
+      "url": "https://boards.greenhouse.io/cameo",
+      "selector": "#main"
+    },
+    {
+      "name": "GitLab",
+      "url": "https://job-boards.greenhouse.io/gitlab",
+      "selector": "#main"
+    },
+    {
+      "name": "PandaDoc",
+      "url": "https://boards.greenhouse.io/pandadoc/",
+      "selector": "#main"
+    },
+    {
+      "name": "Figure",
+      "url": "https://job-boards.greenhouse.io/figure",
+      "selector": "#main"
+    },
+    {
+      "name": "Thesis",
+      "url": "https://job-boards.greenhouse.io/thesis",
+      "selector": "#main"
+    },
+    {
+      "name": "InCharge Energy",
+      "url": "https://job-boards.greenhouse.io/inchargeenergy",
+      "selector": "#main"
+    },
+
+    {
+      "name": "Deel",
+      "url": "https://jobs.ashbyhq.com/Deel",
+      "selector": "[class*='content']"
+    },
+    {
+      "name": "Eight Sleep",
+      "url": "https://jobs.ashbyhq.com/eightsleep",
+      "selector": "[class*='content']"
+    },
+    {
+      "name": "LI.FI",
+      "url": "https://jobs.ashbyhq.com/li.fi",
+      "selector": "[class*='content']"
+    },
+    {
+      "name": "OP Labs",
+      "url": "https://jobs.ashbyhq.com/oplabs",
+      "selector": "[class*='content']"
+    },
+    {
+      "name": "ENS Labs",
+      "url": "https://jobs.ashbyhq.com/ens-labs",
+      "selector": "[class*='content']"
+    },
+
+    {
+      "name": "DappRadar",
+      "url": "https://dappradar.bamboohr.com/careers",
+      "selector": "section[class*='fabric']"
+    },
+    {
+      "name": "Sestek",
+      "url": "https://sestek.bamboohr.com/careers",
+      "selector": "section[class*='fabric']"
+    },
+    {
+      "name": "Simetrik",
+      "url": "https://simetrik.bamboohr.com/careers",
+      "selector": "section[class*='fabric']"
+    },
+
+    {
+      "name": "10up",
+      "url": "https://10up.com/careers/",
+      "selector": "section#open-positions div.grid-inner div.dream-positions"
+    },
+    {
+      "name": "RARE Technologies",
+      "url": "https://rare-technologies.com/careers/",
+      "selector": "#custom-software div.max"
+    },
+    {
+      "name": "Security Roots",
+      "url": "https://dradisframework.com/careers/",
+      "selector": "section.light-section div.container"
+    },
+    {
+      "name": "Waygo",
+      "url": "http://waygoapp.com/careers/",
+      "selector": "section.section div.container div.columns div.column"
+    },
+    {
+      "name": "Bandzoogle",
+      "url": "https://bandzoogle.com/jobs",
+      "selector": "section#main-section div.wrapper div.module aside.sidebar"
+    },
+    {
+      "name": "Uscreen",
+      "url": "https://www.uscreen.tv/careers/",
+      "selector": "section#job-postings div"
+    },
+    {
+      "name": "Adioma",
+      "url": "https://adioma.com/jobs",
+      "selector": ".container .page-content .jobs-page .row"
+    },
+    {
+      "name": "Airship",
+      "url": "https://www.airship.com/company/careers/",
+      "selector": "#open-positions div"
+    },
+    {
+      "name": "Mozilla",
+      "url": "https://www.mozilla.org/en-US/careers/listings/",
+      "selector": "#wrapper main.c-careers section"
+    },
+    {
+      "name": "Hazy",
+      "url": "https://hazy.com/careers",
+      "selector": "section#careers"
+    },
+    {
+      "name": "Prisma",
+      "url": "https://www.prisma.io/careers#current",
+      "selector": "#current"
+    },
+    {
+      "name": "Buffer",
+      "url": "https://buffer.com/journey#open-roles",
+      "selector": "#open-roles"
+    },
+    {
+      "name": "Pipe",
+      "url": "https://pipe.com/careers",
+      "selector": "main"
+    },
+    {
+      "name": "Netlify",
+      "url": "https://www.netlify.com/careers/#perfect-job",
+      "selector": ".grid"
+    },
+    {
+      "name": "Doist",
+      "url": "https://doist.com/careers#open-roles",
+      "selector": "#open-roles"
+    },
+    {
+      "name": "Boldly",
+      "url": "https://boldly.com/jobs/open-positions/",
+      "selector": "[data-block='open-positions']"
+    },
+    {
+      "name": "WOO X",
+      "url": "https://woox.io/careers",
+      "selector": ".erkaxel5"
+    },
+    {
+      "name": "Example Company",
+      "url": "https://example.com/careers",
+      "selector": ".job-listing"
+    }
+  ]
+} 

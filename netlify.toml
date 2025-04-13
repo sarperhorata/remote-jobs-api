@@ -1,0 +1,37 @@
+[build]
+  base = "frontend"
+  command = "npm install --legacy-peer-deps && npm run build"
+  publish = "build"
+
+# Production context: all deploys from the Production branch
+[context.production]
+  command = "cd frontend && npm install --legacy-peer-deps && npm run build"
+  environment = { NODE_ENV = "production" }
+
+# Deploy Preview context: all deploys generated from pull/merge requests
+[context.deploy-preview]
+  command = "cd frontend && npm install --legacy-peer-deps && npm run build"
+  environment = { NODE_ENV = "production" }
+
+# Branch deploy context: deploys from branches other than the Production branch
+[context.branch-deploy]
+  command = "cd frontend && npm install --legacy-peer-deps && npm run build"
+
+# Specific branch context: deploys from the staging branch
+[context.staging]
+  command = "cd frontend && npm install --legacy-peer-deps && npm run build"
+
+# For Automatic FE Deploys to GitHub and Netlify
+[build.environment]
+  REACT_APP_API_URL = "https://remote-jobs-backend.onrender.com/api"
+  NODE_VERSION = "18.20.7"
+  NPM_VERSION = "9"
+
+# Redirects for single page application
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[plugins]]
+package = "netlify-plugin-cypress" 

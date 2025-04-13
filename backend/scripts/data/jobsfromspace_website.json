@@ -1,0 +1,38 @@
+{
+  "name": "JobsFromSpace",
+  "url": "https://www.jobsfromspace.com/jobs",
+  "website_type": "jobs_from_space",
+  "is_active": true,
+  "selectors": [
+    {
+      "name": "job_container",
+      "selector_type": "css",
+      "value": ".job-card, .job-listing, .job-item"
+    },
+    {
+      "name": "title",
+      "selector_type": "css",
+      "value": "h2, h3, .job-title"
+    },
+    {
+      "name": "company",
+      "selector_type": "css",
+      "value": ".company, .company-name"
+    },
+    {
+      "name": "url",
+      "selector_type": "css",
+      "value": "a"
+    },
+    {
+      "name": "location",
+      "selector_type": "css",
+      "value": ".location, .job-location"
+    },
+    {
+      "name": "tags",
+      "selector_type": "css",
+      "value": ".tags span, .skills span"
+    }
+  ]
+}

@@ -1,14 +1,45 @@
 services:
   - type: web
-    name: remote-jobs-api
+    name: buzz2remote-api
     env: python
     buildCommand: ./build.sh
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
-      - key: DATABASE_URL
+      # Database Configuration
+      - key: MONGODB_URI
         sync: false
-      - key: JWT_SECRET
+      - key: MONGODB_DB_NAME
+        value: buzz2remote
+      
+      # Security
+      - key: SECRET_KEY
         sync: false
+      - key: JWT_SECRET_KEY
+        sync: false
+      
+      # OpenAI Integration for Enhanced CV Parsing
+      - key: OPENAI_API_KEY
+        sync: false
+      
+      # LinkedIn OAuth (Optional)
+      - key: LINKEDIN_CLIENT_ID
+        sync: false
+      - key: LINKEDIN_CLIENT_SECRET
+        sync: false
+      
+      # Job API Keys (Optional)
+      - key: JSEARCH_API_KEY
+        sync: false
+      - key: REED_API_KEY
+        sync: false
+      - key: ADZUNA_APP_ID
+        sync: false
+      - key: ADZUNA_APP_KEY
+        sync: false
+      - key: JOBS2CAREERS_PUBLISHER_ID
+        sync: false
+      
+      # Email Configuration
       - key: EMAIL_HOST
         sync: false
       - key: EMAIL_PORT
@@ -19,19 +50,21 @@ services:
         sync: false
       - key: EMAIL_FROM
         sync: false
-      - key: GOOGLE_SHEETS_SPREADSHEET_ID
+      
+      # Telegram Bot
+      - key: TELEGRAM_BOT_TOKEN
         sync: false
-      - key: GOOGLE_SHEETS_TOKEN
+      - key: TELEGRAM_CHANNEL_ID
         sync: false
-      - key: GOOGLE_SHEETS_REFRESH_TOKEN
-        sync: false
-      - key: GOOGLE_SHEETS_CLIENT_ID
-        sync: false
-      - key: GOOGLE_SHEETS_CLIENT_SECRET
-        sync: false
+      
+      # URLs
       - key: RENDER_URL
-        value: https://remote-jobs-62gn.onrender.com
+        value: https://buzz2remote-api.onrender.com
       - key: FRONTEND_URL
-        value: https://remote-jobs.netlify.app
+        value: https://buzz2remote.netlify.app
       - key: ALLOWED_ORIGINS
-        value: https://remote-jobs.netlify.app 
+        value: https://buzz2remote.netlify.app,http://localhost:3000
+        
+      # Environment
+      - key: ENVIRONMENT
+        value: production 

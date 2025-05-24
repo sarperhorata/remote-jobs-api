@@ -1,197 +1,47 @@
-import asyncio
-import logging
-import os
-from fastapi import FastAPI, HTTPException, Depends, Query, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
-import threading
-from apscheduler.schedulers.background import BackgroundScheduler
-from utils.cronjob import wake_up_render
-from middleware.security import SecurityMiddleware
-from utils.db import test_connection
-from utils.scheduler import setup_scheduler
-from fastapi.responses import JSONResponse
-from dotenv import load_dotenv
+import logging
+from routes import auth, profile, jobs, ads, notification_routes
+from database import get_db
 
-from api import monitors, notifications, websites, jobs
-from crawler.monitor_manager import MonitorManager
-from utils.config import API_HOST, API_PORT, API_DEBUG, API_RELOAD, CORS_ORIGINS, CORS_ALLOW_CREDENTIALS, TELEGRAM_ENABLED
-
-# Load environment variables
-load_dotenv()
-
-# Logging configuration
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Create FastAPI application
-app = FastAPI(
-    title="Remote Jobs Monitor API",
-    description="API that monitors job listings and notifies about changes",
-    version="0.1.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
-)
+app = FastAPI(title="Buzz2Remote API")
 
-# CORS settings
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(","),
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Add security middleware
-app.add_middleware(SecurityMiddleware)
-
-# Add API routers
-app.include_router(monitors.router, prefix="/api/monitors", tags=["Monitors"])
-app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
-app.include_router(websites.router, prefix="/api/websites", tags=["Websites"])
-app.include_router(jobs.router, prefix="/api/jobs", tags=["Jobs"])
-
-# Monitor Manager instance
-monitor_manager = MonitorManager()
-
-# Telegram bot
-if TELEGRAM_ENABLED:
-    logger.info("Telegram support is enabled, but bot is disabled for stability")
-    # Telegram bot kısmını devre dışı bırakıyoruz
-    # from telegram_bot.bot import RemoteJobsBot
-    # telegram_bot = RemoteJobsBot()
-    # import threading
-    # import time
-    # def start_telegram_bot():
-    #     try:
-    #         telegram_bot.run()
-    #     except Exception as e:
-    #         logger.error(f"Error running Telegram bot: {e}")
-    # threading.Thread(target=start_telegram_bot).start()
-else:
-    logger.info("Telegram support is disabled")
-
-# Initialize scheduler
-scheduler = BackgroundScheduler()
-scheduler.add_job(wake_up_render, 'interval', minutes=14, id='wake_up_render', replace_existing=True)
-scheduler.start()
-
-RENDER_URL = os.getenv('RENDER_URL', 'https://remote-jobs-62gn.onrender.com')
+# Include routers
+try:
+    app.include_router(auth.router, prefix="/api", tags=["auth"])
+    app.include_router(profile.router, prefix="/api", tags=["profile"])
+    app.include_router(jobs.router, prefix="/api", tags=["jobs"])
+    app.include_router(ads.router, prefix="/api", tags=["ads"])
+    app.include_router(notification_routes.router, prefix="/api", tags=["notifications"])
+    logger.info("All routers included successfully")
+except Exception as e:
+    logger.error(f"Error including routers: {str(e)}")
+    raise e
 
 @app.on_event("startup")
-async def startup_event():
-    """
-    Runs when the application starts
-    """
-    logger.info("Starting application...")
-    
-    # Create data directory
-    os.makedirs("data", exist_ok=True)
-    
-    # Start Monitor Manager
-    await monitor_manager.start()
-    
-    # Start Telegram bot in a separate thread
-    global telegram_bot_thread
-    telegram_bot_thread = threading.Thread(target=start_telegram_bot)
-    telegram_bot_thread.daemon = True  # The thread will exit when the main thread exits
-    telegram_bot_thread.start()
-    logger.info("Telegram bot started in separate thread")
-
-    # Test MongoDB connection
-    if test_connection():
-        logger.info("MongoDB connection successful")
-    else:
-        logger.error("MongoDB connection failed")
-
-    # Set up scheduler with job archiving and additional tasks
-    async_scheduler = setup_scheduler()
-    app.state.scheduler = async_scheduler
-    logger.info("Application startup complete")
-
-def start_telegram_bot():
-    """
-    Start the Telegram bot (this runs in a separate thread)
-    """
-    max_retries = 3
-    retry_count = 0
-    retry_delay = 10  # seconds
-    
-    while retry_count < max_retries:
-        try:
-            logger.info(f"Starting Telegram bot (attempt {retry_count + 1}/{max_retries})...")
-            # If run() returns without exception, break the loop
-            break
-        except Exception as e:
-            retry_count += 1
-            logger.error(f"Error running Telegram bot (attempt {retry_count}/{max_retries}): {e}")
-            if retry_count < max_retries:
-                logger.info(f"Retrying in {retry_delay} seconds...")
-                import time
-                time.sleep(retry_delay)
-                # Double the delay for next attempt
-                retry_delay *= 2
-            else:
-                logger.error(f"Failed to start Telegram bot after {max_retries} attempts. Will not retry.")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """
-    Runs when the application shuts down
-    """
-    logger.info("Shutting down application...")
-    
-    # Stop Monitor Manager
-    await monitor_manager.stop()
-    
-    # The Telegram bot will stop automatically when the main thread exits
-    # since it's running as a daemon thread
-
-    scheduler.shutdown()
-
-    # Shutdown scheduler
-    if hasattr(app.state, "scheduler"):
-        app.state.scheduler.shutdown()
-    logger.info("Application shutdown complete")
+async def startup_db_client():
+    try:
+        # Test database connection
+        db = get_db()
+        db.command('ismaster')
+        logger.info("Connected to MongoDB successfully!")
+    except Exception as e:
+        logger.error(f"Could not connect to MongoDB: {str(e)}")
+        raise e
 
 @app.get("/")
 async def root():
-    """
-    Home page
-    """
-    return {
-        "app": "Remote Jobs Monitor API",
-        "version": "0.1.0",
-        "endpoints": {
-            "monitors": "/api/monitors",
-            "notifications": "/api/notifications",
-            "websites": "/api/websites",
-            "jobs": "/api/jobs",
-        },
-        "telegram_bot": "Running" if telegram_bot_thread and telegram_bot_thread.is_alive() else "Not running"
-    }
-
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
-
-# Error handler
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Global exception handler caught: {exc}", exc_info=True)
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "An unexpected error occurred"},
-    )
-
-if __name__ == "__main__":
-    uvicorn.run(
-        "main:app", 
-        host=API_HOST, 
-        port=API_PORT,
-        reload=API_RELOAD,
-        log_level="info"
-    ) 
+    return {"message": "Welcome to Buzz2Remote API"} 

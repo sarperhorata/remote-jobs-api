@@ -1,12 +1,12 @@
 import os
 import smtplib
-import jwt
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
+from jose import jwt
 
-# JWT ayarları
+# JWT settings
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -50,13 +50,13 @@ def send_email(to_email: str, subject: str, body: str) -> bool:
 
 def create_email_verification_token(email: str) -> str:
     """
-    E-posta doğrulama token'ı oluşturur.
+    Create email verification token.
     
     Args:
-        email: E-posta adresi
+        email: Email address
         
     Returns:
-        str: Doğrulama token'ı
+        str: Verification token
     """
     expires_delta = timedelta(hours=24)
     expire = datetime.utcnow() + expires_delta
@@ -72,13 +72,13 @@ def create_email_verification_token(email: str) -> str:
 
 def create_password_reset_token(email: str) -> str:
     """
-    Şifre sıfırlama token'ı oluşturur.
+    Create password reset token.
     
     Args:
-        email: E-posta adresi
+        email: Email address
         
     Returns:
-        str: Şifre sıfırlama token'ı
+        str: Password reset token
     """
     expires_delta = timedelta(hours=1)
     expire = datetime.utcnow() + expires_delta
@@ -94,13 +94,13 @@ def create_password_reset_token(email: str) -> str:
 
 def verify_token(token: str) -> Optional[Dict[str, Any]]:
     """
-    Token'ı doğrular.
+    Verify token.
     
     Args:
-        token: Doğrulanacak token
+        token: Token to verify
         
     Returns:
-        Optional[Dict[str, Any]]: Token içeriği
+        Optional[Dict[str, Any]]: Token payload
     """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -111,61 +111,61 @@ def verify_token(token: str) -> Optional[Dict[str, Any]]:
         return None
 
 def send_verification_email(email: str, token: str) -> bool:
-    """
-    E-posta doğrulama e-postası gönderir.
-    
-    Args:
-        email: E-posta adresi
-        token: Doğrulama token'ı
-        
-    Returns:
-        bool: E-posta gönderildi mi?
-    """
-    verification_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:3000')}/verify-email?token={token}"
-    
-    subject = "E-posta Adresinizi Doğrulayın"
-    body = f"""
-    <html>
-        <body>
-            <h1>E-posta Doğrulama</h1>
-            <p>Merhaba,</p>
-            <p>E-posta adresinizi doğrulamak için aşağıdaki bağlantıya tıklayın:</p>
-            <p><a href="{verification_url}">E-posta Adresimi Doğrula</a></p>
-            <p>Bu bağlantı 24 saat boyunca geçerlidir.</p>
-            <p>Eğer bu işlemi siz yapmadıysanız, bu e-postayı görmezden gelebilirsiniz.</p>
-            <p>Saygılarımızla,<br>Remote Jobs Ekibi</p>
-        </body>
-    </html>
-    """
-    
-    return send_email(email, subject, body)
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = os.getenv("SMTP_USERNAME", "your-email@example.com")
+        msg['To'] = email
+        msg['Subject'] = "Verify your email address"
+
+        body = f"""
+        Hello,
+
+        Please click the link below to verify your email address:
+        {os.getenv("FRONTEND_URL", "http://localhost:3000")}/verify-email?token={token}
+
+        If you did not request this verification, please ignore this email.
+
+        Best regards,
+        Your App Team
+        """
+        msg.attach(MIMEText(body, 'plain'))
+
+        server = smtplib.SMTP(os.getenv("SMTP_HOST", "smtp.gmail.com"), int(os.getenv("SMTP_PORT", "587")))
+        server.starttls()
+        server.login(os.getenv("SMTP_USERNAME", "your-email@example.com"), os.getenv("SMTP_PASSWORD", "your-password"))
+        server.send_message(msg)
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"Error sending email: {str(e)}")
+        return False
 
 def send_password_reset_email(email: str, token: str) -> bool:
-    """
-    Şifre sıfırlama e-postası gönderir.
-    
-    Args:
-        email: E-posta adresi
-        token: Şifre sıfırlama token'ı
-        
-    Returns:
-        bool: E-posta gönderildi mi?
-    """
-    reset_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:3000')}/reset-password?token={token}"
-    
-    subject = "Şifre Sıfırlama"
-    body = f"""
-    <html>
-        <body>
-            <h1>Şifre Sıfırlama</h1>
-            <p>Merhaba,</p>
-            <p>Şifrenizi sıfırlamak için aşağıdaki bağlantıya tıklayın:</p>
-            <p><a href="{reset_url}">Şifremi Sıfırla</a></p>
-            <p>Bu bağlantı 1 saat boyunca geçerlidir.</p>
-            <p>Eğer bu işlemi siz yapmadıysanız, bu e-postayı görmezden gelebilirsiniz.</p>
-            <p>Saygılarımızla,<br>Remote Jobs Ekibi</p>
-        </body>
-    </html>
-    """
-    
-    return send_email(email, subject, body) 
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = os.getenv("SMTP_USERNAME", "your-email@example.com")
+        msg['To'] = email
+        msg['Subject'] = "Reset your password"
+
+        body = f"""
+        Hello,
+
+        Please click the link below to reset your password:
+        {os.getenv("FRONTEND_URL", "http://localhost:3000")}/reset-password?token={token}
+
+        If you did not request a password reset, please ignore this email.
+
+        Best regards,
+        Your App Team
+        """
+        msg.attach(MIMEText(body, 'plain'))
+
+        server = smtplib.SMTP(os.getenv("SMTP_HOST", "smtp.gmail.com"), int(os.getenv("SMTP_PORT", "587")))
+        server.starttls()
+        server.login(os.getenv("SMTP_USERNAME", "your-email@example.com"), os.getenv("SMTP_PASSWORD", "your-password"))
+        server.send_message(msg)
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"Error sending email: {str(e)}")
+        return False 

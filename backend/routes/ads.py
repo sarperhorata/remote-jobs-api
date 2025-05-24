@@ -1,165 +1,91 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from typing import Dict, List, Any, Optional
-from ..database import get_db
-from ..models.user import User
-from ..utils.auth import get_current_active_user
-from ..utils.ads import (
-    setup_google_ads_client,
-    create_campaign,
-    create_ad_group,
-    create_ad,
-    get_campaign_performance
-)
+from fastapi import APIRouter, HTTPException, Depends
+from typing import List
+from database import get_db
+from utils.auth import get_current_active_user
+from datetime import datetime
+from bson import ObjectId
 
 router = APIRouter()
 
-@router.post("/campaigns")
-async def create_new_campaign(
-    campaign_name: str,
-    budget: float,
-    customer_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Yeni bir kampanya oluşturur.
-    
-    Args:
-        campaign_name: Kampanya adı
-        budget: Kampanya bütçesi
-        customer_id: Müşteri ID'si
-        current_user: Mevcut kullanıcı
-        db: Veritabanı oturumu
-        
-    Returns:
-        Dict[str, str]: Kampanya ID'si
-    """
-    client = setup_google_ads_client()
-    if not client:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Google Ads API istemcisi ayarlanamadı"
-        )
-    
-    campaign_id = create_campaign(client, customer_id, campaign_name, budget)
-    if not campaign_id:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Kampanya oluşturulamadı"
-        )
-    
-    return {"campaign_id": campaign_id}
+@router.post("/ads/")
+def create_ad(ad: dict):
+    db = get_db()
+    ads = db["ads"]
+    ad["created_at"] = datetime.utcnow()
+    result = ads.insert_one(ad)
+    created_ad = ads.find_one({"_id": result.inserted_id})
+    created_ad["_id"] = str(created_ad["_id"])
+    return created_ad
 
-@router.post("/ad-groups")
-async def create_new_ad_group(
-    campaign_id: str,
-    ad_group_name: str,
-    customer_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+@router.get("/ads/", response_model=List[dict])
+def get_ads(
+    skip: int = 0,
+    limit: int = 100,
+    current_user: dict = Depends(get_current_active_user)
 ):
-    """
-    Yeni bir reklam grubu oluşturur.
-    
-    Args:
-        campaign_id: Kampanya ID'si
-        ad_group_name: Reklam grubu adı
-        customer_id: Müşteri ID'si
-        current_user: Mevcut kullanıcı
-        db: Veritabanı oturumu
-        
-    Returns:
-        Dict[str, str]: Reklam grubu ID'si
-    """
-    client = setup_google_ads_client()
-    if not client:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Google Ads API istemcisi ayarlanamadı"
-        )
-    
-    ad_group_id = create_ad_group(client, customer_id, campaign_id, ad_group_name)
-    if not ad_group_id:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Reklam grubu oluşturulamadı"
-        )
-    
-    return {"ad_group_id": ad_group_id}
+    db = get_db()
+    ads = db["ads"]
+    user_ads = list(ads.find(
+        {"user_id": current_user["_id"]}
+    ).skip(skip).limit(limit))
+    for ad in user_ads:
+        ad["_id"] = str(ad["_id"])
+    return user_ads
 
-@router.post("/ads")
-async def create_new_ad(
-    ad_group_id: str,
-    headline: str,
-    description: str,
-    final_url: str,
-    customer_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+@router.get("/ads/{ad_id}")
+def get_ad(
+    ad_id: str,
+    current_user: dict = Depends(get_current_active_user)
 ):
-    """
-    Yeni bir reklam oluşturur.
-    
-    Args:
-        ad_group_id: Reklam grubu ID'si
-        headline: Reklam başlığı
-        description: Reklam açıklaması
-        final_url: Reklam URL'si
-        customer_id: Müşteri ID'si
-        current_user: Mevcut kullanıcı
-        db: Veritabanı oturumu
-        
-    Returns:
-        Dict[str, str]: Reklam ID'si
-    """
-    client = setup_google_ads_client()
-    if not client:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Google Ads API istemcisi ayarlanamadı"
-        )
-    
-    ad_id = create_ad(client, customer_id, ad_group_id, headline, description, final_url)
-    if not ad_id:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Reklam oluşturulamadı"
-        )
-    
-    return {"ad_id": ad_id}
+    db = get_db()
+    ads = db["ads"]
+    ad = ads.find_one({
+        "_id": ObjectId(ad_id),
+        "user_id": current_user["_id"]
+    })
+    if ad is None:
+        raise HTTPException(status_code=404, detail="Ad not found")
+    ad["_id"] = str(ad["_id"])
+    return ad
 
-@router.get("/campaigns/{campaign_id}/performance")
-async def get_campaign_stats(
-    campaign_id: str,
-    customer_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+@router.put("/ads/{ad_id}")
+def update_ad(
+    ad_id: str,
+    ad: dict,
+    current_user: dict = Depends(get_current_active_user)
 ):
-    """
-    Kampanya performansını getirir.
+    db = get_db()
+    ads = db["ads"]
+    existing_ad = ads.find_one({
+        "_id": ObjectId(ad_id),
+        "user_id": current_user["_id"]
+    })
+    if existing_ad is None:
+        raise HTTPException(status_code=404, detail="Ad not found")
     
-    Args:
-        campaign_id: Kampanya ID'si
-        customer_id: Müşteri ID'si
-        current_user: Mevcut kullanıcı
-        db: Veritabanı oturumu
-        
-    Returns:
-        Dict[str, Any]: Kampanya performans verileri
-    """
-    client = setup_google_ads_client()
-    if not client:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Google Ads API istemcisi ayarlanamadı"
-        )
+    update_data = {k: v for k, v in ad.items() if v is not None}
+    update_data["updated_at"] = datetime.utcnow()
     
-    performance_data = get_campaign_performance(client, customer_id, campaign_id)
-    if not performance_data:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Kampanya performans verileri bulunamadı"
-        )
+    ads.update_one(
+        {"_id": ObjectId(ad_id)},
+        {"$set": update_data}
+    )
     
-    return performance_data 
+    updated_ad = ads.find_one({"_id": ObjectId(ad_id)})
+    updated_ad["_id"] = str(updated_ad["_id"])
+    return updated_ad
+
+@router.delete("/ads/{ad_id}")
+def delete_ad(
+    ad_id: str,
+    current_user: dict = Depends(get_current_active_user)
+):
+    db = get_db()
+    ads = db["ads"]
+    result = ads.delete_one({
+        "_id": ObjectId(ad_id),
+        "user_id": current_user["_id"]
+    })
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Ad not found")
+    return {"message": "Ad deleted successfully"} 

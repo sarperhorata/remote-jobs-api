@@ -6,10 +6,14 @@ import Jobs from './pages/Jobs';
 import JobDetail from './pages/JobDetail';
 import Profile from './pages/Profile';
 import Status from './pages/Status';
-import Dashboard from './pages/Dashboard';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import Pricing from './pages/Pricing';
 import Navigation from './components/Navigation';
+import Header from './components/Header';
+import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
-import { ThemeProvider } from './contexts/theme/ThemeContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import './App.css';
 
 const queryClient = new QueryClient();
@@ -20,19 +24,56 @@ const App: React.FC = () => {
       <AuthProvider>
         <ThemeProvider>
           <Router>
-            <div className="min-h-screen">
-              <Navigation />
-              <main>
+            <div className="flex flex-col min-h-screen">
+              <Header />
+              <main className="flex-grow container mx-auto px-4 py-8">
                 <Routes>
                   <Route path="/" element={<Home />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/auth/login" element={<Login />} />
+                  <Route path="/auth/register" element={<Signup />} />
                   <Route path="/jobs" element={<Jobs />} />
                   <Route path="/jobs/:id" element={<JobDetail />} />
-                  <Route path="/my-skills" element={<Profile />} />
-                  <Route path="/my-resumes" element={<Profile />} />
-                  <Route path="/my-jobs" element={<Profile />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/status" element={<Status />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  <Route 
+                    path="/my-skills" 
+                    element={
+                      <ProtectedRoute>
+                        <Profile />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/my-resumes" 
+                    element={
+                      <ProtectedRoute>
+                        <Profile />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/my-jobs" 
+                    element={
+                      <ProtectedRoute>
+                        <Profile />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/profile" 
+                    element={
+                      <ProtectedRoute>
+                        <Profile />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/status" 
+                    element={
+                      <ProtectedRoute>
+                        <Status />
+                      </ProtectedRoute>
+                    } 
+                  />
                 </Routes>
               </main>
             </div>

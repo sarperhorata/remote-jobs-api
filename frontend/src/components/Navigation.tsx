@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/theme/ThemeContext';
 
 const Navigation: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
+  const navigate = useNavigate();
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -16,6 +19,26 @@ const Navigation: React.FC = () => {
   const isActive = (path: string) => {
     return location.pathname === path;
   };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+    setShowProfileMenu(false);
+  };
+
+  // Close the profile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   return (
     <nav className="bg-gradient-to-r from-blue-600 to-indigo-800 text-white">
@@ -81,9 +104,9 @@ const Navigation: React.FC = () => {
 
             {/* Profile or Login */}
             {user ? (
-              <div className="relative">
-                <Link
-                  to="/profile"
+              <div className="relative" ref={profileMenuRef}>
+                <button
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
                   className={`flex items-center px-3 py-2 rounded-md ${
                     isActive('/profile') ? 'bg-blue-700' : 'hover:bg-blue-700'
                   }`}
@@ -101,16 +124,61 @@ const Navigation: React.FC = () => {
                       </div>
                     )}
                   </div>
-                  <span>Profile</span>
-                </Link>
+                  <span>{user.name}</span>
+                  <svg className="ml-1 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+
+                {/* Profile Dropdown */}
+                {showProfileMenu && (
+                  <div className="absolute right-0 mt-2 w-48 py-2 bg-white rounded-md shadow-xl z-20">
+                    <Link
+                      to="/profile"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setShowProfileMenu(false)}
+                    >
+                      Your Profile
+                    </Link>
+                    <Link
+                      to="/my-jobs"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setShowProfileMenu(false)}
+                    >
+                      My Jobs
+                    </Link>
+                    <Link
+                      to="/my-resumes"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setShowProfileMenu(false)}
+                    >
+                      My Resumes
+                    </Link>
+                    <div className="border-t border-gray-100"></div>
+                    <button
+                      onClick={handleLogout}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
-              <Link
-                to="/login"
-                className="px-3 py-2 rounded-md hover:bg-blue-700"
-              >
-                Login
-              </Link>
+              <div className="flex space-x-2">
+                <Link
+                  to="/login"
+                  className="px-3 py-2 rounded-md hover:bg-blue-700"
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/signup"
+                  className="px-3 py-2 bg-indigo-600 rounded-md hover:bg-indigo-700"
+                >
+                  Sign up
+                </Link>
+              </div>
             )}
           </div>
 
@@ -195,23 +263,43 @@ const Navigation: React.FC = () => {
               Status
             </Link>
             {user ? (
-              <Link
-                to="/profile"
-                className={`block px-3 py-2 rounded-md ${
-                  isActive('/profile') ? 'bg-blue-700' : 'hover:bg-blue-700'
-                }`}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Profile
-              </Link>
+              <>
+                <Link
+                  to="/profile"
+                  className={`block px-3 py-2 rounded-md ${
+                    isActive('/profile') ? 'bg-blue-700' : 'hover:bg-blue-700'
+                  }`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Profile
+                </Link>
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setIsMenuOpen(false);
+                  }}
+                  className="block w-full text-left px-3 py-2 rounded-md hover:bg-blue-700"
+                >
+                  Sign out
+                </button>
+              </>
             ) : (
-              <Link
-                to="/login"
-                className="block px-3 py-2 rounded-md hover:bg-blue-700"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Login
-              </Link>
+              <>
+                <Link
+                  to="/login"
+                  className="block px-3 py-2 rounded-md hover:bg-blue-700"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/signup"
+                  className="block px-3 py-2 rounded-md bg-blue-700 hover:bg-blue-800"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Sign up
+                </Link>
+              </>
             )}
           </div>
         </div>

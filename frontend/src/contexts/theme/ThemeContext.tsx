@@ -5,6 +5,7 @@ type ThemeMode = 'light' | 'dark';
 interface ThemeContextType {
   theme: ThemeMode;
   toggleTheme: () => void;
+  applyTheme: (mode: ThemeMode) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -70,8 +71,13 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
   };
 
+  // Belirli bir temayı uygulama fonksiyonu
+  const applyTheme = (mode: ThemeMode) => {
+    setTheme(mode);
+  };
+
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, applyTheme }}>
       {children}
     </ThemeContext.Provider>
   );

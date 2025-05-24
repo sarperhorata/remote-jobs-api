@@ -1,100 +1,86 @@
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
-from sqlalchemy.orm import Session
 from typing import List, Optional
-from ..database import get_db
-from ..models.profile import Profile
-from ..schemas.profile import ProfileCreate, ProfileUpdate, ProfileResponse
-from ..utils.auth import get_current_active_user
+from database import get_db
+from utils.auth import get_current_active_user
 import os
 import shutil
 from datetime import datetime
+from bson import ObjectId
 
 router = APIRouter()
 
 UPLOAD_DIR = "uploads"
 
-@router.post("/profiles/upload-photo", response_model=ProfileResponse)
+@router.post("/profiles/upload-photo")
 async def upload_profile_photo(
     file: UploadFile = File(...),
-    current_user: Profile = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    current_user: dict = Depends(get_current_active_user)
 ):
+    db = get_db()
+    profiles = db["profiles"]
     if not os.path.exists(UPLOAD_DIR):
         os.makedirs(UPLOAD_DIR)
-    
     file_path = os.path.join(UPLOAD_DIR, file.filename)
     with open(file_path, "wb") as buffer:
         buffer.write(await file.read())
-    
-    current_user.profile_photo_url = f"/uploads/{file.filename}"
-    db.commit()
-    db.refresh(current_user)
-    return current_user
+    profiles.update_one({"_id": ObjectId(current_user["_id"])}, {"$set": {"profile_photo_url": f"/uploads/{file.filename}"}})
+    return {"message": "Profile photo uploaded successfully"}
 
-@router.post("/profiles/", response_model=ProfileResponse)
-def create_profile(profile: ProfileCreate, db: Session = Depends(get_db)):
-    db_profile = Profile(**profile.dict())
-    db.add(db_profile)
-    db.commit()
-    db.refresh(db_profile)
-    return db_profile
+@router.post("/profiles/")
+def create_profile(profile: dict):
+    db = get_db()
+    profiles = db["profiles"]
+    result = profiles.insert_one(profile)
+    created_profile = profiles.find_one({"_id": result.inserted_id})
+    created_profile["_id"] = str(created_profile["_id"])
+    return created_profile
 
-@router.get("/profiles/{profile_id}", response_model=ProfileResponse)
-def get_profile(profile_id: int, db: Session = Depends(get_db)):
-    profile = db.query(Profile).filter(Profile.id == profile_id).first()
+@router.get("/profiles/{profile_id}")
+def get_profile(profile_id: str):
+    db = get_db()
+    profiles = db["profiles"]
+    profile = profiles.find_one({"_id": ObjectId(profile_id)})
     if profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
+    profile["_id"] = str(profile["_id"])
     return profile
 
-@router.put("/profiles/{profile_id}", response_model=ProfileResponse)
-def update_profile(profile_id: int, profile: ProfileUpdate, db: Session = Depends(get_db)):
-    db_profile = db.query(Profile).filter(Profile.id == profile_id).first()
-    if db_profile is None:
+@router.put("/profiles/{profile_id}")
+def update_profile(profile_id: str, profile: dict):
+    db = get_db()
+    profiles = db["profiles"]
+    existing_profile = profiles.find_one({"_id": ObjectId(profile_id)})
+    if existing_profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
-    
-    for key, value in profile.dict(exclude_unset=True).items():
-        setattr(db_profile, key, value)
-    
-    db.commit()
-    db.refresh(db_profile)
-    return db_profile
+    update_data = {k: v for k, v in profile.items() if v is not None}
+    profiles.update_one({"_id": ObjectId(profile_id)}, {"$set": update_data})
+    updated_profile = profiles.find_one({"_id": ObjectId(profile_id)})
+    updated_profile["_id"] = str(updated_profile["_id"])
+    return updated_profile
 
 @router.put("/profile")
 async def update_profile(
-    profile: UserUpdate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    profile: dict,
+    current_user: dict = Depends(get_current_active_user)
 ):
-    """
-    Update user profile information.
-    """
-    for field, value in profile.dict(exclude_unset=True).items():
-        if field not in ["password", "password_confirm"]:
-            setattr(current_user, field, value)
-    
-    current_user.updated_at = datetime.utcnow()
-    db.commit()
-    db.refresh(current_user)
-    return current_user
+    db = get_db()
+    profiles = db["profiles"]
+    update_data = {k: v for k, v in profile.items() if k not in ["password", "password_confirm"]}
+    update_data["updated_at"] = datetime.utcnow()
+    profiles.update_one({"_id": ObjectId(current_user["_id"])}, {"$set": update_data})
+    return {"message": "Profile updated successfully"}
 
 @router.post("/profile/photo")
 async def upload_profile_photo(
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: dict = Depends(get_current_active_user)
 ):
-    """
-    Upload a profile photo for the user.
-    """
+    db = get_db()
+    profiles = db["profiles"]
     if not os.path.exists(UPLOAD_DIR):
         os.makedirs(UPLOAD_DIR)
-    
-    file_location = f"{UPLOAD_DIR}/{current_user.id}_{file.filename}"
+    file_location = f"{UPLOAD_DIR}/{current_user['_id']}_{file.filename}"
     with open(file_location, "wb+") as file_object:
         shutil.copyfileobj(file.file, file_object)
-    
-    current_user.profile_photo_url = file_location
-    current_user.updated_at = datetime.utcnow()
-    db.commit()
-    db.refresh(current_user)
-    return current_user 
+    profiles.update_one({"_id": ObjectId(current_user["_id"])}, {"$set": {"profile_photo_url": file_location, "updated_at": datetime.utcnow()}})
+    return {"message": "Profile photo uploaded successfully"} 

@@ -12,6 +12,7 @@ import WorkIcon from '@mui/icons-material/Work';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import BusinessIcon from '@mui/icons-material/Business';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import SearchForm from '../components/SearchForm';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
@@ -37,133 +38,59 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white">
-        <div className="max-w-7xl mx-auto px-4 py-16 md:py-24">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Find Your Perfect Remote Job</h1>
-            <p className="text-xl md:text-2xl opacity-90">Discover remote opportunities from around the world that match your skills</p>
+    <div className="min-h-screen bg-gray-50">
+      <div className="bg-primary text-white py-16">
+        <div className="container mx-auto px-4">
+          <h1 className="text-4xl md:text-5xl font-bold text-center mb-4">
+            Find Your Dream Remote Job
+          </h1>
+          <p className="text-xl text-center text-gray-100 mb-8">
+            Search through thousands of remote positions at top companies
+          </p>
+          <SearchForm />
+        </div>
+      </div>
+
+      {/* İstatistikler */}
+      <div className="container mx-auto px-4 py-16">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="bg-white p-6 rounded-lg shadow-sm text-center">
+            <div className="text-3xl font-bold text-primary mb-2">10,000+</div>
+            <div className="text-gray-600">Remote Jobs</div>
           </div>
-          
-          {/* Search Form */}
-          <div className="bg-white rounded-lg shadow-lg p-6 max-w-4xl mx-auto">
-            <form onSubmit={handleSearch}>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Position, title, keywords
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. developer, react, python"
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Exclude keywords
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. senior, 5+ years"
-                    value={excludeInput}
-                    onChange={(e) => setExcludeInput(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Location
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. United States or Europe"
-                    value={locationInput}
-                    onChange={(e) => setLocationInput(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-              </div>
-              
-              <div className="flex flex-wrap gap-2 mb-4">
-                <button
-                  type="button"
-                  className={`flex items-center px-4 py-2 rounded-full border ${
-                    selectedJobType === 'remote' 
-                      ? 'bg-blue-100 border-blue-300 text-blue-700' 
-                      : 'bg-white border-gray-300'
-                  }`}
-                  onClick={() => setSelectedJobType('remote')}
-                >
-                  {selectedJobType === 'remote' ? (
-                    <CheckCircleIcon className="h-5 w-5 mr-1 text-blue-500" />
-                  ) : (
-                    <RadioButtonUncheckedIcon className="h-5 w-5 mr-1 text-gray-400" />
-                  )}
-                  Remote
-                </button>
-                <button
-                  type="button"
-                  className={`flex items-center px-4 py-2 rounded-full border ${
-                    selectedJobType === 'hybrid' 
-                      ? 'bg-blue-100 border-blue-300 text-blue-700' 
-                      : 'bg-white border-gray-300'
-                  }`}
-                  onClick={() => setSelectedJobType('hybrid')}
-                >
-                  {selectedJobType === 'hybrid' ? (
-                    <CheckCircleIcon className="h-5 w-5 mr-1 text-blue-500" />
-                  ) : (
-                    <RadioButtonUncheckedIcon className="h-5 w-5 mr-1 text-gray-400" />
-                  )}
-                  Hybrid
-                </button>
-                <button
-                  type="button"
-                  className={`flex items-center px-4 py-2 rounded-full border ${
-                    selectedJobType === '24hours' 
-                      ? 'bg-blue-100 border-blue-300 text-blue-700' 
-                      : 'bg-white border-gray-300'
-                  }`}
-                  onClick={() => setSelectedJobType('24hours')}
-                >
-                  {selectedJobType === '24hours' ? (
-                    <CheckCircleIcon className="h-5 w-5 mr-1 text-blue-500" />
-                  ) : (
-                    <RadioButtonUncheckedIcon className="h-5 w-5 mr-1 text-gray-400" />
-                  )}
-                  Last 24 Hours
-                </button>
-                <button
-                  type="button"
-                  className={`flex items-center px-4 py-2 rounded-full border ${
-                    selectedJobType === '7days' 
-                      ? 'bg-blue-100 border-blue-300 text-blue-700' 
-                      : 'bg-white border-gray-300'
-                  }`}
-                  onClick={() => setSelectedJobType('7days')}
-                >
-                  {selectedJobType === '7days' ? (
-                    <CheckCircleIcon className="h-5 w-5 mr-1 text-blue-500" />
-                  ) : (
-                    <RadioButtonUncheckedIcon className="h-5 w-5 mr-1 text-gray-400" />
-                  )}
-                  Last 7 Days
-                </button>
-              </div>
-              
-              <button
-                type="submit"
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium text-lg transition-all duration-200"
-              >
-                <SearchIcon className="h-5 w-5 mr-2" />
-                Find Remote Jobs
-              </button>
-            </form>
+          <div className="bg-white p-6 rounded-lg shadow-sm text-center">
+            <div className="text-3xl font-bold text-primary mb-2">5,000+</div>
+            <div className="text-gray-600">Companies</div>
           </div>
+          <div className="bg-white p-6 rounded-lg shadow-sm text-center">
+            <div className="text-3xl font-bold text-primary mb-2">50,000+</div>
+            <div className="text-gray-600">Job Seekers</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Öne çıkan kategoriler */}
+      <div className="container mx-auto px-4 py-16">
+        <h2 className="text-3xl font-bold text-center mb-12">Popular Categories</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[
+            { title: 'Software Development', count: 2500 },
+            { title: 'Design', count: 1200 },
+            { title: 'Marketing', count: 800 },
+            { title: 'Customer Support', count: 600 },
+            { title: 'Sales', count: 500 },
+            { title: 'Product', count: 400 },
+            { title: 'Data Science', count: 300 },
+            { title: 'DevOps', count: 250 },
+          ].map((category) => (
+            <div
+              key={category.title}
+              className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+            >
+              <h3 className="font-semibold text-lg mb-2">{category.title}</h3>
+              <p className="text-gray-600">{category.count} jobs</p>
+            </div>
+          ))}
         </div>
       </div>
 

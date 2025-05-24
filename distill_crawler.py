@@ -202,12 +202,22 @@ class DistillCrawler:
                                     # XPath - convert to CSS
                                     css_selector = self._xpath_to_css(expr)
                                     if css_selector:
-                                        job_elements = soup.select(css_selector)
-                                        logger.debug(f"✅ XPath->CSS '{css_selector}' found {len(job_elements)} elements")
+                                        try:
+                                            job_elements = soup.select(css_selector)
+                                            logger.debug(f"✅ XPath->CSS '{css_selector}' found {len(job_elements)} elements")
+                                        except Exception as css_error:
+                                            logger.debug(f"❌ CSS selector '{css_selector}' failed: {css_error}")
+                                            job_elements = []
                                     else:
-                                        # Fallback to generic selectors
-                                        job_elements = soup.select(self._get_fallback_selectors())
-                                        logger.debug(f"✅ Fallback selectors found {len(job_elements)} elements")
+                                        # Fallback to generic selectors when XPath conversion fails
+                                        logger.debug(f"⚠️ XPath conversion failed for '{expr}', using fallback")
+                                        try:
+                                            fallback_selector = self._get_fallback_selectors()
+                                            job_elements = soup.select(fallback_selector)
+                                            logger.debug(f"✅ Fallback selectors found {len(job_elements)} elements")
+                                        except Exception as fallback_error:
+                                            logger.debug(f"❌ Fallback selectors also failed: {fallback_error}")
+                                            job_elements = []
                                 
                                 # Extract jobs from found elements
                                 for element in job_elements:
@@ -233,30 +243,43 @@ class DistillCrawler:
         return jobs
     
     def _xpath_to_css(self, xpath: str) -> Optional[str]:
-        """Improved XPath to CSS selector conversion"""
+        """Enhanced XPath to CSS selector conversion with better error handling"""
         try:
-            # Handle complex XPath patterns that can't be easily converted
+            # Clean the xpath first
+            xpath = xpath.strip()
+            
+            # Handle empty or invalid xpath
+            if not xpath or xpath in ['', '//', '/', '.']:
+                logger.debug(f"Empty or invalid XPath: '{xpath}'")
+                return None
+            
+            # Problematic patterns that can't be easily converted
             problematic_patterns = [
-                r'\(\s*.*?\)\s*\[\d+\]',  # (xpath)[index] patterns
-                r'contains\([^)]*\)',     # contains() functions
-                r'text\(\)',              # text() functions
-                r'position\(\)',          # position() functions
-                r'@\w+\s*=\s*[\'"][^\'"]*[\'"]'  # attribute equals with quotes
+                r'contains\s*\(',           # contains() functions
+                r'text\s*\(\)',             # text() functions  
+                r'position\s*\(\)',         # position() functions
+                r'last\s*\(\)',             # last() functions
+                r'@\w+\s*=\s*[\'"][^\'"]*[\'"]',  # attribute equals with quotes
+                r'\[\s*\d+\s*\]',           # numeric index selectors
+                r'\|\|',                    # OR operators
+                r'ancestor:',               # ancestor axis
+                r'following:',              # following axis
+                r'preceding:',              # preceding axis
             ]
             
-            # If XPath is too complex, return a generic fallback
+            # If XPath contains problematic patterns, use fallback
             for pattern in problematic_patterns:
-                if re.search(pattern, xpath):
-                    logger.debug(f"Complex XPath detected, using fallback: {xpath}")
-                    return self._get_fallback_selectors()
+                if re.search(pattern, xpath, re.IGNORECASE):
+                    logger.debug(f"Complex XPath pattern detected: {pattern} in {xpath}")
+                    return None
             
-            # Simple conversions for basic XPath patterns
+            # Start conversion
             css = xpath
             
-            # Remove leading //
-            css = re.sub(r'^//', '', css)
+            # Remove leading // and /
+            css = re.sub(r'^/+', '', css)
             
-            # Convert descendant selectors  
+            # Convert descendant selectors
             css = re.sub(r'//', ' ', css)
             css = re.sub(r'/', ' > ', css)
             
@@ -264,35 +287,30 @@ class DistillCrawler:
             css = re.sub(r'\[@([^=\]]+)=([\'"])([^\]]*)\2\]', r'[\1="\3"]', css)
             css = re.sub(r'\[@([^=\]]+)\]', r'[\1]', css)
             
-            # Convert simple class contains
-            css = re.sub(r'\[contains\(@class\s*,\s*[\'"]([^\'"]*)[\'"]', r'[class*="\1"]', css)
+            # Remove problematic characters that would cause CSS errors
+            css = re.sub(r'[\(\)]', '', css)  # Remove parentheses
+            css = re.sub(r'\s+', ' ', css).strip()  # Clean whitespace
             
-            # Clean up extra spaces and validate
-            css = re.sub(r'\s+', ' ', css).strip()
+            # Validate the result doesn't start with combinators
+            if css.startswith(('>', '+', '~', ' >')):
+                logger.debug(f"CSS starts with combinator: {css}")
+                return None
             
-            # Basic validation - if it contains problematic characters, use fallback
-            if any(char in css for char in ['(', ')', '[', ']', ']']):
-                # Further clean problematic characters
-                css = re.sub(r'[\(\)\[\]]', '', css)
-                css = re.sub(r'\s+', ' ', css).strip()
+            # Basic validation - check for remaining problematic characters
+            if any(char in css for char in ['(', ')', '[', ']']) and not re.match(r'^[\w\s\-\[\]="\.:>#\+~]+$', css):
+                logger.debug(f"CSS contains problematic characters: {css}")
+                return None
             
-            return css if css and len(css) > 0 else self._get_fallback_selectors()
+            return css if css and len(css) > 0 else None
             
         except Exception as e:
-            logger.debug(f"XPath conversion failed for {xpath}: {e}")
-            return self._get_fallback_selectors()
+            logger.debug(f"XPath conversion failed for '{xpath}': {e}")
+            return None
     
     def _get_fallback_selectors(self) -> str:
-        """Return improved fallback CSS selectors for job listings"""
-        return """
-        .job, .position, .opening, .career, .vacancy, .role,
-        [class*="job"], [class*="position"], [class*="career"], [class*="opening"],
-        [class*="role"], [class*="vacancy"], [data-testid*="job"],
-        .posting, [class*="posting"], .listing, [class*="listing"],
-        h1, h2, h3, h4, h5,
-        a[href*="job"], a[href*="career"], a[href*="position"], a[href*="apply"],
-        li:has(a), div:has(h3), div:has(h4), article
-        """
+        """Return safe fallback CSS selectors with error handling"""
+        # Return selectors that are guaranteed to work
+        return "h1, h2, h3, h4, h5, a, div, p, span, li"
     
     def _extract_lever_jobs(self, company_name: str, uri: str, soup: BeautifulSoup) -> List[JobListing]:
         """Extract jobs from Lever platform"""

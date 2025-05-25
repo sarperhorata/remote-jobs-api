@@ -18,15 +18,15 @@
 # Go to: https://cloud.mongodb.com
 # 1. Database Access → Database Users
 # 2. Edit these users and change passwords:
-#    - myremotejobs (old: cH622T5iGoc9tzfe) → NEW STRONG PASSWORD
-#    - sarperhorata (old: wEW5oQbUiNBaPGFk) → NEW STRONG PASSWORD  
-#    - remotejobs (old: taBQw9bkYRAtFUOS) → NEW STRONG PASSWORD
+#    - myremotejobs (old: [REDACTED]) → NEW STRONG PASSWORD
+#    - sarperhorata (old: [REDACTED]) → NEW STRONG PASSWORD  
+#    - remotejobs (old: [REDACTED]) → NEW STRONG PASSWORD
 ```
 
 #### OpenAI API Key (CRITICAL):
 ```bash
 # Go to: https://platform.openai.com/api-keys
-# 1. REVOKE: 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
+# 1. REVOKE: sk-proj-[PREVIOUSLY_EXPOSED_KEY_REDACTED]
 # 2. CREATE NEW: Click "Create new secret key"
 ```
 

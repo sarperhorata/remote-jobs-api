@@ -18,16 +18,16 @@ GitHub Secret Scanning has detected the following exposed credentials in your re
 # Go to MongoDB Atlas Dashboard
 # 1. Database Access → Database Users
 # 2. Change passwords for these users:
-#    - myremotejobs (password: cH622T5iGoc9tzfe) 
-#    - sarperhorata (password: wEW5oQbUiNBaPGFk)
-#    - remotejobs (password: taBQw9bkYRAtFUOS)
+#    - myremotejobs (password: [REDACTED]) 
+#    - sarperhorata (password: [REDACTED])
+#    - remotejobs (password: [REDACTED])
 # 3. Generate new strong passwords
 ```
 
 ### OpenAI API Key:
 ```bash
 # Go to OpenAI Dashboard → API Keys
-# 1. Revoke: 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
+# 1. Revoke: sk-proj-[PREVIOUSLY_EXPOSED_KEY_REDACTED]
 # 2. Generate new API key
 ```
 
@@ -51,9 +51,9 @@ The following files contain hardcoded secrets and must be cleaned:
 - backend*/utils/db.py
 
 **All files containing:**
-- `mongodb+srv://myremotejobs:cH622T5iGoc9tzfe`
-- `mongodb+srv://sarperhorata:wEW5oQbUiNBaPGFk`
-- `mongodb+srv://remotejobs:taBQw9bkYRAtFUOS`
+- `mongodb+srv://myremotejobs:[REDACTED]`
+- `mongodb+srv://sarperhorata:[REDACTED]`
+- `mongodb+srv://remotejobs:[REDACTED]`
 
 ## 3. **IMPLEMENT PROPER SECRET MANAGEMENT**
 

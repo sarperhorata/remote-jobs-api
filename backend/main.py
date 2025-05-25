@@ -1,8 +1,22 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
+import sys
+import os
+
+# Add admin panel to path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from routes import auth, profile, jobs, ads, notification_routes
 from database import get_db
+
+# Import admin panel
+try:
+    from admin_panel.routes import admin_router
+    ADMIN_PANEL_AVAILABLE = True
+except ImportError as e:
+    logging.warning(f"Admin panel not available: {e}")
+    ADMIN_PANEL_AVAILABLE = False
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -128,6 +142,12 @@ try:
     app.include_router(jobs.router, prefix="/api", tags=["jobs"])
     app.include_router(ads.router, prefix="/api", tags=["ads"])
     app.include_router(notification_routes.router, prefix="/api", tags=["notifications"])
+    
+    # Include admin panel if available
+    if ADMIN_PANEL_AVAILABLE:
+        app.include_router(admin_router)
+        logger.info("Admin panel included successfully")
+    
     logger.info("All routers included successfully")
 except Exception as e:
     logger.error(f"Error including routers: {str(e)}")

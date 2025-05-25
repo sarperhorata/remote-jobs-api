@@ -196,6 +196,10 @@ class ServiceNotifier:
         
         return self._send_message(message)
 
+    def send_notification(self, message: str, parse_mode: str = "HTML") -> bool:
+        """Generic notification method for external API classes"""
+        return self._send_message(message, parse_mode)
+
 # Convenience functions for easy usage
 def send_crawler_notification(success: bool, **kwargs):
     """Quick crawler notification"""

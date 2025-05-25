@@ -73,4 +73,22 @@ databases:
   - name: remote-jobs-monitor-db
     databaseName: remote_jobs_monitor
     user: remote_jobs_monitor
+    plan: free
+
+services:
+  - type: web
+    name: buzz2remote-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: MONGODB_URL
+        value: mongodb://localhost:27017/buzz2remote
+      - key: SECRET_KEY
+        generateValue: true
+      - key: OPENAI_API_KEY
+        sync: false
+    healthCheckPath: /
     plan: free 

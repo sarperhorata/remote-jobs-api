@@ -47,7 +47,7 @@ elif not TELEGRAM_ENABLED:
     logger.info("TELEGRAM_BOT_TOKEN is not set. Telegram features will be disabled.")
 
 # Database settings
-DATABASE_URL = os.getenv("DATABASE_URL", "mongodb+srv://sarperhorata:wEW5oQbUiNBaPGFk@remotejobs.tn0gxu0.mongodb.net/")
+DATABASE_URL = os.getenv("DATABASE_URL", "process.env.MONGODB_URI/")
 IS_PRODUCTION = os.getenv("ENVIRONMENT", "development").lower() == "production"
 
 # Crawler settings

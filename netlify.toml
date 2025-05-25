@@ -6,12 +6,12 @@
 # Production context: all deploys from the Production branch
 [context.production]
   command = "cd frontend && npm install --legacy-peer-deps && npm run build"
-  environment = { NODE_ENV = "production" }
+  environment = { NODE_ENV = "production", REACT_APP_API_URL = "https://buzz2remote-api.onrender.com/api" }
 
 # Deploy Preview context: all deploys generated from pull/merge requests
 [context.deploy-preview]
   command = "cd frontend && npm install --legacy-peer-deps && npm run build"
-  environment = { NODE_ENV = "production" }
+  environment = { NODE_ENV = "production", REACT_APP_API_URL = "https://buzz2remote-api.onrender.com/api" }
 
 # Branch deploy context: deploys from branches other than the Production branch
 [context.branch-deploy]
@@ -23,7 +23,7 @@
 
 # For Automatic FE Deploys to GitHub and Netlify
 [build.environment]
-  REACT_APP_API_URL = "https://remote-jobs-backend.onrender.com/api"
+  REACT_APP_API_URL = "https://buzz2remote-api.onrender.com/api"
   NODE_VERSION = "18.20.7"
   NPM_VERSION = "9"
 
@@ -32,6 +32,15 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Headers for security and CORS
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
 
 [[plugins]]
 package = "netlify-plugin-cypress" 

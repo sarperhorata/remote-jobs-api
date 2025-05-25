@@ -149,3 +149,40 @@ Thumbs.db
 *.launch
 .settings/
 *.sublime-workspace
+
+# === SECURITY: Prevent Secret Leaks ===
+# Environment files
+.env
+.env.local
+.env.production
+.env.development
+.env.staging
+*.env
+.env.*
+
+# Secret files
+secrets/
+secret/
+config/secrets.json
+credentials.json
+keys/
+*.key
+*.pem
+
+# Database configuration files
+database.json
+db-config.json
+mongo-config.js
+
+# API keys and tokens
+api-keys.txt
+tokens.txt
+auth-tokens.json
+
+# Backup files that might contain secrets
+*.backup
+*.bak
+backup/
+
+# macOS specific
+.DS_Store

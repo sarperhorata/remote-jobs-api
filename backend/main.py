@@ -106,7 +106,7 @@ app = FastAPI(
             "description": "Production Server"
         },
         {
-            "url": "http://localhost:8000",
+            "url": "https://buzz2remote-api.onrender.com",
             "description": "Development Server"
         }
     ]

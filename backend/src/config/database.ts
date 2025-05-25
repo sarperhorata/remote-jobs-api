@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { logger } from '../services/LoggerService';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://your-username:your-password@cluster0.mongodb.net/remote-jobs?retryWrites=true&w=majority';
+const MONGODB_URI = process.env.MONGODB_URI || 'process.env.MONGODB_URI/remote-jobs?retryWrites=true&w=majority';
 
 export const connectDB = async () => {
   try {

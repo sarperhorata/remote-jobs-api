@@ -40,5 +40,12 @@
     "ts-jest": "^29.1.0",
     "ts-node": "^10.9.1",
     "typescript": "^5.0.3"
+  },
+  "homepage": "https://buzz2remote.com",
+  "bugs": {
+    "url": "https://buzz2remote.com/issues"
+  },
+  "repository": {
+    "url": "https://github.com/sarperhorata/buzz2remote"
   }
 }

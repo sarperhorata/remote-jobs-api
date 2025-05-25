@@ -7,7 +7,7 @@ import { logger } from '../utils/logger';
 import { createHash } from 'crypto';
 
 // MongoDB URI
-const mongoUri = 'mongodb+srv://myremotejobs:cH622T5iGoc9tzfe@remotejobs.tn0gxu0.mongodb.net/remotejobs?retryWrites=true&w=majority&appName=RemoteJobs';
+const mongoUri = 'process.env.MONGODB_URI/remotejobs?retryWrites=true&w=majority&appName=RemoteJobs';
 
 interface ExportData {
   client: {

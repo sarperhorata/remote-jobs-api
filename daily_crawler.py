@@ -9,101 +9,119 @@ import os
 import asyncio
 import logging
 from datetime import datetime
-from distill_crawler import DistillCrawler
+import traceback
 
-# Setup logging for production
-def setup_logging():
-    """Setup logging with both file and console output"""
-    log_dir = "logs"
-    os.makedirs(log_dir, exist_ok=True)
-    
-    log_filename = os.path.join(log_dir, f"crawler_{datetime.now().strftime('%Y%m%d')}.log")
-    
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(log_filename),
-            logging.StreamHandler(sys.stdout)
-        ]
-    )
-    
-    return logging.getLogger(__name__)
+# Add backend to path
+sys.path.append('backend')
 
-async def daily_crawl():
-    """Run daily crawl of all companies"""
-    logger = setup_logging()
-    
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+async def send_telegram_notification(message: str, is_error: bool = False):
+    """Send notification to @buzz2remote channel"""
+    try:
+        from backend.utils.telegram import TelegramNotifier
+        notifier = TelegramNotifier()
+        
+        if is_error:
+            await notifier.send_error_notification("Crawler Error", message, "Daily Crawler")
+        else:
+            await notifier.send_message(message)
+            
+    except Exception as e:
+        logger.error(f"Failed to send Telegram notification: {str(e)}")
+
+async def main():
     start_time = datetime.now()
-    logger.info("🚀 Starting daily job crawl...")
-    logger.info(f"⏰ Start time: {start_time}")
     
     try:
-        # Initialize crawler
+        logger.info("🚀 Starting daily crawl...")
+        
+        # Send start notification
+        await send_telegram_notification(
+            f"🚀 <b>Daily Crawl Started</b>\n\n"
+            f"<b>Time:</b> {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+            f"<b>Target:</b> 471 companies"
+        )
+        
+        # Import and run crawler
+        from distill_crawler import DistillCrawler
+        
         crawler = DistillCrawler()
         
-        # Crawl ALL companies (no limit)
-        logger.info("🕷️ Crawling all companies from distill export...")
-        jobs = await crawler.crawl_all_companies()  # No max_companies limit
+        # Crawl all companies
+        logger.info("📊 Loading companies data...")
+        crawler.load_companies_data()
+        
+        logger.info(f"🕷️ Crawling {len(crawler.companies_data)} companies...")
+        jobs = await crawler.crawl_all_companies()
         
         # Save to database
-        if jobs:
-            logger.info("💾 Saving jobs to database...")
-            result = crawler.save_jobs_to_database(jobs)
-            
-            logger.info("✅ Daily crawl completed successfully!")
-            logger.info(f"📊 Results: {result['new_jobs']} new, {result['updated_jobs']} updated")
-            logger.info(f"📊 Total processed: {result['total_processed']}")
-        else:
-            logger.warning("⚠️ No jobs found during crawl")
+        logger.info("💾 Saving jobs to database...")
+        result = crawler.save_jobs_to_database(jobs)
         
         # Calculate duration
         end_time = datetime.now()
         duration = end_time - start_time
+        
+        # Send success notification
+        success_message = (
+            f"✅ <b>Daily Crawl Completed</b>\n\n"
+            f"<b>📊 Results:</b>\n"
+            f"• Total Jobs: {len(jobs):,}\n"
+            f"• New Jobs: {result['new_jobs']:,}\n"
+            f"• Updated Jobs: {result['updated_jobs']:,}\n"
+            f"• Companies Crawled: {len(crawler.companies_data)}\n\n"
+            f"<b>⏱️ Duration:</b> {str(duration).split('.')[0]}\n"
+            f"<b>📅 Completed:</b> {end_time.strftime('%Y-%m-%d %H:%M:%S')}"
+        )
+        
+        logger.info("✅ Daily crawl completed successfully!")
+        logger.info(f"📊 Results: {result['new_jobs']} new, {result['updated_jobs']} updated")
+        logger.info(f"📊 Total processed: {len(jobs)}")
         logger.info(f"⏱️ Total duration: {duration}")
         
-        return {
-            "success": True,
-            "jobs_found": len(jobs),
-            "new_jobs": result.get('new_jobs', 0) if jobs else 0,
-            "updated_jobs": result.get('updated_jobs', 0) if jobs else 0,
-            "duration": str(duration),
-            "start_time": start_time.isoformat(),
-            "end_time": end_time.isoformat()
-        }
+        await send_telegram_notification(success_message)
+        
+        # Also send crawler status using the dedicated method
+        try:
+            from backend.utils.telegram import TelegramNotifier
+            notifier = TelegramNotifier()
+            await notifier.send_crawler_status(
+                total_jobs=len(jobs),
+                new_jobs=result['new_jobs'],
+                updated_jobs=result['updated_jobs'],
+                errors=0
+            )
+        except Exception as e:
+            logger.error(f"Failed to send crawler status: {str(e)}")
+        
+        print(f"🎉 Daily crawl completed successfully!")
+        print(f"📊 New: {result['new_jobs']}, Updated: {result['updated_jobs']}")
         
     except Exception as e:
-        logger.error(f"❌ Daily crawl failed: {str(e)}")
-        logger.exception("Full error traceback:")
+        error_message = f"❌ Daily crawl failed: {str(e)}"
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
         
-        return {
-            "success": False,
-            "error": str(e),
-            "start_time": start_time.isoformat(),
-            "end_time": datetime.now().isoformat()
-        }
-
-def main():
-    """Main entry point for daily crawler"""
-    try:
-        # Run async crawler
-        result = asyncio.run(daily_crawl())
+        # Send error notification
+        error_details = (
+            f"❌ <b>Daily Crawl Failed</b>\n\n"
+            f"<b>Error:</b> {str(e)}\n"
+            f"<b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            f"<b>Duration:</b> {str(datetime.now() - start_time).split('.')[0]}"
+        )
         
-        # Exit codes for cron monitoring
-        if result["success"]:
-            print(f"\n🎉 Daily crawl completed successfully!")
-            print(f"📊 New: {result['new_jobs']}, Updated: {result['updated_jobs']}")
-            sys.exit(0)  # Success
-        else:
-            print(f"\n❌ Daily crawl failed: {result['error']}")
-            sys.exit(1)  # Failure
-            
-    except KeyboardInterrupt:
-        print("\n⏸️ Crawl interrupted by user")
-        sys.exit(2)  # Interrupted
-    except Exception as e:
-        print(f"\n💥 Unexpected error: {str(e)}")
-        sys.exit(3)  # Unexpected error
+        await send_telegram_notification(error_details, is_error=True)
+        
+        print(f"❌ Daily crawl failed: {str(e)}")
+        sys.exit(1)
 
 if __name__ == '__main__':
-    main() 
+    # Set OpenAI API key if provided
+    if len(sys.argv) > 1 and sys.argv[1].startswith('sk-'):
+        os.environ['OPENAI_API_KEY'] = sys.argv[1]
+        logger.info("OpenAI API key set from command line")
+    
+    asyncio.run(main()) 

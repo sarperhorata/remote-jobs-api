@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 DB_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "remotejobs.db")
 
 # MongoDB connection string
-MONGODB_URL = "mongodb+srv://remotejobs:taBQw9bkYRAtFUOS@remotejobs.tn0gxu0.mongodb.net/"
+MONGODB_URL = "process.env.MONGODB_URI/"
 
 # Create MongoDB client
 client = MongoClient(MONGODB_URL)

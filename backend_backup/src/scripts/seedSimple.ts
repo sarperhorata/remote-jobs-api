@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
-const mongoUri = 'mongodb+srv://myremotejobs:cH622T5iGoc9tzfe@remotejobs.tn0gxu0.mongodb.net/remotejobs?retryWrites=true&w=majority&appName=RemoteJobs';
+const mongoUri = 'process.env.MONGODB_URI/remotejobs?retryWrites=true&w=majority&appName=RemoteJobs';
 
 async function seedSimple() {
   try {

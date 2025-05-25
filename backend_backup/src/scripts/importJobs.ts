@@ -5,7 +5,7 @@ import Company from '../models/Company';
 import { logger } from '../utils/logger';
 
 // Use the working MongoDB URI
-const mongoUri = 'mongodb+srv://myremotejobs:cH622T5iGoc9tzfe@remotejobs.tn0gxu0.mongodb.net/remotejobs?retryWrites=true&w=majority&appName=RemoteJobs';
+const mongoUri = 'process.env.MONGODB_URI/remotejobs?retryWrites=true&w=majority&appName=RemoteJobs';
 
 /**
  * Import jobs from a JSON file and add them to the database

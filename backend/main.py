@@ -180,3 +180,13 @@ async def root():
         "documentation": "/docs",
         "github": "https://github.com/sarperhorata/remote-jobs-api"
     } 
+
+if __name__ == "__main__":
+    import uvicorn
+    import os
+    
+    # Get configuration from environment variables
+    host = os.getenv('API_HOST', '0.0.0.0')
+    port = int(os.getenv('API_PORT', 5001))
+    
+    uvicorn.run(app, host=host, port=port) 

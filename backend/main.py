@@ -20,6 +20,14 @@ except ImportError as e:
     logging.warning(f"Telegram bot not available: {e}")
     TELEGRAM_BOT_AVAILABLE = False
 
+# Import scheduler service
+try:
+    from services.scheduler_service import start_scheduler, stop_scheduler, get_scheduler
+    SCHEDULER_AVAILABLE = True
+except ImportError as e:
+    logging.warning(f"Scheduler service not available: {e}")
+    SCHEDULER_AVAILABLE = False
+
 # Import admin panel
 try:
     from admin_panel.routes import admin_router
@@ -32,8 +40,9 @@ except ImportError as e:
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Global bot instance
+# Global instances
 telegram_bot = None
+scheduler = None
 
 # Create FastAPI app with custom docs URLs
 app = FastAPI(
@@ -74,7 +83,7 @@ except Exception as e:
 
 @app.on_event("startup")
 async def startup_db_client():
-    global telegram_bot
+    global telegram_bot, scheduler
     
     try:
         # Test database connection
@@ -109,11 +118,42 @@ async def startup_db_client():
             logger.error(f"Failed to start Telegram bot: {str(e)}")
     else:
         logger.warning("Telegram bot not available")
+    
+    # Initialize scheduler service
+    if SCHEDULER_AVAILABLE:
+        try:
+            scheduler = await start_scheduler()
+            logger.info("Scheduler service started successfully!")
+            
+            # Send scheduler startup notification
+            if telegram_bot and telegram_bot.enabled:
+                scheduler_data = {
+                    'environment': 'production' if os.getenv('ENVIRONMENT') == 'production' else 'development',
+                    'status': 'success',
+                    'commit': os.getenv('RENDER_GIT_COMMIT', 'unknown')[:8],
+                    'message': 'Scheduler service started - Cronjobs are now running in the cloud',
+                    'timestamp': datetime.now().isoformat()
+                }
+                await telegram_bot.send_deployment_notification(scheduler_data)
+                
+        except Exception as e:
+            logger.error(f"Failed to start scheduler service: {str(e)}")
+    else:
+        logger.warning("Scheduler service not available")
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    global telegram_bot
+    global telegram_bot, scheduler
     
+    # Stop scheduler
+    if scheduler:
+        try:
+            await stop_scheduler()
+            logger.info("Scheduler service stopped")
+        except Exception as e:
+            logger.error(f"Error stopping scheduler service: {str(e)}")
+    
+    # Stop Telegram bot
     if telegram_bot and telegram_bot.enabled:
         try:
             await telegram_bot.stop()
@@ -141,7 +181,9 @@ async def root():
             "471+ Company Job Crawling", 
             "LinkedIn OAuth Integration",
             "Advanced Job Search & Matching",
-            "Real-time Notifications"
+            "Real-time Notifications",
+            "Cloud-based Cronjobs",
+            "Automated Health Checks"
         ],
         "documentation": "/docs",
         "admin_panel": "/admin",
@@ -152,6 +194,14 @@ async def root():
 async def health_check():
     """Health check endpoint for monitoring."""
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+@app.get("/scheduler/status")
+async def scheduler_status():
+    """Get scheduler status and job information."""
+    if scheduler:
+        return scheduler.get_job_status()
+    else:
+        return {"status": "not_available", "message": "Scheduler service not initialized"}
 
 # Add deployment notification endpoint
 @app.post("/webhook/deployment")

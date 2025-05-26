@@ -1,7 +1,7 @@
 [build]
-  base = "frontend"
-  command = "npm install --legacy-peer-deps && npm run build"
-  publish = "build"
+  command = "npm run build"
+  publish = "dist"
+  functions = "functions"
 
 # Production context: all deploys from the Production branch
 [context.production]
@@ -24,7 +24,7 @@
 # For Automatic FE Deploys to GitHub and Netlify
 [build.environment]
   REACT_APP_API_URL = "https://buzz2remote-api.onrender.com/api"
-  NODE_VERSION = "18.20.7"
+  NODE_VERSION = "18"
   NPM_VERSION = "9"
 
 # Redirects for single page application
@@ -41,6 +41,12 @@
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    Content-Security-Policy = "default-src 'self' https://api.buzz2remote.com https://*.buzz2remote.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api.buzz2remote.com wss://*.buzz2remote.com"
 
 [[plugins]]
-package = "netlify-plugin-cypress" 
+package = "netlify-plugin-cypress"
+
+[context.production.environment]
+  VITE_API_URL = "https://api.buzz2remote.com"
+  VITE_APP_URL = "https://buzz2remote.com" 

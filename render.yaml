@@ -90,5 +90,32 @@ services:
         generateValue: true
       - key: OPENAI_API_KEY
         sync: false
-    healthCheckPath: /
-    plan: free 
+      - key: DOMAIN
+        value: buzz2remote.com
+      - key: CORS_ORIGINS
+        value: https://buzz2remote.com,https://www.buzz2remote.com
+    healthCheckPath: /admin/dashboard
+    plan: starter
+    autoDeploy: true
+    branch: main
+    numInstances: 1
+    disk:
+      name: tmp
+      mountPath: /tmp
+      sizeGB: 1
+    env:
+      - key: NODE_ENV
+        value: production
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-XSS-Protection
+        value: 1; mode=block
+      - path: /*
+        name: Strict-Transport-Security
+        value: max-age=31536000; includeSubDomains 

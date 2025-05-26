@@ -100,7 +100,8 @@ const App: React.FC = () => {
                 {/* Fallback for unmatched routes */}
                 <Route path="*" element={<Navigate to="/" replace />} /> 
               </Routes>
-            {/* </MainLayout> */}
+              {/* </MainLayout> */}
+            </Suspense>
           </Router>
         </ThemeProvider>
       </AuthProvider>

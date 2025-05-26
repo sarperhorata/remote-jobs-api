@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 import logging
 import sys
 import os
@@ -52,6 +53,12 @@ app = FastAPI(
     docs_url="/docs",  # Swagger UI at /docs
     redoc_url="/redoc",  # ReDoc at /redoc
     openapi_url="/openapi.json"  # OpenAPI schema at /openapi.json
+)
+
+# Add session middleware for admin panel
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SESSION_SECRET_KEY", "buzz2remote-secret-key-change-in-production")
 )
 
 # CORS middleware

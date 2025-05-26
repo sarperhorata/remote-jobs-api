@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
-    
+
 class CVParser:
     def __init__(self):
         self.supported_formats = ['.pdf', '.doc', '.docx', '.txt']
@@ -13,17 +13,17 @@ class CVParser:
     def parse_cv_file(self, file_path: str) -> Dict:
         """
         Main CV parsing function that handles different file formats
-    """
+        """
         try:
-    file_ext = os.path.splitext(file_path)[1].lower()
-    
-    if file_ext == '.pdf':
+            file_ext = os.path.splitext(file_path)[1].lower()
+            
+            if file_ext == '.pdf':
                 text = self._extract_pdf_text(file_path)
-    elif file_ext in ['.doc', '.docx']:
+            elif file_ext in ['.doc', '.docx']:
                 text = self._extract_word_text(file_path)
             elif file_ext == '.txt':
                 text = self._extract_txt_text(file_path)
-    else:
+            else:
                 raise ValueError(f"Unsupported file format: {file_ext}")
             
             if not text:
@@ -70,7 +70,7 @@ class CVParser:
                 text += paragraph.text + "\n"
             return text
             
-    except Exception as e:
+        except Exception as e:
             logger.error(f"Error extracting Word text: {str(e)}")
             return ""
     

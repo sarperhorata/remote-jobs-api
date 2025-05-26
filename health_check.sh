@@ -25,8 +25,8 @@ check_endpoint "http://localhost:3000/health"
 
 # Check remote endpoints
 echo "$TIMESTAMP - Checking remote endpoints..." >> $LOG_FILE
-check_endpoint "https://buzz2remote.onrender.com"
-check_endpoint "https://buzz2remote.onrender.com/api/health"
+check_endpoint "https://remote-jobs-api-k9v1.onrender.com"
+check_endpoint "https://remote-jobs-api-k9v1.onrender.com/health"
 check_endpoint "https://buzz2remote.netlify.app"
 check_endpoint "https://buzz2remote.netlify.app/health"
 

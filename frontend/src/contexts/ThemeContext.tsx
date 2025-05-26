@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 interface ThemeContextType {
   theme: 'light' | 'dark';
   toggleTheme: () => void;
+  applyTheme: (theme: 'light' | 'dark') => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -26,8 +27,12 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
   };
 
+  const applyTheme = (newTheme: 'light' | 'dark') => {
+    setTheme(newTheme);
+  };
+
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, applyTheme }}>
       <div className={theme === 'dark' ? 'dark' : ''}>
         {children}
       </div>

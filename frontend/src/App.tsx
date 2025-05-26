@@ -9,6 +9,8 @@ import Status from './pages/Status';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Pricing from './pages/Pricing';
+import Admin from './pages/Admin';
+import Docs from './pages/Docs';
 import Navigation from './components/Navigation';
 import Header from './components/Header';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -34,6 +36,8 @@ const App: React.FC = () => {
                   <Route path="/jobs" element={<Jobs />} />
                   <Route path="/jobs/:id" element={<JobDetail />} />
                   <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/admin" element={<Admin />} />
+                  <Route path="/docs" element={<Docs />} />
                   <Route 
                     path="/my-skills" 
                     element={

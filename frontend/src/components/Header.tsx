@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useTheme } from '../contexts/theme/ThemeContext';
+import { useTheme } from '../contexts/ThemeContext';
 import AuthModal from './AuthModal';
 
 const Header: React.FC = () => {

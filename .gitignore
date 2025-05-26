@@ -186,3 +186,6 @@ backup/
 
 # macOS specific
 .DS_Store
+
+# Local Netlify folder
+.netlify

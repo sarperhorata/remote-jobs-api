@@ -3,6 +3,10 @@ from typing import List, Optional, Dict, Any, Union
 from enum import Enum
 from datetime import datetime
 from sqlalchemy import Column, Integer, BigInteger, String, Boolean, DateTime
+from sqlalchemy.ext.declarative import declarative_base
+
+# SQLAlchemy Base for database models
+Base = declarative_base()
 
 class WebsiteType(str, Enum):
     REMOTE_OK = "remote_ok"

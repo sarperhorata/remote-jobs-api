@@ -71,7 +71,17 @@ class SchedulerService:
             coalesce=True
         )
         
-        # 3. Database cleanup - weekly on Sunday at 2 AM UTC
+        # 3. Buzz2Remote-Companies (Distill) crawler - daily at 10 AM UTC
+        self.scheduler.add_job(
+            self._distill_crawler_job,
+            trigger=CronTrigger(hour=10, minute=0),
+            id='distill_crawler',
+            name='Buzz2Remote-Companies Distill Crawler',
+            max_instances=1,
+            coalesce=True
+        )
+        
+        # 4. Database cleanup - weekly on Sunday at 2 AM UTC
         self.scheduler.add_job(
             self._database_cleanup_job,
             trigger=CronTrigger(day_of_week=6, hour=2, minute=0),
@@ -81,7 +91,7 @@ class SchedulerService:
             coalesce=True
         )
         
-        # 4. Job statistics - daily at 8 AM UTC
+        # 5. Job statistics - daily at 8 AM UTC
         self.scheduler.add_job(
             self._job_statistics_job,
             trigger=CronTrigger(hour=8, minute=0),
@@ -167,6 +177,69 @@ class SchedulerService:
 🚫 <b>Crawler failed</b>
 ❌ <b>Error:</b> {str(e)[:200]}...
 🕐 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC""")
+            except:
+                pass
+    
+    async def _distill_crawler_job(self):
+        """Buzz2Remote-Companies (Distill) crawler job"""
+        try:
+            logger.info("Starting Buzz2Remote-Companies (Distill) crawler job")
+            
+            # Import here to avoid circular imports
+            try:
+                from distill_crawler import DistillCrawler
+                from service_notifications import ServiceNotifier
+                
+                crawler = DistillCrawler()
+                notifier = ServiceNotifier()
+                
+                # Send start notification
+                notifier._send_message(f"""🏢 <b>BUZZ2REMOTE-COMPANIES CRAWLER STARTED</b>
+
+📅 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
+🔄 <b>Starting company websites crawling...</b>
+🎯 <b>Target:</b> 500+ Company Career Pages
+📋 <b>Source:</b> Distill.io Export Data""")
+                
+                # Load companies data
+                crawler.load_companies_data()
+                
+                # Run crawler (limit to reasonable number for daily run)
+                jobs = await crawler.crawl_all_companies(max_companies=100)
+                
+                # Save to database
+                save_results = crawler.save_jobs_to_database(jobs)
+                
+                # Send success notification
+                notifier._send_message(f"""✅ <b>BUZZ2REMOTE-COMPANIES COMPLETED</b>
+
+🎉 <b>Company crawl successful!</b>
+📊 <b>Total jobs found:</b> {len(jobs)}
+💾 <b>New jobs:</b> {save_results.get('new_jobs', 0)}
+🔄 <b>Updated jobs:</b> {save_results.get('updated_jobs', 0)}
+🏢 <b>Companies crawled:</b> {min(100, len(crawler.companies_data))}
+
+🕐 <b>Completed at:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
+🌐 <b>Source:</b> Company Career Pages""")
+                
+                logger.info(f"Distill crawler completed successfully. Total jobs: {len(jobs)}")
+                
+            except ImportError as e:
+                logger.error(f"Failed to import distill crawler modules: {str(e)}")
+                
+        except Exception as e:
+            logger.error(f"Distill crawler job error: {str(e)}")
+            
+            # Send error notification
+            try:
+                from service_notifications import ServiceNotifier
+                notifier = ServiceNotifier()
+                notifier._send_message(f"""❌ <b>BUZZ2REMOTE-COMPANIES ERROR</b>
+
+🚫 <b>Company crawler failed</b>
+❌ <b>Error:</b> {str(e)[:200]}...
+🕐 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
+🏢 <b>Source:</b> Distill Company Data""")
             except:
                 pass
     

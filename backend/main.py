@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 import sys
 import os
+from datetime import datetime
 
 # Add admin panel to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -200,6 +201,11 @@ async def root():
         "documentation": "/docs",
         "github": "https://github.com/sarperhorata/remote-jobs-api"
     } 
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for monitoring."""
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
 if __name__ == "__main__":
     import uvicorn

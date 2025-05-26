@@ -1,19 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from 'react-query';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Home from './pages/Home';
-import Jobs from './pages/Jobs';
-import JobDetail from './pages/JobDetail';
-import Profile from './pages/Profile';
-import Status from './pages/Status';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import Pricing from './pages/Pricing';
-import Admin from './pages/Admin';
-import Docs from './pages/Docs';
-import Navigation from './components/Navigation';
-import Header from './components/Header';
+import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ThemeProvider } from './contexts/ThemeContext';
 import './App.css';
@@ -24,7 +12,7 @@ import './App.css';
 // Page Components (Lazy loading for better performance)
 const HomePage = lazy(() => import('./pages/Home'));
 const LoginPage = lazy(() => import('./pages/Login'));
-const RegisterPage = lazy(() => import('./pages/Signup'));
+const RegisterPage = lazy(() => import('./pages/Register'));
 const JobsListPage = lazy(() => import('./pages/JobsList'));
 const JobDetailPage = lazy(() => import('./pages/JobDetailPage'));
 const UserProfilePage = lazy(() => import('./pages/UserProfile'));
@@ -43,30 +31,13 @@ const ApplicationsPage = lazy(() => import('./pages/Applications')); // Assuming
 
 const queryClient = new QueryClient();
 
-interface ProtectedRouteProps {
-  children: JSX.Element;
-}
-
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return <div>Loading authentication status...</div>; // Or a proper spinner component
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-  return children;
-};
-
 const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ThemeProvider>
           <Router>
-            <Suspense fallback={<div>Loading page...</div>}> {/* Global fallback for lazy loaded components */}
+            <Suspense fallback={<div className="flex justify-center items-center h-screen text-xl font-semibold">Loading Buzz2Remote...</div>}> 
               {/* <MainLayout> Optional: If you have a consistent layout across pages */}
               <Routes>
                 {/* Public Routes */}
@@ -129,8 +100,7 @@ const App: React.FC = () => {
                 {/* Fallback for unmatched routes */}
                 <Route path="*" element={<Navigate to="/" replace />} /> 
               </Routes>
-              {/* </MainLayout> */}
-            </Suspense>
+            {/* </MainLayout> */}
           </Router>
         </ThemeProvider>
       </AuthProvider>

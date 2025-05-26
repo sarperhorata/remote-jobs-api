@@ -1,6 +1,11 @@
 [build]
-  command = "npm run build"
+  command = "CI= npm run build"
   publish = "build"
+  environment = { NODE_VERSION = "18.20.8" }
+
+[build.environment]
+  GENERATE_SOURCEMAP = "false"
+  CI = "false"
 
 [[redirects]]
   from = "/*"

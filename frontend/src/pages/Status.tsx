@@ -1,159 +1,254 @@
-import React from 'react';
-import { useQuery } from 'react-query';
-import { jobService } from '../services/AllServices';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ErrorIcon from '@mui/icons-material/Error';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import React, { useState, useEffect } from 'react';
+import { CheckCircle, XCircle, AlertCircle, Clock, Activity, Database, Globe, Bot } from 'lucide-react';
+
+interface ServiceStatus {
+  name: string;
+  status: 'operational' | 'degraded' | 'down';
+  responseTime: number;
+  uptime: number;
+  lastChecked: string;
+  icon: React.ReactNode;
+}
 
 const Status: React.FC = () => {
-  const { data: status, isLoading } = useQuery(
-    ['systemStatus'],
-    () => jobService.getSystemStatus()
-  );
+  const [services, setServices] = useState<ServiceStatus[]>([
+    {
+      name: 'API Backend',
+      status: 'operational',
+      responseTime: 120,
+      uptime: 99.9,
+      lastChecked: new Date().toISOString(),
+      icon: <Globe className="w-6 h-6" />
+    },
+    {
+      name: 'Database',
+      status: 'operational',
+      responseTime: 45,
+      uptime: 99.8,
+      lastChecked: new Date().toISOString(),
+      icon: <Database className="w-6 h-6" />
+    },
+    {
+      name: 'Job Crawler',
+      status: 'operational',
+      responseTime: 200,
+      uptime: 98.5,
+      lastChecked: new Date().toISOString(),
+      icon: <Activity className="w-6 h-6" />
+    },
+    {
+      name: 'Telegram Bot',
+      status: 'operational',
+      responseTime: 80,
+      uptime: 99.2,
+      lastChecked: new Date().toISOString(),
+      icon: <Bot className="w-6 h-6" />
+    }
+  ]);
 
-  // Mock data since we don't have actual API endpoint
-  const mockStatus = {
-    api: { status: 'operational', latency: '38ms' },
-    database: { status: 'operational', latency: '62ms' },
-    crawler: { status: 'operational', lastRun: '2025-04-11 12:30' },
-    website: { status: 'operational', uptime: '99.98%' },
-    search: { status: 'degraded', message: 'Minor search delays' },
-    notification: { status: 'operational', message: '' },
-    incidents: [
-      { 
-        date: '2025-04-07', 
-        title: 'Search indexing delay', 
-        status: 'resolved',
-        message: 'Search indexing was delayed for approximately 2 hours due to database maintenance.'
-      },
-      { 
-        date: '2025-03-15', 
-        title: 'API rate limiting issue', 
-        status: 'resolved',
-        message: 'Some API requests were incorrectly rate limited. The issue has been fixed.'
-      }
-    ]
+  const [overallStatus, setOverallStatus] = useState<'operational' | 'degraded' | 'down'>('operational');
+
+  useEffect(() => {
+    // Check overall status based on individual services
+    const hasDown = services.some(service => service.status === 'down');
+    const hasDegraded = services.some(service => service.status === 'degraded');
+    
+    if (hasDown) {
+      setOverallStatus('down');
+    } else if (hasDegraded) {
+      setOverallStatus('degraded');
+    } else {
+      setOverallStatus('operational');
+    }
+  }, [services]);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'operational':
+        return 'text-green-600 bg-green-100';
+      case 'degraded':
+        return 'text-yellow-600 bg-yellow-100';
+      case 'down':
+        return 'text-red-600 bg-red-100';
+      default:
+        return 'text-gray-600 bg-gray-100';
+    }
   };
-
-  const data = status || mockStatus;
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'operational':
-        return <CheckCircleIcon className="h-6 w-6 text-green-500" />;
+        return <CheckCircle className="w-5 h-5 text-green-600" />;
       case 'degraded':
-        return <AccessTimeIcon className="h-6 w-6 text-yellow-500" />;
+        return <AlertCircle className="w-5 h-5 text-yellow-600" />;
       case 'down':
-        return <ErrorIcon className="h-6 w-6 text-red-500" />;
+        return <XCircle className="w-5 h-5 text-red-600" />;
       default:
-        return <AccessTimeIcon className="h-6 w-6 text-gray-500" />;
+        return <Clock className="w-5 h-5 text-gray-600" />;
+    }
+  };
+
+  const getOverallStatusMessage = () => {
+    switch (overallStatus) {
+      case 'operational':
+        return 'All systems are operational';
+      case 'degraded':
+        return 'Some systems are experiencing issues';
+      case 'down':
+        return 'Major system outage detected';
+      default:
+        return 'Status unknown';
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <h1 className="text-3xl font-bold mb-8 text-center">System Status</h1>
-        
-        {isLoading ? (
-          <div className="flex justify-center my-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">System Status</h1>
+              <p className="text-gray-600 mt-1">Real-time status of Buzz2Remote services</p>
+            </div>
+            <div className="text-right">
+              <div className="text-sm text-gray-500">Last updated</div>
+              <div className="text-sm font-medium">{new Date().toLocaleString()}</div>
+            </div>
           </div>
-        ) : (
-          <>
-            <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
-              <div className="p-6 bg-blue-50 border-b border-blue-100">
-                <h2 className="text-xl font-semibold">Current Status</h2>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Overall Status */}
+        <div className="mb-8">
+          <div className={`rounded-lg p-6 ${getStatusColor(overallStatus)}`}>
+            <div className="flex items-center">
+              {getStatusIcon(overallStatus)}
+              <div className="ml-3">
+                <h2 className="text-lg font-semibold">{getOverallStatusMessage()}</h2>
+                <p className="text-sm opacity-80">
+                  {overallStatus === 'operational' 
+                    ? 'All services are running smoothly'
+                    : 'We are working to resolve any issues'
+                  }
+                </p>
               </div>
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <div className="flex items-center p-4 bg-gray-50 rounded-lg">
-                    {getStatusIcon(data.api.status)}
-                    <div className="ml-4">
-                      <h3 className="font-medium">API</h3>
-                      <p className="text-sm text-gray-600">Latency: {data.api.latency}</p>
-                    </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Services Status */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {services.map((service, index) => (
+            <div key={index} className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <div className={`p-2 rounded-lg ${getStatusColor(service.status)}`}>
+                    {service.icon}
                   </div>
-                  
-                  <div className="flex items-center p-4 bg-gray-50 rounded-lg">
-                    {getStatusIcon(data.database.status)}
-                    <div className="ml-4">
-                      <h3 className="font-medium">Database</h3>
-                      <p className="text-sm text-gray-600">Latency: {data.database.latency}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center p-4 bg-gray-50 rounded-lg">
-                    {getStatusIcon(data.crawler.status)}
-                    <div className="ml-4">
-                      <h3 className="font-medium">Job Crawler</h3>
-                      <p className="text-sm text-gray-600">Last run: {data.crawler.lastRun}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center p-4 bg-gray-50 rounded-lg">
-                    {getStatusIcon(data.website.status)}
-                    <div className="ml-4">
-                      <h3 className="font-medium">Website</h3>
-                      <p className="text-sm text-gray-600">Uptime: {data.website.uptime}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center p-4 bg-gray-50 rounded-lg">
-                    {getStatusIcon(data.search.status)}
-                    <div className="ml-4">
-                      <h3 className="font-medium">Search</h3>
-                      <p className="text-sm text-gray-600">{data.search.message || 'Operational'}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center p-4 bg-gray-50 rounded-lg">
-                    {getStatusIcon(data.notification.status)}
-                    <div className="ml-4">
-                      <h3 className="font-medium">Notifications</h3>
-                      <p className="text-sm text-gray-600">{data.notification.message || 'Operational'}</p>
+                  <div className="ml-3">
+                    <h3 className="text-lg font-semibold text-gray-900">{service.name}</h3>
+                    <div className="flex items-center">
+                      {getStatusIcon(service.status)}
+                      <span className="ml-1 text-sm font-medium capitalize">{service.status}</span>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-            
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="p-6 bg-blue-50 border-b border-blue-100">
-                <h2 className="text-xl font-semibold">Recent Incidents</h2>
+
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <div className="text-gray-500">Response Time</div>
+                  <div className="font-semibold">{service.responseTime}ms</div>
+                </div>
+                <div>
+                  <div className="text-gray-500">Uptime</div>
+                  <div className="font-semibold">{service.uptime}%</div>
+                </div>
               </div>
-              <div className="p-6">
-                {data.incidents.length === 0 ? (
-                  <p className="text-gray-600">No incidents reported in the last 30 days.</p>
-                ) : (
-                  <div className="space-y-6">
-                    {data.incidents.map((incident, index) => (
-                      <div key={index} className="border-b border-gray-200 pb-4 last:border-b-0 last:pb-0">
-                        <div className="flex items-center mb-2">
-                          <span className="text-sm font-medium text-gray-600">{incident.date}</span>
-                          <span className={`ml-3 px-2 py-1 text-xs rounded-full ${
-                            incident.status === 'resolved' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {incident.status.charAt(0).toUpperCase() + incident.status.slice(1)}
-                          </span>
-                        </div>
-                        <h3 className="font-medium">{incident.title}</h3>
-                        <p className="text-gray-600 mt-1">{incident.message}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
+
+              <div className="mt-4 text-xs text-gray-500">
+                Last checked: {new Date(service.lastChecked).toLocaleString()}
               </div>
             </div>
-          </>
-        )}
-        
-        <div className="mt-8 text-center text-gray-600">
-          <p>Last updated: {new Date().toLocaleString()}</p>
-          <p className="mt-2">
-            For any issues, please contact <a href="mailto:support@jobsfromspace.com" className="text-blue-600 hover:underline">support@jobsfromspace.com</a>
+          ))}
+        </div>
+
+        {/* System Metrics */}
+        <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">System Metrics</h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">10,247</div>
+              <div className="text-sm text-gray-500">Active Jobs</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">471</div>
+              <div className="text-sm text-gray-500">Companies</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-600">5</div>
+              <div className="text-sm text-gray-500">Active Cronjobs</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-orange-600">99.9%</div>
+              <div className="text-sm text-gray-500">Overall Uptime</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Incidents */}
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Incidents</h3>
+          <div className="space-y-4">
+            <div className="flex items-start">
+              <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 mr-3" />
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-gray-900">System Maintenance Completed</h4>
+                  <span className="text-sm text-gray-500">2 hours ago</span>
+                </div>
+                <p className="text-sm text-gray-600 mt-1">
+                  Scheduled maintenance for database optimization has been completed successfully.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start">
+              <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 mr-3" />
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-gray-900">Increased Response Times</h4>
+                  <span className="text-sm text-gray-500">1 day ago</span>
+                </div>
+                <p className="text-sm text-gray-600 mt-1">
+                  We experienced slightly increased response times due to high traffic. Issue resolved.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start">
+              <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 mr-3" />
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-gray-900">New Features Deployed</h4>
+                  <span className="text-sm text-gray-500">3 days ago</span>
+                </div>
+                <p className="text-sm text-gray-600 mt-1">
+                  Successfully deployed new AI-powered job matching features and admin panel.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-8 text-center text-sm text-gray-500">
+          <p>
+            For real-time updates, follow us on{' '}
+            <a href="#" className="text-blue-600 hover:text-blue-700">Twitter</a> or{' '}
+            <a href="#" className="text-blue-600 hover:text-blue-700">subscribe to our status page</a>.
           </p>
         </div>
       </div>

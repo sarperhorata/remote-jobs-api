@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
 
 const Header: React.FC = () => {
   const { theme, toggleTheme, applyTheme } = useTheme();
+  const { isAuthenticated, logout } = useAuth();
   const location = useLocation();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
@@ -65,12 +67,21 @@ const Header: React.FC = () => {
               )}
             </button>
 
-            <button
-              onClick={handleSignInClick}
-              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-colors"
-            >
-              Sign In
-            </button>
+            {isAuthenticated ? (
+              <button
+                onClick={logout}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
+              >
+                Sign Out
+              </button>
+            ) : (
+              <button
+                onClick={handleSignInClick}
+                className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-colors"
+              >
+                Sign In
+              </button>
+            )}
           </div>
         </nav>
       </div>

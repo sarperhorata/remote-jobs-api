@@ -209,4 +209,86 @@ For support, email support@buzz2remote.com or create an issue on GitHub.
 
 ---
 
-**Built with ❤️ for the remote work community** 
+**Built with ❤️ for the remote work community**
+
+## Directory Structure
+
+```
+buzz2remote/
+├── frontend/           # React frontend
+├── backend/           # FastAPI backend
+├── admin_panel/       # Admin panel templates and static files
+├── nginx.conf         # Nginx configuration
+├── docker-compose.yml # Docker Compose configuration
+├── setup-ssl.sh       # SSL setup script
+└── README.md          # This file
+```
+
+## Setup Instructions
+
+1. Clone the repository:
+```bash
+git clone https://github.com/sarperhorata/buzz2remote.git
+cd buzz2remote
+```
+
+2. Create a `.env` file in the root directory with the following variables:
+```env
+MONGODB_URI=mongodb://localhost:27017/buzz2remote
+JWT_SECRET=your-secret-key
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+```
+
+3. Build and start the services:
+```bash
+docker-compose up -d
+```
+
+4. Set up SSL certificates:
+```bash
+./setup-ssl.sh
+```
+
+## Accessing the Services
+
+- Frontend: https://buzz2remote.com
+- API Documentation: https://buzz2remote.com/docs
+- Admin Panel: https://buzz2remote.com/admin
+- API Endpoints: https://buzz2remote.com/api
+
+## Development
+
+1. Frontend development:
+```bash
+cd frontend
+npm install
+npm start
+```
+
+2. Backend development:
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # or `venv\Scripts\activate` on Windows
+pip install -r requirements.txt
+uvicorn main:app --reload
+```
+
+## Deployment
+
+The application is configured to be deployed on any server with Docker and Docker Compose installed. The nginx configuration handles routing for all services, and SSL certificates are automatically managed by Let's Encrypt.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+## License
+
+MIT License - see LICENSE file for details 

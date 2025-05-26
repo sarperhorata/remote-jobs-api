@@ -209,7 +209,7 @@ For support, email support@buzz2remote.com or create an issue on GitHub.
 
 ---
 
-**Built with ❤️ for the remote work community**
+**Built with ❤️ for the remote work community** 
 
 ## Directory Structure
 

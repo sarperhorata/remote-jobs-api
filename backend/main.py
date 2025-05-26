@@ -96,7 +96,7 @@ async def root():
         "documentation": "/docs",
         "admin_panel": "/admin",
         "github": "https://github.com/sarperhorata/remote-jobs-api"
-    }
+    } 
 
 @app.get("/health")
 async def health_check():

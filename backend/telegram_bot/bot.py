@@ -776,7 +776,11 @@ class RemoteJobsBot:
                     'status': str,      # e.g. 'success', 'failed'
                     'commit': str,      # commit hash
                     'message': str,     # deployment message
-                    'timestamp': str    # ISO format timestamp
+                    'timestamp': str,   # ISO format timestamp
+                    'services': list,   # optional: list of services
+                    'endpoints': list,  # optional: list of endpoints
+                    'features': list,   # optional: list of features
+                    'cronjobs': list    # optional: list of cronjobs
                 }
         """
         if not self.enabled or not self.application:
@@ -784,69 +788,72 @@ class RemoteJobsBot:
             return False
             
         try:
-            # Format the deployment message
+            # Format the deployment message based on type
             status_emoji = "✅" if deployment_data['status'] == 'success' else "❌"
-            message = (
-                f"{status_emoji} *Deployment Update*\n\n"
-                f"*Environment:* {deployment_data['environment']}\n"
-                f"*Status:* {deployment_data['status']}\n"
-                f"*Commit:* `{deployment_data['commit']}`\n"
-                f"*Message:* {deployment_data['message']}\n"
-                f"*Time:* {deployment_data['timestamp']}"
-            )
+            env_emoji = "🚀" if deployment_data['environment'] == 'production' else "🧪"
             
-            # FOR TESTING: Hardcoded subscribed users
-            # In a real application, you would fetch this from the database
-            subscribed_users = [
-                123456789,  # Replace with your Telegram chat ID for testing
-                987654321   # Another example chat ID
-            ]
+            # Base message
+            message = f"{status_emoji} <b>DEPLOYMENT UPDATE</b>\n\n"
+            message += f"{env_emoji} <b>Environment:</b> {deployment_data['environment'].upper()}\n"
+            message += f"📊 <b>Status:</b> {deployment_data['status'].upper()}\n"
+            message += f"🔗 <b>Commit:</b> <code>{deployment_data['commit']}</code>\n"
+            message += f"💬 <b>Message:</b> {deployment_data['message']}\n"
             
-            # Also get users from the database if available
+            # Add services if provided
+            if 'services' in deployment_data and deployment_data['services']:
+                message += f"\n🔧 <b>Services:</b>\n"
+                for service in deployment_data['services']:
+                    message += f"• {service}\n"
+            
+            # Add endpoints if provided
+            if 'endpoints' in deployment_data and deployment_data['endpoints']:
+                message += f"\n🌐 <b>Endpoints:</b>\n"
+                for endpoint in deployment_data['endpoints']:
+                    message += f"• {endpoint}\n"
+            
+            # Add features if provided
+            if 'features' in deployment_data and deployment_data['features']:
+                message += f"\n⚡ <b>Features:</b>\n"
+                for feature in deployment_data['features']:
+                    message += f"• {feature}\n"
+            
+            # Add cronjobs if provided
+            if 'cronjobs' in deployment_data and deployment_data['cronjobs']:
+                message += f"\n⏰ <b>Cronjobs:</b>\n"
+                for cronjob in deployment_data['cronjobs']:
+                    message += f"• {cronjob}\n"
+            
+            message += f"\n🕐 <b>Time:</b> {deployment_data['timestamp']}"
+            
+            # Get notification chat ID from environment
+            notification_chat_id = os.getenv('TELEGRAM_CHAT_ID')
+            
+            if not notification_chat_id:
+                logger.warning("TELEGRAM_CHAT_ID not set, cannot send deployment notification")
+                return False
+            
             try:
-                # This is a placeholder for the database query
-                # You should implement proper database access here
-                from models.models import UserNotificationPreference
-                
-                # Mock database query result
-                db_users = [
-                    UserNotificationPreference(user_id=123456789, telegram_chat_id=123456789, notify_on_deployment=True),
-                    UserNotificationPreference(user_id=987654321, telegram_chat_id=987654321, notify_on_deployment=True)
-                ]
-                
-                # Add these users to our list if they're not already there
-                for user in db_users:
-                    if user.notify_on_deployment and user.telegram_chat_id and user.telegram_chat_id not in subscribed_users:
-                        subscribed_users.append(user.telegram_chat_id)
-                        
-            except Exception as e:
-                logger.error(f"Failed to get users from database: {str(e)}")
-                # Continue with hardcoded users
+                notification_chat_id = int(notification_chat_id)
+            except ValueError:
+                logger.error(f"Invalid TELEGRAM_CHAT_ID format: {notification_chat_id}")
+                return False
             
-            # Send notification to each subscribed user
-            successful_sends = 0
-            for user_id in subscribed_users:
-                try:
-                    await self.application.bot.send_message(
-                        chat_id=user_id,
-                        text=message,
-                        parse_mode='Markdown'
-                    )
-                    successful_sends += 1
-                    logger.info(f"Deployment notification sent to user {user_id}")
-                except Exception as e:
-                    logger.error(f"Failed to send deployment notification to user {user_id}: {str(e)}")
-                    continue
-                    
-            if successful_sends > 0:
-                logger.info(f"Deployment notification sent to {successful_sends} users")
+            # Send notification
+            try:
+                await self.application.bot.send_message(
+                    chat_id=notification_chat_id,
+                    text=message,
+                    parse_mode='HTML'
+                )
+                logger.info(f"Deployment notification sent successfully to chat {notification_chat_id}")
                 return True
-            else:
-                logger.warning("No deployment notifications were sent successfully")
+                
+            except Exception as e:
+                logger.error(f"Failed to send deployment notification: {str(e)}")
                 return False
             
         except Exception as e:
-            logger.error(f"Failed to send deployment notification: {str(e)}")
+            logger.error(f"Failed to format deployment notification: {str(e)}")
             return False
 
 

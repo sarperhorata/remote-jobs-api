@@ -103,13 +103,16 @@ async def startup_db_client():
                 asyncio.create_task(telegram_bot.run_async())
                 logger.info("Telegram bot started successfully!")
                 
-                # Send startup notification
+                # Send comprehensive startup notification
                 startup_data = {
                     'environment': 'production' if os.getenv('ENVIRONMENT') == 'production' else 'development',
                     'status': 'success',
                     'commit': os.getenv('RENDER_GIT_COMMIT', 'unknown')[:8],
                     'message': 'Backend service started successfully',
-                    'timestamp': datetime.now().isoformat()
+                    'timestamp': datetime.now().isoformat(),
+                    'services': ['MongoDB Atlas', 'FastAPI', 'Telegram Bot', 'Scheduler Service'],
+                    'endpoints': ['/docs', '/admin', '/api/jobs', '/scheduler/status'],
+                    'features': ['External API Crawler', 'Buzz2Remote-Companies Crawler', 'Cloud Cronjobs']
                 }
                 await telegram_bot.send_deployment_notification(startup_data)
             else:
@@ -125,14 +128,21 @@ async def startup_db_client():
             scheduler = await start_scheduler()
             logger.info("Scheduler service started successfully!")
             
-            # Send scheduler startup notification
+            # Send detailed scheduler startup notification
             if telegram_bot and telegram_bot.enabled:
                 scheduler_data = {
                     'environment': 'production' if os.getenv('ENVIRONMENT') == 'production' else 'development',
                     'status': 'success',
                     'commit': os.getenv('RENDER_GIT_COMMIT', 'unknown')[:8],
-                    'message': 'Scheduler service started - Cronjobs are now running in the cloud',
-                    'timestamp': datetime.now().isoformat()
+                    'message': 'All cloud cronjobs are now active and running',
+                    'timestamp': datetime.now().isoformat(),
+                    'cronjobs': [
+                        'Health Check (every 14 min)',
+                        'External API Crawler (daily 9 AM UTC)',
+                        'Buzz2Remote-Companies (daily 10 AM UTC)',
+                        'Database Cleanup (weekly Sunday 2 AM UTC)',
+                        'Job Statistics (daily 8 AM UTC)'
+                    ]
                 }
                 await telegram_bot.send_deployment_notification(scheduler_data)
                 

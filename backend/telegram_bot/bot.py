@@ -750,14 +750,37 @@ class RemoteJobsBot:
         logger.error(f"Telegram bot error: {context.error} caused by {update}")
     
     async def run_async(self):
-        """Run the bot polling in a non-blocking way"""
-        if not self.enabled or not self.application:
-            logger.warning("Cannot run Telegram bot: bot is disabled or not properly initialized")
+        """Run the bot asynchronously in webhook mode for production"""
+        if not self.enabled:
+            logger.warning("Telegram bot is disabled")
             return
             
-        await self.application.initialize()
-        await self.application.start()
-        await self.application.updater.start_polling()
+        try:
+            # Check if we're in production (Render environment)
+            is_production = os.getenv('ENVIRONMENT') == 'production'
+            
+            if is_production:
+                # Use webhook mode in production to avoid conflicts
+                webhook_url = f"{os.getenv('RENDER_EXTERNAL_URL', 'https://buzz2remote-api.onrender.com')}/webhook/telegram"
+                await self.application.bot.set_webhook(webhook_url)
+                logger.info(f"✅ Telegram bot webhook set to: {webhook_url}")
+                
+                # In webhook mode, we don't start polling
+                # The webhook will handle incoming updates
+                return
+            else:
+                # Use polling mode for local development
+                logger.info("🔄 Starting Telegram bot in polling mode (local development)")
+                await self.application.run_polling(
+                    poll_interval=1.0,
+                    timeout=20,
+                    drop_pending_updates=True,
+                    close_loop=False
+                )
+                
+        except Exception as e:
+            logger.error(f"❌ Error running Telegram bot: {e}")
+            # Don't raise - let the application continue without bot
     
     async def stop(self):
         """Stop the bot"""

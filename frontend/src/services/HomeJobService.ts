@@ -92,22 +92,27 @@ class HomeJobService {
 
   static async getJobStats() {
     try {
-      // Mock job statistics data
+      const response = await fetch('/api/jobs/admin/data-sources-status');
+      if (!response.ok) {
+        throw new Error('Failed to fetch job statistics');
+      }
+      const data = await response.json();
+      
       return {
-        totalJobs: '700,374',
-        remoteJobs: '35,333',
-        hottestCompany: 'CVS (59 applies)',
-        jobsLast24h: '39,475',
-        totalCompanies: '6,893',
-        mostSearchedTerm: '"react"'
+        totalJobs: data.overall_stats.total_active_jobs.toLocaleString(),
+        remoteJobs: data.overall_stats.remote_jobs.toLocaleString(),
+        hottestCompany: data.source_breakdown[0]?.source_type || 'N/A',
+        jobsLast24h: data.overall_stats.recent_jobs_24h.toLocaleString(),
+        totalCompanies: data.overall_stats.total_companies.toLocaleString(),
+        mostSearchedTerm: 'N/A' // This will be implemented in a future update
       };
     } catch (error) {
       console.error('Error fetching job stats:', error);
       return {
-        totalJobs: '700,374',
-        remoteJobs: '35,333',
-        jobsLast24h: '39,475',
-        totalCompanies: '6,893',
+        totalJobs: '0',
+        remoteJobs: '0',
+        jobsLast24h: '0',
+        totalCompanies: '0',
       };
     }
   }

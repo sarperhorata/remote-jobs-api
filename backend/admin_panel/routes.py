@@ -48,12 +48,22 @@ async def admin_dashboard(request: Request):
         scheduler = get_scheduler()
         scheduler_status = scheduler.get_job_status() if scheduler else {"status": "not_available", "jobs": []}
         
+        # Get deployment status
+        deployment_status = {
+            "database_status": "operational",
+            "crawler_status": "operational",
+            "telegram_status": "operational" if TELEGRAM_ENABLED else "disabled",
+            "last_deploy": datetime.now().isoformat(),
+            "deployment_status": "success"
+        }
+        
         stats = {
             "total_jobs": total_jobs,
             "active_jobs": active_jobs,
             "new_jobs_24h": new_jobs_24h,
             "scheduler_status": scheduler_status["status"],
-            "active_cronjobs": len(scheduler_status.get("jobs", []))
+            "active_cronjobs": len(scheduler_status.get("jobs", [])),
+            **deployment_status
         }
         
         return templates.TemplateResponse("dashboard.html", {

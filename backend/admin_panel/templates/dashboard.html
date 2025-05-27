@@ -105,23 +105,77 @@
                     <div class="col-md-3">
                         <div class="card stat-card text-center">
                             <div class="card-body">
-                                <i class="fas fa-plus-circle text-info mb-2" style="font-size: 2rem;"></i>
+                                <i class="fas fa-clock text-info mb-2" style="font-size: 2rem;"></i>
                                 <h5 class="card-title">{{ stats.new_jobs_24h|default(0) }}</h5>
-                                <p class="card-text text-muted">New (24h)</p>
+                                <p class="card-text text-muted">New Jobs (24h)</p>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="card stat-card text-center">
                             <div class="card-body">
-                                {% if stats.scheduler_status == "running" %}
-                                    <i class="fas fa-play-circle text-success mb-2" style="font-size: 2rem;"></i>
-                                    <h5 class="card-title text-success">Running</h5>
-                                {% else %}
-                                    <i class="fas fa-pause-circle text-danger mb-2" style="font-size: 2rem;"></i>
-                                    <h5 class="card-title text-danger">Stopped</h5>
-                                {% endif %}
-                                <p class="card-text text-muted">Scheduler</p>
+                                <i class="fas fa-cogs text-warning mb-2" style="font-size: 2rem;"></i>
+                                <h5 class="card-title">{{ stats.active_cronjobs|default(0) }}</h5>
+                                <p class="card-text text-muted">Active Cronjobs</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Deployment Status -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-server me-2"></i>Deployment Status
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="flex-shrink-0">
+                                                <i class="fas fa-database text-primary me-2"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-0">Database</h6>
+                                                <small class="text-muted">Status: {{ stats.database_status|default('operational') }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="flex-shrink-0">
+                                                <i class="fas fa-robot text-success me-2"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-0">Crawler</h6>
+                                                <small class="text-muted">Status: {{ stats.crawler_status|default('operational') }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="flex-shrink-0">
+                                                <i class="fab fa-telegram text-info me-2"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-0">Telegram Bot</h6>
+                                                <small class="text-muted">Status: {{ stats.telegram_status|default('operational') }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        <div class="alert alert-info mb-0">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            Last deployment: {{ stats.last_deploy|default('N/A') }}
+                                            <span class="badge bg-success ms-2">{{ stats.deployment_status|default('success') }}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

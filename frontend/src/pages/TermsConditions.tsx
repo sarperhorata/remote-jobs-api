@@ -11,10 +11,10 @@ const TermsConditions: React.FC = () => {
             <Briefcase className="w-8 h-8 text-blue-600" />
             <span className="text-2xl font-bold">Buzz2Remote</span>
           </Link>
-          <Link to={-1} className="text-sm text-blue-600 hover:underline flex items-center">
+          <button onClick={() => window.history.back()} className="text-sm text-blue-600 hover:underline flex items-center">
             <ArrowLeft className="w-4 h-4 mr-1" />
             Go Back
-          </Link>
+          </button>
         </div>
 
         <div className="text-center mb-10">

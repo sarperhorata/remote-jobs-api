@@ -11,6 +11,7 @@ const Header: React.FC = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const isActive = (path: string) => location.pathname === path;
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -74,14 +75,14 @@ const Header: React.FC = () => {
               >
                 Sign Out
               </button>
-            ) : (
-            <button
-              onClick={handleSignInClick}
-              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-colors"
-            >
-              Sign In
-            </button>
-            )}
+            ) : isAuthPage ? (
+              <button
+                onClick={handleSignInClick}
+                className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-colors"
+              >
+                Sign In
+              </button>
+            ) : null}
           </div>
         </nav>
       </div>

@@ -1,0 +1,125 @@
+<div class="bg-white rounded-lg shadow">
+    <div class="p-6">
+        <h2 class="text-xl font-bold mb-4">Jobs</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full">
+                <thead>
+                    <tr class="bg-gray-50">
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onclick="sortTable('title')">
+                            Title <span id="titleSort"></span>
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onclick="sortTable('company')">
+                            Company <span id="companySort"></span>
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onclick="sortTable('location')">
+                            Location <span id="locationSort"></span>
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onclick="sortTable('posted_at')">
+                            Posted <span id="postedSort"></span>
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Job Ad
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200" id="jobsTableBody">
+                    {% for job in jobs %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ job.title }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <a href="/jobs?company={{ job.company }}" class="text-blue-600 hover:text-blue-800">{{ job.company }}</a>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ job.location }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ job.posted_at }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <a href="{{ job.apply_url }}" target="_blank" class="text-blue-600 hover:text-blue-800">View</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-4 flex justify-between items-center">
+            <div class="text-sm text-gray-700">
+                Showing <span id="startIndex">1</span> to <span id="endIndex">10</span> of <span id="totalItems">{{ total_jobs }}</span> jobs
+            </div>
+            <div class="flex space-x-2">
+                <button id="prevPage" class="px-3 py-1 border rounded hover:bg-gray-100" disabled>Previous</button>
+                <button id="nextPage" class="px-3 py-1 border rounded hover:bg-gray-100">Next</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentPage = 1;
+let currentSort = { column: 'posted_at', direction: 'desc' };
+const itemsPerPage = 10;
+
+function sortTable(column) {
+    if (currentSort.column === column) {
+        currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSort.column = column;
+        currentSort.direction = 'asc';
+    }
+    loadJobs();
+}
+
+async function loadJobs() {
+    try {
+        const response = await fetch(`/api/admin/jobs?page=${currentPage}&sort=${currentSort.column}&direction=${currentSort.direction}`);
+        const data = await response.json();
+        
+        const tbody = document.getElementById('jobsTableBody');
+        tbody.innerHTML = '';
+        
+        data.jobs.forEach(job => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap">${job.title}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <a href="/jobs?company=${encodeURIComponent(job.company)}" class="text-blue-600 hover:text-blue-800">${job.company}</a>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">${job.location}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${job.posted_at}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <a href="${job.apply_url}" target="_blank" class="text-blue-600 hover:text-blue-800">View</a>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+        
+        updatePagination(data.total);
+    } catch (error) {
+        console.error('Error loading jobs:', error);
+    }
+}
+
+function updatePagination(total) {
+    const startIndex = (currentPage - 1) * itemsPerPage + 1;
+    const endIndex = Math.min(startIndex + itemsPerPage - 1, total);
+    
+    document.getElementById('startIndex').textContent = startIndex;
+    document.getElementById('endIndex').textContent = endIndex;
+    document.getElementById('totalItems').textContent = total;
+    
+    document.getElementById('prevPage').disabled = currentPage === 1;
+    document.getElementById('nextPage').disabled = endIndex >= total;
+}
+
+document.getElementById('prevPage').addEventListener('click', () => {
+    if (currentPage > 1) {
+        currentPage--;
+        loadJobs();
+    }
+});
+
+document.getElementById('nextPage').addEventListener('click', () => {
+    currentPage++;
+    loadJobs();
+});
+
+// Initial load
+loadJobs();
+</script> 

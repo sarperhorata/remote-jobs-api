@@ -6,6 +6,7 @@ import os
 import sys
 from datetime import datetime, timedelta
 import json
+import logging
 
 # Add backend to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -14,14 +15,13 @@ from database import get_db
 from services.scheduler_service import get_scheduler
 
 # Setup templates
-templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
+templates = Jinja2Templates(directory=os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates"))
 
 admin_router = APIRouter()
+logger = logging.getLogger(__name__)
 
 def get_admin_auth(request: Request):
     """Simple admin authentication check"""
-    # For now, just check if admin session exists
-    # In production, implement proper authentication
     admin_logged_in = request.session.get("admin_logged_in", False)
     if not admin_logged_in:
         raise HTTPException(status_code=401, detail="Admin authentication required")
@@ -52,10 +52,17 @@ async def admin_dashboard(request: Request):
         deployment_status = {
             "database_status": "operational",
             "crawler_status": "operational",
-            "telegram_status": "operational" if TELEGRAM_ENABLED else "disabled",
+            "telegram_status": "operational" if os.getenv("TELEGRAM_ENABLED", "false").lower() == "true" else "disabled",
             "last_deploy": datetime.now().isoformat(),
             "deployment_status": "success"
         }
+        
+        # Get error logs
+        error_logs = []
+        try:
+            error_logs = list(db.crawl_errors.find().sort('timestamp', -1).limit(100))
+        except:
+            pass
         
         stats = {
             "total_jobs": total_jobs,
@@ -69,10 +76,14 @@ async def admin_dashboard(request: Request):
         return templates.TemplateResponse("dashboard.html", {
             "request": request,
             "stats": stats,
+            "scheduler_status": scheduler_status,
+            "deployment_status": deployment_status,
+            "error_logs": error_logs,
             "page_title": "Admin Dashboard"
         })
         
     except Exception as e:
+        logger.error(f"Error in admin dashboard: {str(e)}")
         return templates.TemplateResponse("error.html", {
             "request": request,
             "error": str(e),
@@ -90,8 +101,6 @@ async def admin_login_page(request: Request):
 @admin_router.post("/login")
 async def admin_login(request: Request, username: str = Form(...), password: str = Form(...)):
     """Handle admin login"""
-    # Simple hardcoded authentication for now
-    # In production, use proper authentication
     if username == "admin" and password == "buzz2remote2024":
         request.session["admin_logged_in"] = True
         return RedirectResponse(url="/admin/", status_code=302)
@@ -213,4 +222,89 @@ async def admin_settings(request: Request, admin_auth: bool = Depends(get_admin_
             "request": request,
             "error": str(e),
             "page_title": "Error"
-        }) 
+        })
+
+@admin_router.get("/service-status")
+async def get_service_status():
+    try:
+        # Get last run times from database
+        db = get_db()
+        services = {
+            "Buzz2remote": {"last_run": None, "status": "active"},
+            "External": {"last_run": None, "status": "active"},
+            "Analysis": {"last_run": None, "status": "active"}
+        }
+        
+        # Get last run times from service_logs collection
+        logs = db.service_logs.find().sort("timestamp", -1).limit(3)
+        for log in logs:
+            if log["service"] in services:
+                services[log["service"]]["last_run"] = log["timestamp"]
+        
+        return services
+    except Exception as e:
+        logger.error(f"Error getting service status: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@admin_router.post("/run-buzz2remote")
+async def run_buzz2remote():
+    try:
+        # Run the company crawler
+        from buzz2remote_companies_crawler import CompanyCrawler
+        crawler = CompanyCrawler()
+        await crawler.crawl_all_companies()
+        
+        # Log the run
+        db = get_db()
+        db.service_logs.insert_one({
+            "service": "Buzz2remote",
+            "timestamp": datetime.utcnow(),
+            "status": "success"
+        })
+        
+        return {"success": True, "message": "Company crawler completed successfully", "timestamp": datetime.utcnow().isoformat()}
+    except Exception as e:
+        logger.error(f"Error running company crawler: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@admin_router.post("/run-external")
+async def run_external():
+    try:
+        # Run external API fetcher
+        from external_api_fetcher import ExternalAPIFetcher
+        fetcher = ExternalAPIFetcher()
+        await fetcher.fetch_all_apis()
+        
+        # Log the run
+        db = get_db()
+        db.service_logs.insert_one({
+            "service": "External",
+            "timestamp": datetime.utcnow(),
+            "status": "success"
+        })
+        
+        return {"success": True, "message": "External API fetch completed successfully", "timestamp": datetime.utcnow().isoformat()}
+    except Exception as e:
+        logger.error(f"Error running external API fetcher: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@admin_router.post("/run-analysis")
+async def run_analysis():
+    try:
+        # Run job analysis
+        from job_analyzer import JobAnalyzer
+        analyzer = JobAnalyzer()
+        await analyzer.analyze_all_jobs()
+        
+        # Log the run
+        db = get_db()
+        db.service_logs.insert_one({
+            "service": "Analysis",
+            "timestamp": datetime.utcnow(),
+            "status": "success"
+        })
+        
+        return {"success": True, "message": "Job analysis completed successfully", "timestamp": datetime.utcnow().isoformat()}
+    except Exception as e:
+        logger.error(f"Error running job analysis: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e)) 

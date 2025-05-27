@@ -2,9 +2,9 @@ fastapi==0.104.1
 uvicorn==0.24.0
 httpx>=0.24.1
 beautifulsoup4>=4.12.2
-python-dotenv==1.0.0
+python-dotenv==1.0.1
 pymongo==4.6.1
-motor>=3.3.1,<4.0.0
+motor==3.3.2
 apscheduler>=3.10.1
 python-telegram-bot==20.8
 lxml>=4.9.3
@@ -14,7 +14,7 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 email-validator>=2.1.0.post1
 requests==2.31.0
-aiohttp==3.9.1
+aiohttp==3.9.3
 bcrypt==4.0.1
 PyPDF2==3.0.1
 python-docx==1.1.0
@@ -24,7 +24,7 @@ html5lib==1.1
 pandas==2.1.4
 numpy==1.24.4
 python-json-logger==2.0.7
-openai==1.54.3
+openai==1.12.0
 sqlalchemy==2.0.23
 itsdangerous>=2.0.1
 # smtplib is built-in Python module, no need to install

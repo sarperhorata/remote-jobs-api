@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }} - Buzz2Remote Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .error-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+            max-width: 500px;
+            width: 100%;
+        }
+        .error-header {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        .error-body {
+            padding: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-card">
+        <div class="error-header">
+            <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+            <h3>Error</h3>
+            <p class="mb-0">Something went wrong</p>
+        </div>
+        
+        <div class="error-body">
+            <div class="alert alert-danger" role="alert">
+                <strong>Error Details:</strong><br>
+                {{ error }}
+            </div>
+            
+            <div class="text-center">
+                <a href="/admin/" class="btn btn-primary">
+                    <i class="fas fa-home me-2"></i>
+                    Back to Dashboard
+                </a>
+                <a href="/admin/login" class="btn btn-secondary ms-2">
+                    <i class="fas fa-sign-in-alt me-2"></i>
+                    Login
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 

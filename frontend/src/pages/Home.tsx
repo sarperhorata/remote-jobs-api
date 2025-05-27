@@ -163,8 +163,8 @@ const Home: React.FC = () => {
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
                     />
-                  </div>
-                </div>
+        </div>
+      </div>
 
                 {/* Country */}
                 <div className="md:col-span-2">
@@ -181,8 +181,8 @@ const Home: React.FC = () => {
                         <option key={country.value} value={country.value}>{country.label}</option>
                       ))}
                     </select>
-                  </div>
-                </div>
+          </div>
+          </div>
 
                 {/* Region/City */}
                 <div className="md:col-span-2">
@@ -198,9 +198,9 @@ const Home: React.FC = () => {
                       className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
                       disabled={locationCountry === 'any'}
                     />
-                  </div>
-                </div>
-                
+        </div>
+      </div>
+
                 {/* Date Posted */}
                 <div className="md:col-span-2">
                    <label htmlFor="datePosted" className="block text-sm font-medium text-gray-700 text-left mb-1">Date Posted</label>
@@ -216,9 +216,9 @@ const Home: React.FC = () => {
                         <option key={option.value} value={option.value}>{option.label}</option>
                       ))}
                     </select>
-                  </div>
-                </div>
-                
+        </div>
+      </div>
+
                 {/* Search Button */}
                 <div className="md:col-span-2">
                   <button
@@ -235,8 +235,8 @@ const Home: React.FC = () => {
                       </>
                     )}
                   </button>
-                </div>
-              </div>
+          </div>
+          </div>
               {/* Job Type Radio Buttons */}
               <div className="mt-4 flex flex-wrap justify-center items-center gap-3 md:gap-4">
                 <span className="text-sm font-medium text-gray-700 mr-2">Type:</span>
@@ -253,8 +253,8 @@ const Home: React.FC = () => {
                     <span className="text-sm text-gray-700">{option.label}</span>
                   </label>
                 ))}
-              </div>
-            </div>
+          </div>
+          </div>
           </form>
         </div>
       </section>
@@ -268,7 +268,7 @@ const Home: React.FC = () => {
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Hot Remote Jobs 🔥</h2>
             <p className="text-gray-600">Fresh opportunities from leading remote companies</p>
           </div>
-
+          
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
             {featuredJobs.map((job) => (
               <div key={job.id} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-xl transition-shadow cursor-pointer flex flex-col justify-between">
@@ -286,13 +286,13 @@ const Home: React.FC = () => {
                     <button className="p-1.5 rounded-full hover:bg-yellow-100 text-gray-400 hover:text-yellow-500 transition-colors">
                        <Star className="w-5 h-5" />
                     </button>
-                  </div>
-
+                      </div>
+                      
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center text-sm text-gray-600">
                       <MapPin className="w-4 h-4 mr-2 text-gray-400" />
                       {job.location}
-                    </div>
+                      </div>
                     <div className="flex items-center text-sm text-gray-600">
                       <Building className="w-4 h-4 mr-2 text-gray-400" />
                       {job.type}

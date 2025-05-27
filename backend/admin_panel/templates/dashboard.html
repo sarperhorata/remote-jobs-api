@@ -74,25 +74,26 @@
             
             <!-- Main Content -->
             <div class="col-md-9 col-lg-10 main-content p-4">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h2><i class="fas fa-tachometer-alt me-2"></i>Dashboard</h2>
-                    <div class="text-muted">
-                        <i class="fas fa-clock me-1"></i>
-                        Last updated: <span id="lastUpdated"></span>
-                    </div>
+                <div class="flex justify-between items-center mb-6">
+                    <h1 class="text-2xl font-bold">Admin Dashboard</h1>
+                    <a href="/" class="text-blue-600 hover:text-blue-800">← Ana Sayfa</a>
                 </div>
 
                 <!-- Stats Cards -->
-                <div class="row mb-4">
-                    <div class="col-md-3">
-                        <div class="card stat-card text-center">
-                            <div class="card-body">
-                                <i class="fas fa-briefcase text-primary mb-2" style="font-size: 2rem;"></i>
-                                <h5 class="card-title">{{ stats.total_jobs|default(0) }}</h5>
-                                <p class="card-text text-muted">Total Jobs</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <a href="/jobs" class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-600">Total Jobs</p>
+                                <h3 class="text-2xl font-bold">{{ stats.total_jobs }}</h3>
+                            </div>
+                            <div class="p-3 bg-blue-100 rounded-full">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                </svg>
                             </div>
                         </div>
-                    </div>
+                    </a>
                     <div class="col-md-3">
                         <div class="card stat-card text-center">
                             <div class="card-body">
@@ -298,6 +299,39 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Crawl Error Logs -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Crawl Error Logs</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Company</th>
+                                                <th>Error</th>
+                                                <th>Timestamp</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for error in error_logs %}
+                                            <tr>
+                                                <td>{{ error.company }}</td>
+                                                <td>{{ error.error }}</td>
+                                                <td>{{ error.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -311,6 +345,71 @@
         setTimeout(function() {
             location.reload();
         }, 60000);
+
+        // Job crawler functionality
+        document.getElementById('runCrawler').addEventListener('click', async function() {
+            const button = this;
+            const progress = document.getElementById('crawlerProgress');
+            const buttonText = button.querySelector('span');
+            
+            if (buttonText.textContent === 'Run Job Crawler') {
+                buttonText.textContent = 'Running...';
+                progress.classList.remove('hidden');
+                button.disabled = true;
+                
+                try {
+                    const response = await fetch('/api/admin/run-crawler', {
+                        method: 'POST'
+                    });
+                    const data = await response.json();
+                    alert(data.message);
+                } catch (error) {
+                    alert('Error running crawler: ' + error.message);
+                } finally {
+                    buttonText.textContent = 'Run Job Crawler';
+                    progress.classList.add('hidden');
+                    button.disabled = false;
+                }
+            } else {
+                // Cancel operation
+                try {
+                    await fetch('/api/admin/cancel-crawler', {
+                        method: 'POST'
+                    });
+                    buttonText.textContent = 'Run Job Crawler';
+                    progress.classList.add('hidden');
+                    button.disabled = false;
+                } catch (error) {
+                    alert('Error canceling crawler: ' + error.message);
+                }
+            }
+        });
+
+        // Similar event listeners for fetchApis and analyzePositions buttons...
+
+        // Job details modal functionality
+        function showJobDetails(jobId) {
+            fetch(`/api/jobs/${jobId}`)
+                .then(response => response.json())
+                .then(job => {
+                    document.getElementById('modalTitle').textContent = job.title;
+                    document.getElementById('modalContent').innerHTML = `
+                        <p><strong>Company:</strong> ${job.company}</p>
+                        <p><strong>Location:</strong> ${job.location}</p>
+                        <p><strong>Posted:</strong> ${job.posted_at}</p>
+                        <p><strong>Description:</strong> ${job.description}</p>
+                        <a href="${job.apply_url}" target="_blank" class="text-blue-600 hover:text-blue-800">Apply Now</a>
+                    `;
+                    document.getElementById('jobModal').classList.remove('hidden');
+                })
+                .catch(error => {
+                    alert('Error loading job details: ' + error.message);
+                });
+        }
+
+        document.getElementById('closeModal').addEventListener('click', function() {
+            document.getElementById('jobModal').classList.add('hidden');
+        });
     </script>
 </body>
 </html> 

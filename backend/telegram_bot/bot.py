@@ -729,6 +729,22 @@ class RemoteJobsBot:
         logger.info(f"Saving profile for user {user_id}: {profile_data}")
         return True
     
+    async def run_async(self):
+        """Run the bot in async mode"""
+        if not self.enabled or not self.application:
+            logger.warning("Cannot run disabled bot")
+            return
+            
+        try:
+            logger.info("🔄 Starting Telegram bot in polling mode (local development)")
+            await self.application.initialize()
+            await self.application.start()
+            await self.application.run_polling()
+        except Exception as e:
+            logger.error(f"❌ Error running Telegram bot: {e}")
+            if self.application:
+                await self.application.shutdown()
+    
     def run(self):
         """Run the bot polling in a blocking way"""
         if not self.enabled or not self.application:
@@ -749,45 +765,6 @@ class RemoteJobsBot:
         """Log errors caused by updates."""
         logger.error(f"Telegram bot error: {context.error} caused by {update}")
     
-    async def run_async(self):
-        """Run the bot asynchronously in webhook mode for production"""
-        if not self.enabled:
-            logger.warning("Telegram bot is disabled")
-            return
-            
-        try:
-            # Check if we're in production (Render environment)
-            is_production = os.getenv('ENVIRONMENT') == 'production'
-            
-            if is_production:
-                # Use webhook mode in production to avoid conflicts
-                webhook_url = f"{os.getenv('RENDER_EXTERNAL_URL', 'https://buzz2remote-api.onrender.com')}/webhook/telegram"
-                await self.application.bot.set_webhook(webhook_url)
-                logger.info(f"✅ Telegram bot webhook set to: {webhook_url}")
-                
-                # In webhook mode, we don't start polling
-                # The webhook will handle incoming updates
-                return
-            else:
-                # Use polling mode for local development
-                logger.info("🔄 Starting Telegram bot in polling mode (local development)")
-                await self.application.run_polling(
-                    poll_interval=1.0,
-                    timeout=20,
-                    drop_pending_updates=True,
-                    close_loop=False
-                )
-                
-        except Exception as e:
-            logger.error(f"❌ Error running Telegram bot: {e}")
-            # Don't raise - let the application continue without bot
-    
-    async def stop(self):
-        """Stop the bot"""
-        if self.enabled and self.application:
-            await self.application.stop()
-            logger.info("Telegram bot stopped")
-
     async def send_deployment_notification(self, deployment_data: Dict[str, Any]) -> bool:
         """
         Sends a deployment notification to all subscribed users
@@ -877,10 +854,4 @@ class RemoteJobsBot:
             
         except Exception as e:
             logger.error(f"Failed to format deployment notification: {str(e)}")
-            return False
-
-
-# Run the bot if this file is executed directly
-if __name__ == "__main__":
-    bot = RemoteJobsBot()
-    bot.run() 
+            return False 

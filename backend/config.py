@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
+import os
 
 class Settings(BaseSettings):
     # Database settings
@@ -27,6 +28,20 @@ class Settings(BaseSettings):
     # Service URLs
     RENDER_URL: str
     FRONTEND_URL: str = "http://localhost:3000"
+    
+    # OpenAI Configuration
+    OPENAI_API_KEY: str
+
+    # External API Configuration
+    REMOTEOK_API_URL: str
+    WEWORKREMOTELY_API_URL: str
+    GITHUB_JOBS_API_URL: str
+
+    # Job Analysis Configuration
+    JOB_ANALYSIS_BATCH_SIZE: int
+    JOB_ANALYSIS_MODEL: str
+    JOB_ANALYSIS_MAX_TOKENS: int
+    JOB_ANALYSIS_TEMPERATURE: float
     
     class Config:
         env_file = ".env"

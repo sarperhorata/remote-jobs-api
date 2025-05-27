@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+from fastapi.staticfiles import StaticFiles
 import logging
 import sys
 import os
@@ -29,17 +30,20 @@ except ImportError as e:
     logging.warning(f"Scheduler service not available: {e}")
     SCHEDULER_AVAILABLE = False
 
-# Import admin panel
-try:
-    from admin_panel.routes import admin_router
-    ADMIN_PANEL_AVAILABLE = True
-except ImportError as e:
-    logging.warning(f"Admin panel not available: {e}")
-    ADMIN_PANEL_AVAILABLE = False
-
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+# Import admin panel
+try:
+    # Use the root admin panel instead of backend admin panel
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from admin_panel.routes import admin_router
+    ADMIN_PANEL_AVAILABLE = True
+    logger.info("Admin panel imported successfully")
+except ImportError as e:
+    logging.warning(f"Admin panel not available: {e}")
+    ADMIN_PANEL_AVAILABLE = False
 
 # Global instances
 telegram_bot = None
@@ -70,6 +74,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount static files for admin panel
+# Use root admin panel static files
+admin_static_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "admin_panel", "static")
+if os.path.exists(admin_static_path):
+    app.mount("/admin/static", StaticFiles(directory=admin_static_path), name="admin_static")
+
 # Include routers
 try:
     app.include_router(auth.router, prefix="/api", tags=["auth"])
@@ -80,8 +90,12 @@ try:
     
     # Include admin panel if available
     if ADMIN_PANEL_AVAILABLE:
-        app.include_router(admin_router, prefix="/admin")  # Admin panel at /admin/*
+        # Include admin router (no prefix needed as it's already defined in the router)
+        app.include_router(admin_router, tags=["admin"])
         logger.info("Admin panel included successfully")
+        logger.info(f"Admin routes: {[route.path for route in admin_router.routes]}")
+    else:
+        logger.warning("Admin panel not available - skipping inclusion")
     
     logger.info("All routers included successfully")
 except Exception as e:

@@ -1,0 +1,125 @@
+<div class="bg-white rounded-lg shadow">
+    <div class="p-6">
+        <h2 class="text-xl font-bold mb-4">API Services</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- BUZZ2REMOTE-COMPANIES -->
+            <div class="border rounded-lg p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-semibold">BUZZ2REMOTE-COMPANIES</h3>
+                    <span class="px-2 py-1 text-sm rounded-full bg-green-100 text-green-800">Active</span>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">Company crawler for Buzz2Remote companies list</p>
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-500">Last run: <span id="buzz2remoteLastRun">-</span></span>
+                    <button id="runBuzz2remote" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center">
+                        <span>Run</span>
+                        <div id="buzz2remoteProgress" class="hidden ml-2">
+                            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- External APIs -->
+            <div class="border rounded-lg p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-semibold">External APIs</h3>
+                    <span class="px-2 py-1 text-sm rounded-full bg-green-100 text-green-800">Active</span>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">Remote job listings from various sources</p>
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-500">Last run: <span id="externalLastRun">-</span></span>
+                    <button id="runExternal" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center">
+                        <span>Run</span>
+                        <div id="externalProgress" class="hidden ml-2">
+                            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Job Analysis -->
+            <div class="border rounded-lg p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-semibold">Job Analysis</h3>
+                    <span class="px-2 py-1 text-sm rounded-full bg-green-100 text-green-800">Active</span>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">AI-powered job analysis and categorization</p>
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-500">Last run: <span id="analysisLastRun">-</span></span>
+                    <button id="runAnalysis" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center">
+                        <span>Run</span>
+                        <div id="analysisProgress" class="hidden ml-2">
+                            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Function to update last run time
+function updateLastRun(service, timestamp) {
+    const element = document.getElementById(`${service}LastRun`);
+    if (element) {
+        element.textContent = new Date(timestamp).toLocaleString();
+    }
+}
+
+// Function to handle service run
+async function runService(service) {
+    const button = document.getElementById(`run${service}`);
+    const progress = document.getElementById(`${service}Progress`);
+    const buttonText = button.querySelector('span');
+    
+    if (buttonText.textContent === 'Run') {
+        buttonText.textContent = 'Running...';
+        progress.classList.remove('hidden');
+        button.disabled = true;
+        
+        try {
+            const response = await fetch(`/admin/run-${service.toLowerCase()}`, {
+                method: 'POST'
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                updateLastRun(service, data.timestamp);
+                alert(data.message);
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (error) {
+            alert('Error running service: ' + error.message);
+        } finally {
+            buttonText.textContent = 'Run';
+            progress.classList.add('hidden');
+            button.disabled = false;
+        }
+    }
+}
+
+// Add event listeners
+document.getElementById('runBuzz2remote').addEventListener('click', () => runService('Buzz2remote'));
+document.getElementById('runExternal').addEventListener('click', () => runService('External'));
+document.getElementById('runAnalysis').addEventListener('click', () => runService('Analysis'));
+
+// Load initial last run times
+async function loadLastRunTimes() {
+    try {
+        const response = await fetch('/admin/service-status');
+        const data = await response.json();
+        
+        Object.entries(data).forEach(([service, info]) => {
+            updateLastRun(service, info.last_run);
+        });
+    } catch (error) {
+        console.error('Error loading service status:', error);
+    }
+}
+
+// Initial load
+loadLastRunTimes();
+</script> 

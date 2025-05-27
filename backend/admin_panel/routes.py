@@ -60,7 +60,7 @@ async def admin_dashboard(request: Request):
         # Get error logs
         error_logs = []
         try:
-            error_logs = list(db.crawl_errors.find().sort('timestamp', -1).limit(100))
+        error_logs = list(db.crawl_errors.find().sort('timestamp', -1).limit(100))
         except:
             pass
         

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, MapPin, Briefcase, Users, TrendingUp, Star, CheckCircle, ArrowRight, Globe, Clock, DollarSign, Bug, Filter, CalendarDays, Building } from 'lucide-react';
+import { Search, MapPin, Building, Globe, ArrowRight, Star, CheckCircle, User, Calendar } from 'lucide-react';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
@@ -205,7 +205,7 @@ const Home: React.FC = () => {
                 <div className="md:col-span-2">
                    <label htmlFor="datePosted" className="block text-sm font-medium text-gray-700 text-left mb-1">Date Posted</label>
                   <div className="relative">
-                    <CalendarDays className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                     <select 
                       id="datePosted"
                       value={datePosted}

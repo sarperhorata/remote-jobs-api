@@ -11,7 +11,7 @@ interface ServiceStatus {
 }
 
 const Status: React.FC = () => {
-  const [services, setServices] = useState<ServiceStatus[]>([
+  const [services] = useState<ServiceStatus[]>([
     {
       name: 'API Backend',
       status: 'operational',
@@ -247,8 +247,8 @@ const Status: React.FC = () => {
         <div className="mt-8 text-center text-sm text-gray-500">
           <p>
             For real-time updates, follow us on{' '}
-            <a href="#" className="text-blue-600 hover:text-blue-700">Twitter</a> or{' '}
-            <a href="#" className="text-blue-600 hover:text-blue-700">subscribe to our status page</a>.
+            <button type="button" className="text-blue-600 hover:text-blue-700">Twitter</button> or{' '}
+            <button type="button" className="text-blue-600 hover:text-blue-700">subscribe to our status page</button>.
           </p>
         </div>
       </div>

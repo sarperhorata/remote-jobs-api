@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Briefcase, UserPlus } from 'lucide-react'; // Assuming lucide-react for icons
+import { Briefcase, Eye, EyeOff, Mail, Lock, User, Bug } from 'lucide-react'; // Assuming lucide-react for icons
 
 const Register: React.FC = () => {
   const navigate = useNavigate();

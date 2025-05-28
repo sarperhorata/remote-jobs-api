@@ -1,0 +1,8 @@
+{
+  "FANTASTIC_JOBS_active-ats-1h": {
+    "api_name": "FANTASTIC_JOBS",
+    "endpoint": "active-ats-1h",
+    "disabled_at": "2025-05-28T12:47:43.676243",
+    "reason": "{\"message\":\"This endpoint is disabled for your subscription\"}"
+  }
+}

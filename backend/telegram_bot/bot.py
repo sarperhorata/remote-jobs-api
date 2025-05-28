@@ -737,13 +737,30 @@ class RemoteJobsBot:
             
         try:
             logger.info("🔄 Starting Telegram bot in polling mode (local development)")
+            # Use proper async task creation instead of blocking calls
             await self.application.initialize()
             await self.application.start()
-            await self.application.run_polling()
+            # Run as background task without blocking
+            polling_task = asyncio.create_task(self.application.updater.start_polling())
+            await polling_task
         except Exception as e:
             logger.error(f"❌ Error running Telegram bot: {e}")
-            if self.application:
+            try:
+                if self.application:
+                    await self.application.stop()
+                    await self.application.shutdown()
+            except Exception as shutdown_error:
+                logger.error(f"Error during shutdown: {shutdown_error}")
+    
+    async def stop(self):
+        """Stop the bot properly"""
+        if self.application:
+            try:
+                await self.application.stop()
                 await self.application.shutdown()
+                logger.info("Telegram bot stopped successfully")
+            except Exception as e:
+                logger.error(f"Error stopping Telegram bot: {e}")
     
     def run(self):
         """Run the bot polling in a blocking way"""

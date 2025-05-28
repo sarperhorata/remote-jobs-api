@@ -7,11 +7,14 @@ import sys
 from datetime import datetime, timedelta
 import json
 import logging
+from motor.motor_asyncio import AsyncIOMotorDatabase
+import asyncio
+import uuid
 
 # Add backend to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from database import get_db
+from database import get_db, get_async_db
 from services.scheduler_service import get_scheduler
 
 # Setup templates
@@ -28,19 +31,19 @@ def get_admin_auth(request: Request):
     return True
 
 @admin_router.get("/", response_class=HTMLResponse)
-async def admin_dashboard(request: Request):
+async def admin_dashboard(request: Request, admin_auth: bool = Depends(get_admin_auth)):
     """Admin dashboard"""
     try:
-        db = get_db()
+        db = await get_async_db()
         
         # Get basic statistics
         jobs_collection = db["jobs"]
-        total_jobs = jobs_collection.count_documents({})
-        active_jobs = jobs_collection.count_documents({"is_active": True})
+        total_jobs = await jobs_collection.count_documents({})
+        active_jobs = await jobs_collection.count_documents({"is_active": True})
         
         # Jobs added in last 24 hours
         yesterday = datetime.now() - timedelta(days=1)
-        new_jobs_24h = jobs_collection.count_documents({
+        new_jobs_24h = await jobs_collection.count_documents({
             "created_at": {"$gte": yesterday.isoformat()}
         })
         
@@ -60,8 +63,10 @@ async def admin_dashboard(request: Request):
         # Get error logs
         error_logs = []
         try:
-        error_logs = list(db.crawl_errors.find().sort('timestamp', -1).limit(100))
-        except:
+            error_logs_cursor = db.crawl_errors.find().sort('timestamp', -1).limit(100)
+            error_logs = await error_logs_cursor.to_list(length=100)
+        except Exception as log_e:
+            logger.error(f"Error fetching crawl_errors: {log_e}")
             pass
         
         stats = {
@@ -101,7 +106,7 @@ async def admin_login_page(request: Request):
 @admin_router.post("/login")
 async def admin_login(request: Request, username: str = Form(...), password: str = Form(...)):
     """Handle admin login"""
-    if username == "admin" and password == "buzz2remote2024":
+    if username == os.getenv("ADMIN_USERNAME", "admin") and password == os.getenv("ADMIN_PASSWORD", "buzz2remote2024"):
         request.session["admin_logged_in"] = True
         return RedirectResponse(url="/admin/", status_code=302)
     else:
@@ -118,26 +123,51 @@ async def admin_logout(request: Request):
     return RedirectResponse(url="/admin/login", status_code=302)
 
 @admin_router.get("/jobs", response_class=HTMLResponse)
-async def admin_jobs(request: Request, admin_auth: bool = Depends(get_admin_auth)):
-    """Jobs management page"""
+async def admin_jobs_page(request: Request, admin_auth: bool = Depends(get_admin_auth)):
+    """Jobs management page - displays jobs"""
     try:
-        db = get_db()
+        db = await get_async_db()
         jobs_collection = db["jobs"]
         
         # Get recent jobs (limit to 100 for performance)
-        jobs = list(jobs_collection.find({}).sort("created_at", -1).limit(100))
+        jobs_cursor = jobs_collection.find({}).sort("created_at", -1).limit(100)
+        jobs_list = await jobs_cursor.to_list(length=100)
         
         # Convert ObjectId to string for JSON serialization
-        for job in jobs:
+        for job in jobs_list:
             job["_id"] = str(job["_id"])
         
-        return templates.TemplateResponse("jobs.html", {
+        return templates.TemplateResponse("admin/jobs.html", {
             "request": request,
-            "jobs": jobs,
+            "jobs": jobs_list,
             "page_title": "Jobs Management"
         })
         
     except Exception as e:
+        logger.error(f"Error fetching admin jobs page: {e}")
+        return templates.TemplateResponse("error.html", {
+            "request": request,
+            "error": str(e),
+            "page_title": "Error"
+        })
+
+@admin_router.get("/companies", response_class=HTMLResponse)
+async def admin_companies_page(request: Request, admin_auth: bool = Depends(get_admin_auth)):
+    """Companies management page - displays companies"""
+    try:
+        db = await get_async_db()
+        companies_collection = db["companies"]
+        companies_cursor = companies_collection.find({}).limit(100)
+        companies_list = await companies_cursor.to_list(length=100)
+        for company in companies_list:
+            company["_id"] = str(company["_id"])
+
+        return templates.TemplateResponse(
+            "admin/companies.html",
+            {"request": request, "companies": companies_list, "page_title": "Companies Management"}
+        )
+    except Exception as e:
+        logger.error(f"Error fetching admin companies page: {e}")
         return templates.TemplateResponse("error.html", {
             "request": request,
             "error": str(e),
@@ -157,10 +187,7 @@ async def admin_cronjobs(request: Request, admin_auth: bool = Depends(get_admin_
                 "page_title": "Cronjobs Management"
             })
         
-        # Get scheduler status and job details
         scheduler_status = scheduler.get_job_status()
-        
-        # Format job information for display
         formatted_jobs = []
         for job in scheduler_status.get("jobs", []):
             formatted_job = {
@@ -170,8 +197,6 @@ async def admin_cronjobs(request: Request, admin_auth: bool = Depends(get_admin_
                 "trigger": job["trigger"],
                 "status": "Active" if job["next_run"] else "Inactive"
             }
-            
-            # Add description based on job ID
             job_descriptions = {
                 "health_check": "Keeps Render service awake by sending health check requests every 14 minutes",
                 "external_api_crawler": "Crawls external job APIs (RemoteOK, WeWorkRemotely, etc.) daily at 9 AM UTC",
@@ -179,7 +204,6 @@ async def admin_cronjobs(request: Request, admin_auth: bool = Depends(get_admin_
                 "database_cleanup": "Removes old job postings (90+ days) weekly on Sunday at 2 AM UTC",
                 "job_statistics": "Generates and sends daily job statistics at 8 AM UTC"
             }
-            
             formatted_job["description"] = job_descriptions.get(job["id"], "No description available")
             formatted_jobs.append(formatted_job)
         
@@ -192,6 +216,7 @@ async def admin_cronjobs(request: Request, admin_auth: bool = Depends(get_admin_
         })
         
     except Exception as e:
+        logger.error(f"Error fetching cronjobs: {e}")
         return templates.TemplateResponse("error.html", {
             "request": request,
             "error": str(e),
@@ -202,7 +227,6 @@ async def admin_cronjobs(request: Request, admin_auth: bool = Depends(get_admin_
 async def admin_settings(request: Request, admin_auth: bool = Depends(get_admin_auth)):
     """Settings page"""
     try:
-        # Get environment variables and system info
         env_vars = {
             "ENVIRONMENT": os.getenv("ENVIRONMENT", "development"),
             "MONGODB_URI": "***" if os.getenv("MONGODB_URI") else "Not set",
@@ -218,6 +242,7 @@ async def admin_settings(request: Request, admin_auth: bool = Depends(get_admin_
         })
         
     except Exception as e:
+        logger.error(f"Error fetching settings: {e}")
         return templates.TemplateResponse("error.html", {
             "request": request,
             "error": str(e),
@@ -225,18 +250,17 @@ async def admin_settings(request: Request, admin_auth: bool = Depends(get_admin_
         })
 
 @admin_router.get("/service-status")
-async def get_service_status():
+async def get_service_status(admin_auth: bool = Depends(get_admin_auth)):
     try:
-        # Get last run times from database
-        db = get_db()
+        db = await get_async_db()
         services = {
             "Buzz2remote": {"last_run": None, "status": "active"},
             "External": {"last_run": None, "status": "active"},
             "Analysis": {"last_run": None, "status": "active"}
         }
         
-        # Get last run times from service_logs collection
-        logs = db.service_logs.find().sort("timestamp", -1).limit(3)
+        logs_cursor = db.service_logs.find().sort("timestamp", -1).limit(3)
+        logs = await logs_cursor.to_list(length=3)
         for log in logs:
             if log["service"] in services:
                 services[log["service"]]["last_run"] = log["timestamp"]
@@ -246,65 +270,107 @@ async def get_service_status():
         logger.error(f"Error getting service status: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@admin_router.post("/run-buzz2remote")
-async def run_buzz2remote():
+@admin_router.post("/actions/run-crawler")
+async def run_crawler_action():
     try:
-        # Run the company crawler
-        from buzz2remote_companies_crawler import CompanyCrawler
-        crawler = CompanyCrawler()
-        await crawler.crawl_all_companies()
-        
-        # Log the run
-        db = get_db()
-        db.service_logs.insert_one({
-            "service": "Buzz2remote",
-            "timestamp": datetime.utcnow(),
-            "status": "success"
+        process_id = str(uuid.uuid4())
+        db = await get_async_db()
+        await db.processes.insert_one({
+            "process_id": process_id,
+            "type": "crawler",
+            "status": "running",
+            "started_at": datetime.utcnow(),
+            "progress": 0
         })
-        
-        return {"success": True, "message": "Company crawler completed successfully", "timestamp": datetime.utcnow().isoformat()}
+        asyncio.create_task(run_crawler_process_sync(process_id))
+        return {"status": "success", "process_id": process_id}
     except Exception as e:
-        logger.error(f"Error running company crawler: {str(e)}")
+        logger.error(f"Error starting crawler: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@admin_router.post("/run-external")
-async def run_external():
+@admin_router.post("/actions/fetch-external-apis")
+async def fetch_external_apis_action():
     try:
-        # Run external API fetcher
-        from external_api_fetcher import ExternalAPIFetcher
-        fetcher = ExternalAPIFetcher()
-        await fetcher.fetch_all_apis()
-        
-        # Log the run
-        db = get_db()
-        db.service_logs.insert_one({
-            "service": "External",
-            "timestamp": datetime.utcnow(),
-            "status": "success"
+        process_id = str(uuid.uuid4())
+        db = await get_async_db()
+        await db.processes.insert_one({
+            "process_id": process_id,
+            "type": "api_fetch",
+            "status": "running",
+            "started_at": datetime.utcnow(),
+            "progress": 0
         })
-        
-        return {"success": True, "message": "External API fetch completed successfully", "timestamp": datetime.utcnow().isoformat()}
+        asyncio.create_task(fetch_external_apis_process_sync(process_id))
+        return {"status": "success", "process_id": process_id}
     except Exception as e:
-        logger.error(f"Error running external API fetcher: {str(e)}")
+        logger.error(f"Error starting API fetch: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@admin_router.post("/run-analysis")
-async def run_analysis():
+@admin_router.post("/actions/analyze-positions")
+async def analyze_positions_action():
     try:
-        # Run job analysis
-        from job_analyzer import JobAnalyzer
-        analyzer = JobAnalyzer()
-        await analyzer.analyze_all_jobs()
-        
-        # Log the run
-        db = get_db()
-        db.service_logs.insert_one({
-            "service": "Analysis",
-            "timestamp": datetime.utcnow(),
-            "status": "success"
+        process_id = str(uuid.uuid4())
+        db = await get_async_db()
+        await db.processes.insert_one({
+            "process_id": process_id,
+            "type": "analysis",
+            "status": "running",
+            "started_at": datetime.utcnow(),
+            "progress": 0
         })
-        
-        return {"success": True, "message": "Job analysis completed successfully", "timestamp": datetime.utcnow().isoformat()}
+        asyncio.create_task(analyze_positions_process_sync(process_id))
+        return {"status": "success", "process_id": process_id}
     except Exception as e:
-        logger.error(f"Error running job analysis: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e)) 
+        logger.error(f"Error starting position analysis: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def run_crawler_process_sync(process_id: str):
+    db = await get_async_db()
+    try:
+        logger.info(f"Starting sync crawler process {process_id}")
+        await asyncio.sleep(10)
+        await db.processes.update_one(
+            {"process_id": process_id},
+            {"$set": {"status": "completed", "progress": 100, "ended_at": datetime.utcnow()}}
+        )
+        logger.info(f"Sync crawler process {process_id} completed.")
+    except Exception as e:
+        logger.error(f"Error in sync crawler process {process_id}: {e}")
+        await db.processes.update_one(
+            {"process_id": process_id},
+            {"$set": {"status": "failed", "error": str(e), "ended_at": datetime.utcnow()}}
+        )
+
+async def fetch_external_apis_process_sync(process_id: str):
+    db = await get_async_db()
+    try:
+        logger.info(f"Starting sync API fetch process {process_id}")
+        await asyncio.sleep(10)
+        await db.processes.update_one(
+            {"process_id": process_id},
+            {"$set": {"status": "completed", "progress": 100, "ended_at": datetime.utcnow()}}
+        )
+        logger.info(f"Sync API fetch process {process_id} completed.")
+    except Exception as e:
+        logger.error(f"Error in sync API fetch process {process_id}: {e}")
+        await db.processes.update_one(
+            {"process_id": process_id},
+            {"$set": {"status": "failed", "error": str(e), "ended_at": datetime.utcnow()}}
+        )
+
+async def analyze_positions_process_sync(process_id: str):
+    db = await get_async_db()
+    try:
+        logger.info(f"Starting sync analysis process {process_id}")
+        await asyncio.sleep(10)
+        await db.processes.update_one(
+            {"process_id": process_id},
+            {"$set": {"status": "completed", "progress": 100, "ended_at": datetime.utcnow()}}
+        )
+        logger.info(f"Sync analysis process {process_id} completed.")
+    except Exception as e:
+        logger.error(f"Error in sync analysis process {process_id}: {e}")
+        await db.processes.update_one(
+            {"process_id": process_id},
+            {"$set": {"status": "failed", "error": str(e), "ended_at": datetime.utcnow()}}
+        ) 

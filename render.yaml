@@ -1,14 +1,21 @@
 services:
   # Backend API Service
   - type: web
-    name: remote-jobs-api
+    name: buzz2remote-api
     runtime: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    plan: starter
+    autoDeploy: true
+    branch: main
+    numInstances: 1
+    healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
-        value: 3.9.12
+        value: 3.11.0
+      - key: ENVIRONMENT
+        value: production
       - key: API_HOST
         value: 0.0.0.0
       - key: API_DEBUG
@@ -16,10 +23,34 @@ services:
       - key: API_RELOAD
         value: false
       - key: CORS_ORIGINS
-        value: https://remote-jobs-site.onrender.com,https://remote-jobs.netlify.app
+        value: https://buzz2remote.netlify.app,https://buzz2remote.com
       - key: CORS_ALLOW_CREDENTIALS
         value: true
-      # Email settings
+      # Database
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB_NAME
+        value: buzz2remote
+      # Security
+      - key: SESSION_SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 30
+      # External APIs
+      - key: OPENAI_API_KEY
+        sync: false
+      # Telegram settings
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_ENABLED
+        value: true
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      # Email settings (optional)
       - key: EMAIL_HOST
         sync: false
       - key: EMAIL_PORT
@@ -30,92 +61,24 @@ services:
         sync: false
       - key: EMAIL_FROM
         sync: false
-      # Telegram settings
-      - key: TELEGRAM_BOT_TOKEN
+      # Admin Panel
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
         sync: false
-
-databases:
-  # Database
-  - name: remote-jobs-db
-    databaseName: remote_jobs
-    user: remote_jobs_admin
-    plan: free
-
-## Add the following environment variables in Render dashboard:
-# EMAIL_HOST=smtp.gmail.com
-# EMAIL_PORT=587
-# EMAIL_USER=your-email@gmail.com
-# EMAIL_PASSWORD=your-app-password
-# EMAIL_FROM=your-email@gmail.com
-# TELEGRAM_BOT_TOKEN=your-telegram-bot-token
-
-services:
-  - type: web
-    name: remote-jobs-monitor-backend
-    env: python
-    buildCommand: pip install -r backend/requirements.txt
-    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: remote-jobs-monitor-db
-          property: connectionString
-      - key: TELEGRAM_BOT_TOKEN
-        sync: false
-      - key: JWT_SECRET
-        generateValue: true
-      - key: JWT_ALGORITHM
-        value: HS256
-      - key: ACCESS_TOKEN_EXPIRE_MINUTES
-        value: 30
-
-databases:
-  - name: remote-jobs-monitor-db
-    databaseName: remote_jobs_monitor
-    user: remote_jobs_monitor
-    plan: free
-
-services:
-  - type: web
-    name: buzz2remote-api
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: MONGODB_URL
-        value: mongodb://localhost:27017/buzz2remote
-      - key: SECRET_KEY
-        generateValue: true
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: DOMAIN
-        value: buzz2remote.com
-      - key: CORS_ORIGINS
-        value: https://buzz2remote.com,https://www.buzz2remote.com
-    healthCheckPath: /admin/dashboard
-    plan: starter
-    autoDeploy: true
-    branch: main
-    numInstances: 1
     disk:
       name: tmp
       mountPath: /tmp
       sizeGB: 1
-    env:
-      - key: NODE_ENV
-        value: production
-    headers:
-      - path: /*
-        name: X-Frame-Options
-        value: DENY
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-      - path: /*
-        name: X-XSS-Protection
-        value: 1; mode=block
-      - path: /*
-        name: Strict-Transport-Security
-        value: max-age=31536000; includeSubDomains 
+
+# Add these environment variables manually in Render dashboard:
+# MONGODB_URI=mongodb+srv://your-mongodb-connection-string
+# TELEGRAM_BOT_TOKEN=your-telegram-bot-token
+# TELEGRAM_CHAT_ID=your-telegram-chat-id
+# OPENAI_API_KEY=your-openai-api-key
+# ADMIN_PASSWORD=your-secure-admin-password
+# EMAIL_HOST=smtp.gmail.com (optional)
+# EMAIL_PORT=587 (optional)
+# EMAIL_USER=your-email@gmail.com (optional)
+# EMAIL_PASSWORD=your-app-password (optional)
+# EMAIL_FROM=your-email@gmail.com (optional) 

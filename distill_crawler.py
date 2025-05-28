@@ -674,53 +674,43 @@ class DistillCrawler:
         else:
             return 'onsite'
     
-    async def crawl_all_companies(self, max_companies: int = None) -> List[JobListing]:
-        """Crawl all companies and collect jobs"""
+    async def crawl_all_companies(self) -> List[JobListing]:
+        """Crawl ALL companies from distill export - no limit"""
         all_jobs = []
         
-        if not self.companies_data:
-            self.load_companies_data()
-        
-        companies_to_crawl = self.companies_data
-        if max_companies:
-            companies_to_crawl = companies_to_crawl[:max_companies]
-        
-        logger.info(f"🚀 Starting to crawl {len(companies_to_crawl)} companies...")
-        
-        connector = aiohttp.TCPConnector(limit=10, ttl_dns_cache=300)
-        timeout = aiohttp.ClientTimeout(total=60)
-        
-        async with aiohttp.ClientSession(
-            headers=self.headers,
-            connector=connector,
-            timeout=timeout
-        ) as session:
+        async with aiohttp.ClientSession(headers=self.headers) as session:
             self.session = session
             
-            # Process companies in batches
-            batch_size = 5
-            for i in range(0, len(companies_to_crawl), batch_size):
-                batch = companies_to_crawl[i:i + batch_size]
+            # Process companies in batches for better performance
+            batch_size = 10
+            total_companies = len(self.companies_data)
+            
+            logger.info(f"🚀 Starting to crawl ALL {total_companies} companies in batches of {batch_size}")
+            
+            for i in range(0, total_companies, batch_size):
+                batch = self.companies_data[i:i+batch_size]
                 
-                logger.info(f"📦 Processing batch {i//batch_size + 1} ({len(batch)} companies)")
+                # Create tasks for concurrent crawling
+                tasks = []
+                for company in batch:
+                    task = self.crawl_company(company)
+                    tasks.append(task)
                 
-                # Process batch concurrently
-                tasks = [self.crawl_company(company) for company in batch]
-                batch_results = await asyncio.gather(*tasks, return_exceptions=True)
+                # Wait for batch to complete
+                batch_results = await asyncio.gather(*tasks)
                 
                 # Collect results
-                for result in batch_results:
-                    if isinstance(result, list):
-                        all_jobs.extend(result)
-                    elif isinstance(result, Exception):
-                        logger.error(f"Batch error: {result}")
+                for jobs in batch_results:
+                    all_jobs.extend(jobs)
                 
-                # Rate limiting between batches
-                await asyncio.sleep(2)
+                # Progress update
+                processed = min(i + batch_size, total_companies)
+                logger.info(f"📊 Progress: {processed}/{total_companies} companies crawled ({len(all_jobs)} jobs found so far)")
                 
-                logger.info(f"📊 Total jobs collected so far: {len(all_jobs)}")
+                # Small delay between batches
+                await asyncio.sleep(1)
         
-        logger.info(f"🏁 Crawling completed! Total jobs: {len(all_jobs)}")
+        logger.info(f"✅ Crawling complete! Total: {len(all_jobs)} jobs from {total_companies} companies")
         return all_jobs
     
     def save_jobs_to_database(self, jobs: List[JobListing]):
@@ -868,25 +858,23 @@ class DistillCrawler:
         return job_elements
 
 async def main():
-    """Main function for testing"""
+    """Main function"""
+    # Create crawler
     crawler = DistillCrawler()
     
-    # Test with first 10 companies
-    jobs = await crawler.crawl_all_companies(max_companies=10)
+    # Load companies data
+    crawler.load_companies_data()
+    
+    # Crawl ALL companies
+    jobs = await crawler.crawl_all_companies()
     
     print(f"\n🎯 Crawling Results:")
     print(f"Total jobs found: {len(jobs)}")
     
-    # Show sample jobs
-    for i, job in enumerate(jobs[:5]):
-        print(f"\n{i+1}. {job.title} at {job.company}")
-        print(f"   Location: {job.location}")
-        print(f"   Apply: {job.apply_url}")
-    
     # Save to database
-    if jobs:
-        result = crawler.save_jobs_to_database(jobs)
-        print(f"\n💾 Saved to database: {result}")
+    crawler.save_jobs_to_database(jobs)
+    
+    print("\n✅ All done!")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main()) 

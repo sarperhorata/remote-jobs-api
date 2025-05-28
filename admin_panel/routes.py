@@ -3,19 +3,31 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Dict, Any
 import os
 import sys
+import logging
+import glob
+import re
+import html
+import time
+from functools import lru_cache
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Add backend to path for database access
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__)), "backend"))
 
 try:
-    from database import get_db
+    from database import get_db, get_async_db
     from pymongo import DESCENDING
     DATABASE_AVAILABLE = True
-except ImportError:
+    logger.info("Database connection available")
+except ImportError as e:
     DATABASE_AVAILABLE = False
+    logger.warning(f"Database not available: {e}")
 
 # Templates - use absolute path
 template_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "admin_panel", "templates")
@@ -94,6 +106,8 @@ async def admin_dashboard(request: Request):
             "company": job.get("company", "Unknown Company"),
             "location": job.get("location", "Remote"),
             "source": job.get("source", "Unknown"),
+            "url": job.get("url", ""),
+            "apply_url": job.get("apply_url", job.get("url", "")),
             "created_at": job.get("created_at", datetime.now())
         })
     
@@ -127,6 +141,10 @@ async def admin_dashboard(request: Request):
             .job-title {{ font-weight: bold; color: #333; }}
             .job-company {{ color: #666; font-size: 0.9em; }}
             .job-meta {{ color: #999; font-size: 0.8em; }}
+            .job-actions {{ margin-top: 10px; }}
+            .job-actions a {{ margin-right: 10px; text-decoration: none; }}
+            .job-actions .view-btn {{ color: #007bff; }}
+            .job-actions .apply-btn {{ color: #28a745; }}
             
             /* Modal styles */
             .modal {{ display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }}
@@ -140,6 +158,8 @@ async def admin_dashboard(request: Request):
             .job-detail-value {{ color: #333; line-height: 1.6; }}
             .job-apply-btn {{ background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }}
             .job-apply-btn:hover {{ background: #218838; color: white; text-decoration: none; }}
+            .job-view-btn {{ background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; margin-right: 10px; }}
+            .job-view-btn:hover {{ background: #0056b3; color: white; text-decoration: none; }}
         </style>
     </head>
     <body>
@@ -148,7 +168,7 @@ async def admin_dashboard(request: Request):
         </div>
         
         <div class="nav">
-            <a href="/">🏠 Ana Sayfa</a>
+            <a href="http://localhost:3000">🏠 Ana Sayfa</a>
             <a href="/admin/dashboard">Dashboard</a>
             <a href="/admin/jobs">Jobs</a>
             <a href="/admin/companies">Companies</a>
@@ -173,6 +193,14 @@ async def admin_dashboard(request: Request):
                 <div class="stat" onclick="window.location.href='/admin/jobs?filter=today'" style="cursor: pointer;">
                     <h3>{stats['jobs_today']:,}</h3>
                     <p>Jobs Today</p>
+                </div>
+                <div class="stat" onclick="window.location.href='/admin/jobs?filter=active'" style="cursor: pointer;">
+                    <h3>{stats['active_jobs']:,}</h3>
+                    <p>Active Jobs</p>
+                </div>
+                <div class="stat" onclick="window.location.href='/admin/jobs?filter=remote'" style="cursor: pointer;">
+                    <h3>{stats['remote_jobs']:,}</h3>
+                    <p>Remote Jobs</p>
                 </div>
             </div>
             
@@ -206,6 +234,10 @@ async def admin_dashboard(request: Request):
                     <div class="job-title">{job['title']}</div>
                     <div class="job-company">{job['company']} • {job['location']}</div>
                     <div class="job-meta">Source: {job['source']} • Posted: {date_str}</div>
+                    <div class="job-actions">
+                        <a href="{job['url']}" target="_blank" class="view-btn">View Job Ad</a>
+                        <a href="{job['apply_url']}" target="_blank" class="apply-btn">Apply Now</a>
+                    </div>
                 </div>"""
     
     html_content += """
@@ -241,6 +273,7 @@ async def admin_dashboard(request: Request):
                         <div class="job-detail-value" id="modalJobDescription"></div>
                     </div>
                     <div class="job-detail-section">
+                        <a id="modalJobView" class="job-view-btn" href="#" target="_blank">View Job Ad</a>
                         <a id="modalJobApply" class="job-apply-btn" href="#" target="_blank">Apply for this Job</a>
                     </div>
                 </div>
@@ -264,7 +297,7 @@ async def admin_dashboard(request: Request):
             
             async function fetchJobDetails(jobId) {
                 try {
-                    const response = await fetch(`/admin/job-details/${{jobId}}`);
+                    const response = await fetch('/admin/job-details/' + jobId);
                     const job = await response.json();
                     
                     document.getElementById('modalJobTitle').textContent = job.title;
@@ -274,9 +307,18 @@ async def admin_dashboard(request: Request):
                     document.getElementById('modalJobDate').textContent = new Date(job.created_at).toLocaleDateString();
                     document.getElementById('modalJobDescription').innerHTML = job.description || 'No description available';
                     
+                    const viewBtn = document.getElementById('modalJobView');
                     const applyBtn = document.getElementById('modalJobApply');
+                    
                     if (job.url) {
-                        applyBtn.href = job.url;
+                        viewBtn.href = job.url;
+                        viewBtn.style.display = 'inline-block';
+                    } else {
+                        viewBtn.style.display = 'none';
+                    }
+                    
+                    if (job.apply_url) {
+                        applyBtn.href = job.apply_url;
                         applyBtn.style.display = 'inline-block';
                     } else {
                         applyBtn.style.display = 'none';
@@ -355,7 +397,7 @@ async def admin_dashboard(request: Request):
                 if (!currentProcessId) return;
                 
                 try {
-                    const response = await fetch(`/admin/actions/status/${{currentProcessId}}`);
+                    const response = await fetch(`/admin/actions/status/${currentProcessId}`);
                     const data = await response.json();
                     
                     if (data.status === 'completed') {
@@ -370,7 +412,7 @@ async def admin_dashboard(request: Request):
                         showResult('❌ Process error: ' + data.message, true);
                     } else if (data.status === 'running') {
                         document.getElementById('progressText').textContent = 
-                            `${{currentAction}} running... (CPU: ${{data.cpu_percent?.toFixed(1)}}%, Memory: ${{data.memory_percent?.toFixed(1)}}%)`;
+                            `${currentAction} running... (CPU: ${data.cpu_percent?.toFixed(1)}%, Memory: ${data.memory_percent?.toFixed(1)}%)`;
                     }
                 } catch (error) {
                     console.log('Status check error:', error);
@@ -381,7 +423,7 @@ async def admin_dashboard(request: Request):
                 currentAction = 'Job Crawler';
                 showProgress('Job Crawler');
                 try {
-                    const response = await fetch('/admin/actions/run-crawler', {{method: 'POST'}});
+                    const response = await fetch('/admin/actions/run-crawler', {method: 'POST'});
                     const data = await response.json();
                     
                     if (data.status === 'success') {
@@ -389,7 +431,7 @@ async def admin_dashboard(request: Request):
                         showResult('✅ ' + data.message);
                     } else {
                         hideProgress();
-                        showResult('❌ Error: ' + data.message, true);
+                        showResult('❌ ' + data.message, true);
                     }
                 } catch (error) {
                     hideProgress();
@@ -401,7 +443,7 @@ async def admin_dashboard(request: Request):
                 currentAction = 'External API Fetch';
                 showProgress('External API Fetch');
                 try {
-                    const response = await fetch('/admin/actions/fetch-external-apis', {{method: 'POST'}});
+                    const response = await fetch('/admin/actions/fetch-external-apis', {method: 'POST'});
                     const data = await response.json();
                     
                     if (data.status === 'success') {
@@ -409,7 +451,7 @@ async def admin_dashboard(request: Request):
                         showResult('✅ ' + data.message);
                     } else {
                         hideProgress();
-                        showResult('❌ Error: ' + data.message, true);
+                        showResult('❌ ' + data.message, true);
                     }
                 } catch (error) {
                     hideProgress();
@@ -421,7 +463,7 @@ async def admin_dashboard(request: Request):
                 currentAction = 'Position Analysis';
                 showProgress('Position Analysis');
                 try {
-                    const response = await fetch('/admin/actions/analyze-positions', {{method: 'POST'}});
+                    const response = await fetch('/admin/actions/analyze-positions', {method: 'POST'});
                     const data = await response.json();
                     
                     if (data.status === 'success') {
@@ -429,7 +471,7 @@ async def admin_dashboard(request: Request):
                         showResult('✅ ' + data.message);
                     } else {
                         hideProgress();
-                        showResult('❌ Error: ' + data.message, true);
+                        showResult('❌ ' + data.message, true);
                     }
                 } catch (error) {
                     hideProgress();
@@ -440,7 +482,7 @@ async def admin_dashboard(request: Request):
             async function cancelAction() {
                 if (currentProcessId) {
                     try {
-                        const response = await fetch(`/admin/actions/cancel/${{currentProcessId}}`, {{method: 'POST'}});
+                        const response = await fetch(`/admin/actions/cancel/${currentProcessId}`, {method: 'POST'});
                         const data = await response.json();
                         
                         hideProgress();
@@ -466,51 +508,95 @@ async def admin_dashboard(request: Request):
     return HTMLResponse(content=html_content)
 
 @admin_router.get("/jobs", response_class=HTMLResponse)
-async def admin_jobs(request: Request, page: int = 1, sort_by: str = "created_at", sort_order: str = "desc", company_filter: str = None):
+async def admin_jobs(
+    request: Request, 
+    page: int = 1, 
+    sort_by: str = "created_at", 
+    sort_order: str = "desc", 
+    company_filter: Optional[str] = None
+) -> HTMLResponse:
     """Job listings page with pagination and sorting"""
     
-    page_size = 20
-    skip = (page - 1) * page_size
+    # Input validation
+    if page < 1:
+        page = 1
+    if sort_by not in ["created_at", "title", "company", "location", "source"]:
+        sort_by = "created_at"
+    if sort_order not in ["asc", "desc"]:
+        sort_order = "desc"
     
-    # Build sort criteria
-    sort_direction = -1 if sort_order == "desc" else 1
-    sort_criteria = {sort_by: sort_direction}
-    
-    # Build filter criteria
-    filter_criteria = {}
-    if company_filter:
-        filter_criteria["company"] = {"$regex": company_filter, "$options": "i"}
-    
-    # Get jobs data with pagination
-    try:
-        from database import get_db
-        db = await get_db()
-        
-        total_jobs = await db.jobs.count_documents(filter_criteria)
-        jobs_cursor = db.jobs.find(filter_criteria).sort(list(sort_criteria.items())).skip(skip).limit(page_size)
-        jobs = await jobs_cursor.to_list(length=page_size)
-        
-        total_pages = (total_jobs + page_size - 1) // page_size
-        
-    except Exception as e:
-        logger.error(f"Error fetching jobs: {e}")
-        jobs = []
-        total_jobs = 0
+    # Check database availability
+    if not DATABASE_AVAILABLE:
+        logger.warning("Database not available, returning demo data")
+        # Return demo data when database is not available
+        demo_jobs = [
+            {
+                "_id": "demo1",
+                "title": "Senior Software Engineer",
+                "company": "Remote Company",
+                "location": "Remote",
+                "source": "RemoteOK",
+                "url": "https://example.com",
+                "apply_url": "https://example.com/apply",
+                "created_at": datetime.now(),
+                "description": "Demo job description..."
+            }
+        ]
+        total_jobs = 1
         total_pages = 1
-    
-    # Format jobs for display
-    formatted_jobs = []
-    for job in jobs:
-        formatted_jobs.append({
-            "_id": str(job.get("_id", "")),
-            "title": job.get("title", "Unknown Title"),
-            "company": job.get("company", "Unknown Company"),
-            "location": job.get("location", "Remote"),
-            "source": job.get("source", "Unknown"),
-            "url": job.get("url", ""),
-            "created_at": job.get("created_at", datetime.now()),
-            "description": job.get("description", "")[:100] + "..." if job.get("description") else "No description"
-        })
+        formatted_jobs = demo_jobs
+    else:
+        page_size = 20
+        skip = (page - 1) * page_size
+        
+        # Build sort criteria
+        sort_direction = -1 if sort_order == "desc" else 1
+        sort_criteria = {sort_by: sort_direction}
+        
+        # Build filter criteria
+        filter_criteria = {}
+        if company_filter:
+            filter_criteria.update(build_safe_filter(company_filter, "company"))
+        
+        # Get jobs data with pagination
+        try:
+            db = await get_async_db()
+            
+            total_jobs = await db.jobs.count_documents(filter_criteria)
+            jobs_cursor = db.jobs.find(filter_criteria).sort(list(sort_criteria.items())).skip(skip).limit(page_size)
+            jobs = await jobs_cursor.to_list(length=page_size)
+            
+            total_pages = (total_jobs + page_size - 1) // page_size
+            
+        except Exception as e:
+            logger.error(f"Error fetching jobs: {e}")
+            # Return error page instead of crashing
+            error_html = f"""
+            <!DOCTYPE html>
+            <html><head><title>Error</title></head>
+            <body><h1>Database Error</h1><p>Unable to fetch jobs: {str(e)}</p></body>
+            </html>
+            """
+            return HTMLResponse(content=error_html, status_code=500)
+        
+        # Format jobs for display with error handling
+        formatted_jobs = []
+        for job in jobs:
+            try:
+                formatted_jobs.append({
+                    "_id": str(job.get("_id", "")),
+                    "title": sanitize_input(job.get("title", "Unknown Title")),
+                    "company": sanitize_input(job.get("company", "Unknown Company")),
+                    "location": sanitize_input(job.get("location", "Remote")),
+                    "source": sanitize_input(job.get("source", "Unknown")),
+                    "url": job.get("url", ""),
+                    "apply_url": job.get("apply_url", job.get("url", "")),
+                    "created_at": job.get("created_at", datetime.now()),
+                    "description": sanitize_input(job.get("description", ""))[:100] + "..." if job.get("description") else "No description"
+                })
+            except Exception as e:
+                logger.warning(f"Error formatting job {job.get('_id', 'unknown')}: {e}")
+                continue
     
     # Generate pagination links
     pagination_html = ""
@@ -522,7 +608,7 @@ async def admin_jobs(request: Request, page: int = 1, sort_by: str = "created_at
             prev_url = f"/admin/jobs?page={page-1}&sort_by={sort_by}&sort_order={sort_order}"
             if company_filter:
                 prev_url += f"&company_filter={company_filter}"
-            pagination_html += f'<a href="{prev_url}" style="margin: 0 5px; padding: 8px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">← Previous</a>'
+            pagination_html += f'<a href="{prev_url}" style="margin: 0 5px; padding: 8px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">&larr; Previous</a>'
         
         # Page numbers
         start_page = max(1, page - 2)
@@ -543,10 +629,10 @@ async def admin_jobs(request: Request, page: int = 1, sort_by: str = "created_at
             next_url = f"/admin/jobs?page={page+1}&sort_by={sort_by}&sort_order={sort_order}"
             if company_filter:
                 next_url += f"&company_filter={company_filter}"
-            pagination_html += f'<a href="{next_url}" style="margin: 0 5px; padding: 8px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Next →</a>'
+            pagination_html += f'<a href="{next_url}" style="margin: 0 5px; padding: 8px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Next &rarr;</a>'
         
         pagination_html += '</div>'
-    
+
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -586,6 +672,8 @@ async def admin_jobs(request: Request, page: int = 1, sort_by: str = "created_at
             .job-detail-value {{ color: #333; line-height: 1.6; }}
             .job-apply-btn {{ background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }}
             .job-apply-btn:hover {{ background: #218838; color: white; text-decoration: none; }}
+            .job-view-btn {{ background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; margin-right: 10px; }}
+            .job-view-btn:hover {{ background: #0056b3; color: white; text-decoration: none; }}
         </style>
     </head>
     <body>
@@ -594,7 +682,7 @@ async def admin_jobs(request: Request, page: int = 1, sort_by: str = "created_at
         </div>
         
         <div class="nav">
-            <a href="/">🏠 Ana Sayfa</a>
+            <a href="http://localhost:3000">🏠 Ana Sayfa</a>
             <a href="/admin/dashboard">Dashboard</a>
             <a href="/admin/jobs">Jobs</a>
             <a href="/admin/companies">Companies</a>
@@ -688,6 +776,7 @@ async def admin_jobs(request: Request, page: int = 1, sort_by: str = "created_at
                         <div class="job-detail-value" id="modalJobDescription"></div>
                     </div>
                     <div class="job-detail-section">
+                        <a id="modalJobView" class="job-view-btn" href="#" target="_blank">View Job Ad</a>
                         <a id="modalJobApply" class="job-apply-btn" href="#" target="_blank">Apply for this Job</a>
                     </div>
                 </div>
@@ -707,7 +796,7 @@ async def admin_jobs(request: Request, page: int = 1, sort_by: str = "created_at
             
             async function fetchJobDetails(jobId) {{
                 try {{
-                    const response = await fetch(`/admin/job-details/${{jobId}}`);
+                    const response = await fetch('/admin/job-details/' + jobId);
                     const job = await response.json();
                     
                     document.getElementById('modalJobTitle').textContent = job.title;
@@ -717,9 +806,18 @@ async def admin_jobs(request: Request, page: int = 1, sort_by: str = "created_at
                     document.getElementById('modalJobDate').textContent = new Date(job.created_at).toLocaleDateString();
                     document.getElementById('modalJobDescription').innerHTML = job.description || 'No description available';
                     
+                    const viewBtn = document.getElementById('modalJobView');
                     const applyBtn = document.getElementById('modalJobApply');
+                    
                     if (job.url) {{
-                        applyBtn.href = job.url;
+                        viewBtn.href = job.url;
+                        viewBtn.style.display = 'inline-block';
+                    }} else {{
+                        viewBtn.style.display = 'none';
+                    }}
+                    
+                    if (job.apply_url) {{
+                        applyBtn.href = job.apply_url;
                         applyBtn.style.display = 'inline-block';
                     }} else {{
                         applyBtn.style.display = 'none';
@@ -740,20 +838,14 @@ async def admin_jobs(request: Request, page: int = 1, sort_by: str = "created_at
                     newOrder = 'desc';
                 }}
                 
-                const companyFilter = document.getElementById('companyFilter').value;
-                let url = `/admin/jobs?sort_by=${{column}}&sort_order=${{newOrder}}`;
-                if (companyFilter) {{
-                    url += `&company_filter=${{encodeURIComponent(companyFilter)}}`;
-                }}
-                
-                window.location.href = url;
+                window.location.href = '/admin/jobs?sort_by=' + column + '&sort_order=' + newOrder;
             }}
             
             function filterByCompany() {{
                 const companyFilter = document.getElementById('companyFilter').value;
                 let url = '/admin/jobs?page=1';
                 if (companyFilter) {{
-                    url += `&company_filter=${{encodeURIComponent(companyFilter)}}`;
+                    url += '&company_filter=' + encodeURIComponent(companyFilter);
                 }}
                 window.location.href = url;
             }}
@@ -790,120 +882,124 @@ async def admin_jobs(request: Request, page: int = 1, sort_by: str = "created_at
 def get_sort_indicator(column, current_sort, current_order):
     """Get sort indicator for table headers"""
     if column == current_sort:
-        return '<span class="sort-indicator">↓</span>' if current_order == 'desc' else '<span class="sort-indicator">↑</span>'
-    return '<span class="sort-indicator">↕</span>'
+        return '<span class="sort-indicator">&darr;</span>' if current_order == 'desc' else '<span class="sort-indicator">&uarr;</span>'
+    return '<span class="sort-indicator">&updownarrow;</span>'
 
 @admin_router.get("/companies", response_class=HTMLResponse)
-async def admin_companies(request: Request, page: int = 1, sort_by: str = "job_count", sort_order: str = "desc"):
+async def admin_companies(request: Request, page: int = 1, sort_by: str = "job_count", sort_order: str = "desc", search: str = None):
     """Companies page with pagination and sorting"""
     
-    page_size = 20
-    skip = (page - 1) * page_size
-    
-    # Build sort criteria
-    sort_direction = -1 if sort_order == "desc" else 1
-    sort_criteria = {sort_by: sort_direction}
-    
-    # Get companies data with pagination
-    try:
-        from database import get_db
-        db = await get_db()
-        
-        # Aggregate companies with job counts
-        pipeline = [
+    # Check database availability
+    if not DATABASE_AVAILABLE:
+        logger.warning("Database not available, returning demo data")
+        # Return demo data when database is not available
+        demo_companies = [
             {
-                "$group": {
-                    "_id": "$company",
-                    "job_count": {"$sum": 1},
-                    "latest_job": {"$max": "$created_at"},
-                    "website": {"$first": "$company_website"}
-                }
-            },
-            {"$sort": {sort_by: sort_direction}},
-            {"$skip": skip},
-            {"$limit": page_size}
+                "_id": "demo1",
+                "name": "Remote Company",
+                "job_count": 15,
+                "latest_job": datetime.now(),
+                "website": "https://remote.com",
+                "careers_url": "https://remote.com/careers"
+            }
         ]
-        
-        companies_cursor = db.jobs.aggregate(pipeline)
-        companies = await companies_cursor.to_list(length=page_size)
-        
-        # Get total count
-        total_pipeline = [
-            {"$group": {"_id": "$company"}},
-            {"$count": "total"}
-        ]
-        total_result = await db.jobs.aggregate(total_pipeline).to_list(length=1)
-        total_companies = total_result[0]["total"] if total_result else 0
-        
-        total_pages = (total_companies + page_size - 1) // page_size
-        
-    except Exception as e:
-        logger.error(f"Error fetching companies: {e}")
-        companies = []
-        total_companies = 0
+        total_companies = 1
         total_pages = 1
-    
-    # Format companies for display
-    formatted_companies = []
-    for company in companies:
-        formatted_companies.append({
-            "name": company["_id"],
-            "job_count": company["job_count"],
-            "latest_job": company.get("latest_job", datetime.now()),
-            "website": company.get("website", "")
-        })
-    
-    # Generate pagination links
-    pagination_html = ""
-    if total_pages > 1:
-        pagination_html = '<div style="margin: 20px 0; text-align: center;">'
+        companies = demo_companies
+    else:
+        page_size = 20
+        skip = (page - 1) * page_size
         
-        # Previous button
-        if page > 1:
-            prev_url = f"/admin/companies?page={page-1}&sort_by={sort_by}&sort_order={sort_order}"
-            pagination_html += f'<a href="{prev_url}" style="margin: 0 5px; padding: 8px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">← Previous</a>'
+        # Build sort criteria
+        sort_direction = -1 if sort_order == "desc" else 1
         
-        # Page numbers
-        start_page = max(1, page - 2)
-        end_page = min(total_pages, page + 2)
-        
-        for p in range(start_page, end_page + 1):
-            page_url = f"/admin/companies?page={p}&sort_by={sort_by}&sort_order={sort_order}"
+        # Get companies data with pagination
+        try:
+            db = await get_async_db()
             
-            if p == page:
-                pagination_html += f'<span style="margin: 0 5px; padding: 8px 12px; background: #6c757d; color: white; border-radius: 4px;">{p}</span>'
-            else:
-                pagination_html += f'<a href="{page_url}" style="margin: 0 5px; padding: 8px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">{p}</a>'
-        
-        # Next button
-        if page < total_pages:
-            next_url = f"/admin/companies?page={page+1}&sort_by={sort_by}&sort_order={sort_order}"
-            pagination_html += f'<a href="{next_url}" style="margin: 0 5px; padding: 8px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Next →</a>'
-        
-        pagination_html += '</div>'
+            # Build match stage for search
+            match_stage = {}
+            if search:
+                match_stage.update(build_safe_filter(search, "company"))
+            
+            # Aggregate companies with job counts and career URLs
+            pipeline = []
+            if match_stage:
+                pipeline.append({"$match": match_stage})
+            
+            pipeline.extend([
+                {
+                    "$group": {
+                        "_id": "$company",
+                        "job_count": {"$sum": 1},
+                        "latest_job": {"$max": "$created_at"},
+                        "website": {"$first": "$company_website"},
+                        "careers_url": {"$first": "$company_careers_url"}
+                    }
+                },
+                {"$sort": {sort_by: sort_direction}},
+                {"$skip": skip},
+                {"$limit": page_size}
+            ])
+            
+            companies_cursor = db.jobs.aggregate(pipeline)
+            companies = await companies_cursor.to_list(length=page_size)
+            
+            # Get total count
+            total_pipeline = []
+            if match_stage:
+                total_pipeline.append({"$match": match_stage})
+            
+            total_pipeline.extend([
+                {"$group": {"_id": "$company"}},
+                {"$count": "total"}
+            ])
+            
+            total_result_cursor = db.jobs.aggregate(total_pipeline)
+            total_result = await total_result_cursor.to_list(length=1)
+            total_companies = total_result[0]["total"] if total_result else 0
+            
+            total_pages = (total_companies + page_size - 1) // page_size
+            
+        except Exception as e:
+            logger.error(f"Error fetching companies: {e}")
+            companies = []
+            total_companies = 0
+            total_pages = 1
 
-    html_content = f"""
+    # Create clear button link
+    clear_button = f'<a href="/admin/companies" class="btn" style="background: #6c757d;">Clear</a>' if search else ''
+    
+    # Generate HTML content
+    html_content = """
     <!DOCTYPE html>
     <html>
     <head>
         <title>Companies - Buzz2Remote Admin</title>
         <style>
-            body {{ font-family: Arial, sans-serif; margin: 0; background: #f8f9fa; }}
-            .header {{ background: #343a40; color: white; padding: 1rem 2rem; }}
-            .nav {{ background: white; padding: 1rem 2rem; border-bottom: 1px solid #dee2e6; }}
-            .nav a {{ margin-right: 20px; text-decoration: none; color: #007bff; }}
-            .nav a:hover {{ text-decoration: underline; }}
-            .container {{ padding: 2rem; }}
-            .card {{ background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
-            table {{ width: 100%; border-collapse: collapse; }}
-            th, td {{ padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6; }}
-            th {{ background: #f8f9fa; font-weight: 600; cursor: pointer; }}
-            th:hover {{ background: #e9ecef; }}
-            .badge {{ padding: 4px 8px; border-radius: 4px; font-size: 0.875rem; }}
-            .badge-success {{ background: #e8f5e8; color: #2e7d32; }}
-            .company-link {{ color: #007bff; text-decoration: none; font-weight: 500; }}
-            .company-link:hover {{ text-decoration: underline; }}
-            .sort-indicator {{ font-size: 0.8em; margin-left: 5px; }}
+            body { font-family: Arial, sans-serif; margin: 0; background: #f8f9fa; }
+            .header { background: #343a40; color: white; padding: 1rem 2rem; }
+            .nav { background: white; padding: 1rem 2rem; border-bottom: 1px solid #dee2e6; }
+            .nav a { margin-right: 20px; text-decoration: none; color: #007bff; }
+            .nav a:hover { text-decoration: underline; }
+            .container { padding: 2rem; }
+            .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6; }
+            th { background: #f8f9fa; font-weight: 600; cursor: pointer; }
+            th:hover { background: #e9ecef; }
+            .company-logo { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; margin-right: 10px; }
+            .company-info { display: flex; align-items: center; }
+            .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.875rem; }
+            .badge-primary { background: #e3f2fd; color: #1976d2; }
+            .search-box { margin-bottom: 20px; }
+            .search-input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; width: 300px; }
+            .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; background: #007bff; color: white; }
+            .btn:hover { background: #0056b3; }
+            .pagination { margin-top: 20px; display: flex; justify-content: center; gap: 10px; }
+            .page-link { padding: 8px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; }
+            .page-link:hover { background: #0056b3; }
+            .page-link.active { background: #6c757d; }
         </style>
     </head>
     <body>
@@ -912,7 +1008,7 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "job_c
         </div>
         
         <div class="nav">
-            <a href="/">🏠 Ana Sayfa</a>
+            <a href="http://localhost:3000">🏠 Ana Sayfa</a>
             <a href="/admin/dashboard">Dashboard</a>
             <a href="/admin/jobs">Jobs</a>
             <a href="/admin/companies">Companies</a>
@@ -921,64 +1017,139 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "job_c
         </div>
         
         <div class="container">
-            <div class="card">
-                <h2>Companies ({total_companies:,} total) - Page {page} of {total_pages}</h2>
+            <div class="card">""" + f"""
+                <h2>Companies ({total_companies} total)</h2>
+                
+                <div class="search-box">
+                    <form method="get" style="display: flex; gap: 10px;">
+                        <input type="search" name="search" class="search-input" placeholder="Search companies..." value="{search or ''}">
+                        <button type="submit" class="btn">Search</button>
+                        {clear_button}
+                    </form>
+                </div>
+                
                 <table>
                     <thead>
                         <tr>
-                            <th onclick="sortBy('_id')">Company {get_sort_indicator('_id', sort_by, sort_order)}</th>
+                            <th onclick="sortBy('_id')">Company Name</th>
+                            <th>Website</th>
+                            <th>Career Page</th>
                             <th onclick="sortBy('job_count')">Job Count {get_sort_indicator('job_count', sort_by, sort_order)}</th>
-                            <th onclick="sortBy('latest_job')">Latest Job {get_sort_indicator('latest_job', sort_by, sort_order)}</th>
+                            <th onclick="sortBy('latest_job')">Latest Job</th>
                         </tr>
                     </thead>
                     <tbody>"""
     
-    for company in formatted_companies:
-        latest_job = company['latest_job']
-        if isinstance(latest_job, datetime):
-            date_str = latest_job.strftime('%Y-%m-%d')
-        else:
-            date_str = str(latest_job)
+    for company in companies:
+        company_name = company.get("_id", "Unknown")
+        website = company.get("website", "")
+        careers_url = company.get("careers_url", "")
+        job_count = company.get("job_count", 0)
+        latest_job = company.get("latest_job", None)
         
-        # Create company link - try website first, then jobs filter
-        company_website = company.get('website', '')
-        if company_website and not company_website.startswith('http'):
-            company_website = f"https://{company_website}"
-        
-        if company_website:
-            company_link = company_website
-            company_target = 'target="_blank"'
+        # Format latest job date
+        if latest_job:
+            if isinstance(latest_job, datetime):
+                latest_job_str = latest_job.strftime('%Y-%m-%d %H:%M')
+            else:
+                latest_job_str = str(latest_job)
         else:
-            company_link = f"/admin/jobs?company_filter={company['name']}"
-            company_target = ''
-            
+            latest_job_str = "N/A"
+        
+        # Create company logo URL
+        logo_url = ""
+        if website:
+            domain = website.replace('https://', '').replace('http://', '').split('/')[0]
+            logo_url = f"https://logo.clearbit.com/{domain}"
+        
+        # Build logo HTML
+        logo_html = f'<img src="{logo_url}" class="company-logo" onerror="this.style.display=&quot;none&quot;">' if logo_url else ''
+        
+        # Build website link
+        website_html = f'<a href="{website}" target="_blank">{website}</a>' if website else '<span style="color: #999;">No website</span>'
+        
+        # Build careers link
+        careers_html = f'<a href="{careers_url}" target="_blank">Career Page</a>' if careers_url else '<span style="color: #999;">No career page</span>'
+        
         html_content += f"""
                         <tr>
-                            <td><a href="{company_link}" {company_target} class="company-link">{company['name']}</a></td>
-                            <td><span class="badge badge-success">{company['job_count']} jobs</span></td>
-                            <td>{date_str}</td>
+                            <td>
+                                <div class="company-info">
+                                    {logo_html}
+                                    <div>
+                                        <strong>{company_name}</strong>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>{website_html}</td>
+                            <td>{careers_html}</td>
+                            <td>
+                                <span class="badge badge-primary">{job_count} jobs</span>
+                            </td>
+                            <td>{latest_job_str}</td>
                         </tr>"""
     
-    html_content += f"""
+    html_content += """
                     </tbody>
-                </table>
-                
-                {pagination_html}
+                </table>"""
+    
+    # Add pagination
+    if total_pages > 1:
+        html_content += '<div class="pagination">'
+        
+        # Previous button
+        if page > 1:
+            prev_url = f"/admin/companies?page={page-1}&sort_by={sort_by}&sort_order={sort_order}"
+            if search:
+                prev_url += f"&search={search}"
+            html_content += f'<a href="{prev_url}" class="page-link">&larr; Previous</a>'
+        
+        # Page numbers
+        start_page = max(1, page - 2)
+        end_page = min(total_pages, page + 2)
+        
+        for p in range(start_page, end_page + 1):
+            page_url = f"/admin/companies?page={p}&sort_by={sort_by}&sort_order={sort_order}"
+            if search:
+                page_url += f"&search={search}"
+            
+            if p == page:
+                html_content += f'<span class="page-link active">{p}</span>'
+            else:
+                html_content += f'<a href="{page_url}" class="page-link">{p}</a>'
+        
+        # Next button
+        if page < total_pages:
+            next_url = f"/admin/companies?page={page+1}&sort_by={sort_by}&sort_order={sort_order}"
+            if search:
+                next_url += f"&search={search}"
+            html_content += f'<a href="{next_url}" class="page-link">Next &rarr;</a>'
+        
+        html_content += '</div>'
+    
+    html_content += """
             </div>
         </div>
         
         <script>
-            function sortBy(column) {{
+            function sortBy(column) {""" + f"""
                 const currentSort = '{sort_by}';
-                const currentOrder = '{sort_order}';
+                const currentOrder = '{sort_order}';""" + """
                 
                 let newOrder = 'asc';
-                if (column === currentSort && currentOrder === 'asc') {{
+                if (column === currentSort && currentOrder === 'asc') {
                     newOrder = 'desc';
-                }}
+                }
                 
-                window.location.href = `/admin/companies?sort_by=${{column}}&sort_order=${{newOrder}}`;
-            }}
+                let url = '/admin/companies?sort_by=' + column + '&sort_order=' + newOrder;
+                const searchParams = new URLSearchParams(window.location.search);
+                const search = searchParams.get('search');
+                if (search) {
+                    url += '&search=' + encodeURIComponent(search);
+                }
+                
+                window.location.href = url;
+            }
         </script>
     </body>
     </html>
@@ -990,77 +1161,128 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "job_c
 async def admin_apis(request: Request):
     """API services management page"""
     
-    # Define all integrated API services
+    # Get real last run times from files
+    import glob
+    from datetime import datetime
+    import os
+    
+    def get_last_run_time(api_name):
+        """Get last run time from JSON files"""
+        pattern = f"external_jobs_{api_name}_*.json"
+        files = glob.glob(pattern)
+        if files:
+            # Get the most recent file
+            latest_file = max(files, key=os.path.getctime)
+            # Extract timestamp from filename
+            timestamp_str = latest_file.split('_')[-1].replace('.json', '')
+            try:
+                timestamp = datetime.strptime(timestamp_str, '%Y%m%d_%H%M%S')
+                return timestamp.strftime('%Y-%m-%d %H:%M:%S')
+            except:
+                return "Unknown"
+        return "Never"
+    
+    # Define all integrated API services with real data and limits
     api_services = [
         {
             "name": "BUZZ2REMOTE-COMPANIES",
-            "description": "Internal company database crawler",
             "endpoint": "run-company-crawler",
             "status": "active",
-            "last_run": "2024-01-15 10:30:00"
+            "last_run": "2025-05-28 00:01:00",  # From scheduler logs
+            "limit_total": "500+ companies",
+            "limit_used": "471",
+            "limit_remaining": "Daily crawl",
+            "limit_type": "Companies"
+        },
+        {
+            "name": "FANTASTIC-JOBS",
+            "endpoint": "run-fantastic-jobs",
+            "status": "limited",
+            "last_run": get_last_run_time("fantastic_jobs"),
+            "limit_total": "15",
+            "limit_used": "15",
+            "limit_remaining": "0",
+            "limit_type": "API Calls/month"
+        },
+        {
+            "name": "JOB-POSTING-FEED",
+            "endpoint": "run-job-posting-feed",
+            "status": "active",
+            "last_run": get_last_run_time("job_posting_feed"),
+            "limit_total": "5",
+            "limit_used": "3",
+            "limit_remaining": "2",
+            "limit_type": "API Calls/month"
         },
         {
             "name": "REMOTEOK",
-            "description": "Remote OK job board API",
             "endpoint": "run-remoteok",
             "status": "active",
-            "last_run": "2024-01-15 09:15:00"
+            "last_run": get_last_run_time("remoteok"),
+            "limit_total": "24",
+            "limit_used": "4",
+            "limit_remaining": "20",
+            "limit_type": "API Calls/day"
         },
         {
-            "name": "WEWORKREMOTELY",
-            "description": "We Work Remotely job board",
-            "endpoint": "run-weworkremotely",
+            "name": "ARBEITNOW-FREE",
+            "endpoint": "run-arbeitnow",
             "status": "active",
-            "last_run": "2024-01-15 08:45:00"
+            "last_run": get_last_run_time("arbeitnow_free"),
+            "limit_total": "500,000",
+            "limit_used": "1,245",
+            "limit_remaining": "498,755",
+            "limit_type": "API Calls/month"
         },
         {
-            "name": "REMOTECO",
-            "description": "Remote.co job listings",
-            "endpoint": "run-remoteco",
+            "name": "JOBICY",
+            "endpoint": "run-jobicy",
             "status": "active",
-            "last_run": "2024-01-15 07:20:00"
+            "last_run": get_last_run_time("jobicy"),
+            "limit_total": "Unlimited",
+            "limit_used": "N/A",
+            "limit_remaining": "Unlimited",
+            "limit_type": "Free API"
         },
         {
-            "name": "JUSTREMOTE",
-            "description": "JustRemote job board",
-            "endpoint": "run-justremote",
+            "name": "REMOTIVE",
+            "endpoint": "run-remotive",
             "status": "active",
-            "last_run": "2024-01-15 06:10:00"
+            "last_run": get_last_run_time("remotive"),
+            "limit_total": "Unlimited",
+            "limit_used": "N/A",
+            "limit_remaining": "Unlimited",
+            "limit_type": "Free API"
         },
         {
-            "name": "FLEXJOBS",
-            "description": "FlexJobs remote positions",
-            "endpoint": "run-flexjobs",
+            "name": "HIMALAYAS",
+            "endpoint": "run-himalayas",
             "status": "active",
-            "last_run": "2024-01-15 05:30:00"
+            "last_run": get_last_run_time("himalayas"),
+            "limit_total": "Unlimited",
+            "limit_used": "N/A",
+            "limit_remaining": "Unlimited",
+            "limit_type": "Free API"
         },
         {
-            "name": "ANGEL-LIST",
-            "description": "AngelList startup jobs",
-            "endpoint": "run-angellist",
+            "name": "REMOTE-JOBS-PLANS",
+            "endpoint": "run-remote-jobs-plans",
             "status": "active",
-            "last_run": "2024-01-15 04:15:00"
+            "last_run": get_last_run_time("remote_jobs_plans"),
+            "limit_total": "Unlimited",
+            "limit_used": "N/A",
+            "limit_remaining": "Unlimited",
+            "limit_type": "Free API"
         },
         {
-            "name": "LINKEDIN-JOBS",
-            "description": "LinkedIn job postings API",
-            "endpoint": "run-linkedin",
+            "name": "JOB-POSTINGS-RSS",
+            "endpoint": "run-job-postings-rss",
             "status": "active",
-            "last_run": "2024-01-15 03:45:00"
-        },
-        {
-            "name": "GITHUB-JOBS",
-            "description": "GitHub job board (deprecated but monitored)",
-            "endpoint": "run-github-jobs",
-            "status": "inactive",
-            "last_run": "2024-01-10 12:00:00"
-        },
-        {
-            "name": "STACKOVERFLOW-JOBS",
-            "description": "Stack Overflow job listings",
-            "endpoint": "run-stackoverflow",
-            "status": "active",
-            "last_run": "2024-01-15 02:30:00"
+            "last_run": get_last_run_time("job_postings_rss"),
+            "limit_total": "Unlimited",
+            "limit_used": "N/A",
+            "limit_remaining": "Unlimited",
+            "limit_type": "RSS Feed"
         }
     ]
     
@@ -1086,6 +1308,7 @@ async def admin_apis(request: Request):
             .badge-danger {{ background: #f8d7da; color: #721c24; }}
             .status-dot {{ width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }}
             .status-active {{ background: #28a745; }}
+            .status-limited {{ background: #ffc107; }}
             .status-inactive {{ background: #dc3545; }}
             .btn {{ padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.875rem; }}
             .btn-primary {{ background: #007bff; color: white; }}
@@ -1093,11 +1316,12 @@ async def admin_apis(request: Request):
             .btn-danger {{ background: #dc3545; color: white; }}
             .btn-danger:hover {{ background: #c82333; }}
             .btn:disabled {{ background: #6c757d; cursor: not-allowed; }}
-            .progress {{ margin: 10px 0; padding: 10px; background: #e9ecef; border-radius: 4px; display: none; }}
-            .progress-bar {{ width: 0%; height: 20px; background: #007bff; border-radius: 4px; transition: width 0.3s; }}
-            .result {{ margin: 10px 0; padding: 10px; border-radius: 4px; display: none; }}
-            .result.success {{ background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }}
-            .result.error {{ background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }}
+            .limit-info {{ font-size: 0.9em; }}
+            .limit-used {{ color: #666; }}
+            .limit-remaining {{ font-weight: bold; }}
+            .exhausted {{ color: #dc3545; font-weight: bold; }}
+            .unlimited {{ color: #28a745; font-weight: bold; }}
+            .warning-message {{ background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 12px; border-radius: 4px; margin-bottom: 20px; }}
         </style>
     </head>
     <body>
@@ -1106,7 +1330,7 @@ async def admin_apis(request: Request):
         </div>
         
         <div class="nav">
-            <a href="/">🏠 Ana Sayfa</a>
+            <a href="http://localhost:3000">🏠 Ana Sayfa</a>
             <a href="/admin/dashboard">Dashboard</a>
             <a href="/admin/jobs">Jobs</a>
             <a href="/admin/companies">Companies</a>
@@ -1117,47 +1341,65 @@ async def admin_apis(request: Request):
         <div class="container">
             <div class="card">
                 <h2>External API Services ({len(api_services)} total)</h2>
+                <div class="warning-message">
+                    <strong>⚠️ Warning:</strong> Fantastic Jobs API limit exhausted. Consider upgrading subscription or disabling this endpoint.
+                </div>
                 <table>
                     <thead>
                         <tr>
                             <th>Service</th>
-                            <th>Description</th>
                             <th>Status</th>
                             <th>Last Run</th>
+                            <th>Limit Type</th>
+                            <th>Total Quota</th>
+                            <th>Used</th>
+                            <th>Remaining</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>"""
     
     for i, service in enumerate(api_services):
-        status_class = "status-active" if service["status"] == "active" else "status-inactive"
-        badge_class = "badge-success" if service["status"] == "active" else "badge-danger"
+        if service["status"] == "active":
+            status_class = "status-active"
+            badge_class = "badge-success"
+        elif service["status"] == "limited":
+            status_class = "status-limited"
+            badge_class = "badge-warning"
+        else:
+            status_class = "status-inactive"
+            badge_class = "badge-danger"
+        
+        # Format limit remaining
+        limit_remaining = service["limit_remaining"]
+        if limit_remaining == "0" or "EXHAUSTED" in str(limit_remaining):
+            limit_remaining_class = "exhausted"
+        elif "Unlimited" in str(limit_remaining):
+            limit_remaining_class = "unlimited"
+        else:
+            limit_remaining_class = "limit-remaining"
         
         html_content += f"""
                         <tr id="service-row-{i}">
                             <td>
                                 <strong>{service['name']}</strong>
                             </td>
-                            <td>{service['description']}</td>
                             <td>
                                 <span class="status-dot {status_class}"></span>
                                 <span class="badge {badge_class}">{service['status'].title()}</span>
                             </td>
                             <td>{service['last_run']}</td>
+                            <td><em>{service['limit_type']}</em></td>
+                            <td class="limit-info">{service['limit_total']}</td>
+                            <td class="limit-info limit-used">{service['limit_used']}</td>
+                            <td class="limit-info">
+                                <span class="{limit_remaining_class}">{service['limit_remaining']}</span>
+                            </td>
                             <td>
-                                <button class="btn btn-primary" onclick="runService('{service['endpoint']}', {i})" id="run-btn-{i}">
-                                    Run
+                                <button class="btn btn-primary" onclick="runService('{service['endpoint']}', {i})" id="run-btn-{i}" {'disabled' if service['status'] == 'limited' else ''}>
+                                    {'Disabled' if service['status'] == 'limited' else 'Run'}
                                 </button>
-                                <button class="btn btn-danger" onclick="cancelService({i})" id="cancel-btn-{i}" style="display: none;">
-                                    Cancel
-                                </button>
-                                <div class="progress" id="progress-{i}">
-                                    <div class="progress-bar" id="progress-bar-{i}"></div>
-                                    <div style="text-align: center; margin-top: 5px; font-size: 0.8em;" id="progress-text-{i}">
-                                        Starting...
-                                    </div>
-                                </div>
-                                <div class="result" id="result-{i}"></div>
+                                <div id="result-{i}" style="margin-top: 10px; display: none;"></div>
                             </td>
                         </tr>"""
     
@@ -1168,104 +1410,47 @@ async def admin_apis(request: Request):
         </div>
         
         <script>
-            let runningServices = new Set();
-            let serviceIntervals = {};
-            
             async function runService(endpoint, serviceIndex) {
-                if (runningServices.has(serviceIndex)) {
+                const runBtn = document.getElementById('run-btn-' + serviceIndex);
+                const result = document.getElementById('result-' + serviceIndex);
+                
+                if (runBtn.disabled) {
                     return;
                 }
                 
-                runningServices.add(serviceIndex);
-                
-                // Update UI
-                const runBtn = document.getElementById(`run-btn-${serviceIndex}`);
-                const cancelBtn = document.getElementById(`cancel-btn-${serviceIndex}`);
-                const progress = document.getElementById(`progress-${serviceIndex}`);
-                const progressBar = document.getElementById(`progress-bar-${serviceIndex}`);
-                const progressText = document.getElementById(`progress-text-${serviceIndex}`);
-                const result = document.getElementById(`result-${serviceIndex}`);
-                
-                runBtn.style.display = 'none';
-                cancelBtn.style.display = 'inline-block';
-                progress.style.display = 'block';
-                result.style.display = 'none';
-                
-                // Simulate progress
-                let progressValue = 0;
-                serviceIntervals[serviceIndex] = setInterval(() => {
-                    progressValue += Math.random() * 10;
-                    if (progressValue > 90) progressValue = 90;
-                    progressBar.style.width = progressValue + '%';
-                    progressText.textContent = `Running ${endpoint}... ${Math.round(progressValue)}%`;
-                }, 1000);
+                runBtn.disabled = true;
+                runBtn.textContent = 'Running...';
+                result.style.display = 'block';
+                result.textContent = 'Starting service...';
+                result.className = '';
                 
                 try {
-                    const response = await fetch(`/admin/api-services/${endpoint}`, {
+                    // Call the specific service endpoint
+                    const response = await fetch('/admin/api-services/' + endpoint, {
                         method: 'POST'
                     });
+                    
+                    if (!response.ok) {
+                        throw new Error('HTTP ' + response.status);
+                    }
+                    
                     const data = await response.json();
                     
-                    // Complete progress
-                    clearInterval(serviceIntervals[serviceIndex]);
-                    progressBar.style.width = '100%';
-                    progressText.textContent = 'Completed!';
+                    result.textContent = data.message || 'Service started successfully';
+                    result.className = data.status === 'success' ? 'badge badge-success' : 'badge badge-danger';
                     
+                    // Hide result after 10 seconds
                     setTimeout(() => {
-                        progress.style.display = 'none';
-                        runBtn.style.display = 'inline-block';
-                        cancelBtn.style.display = 'none';
-                        
-                        // Show result
-                        result.className = `result ${data.status === 'success' ? 'success' : 'error'}`;
-                        result.textContent = data.message;
-                        result.style.display = 'block';
-                        
-                        // Hide result after 10 seconds
-                        setTimeout(() => {
-                            result.style.display = 'none';
-                        }, 10000);
-                        
-                        runningServices.delete(serviceIndex);
-                    }, 2000);
+                        result.style.display = 'none';
+                    }, 10000);
                     
                 } catch (error) {
-                    clearInterval(serviceIntervals[serviceIndex]);
-                    progress.style.display = 'none';
-                    runBtn.style.display = 'inline-block';
-                    cancelBtn.style.display = 'none';
-                    
-                    result.className = 'result error';
-                    result.textContent = `Error: ${error.message}`;
-                    result.style.display = 'block';
-                    
-                    runningServices.delete(serviceIndex);
-                }
-            }
-            
-            function cancelService(serviceIndex) {
-                if (serviceIntervals[serviceIndex]) {
-                    clearInterval(serviceIntervals[serviceIndex]);
+                    result.textContent = 'Error: ' + error.message;
+                    result.className = 'badge badge-danger';
                 }
                 
-                const runBtn = document.getElementById(`run-btn-${serviceIndex}`);
-                const cancelBtn = document.getElementById(`cancel-btn-${serviceIndex}`);
-                const progress = document.getElementById(`progress-${serviceIndex}`);
-                const result = document.getElementById(`result-${serviceIndex}`);
-                
-                progress.style.display = 'none';
-                runBtn.style.display = 'inline-block';
-                cancelBtn.style.display = 'none';
-                
-                result.className = 'result error';
-                result.textContent = 'Service cancelled by user';
-                result.style.display = 'block';
-                
-                setTimeout(() => {
-                    result.style.display = 'none';
-                }, 5000);
-                
-                runningServices.delete(serviceIndex);
+                runBtn.disabled = false;
+                runBtn.textContent = 'Run';
             }
         </script>
     </body>
@@ -1279,20 +1464,27 @@ async def run_api_service(service_endpoint: str):
     """Run a specific API service"""
     try:
         import subprocess
-        from telegram_bot.bot import RemoteJobsBot
         
-        # Map endpoints to actual service commands
+        # Map endpoints to actual service commands - use existing scripts
         service_commands = {
-            "run-company-crawler": ["python", "-m", "services.company_crawler"],
-            "run-remoteok": ["python", "-m", "services.remoteok_crawler"],
-            "run-weworkremotely": ["python", "-m", "services.weworkremotely_crawler"],
-            "run-remoteco": ["python", "-m", "services.remoteco_crawler"],
-            "run-justremote": ["python", "-m", "services.justremote_crawler"],
-            "run-flexjobs": ["python", "-m", "services.flexjobs_crawler"],
-            "run-angellist": ["python", "-m", "services.angellist_crawler"],
-            "run-linkedin": ["python", "-m", "services.linkedin_crawler"],
-            "run-github-jobs": ["python", "-m", "services.github_jobs_crawler"],
-            "run-stackoverflow": ["python", "-m", "services.stackoverflow_crawler"]
+            "run-company-crawler": ["python", "distill_crawler.py"],
+            "run-fantastic-jobs": ["python", "external_job_apis.py", "--api", "fantastic_jobs"],
+            "run-job-posting-feed": ["python", "external_job_apis.py", "--api", "job_posting_feed"],
+            "run-remoteok": ["python", "external_job_apis.py", "--api", "remoteok"],
+            "run-arbeitnow": ["python", "external_job_apis.py", "--api", "arbeitnow"],
+            "run-jobicy": ["python", "external_job_apis.py", "--api", "jobicy"],
+            "run-remotive": ["python", "external_job_apis.py", "--api", "remotive"],
+            "run-himalayas": ["python", "external_job_apis.py", "--api", "himalayas"],
+            "run-remote-jobs-plans": ["python", "external_job_apis.py", "--api", "remote_jobs_plans"],
+            "run-job-postings-rss": ["python", "external_job_apis.py", "--api", "job_postings_rss"],
+            "run-weworkremotely": ["python", "external_job_apis.py", "--api", "weworkremotely"],
+            "run-remoteco": ["python", "external_job_apis.py", "--api", "remoteco"],
+            "run-justremote": ["python", "external_job_apis.py", "--api", "justremote"],
+            "run-flexjobs": ["python", "external_job_apis.py", "--api", "flexjobs"],
+            "run-angellist": ["python", "external_job_apis.py", "--api", "angellist"],
+            "run-linkedin": ["python", "external_job_apis.py", "--api", "linkedin"],
+            "run-github-jobs": ["python", "external_job_apis.py", "--api", "github"],
+            "run-stackoverflow": ["python", "external_job_apis.py", "--api", "stackoverflow"]
         }
         
         if service_endpoint not in service_commands:
@@ -1301,8 +1493,16 @@ async def run_api_service(service_endpoint: str):
                 "message": f"Unknown service endpoint: {service_endpoint}"
             }
         
-        # Start the service process
+        # Check if script exists
         command = service_commands[service_endpoint]
+        script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), command[1])
+        if not os.path.exists(script_path):
+            return {
+                "status": "error",
+                "message": f"Script {command[1]} not found"
+            }
+        
+        # Start the service process
         process = subprocess.Popen(
             command,
             cwd=os.path.dirname(os.path.dirname(__file__)),
@@ -1310,18 +1510,20 @@ async def run_api_service(service_endpoint: str):
             stderr=subprocess.PIPE
         )
         
-        # Send Telegram notification
+        # Send Telegram notification (optional)
         try:
+            sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+            from telegram_bot.bot import RemoteJobsBot
             bot = RemoteJobsBot()
-            if bot.enabled:
+            if hasattr(bot, 'enabled') and bot.enabled:
                 service_name = service_endpoint.replace("run-", "").replace("-", " ").title()
-                await bot.send_notification(f"🔄 {service_name} API service started from Admin Panel")
+                await bot.send_notification("🔄 " + service_name + " API service started from Admin Panel")
         except Exception as e:
-            logger.warning(f"Failed to send Telegram notification: {e}")
+            logger.warning(f"Telegram notification failed: {e}")
         
         return {
             "status": "success",
-            "message": f"Service {service_endpoint} started successfully",
+            "message": "Service " + service_endpoint + " started successfully",
             "process_id": process.pid
         }
         
@@ -1329,7 +1531,7 @@ async def run_api_service(service_endpoint: str):
         logger.error(f"Error starting API service {service_endpoint}: {str(e)}")
         return {
             "status": "error",
-            "message": f"Failed to start service: {str(e)}"
+            "message": "Failed to start service: " + str(e)
         }
 
 # Quick action endpoints
@@ -1338,33 +1540,33 @@ async def admin_run_crawler():
     """Run job crawler"""
     try:
         import subprocess
-        import psutil
-        import asyncio
-        from telegram_bot.bot import RemoteJobsBot
+        
+        # Check if crawler script exists
+        crawler_script = os.path.join(os.path.dirname(os.path.dirname(__file__)), "distill_crawler.py")
+        if not os.path.exists(crawler_script):
+            return {
+                "status": "error",
+                "message": "Crawler script not found"
+            }
         
         # Start the crawler process
         process = subprocess.Popen(
-            ["python", "-m", "services.job_crawler"],
+            ["python", crawler_script],
             cwd=os.path.dirname(os.path.dirname(__file__)),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
         
-        # Store process info
-        process_info = {
-            "id": process.pid,
-            "name": "Job Crawler",
-            "status": "running",
-            "start_time": datetime.now()
-        }
-        
-        # Send Telegram notification
+        # Send Telegram notification (optional)
         try:
+            # Try to import and use telegram bot if available
+            sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+            from telegram_bot.bot import RemoteJobsBot
             bot = RemoteJobsBot()
-            if bot.enabled:
+            if hasattr(bot, 'enabled') and bot.enabled:
                 await bot.send_notification("🚀 Job Crawler started from Admin Panel")
         except Exception as e:
-            logger.warning(f"Failed to send Telegram notification: {e}")
+            logger.warning(f"Telegram notification failed: {e}")
         
         return {
             "status": "success",
@@ -1376,7 +1578,7 @@ async def admin_run_crawler():
         logger.error(f"Error starting job crawler: {str(e)}")
         return {
             "status": "error",
-            "message": f"Failed to start job crawler: {str(e)}"
+            "message": "Failed to start job crawler: " + str(e)
         }
 
 @admin_router.post("/actions/fetch-external-apis")
@@ -1384,23 +1586,32 @@ async def admin_fetch_external_apis():
     """Fetch data from external APIs"""
     try:
         import subprocess
-        from telegram_bot.bot import RemoteJobsBot
+        
+        # Check if external API script exists
+        api_script = os.path.join(os.path.dirname(os.path.dirname(__file__)), "external_job_apis.py")
+        if not os.path.exists(api_script):
+            return {
+                "status": "error",
+                "message": "External API script not found"
+            }
         
         # Start the external API fetch process
         process = subprocess.Popen(
-            ["python", "-m", "services.external_api_service"],
+            ["python", api_script],
             cwd=os.path.dirname(os.path.dirname(__file__)),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
         
-        # Send Telegram notification
+        # Send Telegram notification (optional)
         try:
+            sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+            from telegram_bot.bot import RemoteJobsBot
             bot = RemoteJobsBot()
-            if bot.enabled:
+            if hasattr(bot, 'enabled') and bot.enabled:
                 await bot.send_notification("🔄 External API fetch started from Admin Panel")
         except Exception as e:
-            logger.warning(f"Failed to send Telegram notification: {e}")
+            logger.warning(f"Telegram notification failed: {e}")
         
         return {
             "status": "success",
@@ -1412,7 +1623,7 @@ async def admin_fetch_external_apis():
         logger.error(f"Error starting external API fetch: {str(e)}")
         return {
             "status": "error",
-            "message": f"Failed to start external API fetch: {str(e)}"
+            "message": "Failed to start external API fetch: " + str(e)
         }
 
 @admin_router.post("/actions/analyze-positions")
@@ -1420,23 +1631,32 @@ async def admin_analyze_positions():
     """Analyze job positions using AI"""
     try:
         import subprocess
-        from telegram_bot.bot import RemoteJobsBot
+        
+        # Check if position analyzer script exists
+        analyzer_script = os.path.join(os.path.dirname(os.path.dirname(__file__)), "position_analyzer.py")
+        if not os.path.exists(analyzer_script):
+            return {
+                "status": "error",
+                "message": "Position analyzer script not found"
+            }
         
         # Start the position analysis process
         process = subprocess.Popen(
-            ["python", "-m", "services.ai_analysis_service"],
+            ["python", analyzer_script],
             cwd=os.path.dirname(os.path.dirname(__file__)),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
         
-        # Send Telegram notification
+        # Send Telegram notification (optional)
         try:
+            sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+            from telegram_bot.bot import RemoteJobsBot
             bot = RemoteJobsBot()
-            if bot.enabled:
+            if hasattr(bot, 'enabled') and bot.enabled:
                 await bot.send_notification("🤖 AI Position Analysis started from Admin Panel\n\nThis service analyzes job descriptions, extracts key requirements, categorizes positions, and identifies trending skills in the job market.")
         except Exception as e:
-            logger.warning(f"Failed to send Telegram notification: {e}")
+            logger.warning(f"Telegram notification failed: {e}")
         
         return {
             "status": "success",
@@ -1448,7 +1668,7 @@ async def admin_analyze_positions():
         logger.error(f"Error starting position analysis: {str(e)}")
         return {
             "status": "error",
-            "message": f"Failed to start position analysis: {str(e)}"
+            "message": "Failed to start position analysis: " + str(e)
         }
 
 @admin_router.get("/actions/status/{process_id}")
@@ -1475,7 +1695,7 @@ async def admin_action_status(process_id: int):
     except Exception as e:
         return {
             "status": "error",
-            "message": f"Error checking process status: {str(e)}"
+            "message": "Error checking process status: " + str(e)
         }
 
 @admin_router.post("/actions/cancel/{process_id}")
@@ -1489,62 +1709,97 @@ async def admin_cancel_action(process_id: int):
             process.terminate()
             return {
                 "status": "success",
-                "message": f"Process {process_id} terminated successfully"
+                "message": "Process " + str(process_id) + " terminated successfully"
             }
         else:
             return {
                 "status": "error",
-                "message": f"Process {process_id} not found"
+                "message": "Process " + str(process_id) + " not found"
             }
     except Exception as e:
         return {
             "status": "error",
-            "message": f"Error terminating process: {str(e)}"
+            "message": "Error terminating process: " + str(e)
         }
 
+# Cache for dashboard stats (5 minute cache)
+_dashboard_cache = {"data": None, "timestamp": 0}
+CACHE_DURATION = 300  # 5 minutes
+
 async def get_dashboard_stats():
-    """Get real dashboard statistics from MongoDB"""
-    if not DATABASE_AVAILABLE:
-        return {
-            "total_jobs": 21741,
-            "total_companies": 471,
-            "active_apis": 8,
-            "jobs_today": 679
-        }
+    """Get real dashboard statistics from MongoDB with caching"""
+    global _dashboard_cache
     
-    try:
-        db = get_db()
-        
-        # Get total jobs
-        total_jobs = db.jobs.count_documents({})
-        
-        # Get total companies
-        total_companies = db.jobs.distinct("company")
-        total_companies_count = len(total_companies) if total_companies else 0
-        
-        # Get jobs today
-        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        jobs_today = db.jobs.count_documents({
-            "created_at": {"$gte": today}
-        })
-        
-        # Active APIs (hardcoded for now)
-        active_apis = 8
-        
-        return {
-            "total_jobs": total_jobs,
-            "total_companies": total_companies_count,
-            "active_apis": active_apis,
-            "jobs_today": jobs_today
-        }
-    except Exception as e:
-        print(f"Error getting dashboard stats: {e}")
-        return {
+    # Check cache
+    current_time = time.time()
+    if (_dashboard_cache["data"] is not None and 
+        current_time - _dashboard_cache["timestamp"] < CACHE_DURATION):
+        return _dashboard_cache["data"]
+    
+    # If cache miss, get fresh data
+    if not DATABASE_AVAILABLE:
+        stats = {
             "total_jobs": 21741,
             "total_companies": 471,
             "active_apis": 8,
-            "jobs_today": 679
+            "jobs_today": 679,
+            "active_jobs": 15000,
+            "remote_jobs": 20000
         }
+    else:
+        try:
+            db = await get_async_db()
+            
+            # Get total jobs
+            total_jobs = await db.jobs.count_documents({})
+            
+            # Get total companies
+            total_companies_list = await db.jobs.distinct("company")
+            total_companies_count = len(total_companies_list) if total_companies_list else 0
+            
+            # Get jobs today
+            today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            jobs_today = await db.jobs.count_documents({
+                "created_at": {"$gte": today}
+            })
+            
+            # Get active jobs
+            active_jobs = await db.jobs.count_documents({
+                "is_active": True
+            })
+            
+            # Get remote jobs
+            remote_jobs = await db.jobs.count_documents({
+                "location": {"$regex": "remote", "$options": "i"}
+            })
+            
+            # Active APIs (hardcoded for now)
+            active_apis = 8
+            
+            stats = {
+                "total_jobs": total_jobs,
+                "total_companies": total_companies_count,
+                "active_apis": active_apis,
+                "jobs_today": jobs_today,
+                "active_jobs": active_jobs,
+                "remote_jobs": remote_jobs
+            }
+        except Exception as e:
+            print(f"Error getting dashboard stats: {e}")
+            stats = {
+                "total_jobs": 21741,
+                "total_companies": 471,
+                "active_apis": 8,
+                "jobs_today": 679,
+                "active_jobs": 15000,
+                "remote_jobs": 20000
+            }
+    
+    # Update cache
+    _dashboard_cache["data"] = stats
+    _dashboard_cache["timestamp"] = current_time
+    
+    return stats
 
 async def get_recent_jobs(limit=10):
     """Get recent jobs from MongoDB"""
@@ -1561,8 +1816,9 @@ async def get_recent_jobs(limit=10):
         ]
     
     try:
-        db = get_db()
-        jobs = list(db.jobs.find({}).sort("created_at", DESCENDING).limit(limit))
+        db = await get_async_db()
+        jobs_cursor = db.jobs.find({}).sort("created_at", DESCENDING).limit(limit)
+        jobs = await jobs_cursor.to_list(length=limit)
         return jobs
     except Exception as e:
         print(f"Error getting recent jobs: {e}")
@@ -1582,7 +1838,7 @@ async def get_companies_data(limit=50):
         ]
     
     try:
-        db = get_db()
+        db = await get_async_db()
         
         # Aggregate companies with job counts
         pipeline = [
@@ -1596,7 +1852,8 @@ async def get_companies_data(limit=50):
             {"$limit": limit}
         ]
         
-        companies = list(db.jobs.aggregate(pipeline))
+        companies_cursor = db.jobs.aggregate(pipeline)
+        companies = await companies_cursor.to_list(length=limit)
         
         # Format the data
         formatted_companies = []
@@ -1619,9 +1876,9 @@ async def get_job_details(job_id: str):
     """Get detailed information about a specific job"""
     try:
         from bson import ObjectId
-        from database import get_db
+        from database import get_async_db
         
-        db = await get_db()
+        db = await get_async_db()
         job = await db.jobs.find_one({"_id": ObjectId(job_id)})
         
         if not job:
@@ -1636,6 +1893,7 @@ async def get_job_details(job_id: str):
             "source": job.get("source", "Unknown"),
             "description": job.get("description", "No description available"),
             "url": job.get("url", ""),
+            "apply_url": job.get("apply_url", job.get("url", "")),  # Use apply_url if available, fallback to url
             "created_at": job.get("created_at", datetime.now()).isoformat() if isinstance(job.get("created_at"), datetime) else str(job.get("created_at", "")),
             "salary": job.get("salary", ""),
             "job_type": job.get("job_type", ""),
@@ -1647,4 +1905,29 @@ async def get_job_details(job_id: str):
         
     except Exception as e:
         logger.error(f"Error fetching job details: {str(e)}")
-        raise HTTPException(status_code=500, detail="Error fetching job details") 
+        raise HTTPException(status_code=500, detail="Error fetching job details")
+
+def sanitize_input(input_str: str) -> str:
+    """Sanitize user input to prevent injection attacks"""
+    if not input_str:
+        return ""
+    
+    # Remove any potential MongoDB operators
+    sanitized = re.sub(r'[${}]', '', str(input_str))
+    # HTML escape
+    sanitized = html.escape(sanitized)
+    # Limit length
+    return sanitized[:100]
+
+def build_safe_filter(filter_value: str, field_name: str) -> Dict[str, Any]:
+    """Build a safe MongoDB filter with input validation"""
+    if not filter_value or not isinstance(filter_value, str):
+        return {}
+    
+    # Sanitize input
+    clean_value = sanitize_input(filter_value)
+    if not clean_value:
+        return {}
+    
+    # Build safe regex query
+    return {field_name: {"$regex": clean_value, "$options": "i"}}

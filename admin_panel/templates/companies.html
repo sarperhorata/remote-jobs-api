@@ -30,6 +30,7 @@
                         <tr>
                             <th>Company</th>
                             <th>Website</th>
+                            <th>Career Page</th>
                             <th>Job Count</th>
                             <th>Added</th>
                             <th class="w-1"></th>
@@ -52,6 +53,13 @@
                                 <a href="{{ company.website }}" target="_blank" class="text-reset">{{ company.website }}</a>
                                 {% else %}
                                 <span class="text-muted">No website</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if company.careers_url %}
+                                <a href="{{ company.careers_url }}" target="_blank" class="text-reset">{{ company.careers_url }}</a>
+                                {% else %}
+                                <span class="text-muted">No career page</span>
                                 {% endif %}
                             </td>
                             <td>

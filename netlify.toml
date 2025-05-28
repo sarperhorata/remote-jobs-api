@@ -1,17 +1,25 @@
 [build]
-  command = "npm run build"
-  publish = "dist"
+  command = "cd frontend && npm install --legacy-peer-deps && npm run build"
+  publish = "frontend/build"
   functions = "functions"
 
 # Production context: all deploys from the Production branch
 [context.production]
   command = "cd frontend && npm install --legacy-peer-deps && npm run build"
-  environment = { NODE_ENV = "production", REACT_APP_API_URL = "https://buzz2remote-api.onrender.com/api" }
+  
+[context.production.environment]
+  NODE_ENV = "production"
+  REACT_APP_API_URL = "https://buzz2remote-api.onrender.com/api"
+  VITE_API_URL = "https://buzz2remote-api.onrender.com/api"
+  VITE_APP_URL = "https://buzz2remote.netlify.app"
 
 # Deploy Preview context: all deploys generated from pull/merge requests
 [context.deploy-preview]
   command = "cd frontend && npm install --legacy-peer-deps && npm run build"
-  environment = { NODE_ENV = "production", REACT_APP_API_URL = "https://buzz2remote-api.onrender.com/api" }
+
+[context.deploy-preview.environment]
+  NODE_ENV = "production"
+  REACT_APP_API_URL = "https://buzz2remote-api.onrender.com/api"
 
 # Branch deploy context: deploys from branches other than the Production branch
 [context.branch-deploy]
@@ -21,11 +29,11 @@
 [context.staging]
   command = "cd frontend && npm install --legacy-peer-deps && npm run build"
 
-# For Automatic FE Deploys to GitHub and Netlify
+# Default build environment
 [build.environment]
-  REACT_APP_API_URL = "https://buzz2remote-api.onrender.com/api"
   NODE_VERSION = "18"
   NPM_VERSION = "9"
+  REACT_APP_API_URL = "https://buzz2remote-api.onrender.com/api"
 
 # Redirects for single page application
 [[redirects]]
@@ -42,11 +50,7 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
-    Content-Security-Policy = "default-src 'self' https://api.buzz2remote.com https://*.buzz2remote.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api.buzz2remote.com wss://*.buzz2remote.com"
+    Content-Security-Policy = "default-src 'self' https://buzz2remote-api.onrender.com https://*.netlify.app; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://buzz2remote-api.onrender.com wss://*.netlify.app"
 
 [[plugins]]
-package = "netlify-plugin-cypress"
-
-[context.production.environment]
-  VITE_API_URL = "https://api.buzz2remote.com"
-  VITE_APP_URL = "https://buzz2remote.com" 
+package = "netlify-plugin-cypress" 

@@ -12,7 +12,7 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from routes import auth, profile, jobs, ads, notification_routes
-from database import get_db
+from database import get_db, get_async_db, ensure_indexes
 
 # Import Telegram bot
 try:
@@ -68,9 +68,9 @@ app.add_middleware(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # Only allow frontend in development
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -107,10 +107,18 @@ async def startup_db_client():
     global telegram_bot, scheduler
     
     try:
-        # Test database connection
+        # Initialize database connection pool
         db = get_db()
         db.command('ismaster')
         logger.info("Connected to MongoDB successfully!")
+        
+        # Pre-initialize async connection for better performance
+        async_db = await get_async_db()
+        await async_db.command('ping')
+        logger.info("Async MongoDB connection pool initialized!")
+        
+        # Ensure indexes
+        await ensure_indexes()
     except Exception as e:
         logger.error(f"Could not connect to MongoDB: {str(e)}")
         raise e
@@ -191,6 +199,14 @@ async def shutdown_event():
             logger.info("Telegram bot stopped")
         except Exception as e:
             logger.error(f"Error stopping Telegram bot: {str(e)}")
+    
+    # Close database connections
+    try:
+        from database import close_db_connections
+        close_db_connections()
+        logger.info("Database connections closed")
+    except Exception as e:
+        logger.error(f"Error closing database connections: {str(e)}")
 
 @app.get("/", 
     summary="🏠 API Welcome Message",

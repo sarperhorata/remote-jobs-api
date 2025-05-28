@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, MapPin, Building, Globe, ArrowRight, Star, CheckCircle, User, Calendar } from 'lucide-react';
+import { Search, MapPin, Building, Globe, ArrowRight, Star, CheckCircle, User, Calendar, Bug, DollarSign } from 'lucide-react';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();

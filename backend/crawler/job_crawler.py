@@ -5,6 +5,7 @@ import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import re
+from urllib.parse import urljoin
 
 from models.models import Job, Website, WebsiteType, SelectorBase
 
@@ -226,6 +227,13 @@ class JobCrawler:
                     location_elem = job.find('span', class_=lambda c: c and ('location' in c.lower())) or \
                                    job.find('div', class_=lambda c: c and ('location' in c.lower()))
                     
+                    # Extract career page URL
+                    career_page_elem = job.find('a', href=True, text=lambda t: t and ('career' in t.lower() or 'jobs' in t.lower())) or \
+                                     job.find('a', href=True, class_=lambda c: c and ('career' in c.lower() or 'jobs' in c.lower()))
+                    career_page_url = career_page_elem['href'] if career_page_elem else None
+                    if career_page_url and not career_page_url.startswith(('http://', 'https://')):
+                        career_page_url = urljoin(str(website.url), career_page_url)
+                    
                     # Extract tags/skills
                     tags_container = job.find('div', class_=lambda c: c and ('tags' in c.lower() or 'skills' in c.lower()))
                     tags = []
@@ -257,6 +265,7 @@ class JobCrawler:
                         "is_remote": True,  # Assuming all jobs from JobsFromSpace are remote
                         "website_id": website.id,
                         "posted_date": datetime.now(),
+                        "company_careers_url": career_page_url  # Add career page URL
                     }
                     
                     jobs.append(job_data)
@@ -320,11 +329,17 @@ class JobCrawler:
                     
                     # Convert URL to full URL
                     if url and not url.startswith(('http://', 'https://')):
-                        from urllib.parse import urljoin
                         url = urljoin(str(website.url), url)
                     
                     # Extract location
                     location = self._extract_with_selector(job_element, location_selector) if location_selector else None
+                    
+                    # Extract career page URL
+                    career_page_elem = job_element.find('a', href=True, text=lambda t: t and ('career' in t.lower() or 'jobs' in t.lower())) or \
+                                     job_element.find('a', href=True, class_=lambda c: c and ('career' in c.lower() or 'jobs' in c.lower()))
+                    career_page_url = career_page_elem['href'] if career_page_elem else None
+                    if career_page_url and not career_page_url.startswith(('http://', 'https://')):
+                        career_page_url = urljoin(str(website.url), career_page_url)
                     
                     if title and url:
                         job_data = {
@@ -335,6 +350,7 @@ class JobCrawler:
                             "is_remote": True,  # Default to remote
                             "website_id": website.id,
                             "posted_date": datetime.now(),  # Default to current date
+                            "company_careers_url": career_page_url  # Add career page URL
                         }
                         
                         jobs.append(job_data)

@@ -94,6 +94,154 @@ class RateLimiter:
         oldest_request = min(self.requests_history)
         return datetime.fromisoformat(oldest_request) + timedelta(days=self.time_period_days)
 
+class APIErrorHandler:
+    """Handle API errors and manage disabled endpoints"""
+    
+    def __init__(self):
+        self.disabled_endpoints_file = ".disabled_api_endpoints.json"
+        self.quota_exceeded_file = ".quota_exceeded_apis.json"
+        self.disabled_endpoints = self._load_disabled_endpoints()
+        self.quota_exceeded = self._load_quota_exceeded()
+        self.notifier = ServiceNotifier()
+    
+    def _load_disabled_endpoints(self) -> Dict[str, Dict]:
+        """Load disabled endpoints from file"""
+        try:
+            if os.path.exists(self.disabled_endpoints_file):
+                with open(self.disabled_endpoints_file, 'r') as f:
+                    return json.load(f)
+            return {}
+        except:
+            return {}
+    
+    def _save_disabled_endpoints(self):
+        """Save disabled endpoints to file"""
+        try:
+            with open(self.disabled_endpoints_file, 'w') as f:
+                json.dump(self.disabled_endpoints, f, indent=2)
+        except Exception as e:
+            print(f"❌ Error saving disabled endpoints: {e}")
+    
+    def _load_quota_exceeded(self) -> Dict[str, Dict]:
+        """Load quota exceeded APIs from file"""
+        try:
+            if os.path.exists(self.quota_exceeded_file):
+                with open(self.quota_exceeded_file, 'r') as f:
+                    return json.load(f)
+            return {}
+        except:
+            return {}
+    
+    def _save_quota_exceeded(self):
+        """Save quota exceeded APIs to file"""
+        try:
+            with open(self.quota_exceeded_file, 'w') as f:
+                json.dump(self.quota_exceeded, f, indent=2)
+        except Exception as e:
+            print(f"❌ Error saving quota exceeded: {e}")
+    
+    def handle_api_error(self, api_name: str, endpoint: str, status_code: int, error_message: str):
+        """Handle API errors based on status code and message"""
+        
+        # Check for disabled endpoint error
+        if "This endpoint is disabled for your subscription" in error_message:
+            self.disable_endpoint(api_name, endpoint, error_message)
+            return
+        
+        # Check for quota exceeded error
+        if "You have exceeded monthly quota" in error_message or status_code == 429:
+            self.mark_quota_exceeded(api_name, error_message)
+            return
+        
+        # Check for other 4xx errors
+        if 400 <= status_code < 500:
+            self.notifier._send_message(f"""⚠️ <b>{api_name} - CLIENT ERROR</b>
+
+🎯 <b>Endpoint:</b> {endpoint}
+📊 <b>Status:</b> {status_code}
+❌ <b>Error:</b> {error_message[:200]}
+
+🔍 <b>Action:</b> Check API configuration""")
+        
+        # Check for 5xx errors
+        elif 500 <= status_code < 600:
+            self.notifier._send_message(f"""🔥 <b>{api_name} - SERVER ERROR</b>
+
+🎯 <b>Endpoint:</b> {endpoint}
+📊 <b>Status:</b> {status_code}
+❌ <b>Error:</b> {error_message[:200]}
+
+⏳ <b>Action:</b> Will retry later""")
+    
+    def disable_endpoint(self, api_name: str, endpoint: str, reason: str):
+        """Disable an endpoint permanently"""
+        key = f"{api_name}_{endpoint}"
+        
+        if key not in self.disabled_endpoints:
+            self.disabled_endpoints[key] = {
+                "api_name": api_name,
+                "endpoint": endpoint,
+                "disabled_at": datetime.now().isoformat(),
+                "reason": reason
+            }
+            self._save_disabled_endpoints()
+            
+            self.notifier._send_message(f"""🚫 <b>{api_name} - ENDPOINT DISABLED</b>
+
+🎯 <b>Endpoint:</b> {endpoint}
+❌ <b>Reason:</b> {reason}
+🕐 <b>Disabled at:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+⚠️ <b>This endpoint will not be used anymore!</b>""")
+    
+    def mark_quota_exceeded(self, api_name: str, reason: str):
+        """Mark API as quota exceeded for current month"""
+        current_month = datetime.now().strftime('%Y-%m')
+        
+        if api_name not in self.quota_exceeded:
+            self.quota_exceeded[api_name] = {}
+        
+        if current_month not in self.quota_exceeded[api_name]:
+            self.quota_exceeded[api_name][current_month] = {
+                "exceeded_at": datetime.now().isoformat(),
+                "reason": reason
+            }
+            self._save_quota_exceeded()
+            
+            self.notifier._send_message(f"""📛 <b>{api_name} - QUOTA EXCEEDED</b>
+
+❌ <b>Reason:</b> {reason}
+📅 <b>Month:</b> {current_month}
+🕐 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+⏸️ <b>This API will be paused until next month!</b>""")
+    
+    def is_endpoint_disabled(self, api_name: str, endpoint: str) -> bool:
+        """Check if an endpoint is disabled"""
+        key = f"{api_name}_{endpoint}"
+        return key in self.disabled_endpoints
+    
+    def is_quota_exceeded(self, api_name: str) -> bool:
+        """Check if API quota is exceeded for current month"""
+        current_month = datetime.now().strftime('%Y-%m')
+        return api_name in self.quota_exceeded and current_month in self.quota_exceeded[api_name]
+    
+    def clean_old_quota_records(self):
+        """Clean old quota records from previous months"""
+        current_month = datetime.now().strftime('%Y-%m')
+        
+        for api_name in list(self.quota_exceeded.keys()):
+            # Remove old month records
+            for month in list(self.quota_exceeded[api_name].keys()):
+                if month < current_month:
+                    del self.quota_exceeded[api_name][month]
+            
+            # Remove API if no records left
+            if not self.quota_exceeded[api_name]:
+                del self.quota_exceeded[api_name]
+        
+        self._save_quota_exceeded()
+
 class FantasticJobsAPI:
     """Fantastic Jobs API integration"""
     
@@ -107,9 +255,30 @@ class FantasticJobsAPI:
         # 15 requests per month = 30 days
         self.rate_limiter = RateLimiter(max_requests=15, time_period_days=30)
         self.notifier = ServiceNotifier()
+        self.error_handler = APIErrorHandler()
         
     def _make_request(self, endpoint: str, params: Dict) -> Optional[Dict]:
         """Make API request with rate limiting"""
+        
+        # Check if quota is exceeded
+        if self.error_handler.is_quota_exceeded("FANTASTIC_JOBS"):
+            self.notifier._send_message(f"""⏸️ <b>FANTASTIC JOBS API - PAUSED</b>
+
+📛 <b>Status:</b> Quota exceeded for this month
+⏳ <b>Will resume:</b> Next month
+
+Skipping API call...""")
+            return None
+        
+        # Check if endpoint is disabled
+        if self.error_handler.is_endpoint_disabled("FANTASTIC_JOBS", endpoint):
+            self.notifier._send_message(f"""🚫 <b>FANTASTIC JOBS API - ENDPOINT DISABLED</b>
+
+🎯 <b>Endpoint:</b> {endpoint}
+❌ <b>Status:</b> Permanently disabled
+
+Skipping API call...""")
+            return None
         
         if not self.rate_limiter.can_make_request():
             remaining = self.rate_limiter.requests_remaining()
@@ -145,12 +314,10 @@ class FantasticJobsAPI:
                 return data
             else:
                 error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
-                self.notifier._send_message(f"""❌ <b>FANTASTIC JOBS API - ERROR</b>
-
-🎯 <b>Endpoint:</b> {endpoint}
-📊 <b>Status:</b> {response.status_code}
-❌ <b>Error:</b> {error_msg}
-⚡ <b>Remaining requests:</b> {self.rate_limiter.requests_remaining()}/15""")
+                
+                # Handle API errors
+                self.error_handler.handle_api_error("FANTASTIC_JOBS", endpoint, response.status_code, response.text)
+                
                 return None
                 
         except Exception as e:

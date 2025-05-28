@@ -1,35 +1,78 @@
-from fastapi import APIRouter, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from database import get_db
-from typing import List, Dict, Any
+from fastapi import APIRouter
 
-router = APIRouter()
+router = APIRouter(prefix="/companies", tags=["companies"])
 
-# Add CORS middleware
-router.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@router.get("/companies")
+@router.get("")
 async def get_companies():
-    try:
-        db = get_db()
-        companies = list(db.companies.find({"is_active": True}))
-        return {"companies": companies}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    """Get all companies"""
+    return {
+        "companies": [
+            {
+                "_id": "1",
+                "name": "Remote Tech Co",
+                "description": "Leading remote-first technology company",
+                "website": "https://remotetech.com",
+                "location": "Remote",
+                "employees": "50-100",
+                "industry": "Technology",
+                "is_active": True
+            },
+            {
+                "_id": "2", 
+                "name": "Global Solutions",
+                "description": "Worldwide consulting and development services",
+                "website": "https://globalsolutions.com",
+                "location": "Remote",
+                "employees": "100-500",
+                "industry": "Consulting",
+                "is_active": True
+            },
+            {
+                "_id": "3",
+                "name": "Cloud Innovations",
+                "description": "Cloud infrastructure and DevOps specialists",
+                "website": "https://cloudinnovations.com",
+                "location": "Remote",
+                "employees": "10-50",
+                "industry": "Cloud Services",
+                "is_active": True
+            }
+        ],
+        "total": 3
+    }
 
-@router.get("/companies/{company_id}")
+@router.get("/{company_id}")
 async def get_company(company_id: str):
-    try:
-        db = get_db()
-        company = db.companies.find_one({"_id": company_id})
-        if not company:
-            raise HTTPException(status_code=404, detail="Company not found")
-        return company
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+    """Get company by ID"""
+    companies = {
+        "1": {
+            "_id": "1",
+            "name": "Remote Tech Co",
+            "description": "Leading remote-first technology company specializing in modern web applications.",
+            "website": "https://remotetech.com",
+            "location": "Remote",
+            "employees": "50-100",
+            "industry": "Technology",
+            "is_active": True,
+            "jobs_count": 5,
+            "benefits": ["Remote work", "Health insurance", "Flexible hours"]
+        },
+        "2": {
+            "_id": "2",
+            "name": "Global Solutions", 
+            "description": "Worldwide consulting and development services for enterprise clients.",
+            "website": "https://globalsolutions.com",
+            "location": "Remote",
+            "employees": "100-500",
+            "industry": "Consulting",
+            "is_active": True,
+            "jobs_count": 3,
+            "benefits": ["Remote work", "401k", "Training budget"]
+        }
+    }
+    
+    if company_id not in companies:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    return companies[company_id] 

@@ -1,18 +1,34 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery } from 'react-query';
 import { jobService } from '../services/AllServices';
 import { Job } from '../types/job';
 import JobDetail from '../components/JobDetail';
 
 const JobDetailPage: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
-  
-  const { data: job, isLoading } = useQuery(['job', id], () => jobService.getJobById(id || ''));
+  const [job, setJob] = useState<Job | null>(null);
+  const [similarJobs, setSimilarJobs] = useState<Job[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { data: similarJobs } = useQuery<Job[]>(['similarJobs', id], () => 
-    jobService.getSimilarJobs(id || '')
-  );
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!id) return;
+      
+      try {
+        setIsLoading(true);
+        const jobData = await jobService.getJobById(id);
+        const similarData = await jobService.getSimilarJobs(id);
+        setJob(jobData);
+        setSimilarJobs(similarData || []);
+      } catch (error) {
+        console.error('Error fetching job data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [id]);
 
   const handleApply = (jobId: string) => {
     // Handle job application logic
@@ -47,7 +63,7 @@ const JobDetailPage: React.FC = () => {
           <div className="lg:col-span-2">
             <JobDetail 
               job={job} 
-              similarJobs={similarJobs || []} 
+              similarJobs={similarJobs} 
               onApply={handleApply} 
             />
           </div>

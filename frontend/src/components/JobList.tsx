@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from 'react-query';
 import { jobService } from '../services/AllServices';
 
 const JobList: React.FC<{
@@ -8,7 +7,25 @@ const JobList: React.FC<{
   limit?: number;
   onJobSelected?: (job: any) => void;
 }> = ({ filters = {}, limit, onJobSelected }) => {
-  const { data, isLoading, error } = useQuery(['jobs', filters], () => jobService.getJobs(filters));
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        setIsLoading(true);
+        const result = await jobService.getJobs(filters);
+        setData(result);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchJobs();
+  }, [filters]);
 
   if (isLoading) return <div>Loading jobs...</div>;
   if (error) return <div>Error loading jobs</div>;

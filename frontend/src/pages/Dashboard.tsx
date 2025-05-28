@@ -1,5 +1,4 @@
-import React from 'react';
-import { useQuery } from 'react-query';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { jobService } from '../services/AllServices';
 import WorkIcon from '@mui/icons-material/Work';
@@ -10,15 +9,39 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PendingIcon from '@mui/icons-material/Pending';
 
 const Dashboard: React.FC = () => {
-  const { data: recentJobs, isLoading: isLoadingJobs } = useQuery(
-    ['recentJobs'],
-    () => jobService.getJobs({ limit: 5 })
-  );
+  const [recentJobs, setRecentJobs] = useState<any[]>([]);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [isLoadingJobs, setIsLoadingJobs] = useState(true);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(true);
 
-  const { data: recommendations, isLoading: isLoadingRecommendations } = useQuery(
-    ['recommendations'],
-    () => jobService.getJobs({ recommended: true, limit: 3 })
-  );
+  useEffect(() => {
+    const fetchRecentJobs = async () => {
+      try {
+        setIsLoadingJobs(true);
+        const data: any = await jobService.getJobs({ limit: 5 });
+        setRecentJobs(Array.isArray(data) ? data : (data as any)?.jobs || []);
+      } catch (error) {
+        console.error('Error fetching recent jobs:', error);
+      } finally {
+        setIsLoadingJobs(false);
+      }
+    };
+
+    const fetchRecommendations = async () => {
+      try {
+        setIsLoadingRecommendations(true);
+        const data: any = await jobService.getJobs({ recommended: true, limit: 3 });
+        setRecommendations(Array.isArray(data) ? data : (data as any)?.jobs || []);
+      } catch (error) {
+        console.error('Error fetching recommendations:', error);
+      } finally {
+        setIsLoadingRecommendations(false);
+      }
+    };
+
+    fetchRecentJobs();
+    fetchRecommendations();
+  }, []);
 
   // Mock data for dashboard statistics
   const stats = {

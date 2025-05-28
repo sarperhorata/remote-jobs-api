@@ -11,7 +11,7 @@ from datetime import datetime
 # Add admin panel to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from routes import auth, profile, jobs, ads, notification_routes
+from routes import auth, profile, jobs, ads, notification_routes, companies
 from database import get_db, get_async_db, ensure_indexes
 
 # Import Telegram bot
@@ -87,6 +87,7 @@ try:
     app.include_router(jobs.router, prefix="/api", tags=["jobs"])
     app.include_router(ads.router, prefix="/api", tags=["ads"])
     app.include_router(notification_routes.router, prefix="/api", tags=["notifications"])
+    app.include_router(companies.router, prefix="/api", tags=["companies"])
     
     # Include admin panel if available
     if ADMIN_PANEL_AVAILABLE:

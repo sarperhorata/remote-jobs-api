@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { useQuery } from 'react-query';
+import React, { useState, useEffect } from 'react';
 import { API_URL } from '../config';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -27,15 +26,27 @@ const Companies: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [industryFilter, setIndustryFilter] = useState('all');
   const [sizeFilter, setSizeFilter] = useState('all');
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const { data: companies, isLoading, error } = useQuery<Company[]>(
-    'companies',
-    async () => {
-      const response = await fetch(`${API_URL}/companies`);
-      if (!response.ok) throw new Error('Failed to fetch companies');
-      return response.json();
-    }
-  );
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch(`${API_URL}/api/companies`);
+        if (!response.ok) throw new Error('Failed to fetch companies');
+        const data = await response.json();
+        setCompanies(data.companies || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCompanies();
+  }, []);
 
   const filteredCompanies = companies?.filter(company => {
     const matchesSearch = company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

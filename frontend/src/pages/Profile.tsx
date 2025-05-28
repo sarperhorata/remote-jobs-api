@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { useQuery } from 'react-query';
+import React, { useState, useEffect } from 'react';
 import { jobService } from '../services/AllServices';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -82,22 +81,36 @@ const UserProfileService = {
   }
 };
 
+interface ApplicationHistory {
+  applications: any[];
+  savedJobs: any[];
+}
+
 const Profile: React.FC = () => {
-  const { user = mockUser } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [linkedinUrl, setLinkedinUrl] = useState('');
+  const [applicationHistory, setApplicationHistory] = useState<ApplicationHistory>({ applications: [], savedJobs: [] });
+  const [isLoading, setIsLoading] = useState(true);
 
-  interface ApplicationHistory {
-    applications: any[];
-    savedJobs: any[];
-  }
+  useEffect(() => {
+    const fetchApplicationHistory = async () => {
+      if (!user?.id) return;
+      
+      try {
+        setIsLoading(true);
+        const data = await jobService.getJobApplications(user.id);
+        setApplicationHistory(data || { applications: [], savedJobs: [] });
+      } catch (error) {
+        console.error('Error fetching application history:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const { data: applicationHistory = { applications: [], savedJobs: [] } } = useQuery<ApplicationHistory>(
-    ['applications', user?.id],
-    () => jobService.getJobApplications(user?.id || ''),
-    { enabled: !!user?.id }
-  );
+    fetchApplicationHistory();
+  }, [user?.id]);
 
   const handleCvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {

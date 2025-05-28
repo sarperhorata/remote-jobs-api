@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery } from 'react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 import { formatDistanceToNow } from 'date-fns';
@@ -23,23 +22,37 @@ interface Application {
 const Applications: React.FC = () => {
   const { user } = useAuth();
   const [filter, setFilter] = useState<string>('all');
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const { data: applications, isLoading, error } = useQuery<Application[]>(
-    ['applications', user?.id],
-    async () => {
-      const response = await fetch(`${API_URL}/applications`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      if (!response.ok) throw new Error('Failed to fetch applications');
-      return response.json();
-    },
-    {
-      enabled: !!user,
-      refetchInterval: 30000 // Her 30 saniyede bir güncelle
-    }
-  );
+  useEffect(() => {
+    const fetchApplications = async () => {
+      if (!user) return;
+      
+      try {
+        setIsLoading(true);
+        const response = await fetch(`${API_URL}/applications`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        if (!response.ok) throw new Error('Failed to fetch applications');
+        const data = await response.json();
+        setApplications(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchApplications();
+    
+    // Refetch every 30 seconds
+    const interval = setInterval(fetchApplications, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   const filteredApplications = applications?.filter(app => {
     if (filter === 'all') return true;

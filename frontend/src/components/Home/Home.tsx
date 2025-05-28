@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from 'react-query';
 import { BsSearch, BsMap, BsBuilding, BsBriefcase, BsCode, BsMegaphone, BsPencil, BsChatDots, BsServer } from 'react-icons/bs';
 import { BiHealth, BiDollar, BiChalkboard, BiStore, BiPalette } from 'react-icons/bi';
 import { HomeJobService } from '../../services/AllServices';
@@ -13,10 +12,62 @@ const Home: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [location, setLocation] = useState('');
   const [jobType, setJobType] = useState('');
+  const [featuredJobs, setFeaturedJobs] = useState<Job[]>([]);
+  const [jobStats, setJobStats] = useState<any>(null);
 
-  const { data: featuredJobs } = useQuery('featuredJobs', () => HomeJobService.getFeaturedJobs());
-
-  const { data: jobStats } = useQuery('jobStats', () => HomeJobService.getJobStats());
+  useEffect(() => {
+    // Mock data for featured jobs
+    setFeaturedJobs([
+      {
+        id: '1',
+        title: 'Senior React Developer',
+        companyId: '1',
+        company: { id: '1', name: 'TechCorp', logo: '' },
+        description: 'We are looking for a senior React developer...',
+        requirements: ['React', 'TypeScript'],
+        responsibilities: ['Develop features', 'Code review'],
+        skills: ['React', 'TypeScript', 'Node.js'],
+        location: 'Remote',
+        type: 'Full-time',
+        salary: { currency: 'USD' },
+        experience: { min: 3, max: 8 },
+        education: 'Bachelor',
+        benefits: ['Health insurance', 'Remote work'],
+        applicationUrl: 'https://example.com/apply',
+        source: 'Company website',
+        sourceUrl: 'https://example.com',
+        status: 'active',
+        postedAt: new Date()
+      },
+      {
+        id: '2', 
+        title: 'Product Manager',
+        companyId: '2',
+        company: { id: '2', name: 'StartupXYZ', logo: '' },
+        description: 'Join our product team...',
+        requirements: ['Product Management', 'Analytics'],
+        responsibilities: ['Product strategy', 'Team coordination'],
+        skills: ['Product Management', 'Analytics', 'Agile'],
+        location: 'Remote',
+        type: 'Full-time',
+        salary: { currency: 'USD' },
+        experience: { min: 5, max: 10 },
+        education: 'Bachelor',
+        benefits: ['Health insurance', 'Stock options'],
+        applicationUrl: 'https://example.com/apply',
+        source: 'Company website',
+        sourceUrl: 'https://example.com',
+        status: 'active',
+        postedAt: new Date()
+      }
+    ]);
+    
+    setJobStats({
+      totalJobs: '1000+',
+      totalCompanies: '300+',
+      jobsLast24h: '5000+'
+    });
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,7 +197,7 @@ const Home: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredJobs?.map((job: Job) => (
+            {featuredJobs.map((job: Job) => (
               <JobCard key={job._id || job.id} job={job} />
             ))}
           </div>

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery } from 'react-query';
 import { useSearchParams, Link } from 'react-router-dom';
 import { jobService } from '../services/AllServices';
 import { Job } from '../types/job';
@@ -12,11 +11,24 @@ const Jobs: React.FC = () => {
     type: searchParams.get('type') || '',
     search: searchParams.get('search') || ''
   });
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { data: jobs, isLoading } = useQuery(
-    ['jobs', filters],
-    () => jobService.getJobs(filters)
-  );
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        setIsLoading(true);
+        const data: any = await jobService.getJobs(filters);
+        setJobs(Array.isArray(data) ? data : data?.jobs || []);
+      } catch (error) {
+        console.error('Error fetching jobs:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchJobs();
+  }, [filters]);
 
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;

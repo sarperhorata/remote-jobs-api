@@ -1,13 +1,10 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ThemeProvider } from './contexts/ThemeContext';
 import './App.css';
-
-// Layouts (Eğer varsa, yoksa direkt sayfaları çağırın)
-// import MainLayout from './components/Layout/MainLayout'; 
 
 // Page Components (Lazy loading for better performance)
 const HomePage = lazy(() => import('./pages/Home'));
@@ -21,13 +18,10 @@ const AIQuestionHelperPage = lazy(() => import('./pages/AIQuestionHelper'));
 const StatusPage = lazy(() => import('./pages/Status'));
 const TermsConditionsPage = lazy(() => import('./pages/TermsConditions'));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicy'));
-const CompaniesPage = lazy(() => import('./pages/Companies')); // Assuming you'll create this
-const PricingPage = lazy(() => import('./pages/Pricing'));   // Assuming you'll create this
-const HelpPage = lazy(() => import('./pages/Help'));       // Assuming you'll create this
-const ApplicationsPage = lazy(() => import('./pages/Applications')); // Assuming you'll create this
-
-// Admin Pages (Example)
-// const AdminDashboard = lazy(() => import('./pages/Admin/Dashboard'));
+const CompaniesPage = lazy(() => import('./pages/Companies'));
+const PricingPage = lazy(() => import('./pages/Pricing'));
+const HelpPage = lazy(() => import('./pages/Help'));
+const ApplicationsPage = lazy(() => import('./pages/Applications'));
 
 const queryClient = new QueryClient();
 
@@ -37,8 +31,7 @@ const App: React.FC = () => {
       <AuthProvider>
         <ThemeProvider>
           <Router>
-            <Suspense fallback={<div className="flex justify-center items-center h-screen text-xl font-semibold">Loading Buzz2Remote...</div>}> 
-              {/* <MainLayout> Optional: If you have a consistent layout across pages */}
+            <Suspense fallback={<div className="flex justify-center items-center h-screen text-xl font-semibold">Loading Buzz2Remote...</div>}>
               <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={<HomePage />} />
@@ -46,12 +39,12 @@ const App: React.FC = () => {
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/jobs" element={<JobsListPage />} />
                 <Route path="/jobs/:id" element={<JobDetailPage />} />
-                <Route path="/companies" element={<CompaniesPage />} /> {/* Placeholder */}
+                <Route path="/companies" element={<CompaniesPage />} />
                 <Route path="/status" element={<StatusPage />} />
-                <Route path="/pricing" element={<PricingPage />} /> {/* Placeholder */}
+                <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/terms" element={<TermsConditionsPage />} />
                 <Route path="/privacy" element={<PrivacyPolicyPage />} />
-                <Route path="/help" element={<HelpPage />} /> {/* Placeholder */}
+                <Route path="/help" element={<HelpPage />} />
 
                 {/* Protected Routes (Require Authentication) */}
                 <Route 
@@ -78,7 +71,7 @@ const App: React.FC = () => {
                     </ProtectedRoute>
                   }
                 />
-                 <Route 
+                <Route 
                   path="/ai-helper"
                   element={
                     <ProtectedRoute>
@@ -86,21 +79,10 @@ const App: React.FC = () => {
                     </ProtectedRoute>
                   }
                 />
-                
-                {/* Example Admin Route */}
-                {/* <Route 
-                  path="/admin/dashboard" 
-                  element={
-                    <ProtectedRoute>
-                      <AdminDashboard />
-                    </ProtectedRoute>
-                  }
-                /> */}
 
                 {/* Fallback for unmatched routes */}
-                <Route path="*" element={<Navigate to="/" replace />} /> 
+                <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
-              {/* </MainLayout> */}
             </Suspense>
           </Router>
         </ThemeProvider>

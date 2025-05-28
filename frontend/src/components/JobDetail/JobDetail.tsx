@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery } from 'react-query';
 import { jobService } from '../../services/AllServices';
 import { Job } from '../../types/job';
 
@@ -26,7 +25,30 @@ interface ExtendedJob extends Partial<{
 
 const JobDetail: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
-  
+  const [job, setJob] = useState<Job | null>(null);
+  const [similarJobs, setSimilarJobs] = useState<Job[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!id) return;
+      
+      try {
+        setIsLoading(true);
+        const jobData = await jobService.getJobById(id);
+        const similarData = await jobService.getSimilarJobs(id);
+        setJob(jobData);
+        setSimilarJobs(similarData || []);
+      } catch (error) {
+        console.error('Error fetching job data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [id]);
+
   // Early return if no id is provided
   if (!id) {
     return (
@@ -39,14 +61,6 @@ const JobDetail: React.FC = () => {
       </div>
     );
   }
-
-  const { data: job, isLoading } = useQuery(['job', id], () => jobService.getJobById(id), {
-    enabled: !!id // Only run the query if id exists
-  });
-
-  const { data: similarJobs } = useQuery(['similarJobs', id], () => jobService.getSimilarJobs(id), {
-    enabled: !!id // Only run the query if id exists
-  });
 
   if (isLoading) {
     return (
@@ -146,7 +160,7 @@ const JobDetail: React.FC = () => {
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold mb-4">Similar Jobs</h2>
               <div className="space-y-4">
-                {similarJobs?.map((similarJob: Job) => (
+                {similarJobs.map((similarJob: Job) => (
                   <Link 
                     key={similarJob._id || similarJob.id} 
                     to={`/jobs/${similarJob._id || similarJob.id}`}

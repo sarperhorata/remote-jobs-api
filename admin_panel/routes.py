@@ -23,14 +23,18 @@ logger = logging.getLogger(__name__)
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__)), "backend"))
 
 try:
-    from database import get_db
+    from database import get_async_db
     from pymongo import DESCENDING
-    db = get_db()
+    
+    # Create a connection directly for admin panel
+    async def get_admin_db():
+        async for db in get_async_db():
+            return db
+    
     DATABASE_AVAILABLE = True
     logger.info("Database connection successful for admin panel")
 except ImportError as e:
     DATABASE_AVAILABLE = False
-    db = None
     logger.warning(f"Database not available: {e}")
 
 # Templates - use absolute path
@@ -184,6 +188,7 @@ async def admin_dashboard(request: Request):
             <a href="/admin/dashboard">Dashboard</a>
             <a href="/admin/jobs">Jobs</a>
             <a href="/admin/companies">Companies</a>
+            <a href="/admin/logs">Logs</a>
             <a href="/admin/apis">API Services</a>
             <a href="/docs">API Docs</a>
         </div>
@@ -529,29 +534,20 @@ async def admin_jobs(
 ) -> HTMLResponse:
     """Job listings page with pagination and sorting"""
     
-    # Input validation
-    if page < 1:
-        page = 1
-    if sort_by not in ["created_at", "title", "company", "location", "source"]:
-        sort_by = "created_at"
-    if sort_order not in ["asc", "desc"]:
-        sort_order = "desc"
-    
-    # Check database availability
+    # Check if database is available first
     if not DATABASE_AVAILABLE:
         logger.warning("Database not available, returning demo data")
-        # Return demo data when database is not available
+        # Return demo data
         demo_jobs = [
             {
                 "_id": "demo1",
-                "title": "Senior Software Engineer",
-                "company": "Remote Company",
+                "title": "Remote Python Developer",
+                "company": "TechCorp",
                 "location": "Remote",
-                "source": "RemoteOK",
-                "url": "https://example.com",
-                "apply_url": "https://example.com/apply",
+                "source": "company_website",
+                "url": "https://techcorp.com/careers/python-dev",
                 "created_at": datetime.now(),
-                "description": "Demo job description..."
+                "description": "Exciting Python development role"
             }
         ]
         total_jobs = 1
@@ -572,7 +568,8 @@ async def admin_jobs(
         
         # Get jobs data with pagination
         try:
-            if not DATABASE_AVAILABLE or db is None:
+            db = await get_admin_db()
+            if db is None:
                 raise Exception("Database not available")
             
             total_jobs = await db.jobs.count_documents(filter_criteria)
@@ -708,6 +705,7 @@ async def admin_jobs(
             <a href="/admin/dashboard">Dashboard</a>
             <a href="/admin/jobs">Jobs</a>
             <a href="/admin/companies">Companies</a>
+            <a href="/admin/logs">Logs</a>
             <a href="/admin/apis">API Services</a>
             <a href="/docs">API Docs</a>
         </div>
@@ -937,7 +935,8 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "job_c
         
         # Get companies data with pagination
         try:
-            if not DATABASE_AVAILABLE or db is None:
+            db = await get_admin_db()
+            if db is None:
                 raise Exception("Database not available")
             
             # Build match stage for search
@@ -1035,6 +1034,7 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "job_c
             <a href="/admin/dashboard">Dashboard</a>
             <a href="/admin/jobs">Jobs</a>
             <a href="/admin/companies">Companies</a>
+            <a href="/admin/logs">Logs</a>
             <a href="/admin/apis">API Services</a>
             <a href="/docs">API Docs</a>
         </div>
@@ -1357,6 +1357,7 @@ async def admin_apis(request: Request):
             <a href="/admin/dashboard">Dashboard</a>
             <a href="/admin/jobs">Jobs</a>
             <a href="/admin/companies">Companies</a>
+            <a href="/admin/logs">Logs</a>
             <a href="/admin/apis">API Services</a>
             <a href="/docs">API Docs</a>
         </div>
@@ -1750,70 +1751,79 @@ _dashboard_cache = {"data": None, "timestamp": 0}
 CACHE_DURATION = 300  # 5 minutes
 
 async def get_dashboard_stats():
-    """Get real dashboard statistics from MongoDB with caching"""
-    global _dashboard_cache
+    """Get dashboard statistics"""
     
-    # Check cache
+    # Check cache first
     current_time = time.time()
     if (_dashboard_cache["data"] is not None and 
         current_time - _dashboard_cache["timestamp"] < CACHE_DURATION):
         return _dashboard_cache["data"]
     
-    # If cache miss, get fresh data
-    if not DATABASE_AVAILABLE or db is None:
+    if not DATABASE_AVAILABLE:
         stats = {
-            "total_jobs": 21741,
-            "total_companies": 471,
-            "active_apis": 8,
-            "jobs_today": 679,
-            "active_jobs": 15000,
-            "remote_jobs": 20000
+            "total_jobs": 1000,
+            "total_companies": 50,
+            "active_jobs": 800,
+            "jobs_today": 25,
+            "remote_jobs": 600,
+            "active_apis": 5,
+            "last_update": datetime.now()
         }
     else:
         try:
-            # Get total jobs
+            db = await get_admin_db()
+            if db is None:
+                raise Exception("Database not available")
+            
+            # Get job statistics
             total_jobs = await db.jobs.count_documents({})
+            active_jobs = await db.jobs.count_documents({"is_active": True})
             
-            # Get total companies
-            total_companies_list = await db.jobs.distinct("company")
-            total_companies_count = len(total_companies_list) if total_companies_list else 0
-            
-            # Get jobs today
+            # Jobs added today
             today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
             jobs_today = await db.jobs.count_documents({
                 "created_at": {"$gte": today}
             })
             
-            # Get active jobs
-            active_jobs = await db.jobs.count_documents({
-                "is_active": True
-            })
-            
-            # Get remote jobs
+            # Remote jobs
             remote_jobs = await db.jobs.count_documents({
-                "location": {"$regex": "remote", "$options": "i"}
+                "$or": [
+                    {"location": {"$regex": "remote", "$options": "i"}},
+                    {"location": {"$regex": "anywhere", "$options": "i"}},
+                    {"remote": True}
+                ]
             })
             
-            # Active APIs (hardcoded for now)
-            active_apis = 8
+            # Company count (distinct companies)
+            companies_pipeline = [
+                {"$group": {"_id": "$company"}},
+                {"$count": "total"}
+            ]
+            company_count_cursor = db.jobs.aggregate(companies_pipeline)
+            company_result = await company_count_cursor.to_list(length=1)
+            total_companies = company_result[0]["total"] if company_result else 0
             
             stats = {
                 "total_jobs": total_jobs,
-                "total_companies": total_companies_count,
-                "active_apis": active_apis,
-                "jobs_today": jobs_today,
+                "total_companies": total_companies,
                 "active_jobs": active_jobs,
-                "remote_jobs": remote_jobs
+                "jobs_today": jobs_today,
+                "remote_jobs": remote_jobs,
+                "active_apis": 5,  # Static for now
+                "last_update": datetime.now()
             }
+            
         except Exception as e:
-            print(f"Error getting dashboard stats: {e}")
+            logger.error(f"Error getting dashboard stats: {e}")
+            # Fallback stats
             stats = {
-                "total_jobs": 21741,
-                "total_companies": 471,
-                "active_apis": 8,
-                "jobs_today": 679,
-                "active_jobs": 15000,
-                "remote_jobs": 20000
+                "total_jobs": 0,
+                "total_companies": 0,
+                "active_jobs": 0,
+                "jobs_today": 0,
+                "remote_jobs": 0,
+                "active_apis": 0,
+                "last_update": datetime.now()
             }
     
     # Update cache
@@ -1823,30 +1833,34 @@ async def get_dashboard_stats():
     return stats
 
 async def get_recent_jobs(limit=10):
-    """Get recent jobs from MongoDB"""
-    if not DATABASE_AVAILABLE or db is None:
+    """Get recent jobs for dashboard"""
+    
+    if not DATABASE_AVAILABLE:
         return [
             {
-                "_id": "1",
-                "title": "Senior Software Engineer",
-                "company": "Remote Company",
+                "_id": "demo1",
+                "title": "Python Developer",
+                "company": "TechCorp",
                 "location": "Remote",
-                "source": "RemoteOK",
                 "created_at": datetime.now()
             }
         ]
     
     try:
-        jobs_cursor = db.jobs.find({}).sort("created_at", DESCENDING).limit(limit)
+        db = await get_admin_db()
+        if db is None:
+            return []
+        
+        jobs_cursor = db.jobs.find().sort("created_at", -1).limit(limit)
         jobs = await jobs_cursor.to_list(length=limit)
         return jobs
     except Exception as e:
-        print(f"Error getting recent jobs: {e}")
+        logger.error(f"Error getting recent jobs: {e}")
         return []
 
 async def get_companies_data(limit=50):
     """Get companies data from MongoDB"""
-    if not DATABASE_AVAILABLE or db is None:
+    if not DATABASE_AVAILABLE:
         return [
             {
                 "_id": "1",
@@ -1858,6 +1872,10 @@ async def get_companies_data(limit=50):
         ]
     
     try:
+        db = await get_admin_db()
+        if db is None:
+            return []
+        
         # Aggregate companies with job counts
         pipeline = [
             {"$group": {
@@ -1891,42 +1909,52 @@ async def get_companies_data(limit=50):
 
 @admin_router.get("/job-details/{job_id}")
 async def get_job_details(job_id: str):
-    """Get detailed information about a specific job"""
+    """Get detailed job information for modal display"""
+    
+    if not DATABASE_AVAILABLE:
+        return {
+            "_id": job_id,
+            "title": "Demo Job",
+            "company": "Demo Company",
+            "location": "Remote",
+            "source": "demo",
+            "url": "https://example.com",
+            "apply_url": "https://example.com/apply",
+            "created_at": datetime.now().isoformat(),
+            "description": "This is a demo job description for testing purposes."
+        }
+    
     try:
-        if not DATABASE_AVAILABLE or db is None:
-            raise HTTPException(status_code=503, detail="Database not available")
+        db = await get_admin_db()
+        if db is None:
+            raise Exception("Database not available")
         
-        from bson import ObjectId
-        
-        job = await db.jobs.find_one({"_id": ObjectId(job_id)})
+        # Convert string ID to ObjectId if needed
+        try:
+            object_id = ObjectId(job_id)
+            job = await db.jobs.find_one({"_id": object_id})
+        except:
+            # If ObjectId conversion fails, try string ID
+            job = await db.jobs.find_one({"_id": job_id})
         
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
         
-        # Format the job data
-        job_data = {
-            "_id": str(job["_id"]),
-            "title": job.get("title", "Unknown Title"),
-            "company": job.get("company", "Unknown Company"),
-            "location": job.get("location", "Remote"),
-            "source": job.get("source", "Unknown"),
-            "description": job.get("description", "No description available"),
-            "url": job.get("url", ""),
-            "apply_url": job.get("apply_url", job.get("url", "")),  # Use apply_url if available, fallback to url
-            "created_at": job.get("created_at", datetime.now()).isoformat() if isinstance(job.get("created_at"), datetime) else str(job.get("created_at", "")),
-            "salary": job.get("salary", ""),
-            "job_type": job.get("job_type", ""),
-            "requirements": job.get("requirements", ""),
-            "benefits": job.get("benefits", "")
-        }
+        # Convert ObjectId to string for JSON serialization
+        if "_id" in job:
+            job["_id"] = str(job["_id"])
         
-        return job_data
+        # Ensure created_at is serializable
+        if "created_at" in job and hasattr(job["created_at"], "isoformat"):
+            job["created_at"] = job["created_at"].isoformat()
+        
+        return job
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching job details: {str(e)}")
-        raise HTTPException(status_code=500, detail="Error fetching job details")
+        logger.error(f"Error getting job details for {job_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving job details: {str(e)}")
 
 def sanitize_input(input_str: str) -> str:
     """Sanitize user input to prevent injection attacks"""

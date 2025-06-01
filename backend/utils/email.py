@@ -11,7 +11,9 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-def send_email(to_email: str, subject: str, body: str) -> bool:
+def send_email(to_email: str, subject: str, body: str, 
+               smtp_server: str = None, smtp_port: int = None,
+               smtp_username: str = None, smtp_password: str = None) -> bool:
     """
     E-posta gönderir.
     
@@ -19,14 +21,20 @@ def send_email(to_email: str, subject: str, body: str) -> bool:
         to_email: Alıcı e-posta adresi
         subject: E-posta konusu
         body: E-posta içeriği
+        smtp_server: SMTP sunucu adresi (opsiyonel)
+        smtp_port: SMTP port numarası (opsiyonel)
+        smtp_username: SMTP kullanıcı adı (opsiyonel)
+        smtp_password: SMTP şifre (opsiyonel)
         
     Returns:
         bool: E-posta gönderildi mi?
     """
     try:
-        # E-posta ayarları
-        sender_email = os.getenv("EMAIL_USERNAME", "noreply@remotejobs.com")
-        password = os.getenv("EMAIL_PASSWORD", "")
+        # E-posta ayarları - parametreler varsa kullan, yoksa environment'tan al
+        sender_email = smtp_username or os.getenv("EMAIL_USERNAME", "noreply@remotejobs.com")
+        password = smtp_password or os.getenv("EMAIL_PASSWORD", "")
+        server_host = smtp_server or os.getenv("SMTP_HOST", "smtp.gmail.com")
+        server_port = smtp_port or int(os.getenv("SMTP_PORT", "587"))
         
         # E-posta içeriği
         msg = MIMEMultipart()
@@ -37,7 +45,7 @@ def send_email(to_email: str, subject: str, body: str) -> bool:
         msg.attach(MIMEText(body, "html"))
         
         # E-posta gönder
-        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server = smtplib.SMTP(server_host, server_port)
         server.starttls()
         server.login(sender_email, password)
         server.send_message(msg)

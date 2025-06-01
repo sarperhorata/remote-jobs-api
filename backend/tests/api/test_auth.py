@@ -93,7 +93,7 @@ async def test_register_invalid_email(async_client, mongodb):
         json={
             "email": "invalid-email",
             "password": "testpassword123",
-            "full_name": "Test User"
+            "name": "Test User"
         }
     )
     assert response.status_code == 422
@@ -108,7 +108,7 @@ async def test_register_short_password(async_client, mongodb):
         json={
             "email": "test@example.com",
             "password": "short",
-            "full_name": "Test User"
+            "name": "Test User"
         }
     )
     assert response.status_code == 422
@@ -134,7 +134,7 @@ async def test_get_current_user(async_client, test_user_data, mongodb):
     assert response.status_code == 200
     data = response.json()
     assert data["email"] == test_user_data["email"]
-    assert data["full_name"] == test_user_data["full_name"]
+    assert data["full_name"] == test_user_data["name"]
 
 @pytest.mark.asyncio
 async def test_get_current_user_no_token(async_client):

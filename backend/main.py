@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
 import logging
 import sys
 import os
@@ -14,25 +15,25 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.routes import auth, profile, jobs, ads, notification_routes, companies, payment
 from backend.routes.legal import router as legal_router
-from backend.database import get_async_db, ensure_indexes
+from backend.database import get_async_db, ensure_indexes, close_db_connections, init_database
 
 # Import Telegram bot
-# try:
-#     from telegram_bot.bot import RemoteJobsBot
-#     TELEGRAM_BOT_AVAILABLE = True
-# except ImportError as e:
-#     logging.warning(f"Telegram bot not available: {e}")
-#     TELEGRAM_BOT_AVAILABLE = False
-TELEGRAM_BOT_AVAILABLE = False  # Temporarily disabled due to conflicts
+try:
+    from backend.telegram_bot.bot import RemoteJobsBot
+    TELEGRAM_BOT_AVAILABLE = True
+    logging.info("Telegram bot available")
+except ImportError as e:
+    logging.warning(f"Telegram bot not available: {e}")
+    TELEGRAM_BOT_AVAILABLE = False
 
 # Import scheduler service
-# try:
-#     from services.scheduler_service import start_scheduler, stop_scheduler, get_scheduler
-#     SCHEDULER_AVAILABLE = True
-# except ImportError as e:
-#     logging.warning(f"Scheduler service not available: {e}")
-#     SCHEDULER_AVAILABLE = False
-SCHEDULER_AVAILABLE = False  # Temporarily disabled
+try:
+    from backend.services.scheduler_service import start_scheduler, stop_scheduler, get_scheduler
+    SCHEDULER_AVAILABLE = True
+    logging.info("Scheduler service available")
+except ImportError as e:
+    logging.warning(f"Scheduler service not available: {e}")
+    SCHEDULER_AVAILABLE = False
 
 # Configure logging - optimized for minimal bandwidth usage
 log_level = os.getenv("LOG_LEVEL", "WARNING").upper()
@@ -45,9 +46,9 @@ logger = logging.getLogger(__name__)
 
 # Import admin panel
 try:
-    # Use the root admin panel instead of backend admin panel
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from admin_panel.routes import admin_router
+    # Use the backend admin panel routes
+    from backend.admin_panel.routes import admin_router
+    # from backend.admin_panel.logs_routes import logs_router  # Comment out if not available
     ADMIN_PANEL_AVAILABLE = True
     logger.info("Admin panel imported successfully")
 except ImportError as e:
@@ -58,7 +59,111 @@ except ImportError as e:
 telegram_bot = None
 scheduler = None
 
-# Create FastAPI app with custom docs URLs
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Modern lifespan context manager for FastAPI startup and shutdown."""
+    global telegram_bot, scheduler
+    
+    # Startup
+    try:
+        # Initialize database connection
+        await init_database()
+        
+        # Test database connection
+        from backend.database import db
+        await db.command('ping')
+        logger.info("Async MongoDB connection pool initialized!")
+        
+        # Ensure indexes
+        await ensure_indexes()
+    except Exception as e:
+        logger.error(f"Could not connect to MongoDB: {str(e)}")
+        raise e
+    
+    # Initialize Telegram bot
+    if TELEGRAM_BOT_AVAILABLE:
+        try:
+            telegram_bot = RemoteJobsBot()
+            if telegram_bot.enabled:
+                # Start bot in background
+                asyncio.create_task(telegram_bot.run_async())
+                logger.info("Telegram bot started successfully!")
+                
+                # Send comprehensive startup notification
+                startup_data = {
+                    'environment': 'production' if os.getenv('ENVIRONMENT') == 'production' else 'development',
+                    'status': 'success',
+                    'commit': os.getenv('RENDER_GIT_COMMIT', 'unknown')[:8],
+                    'message': 'Backend service started successfully',
+                    'timestamp': datetime.now().isoformat(),
+                    'services': ['MongoDB Atlas', 'FastAPI', 'Telegram Bot', 'Scheduler Service'],
+                    'endpoints': ['/docs', '/admin', '/api/jobs', '/scheduler/status'],
+                    'features': ['External API Crawler', 'Buzz2Remote-Companies Crawler', 'Cloud Cronjobs']
+                }
+                await telegram_bot.send_deployment_notification(startup_data)
+            else:
+                logger.warning("Telegram bot is disabled")
+        except Exception as e:
+            logger.error(f"Failed to start Telegram bot: {str(e)}")
+    else:
+        logger.warning("Telegram bot not available")
+    
+    # Initialize scheduler service
+    if SCHEDULER_AVAILABLE:
+        try:
+            scheduler = await start_scheduler()
+            logger.info("Scheduler service started successfully!")
+            
+            # Send detailed scheduler startup notification
+            if telegram_bot and telegram_bot.enabled:
+                scheduler_data = {
+                    'environment': 'production' if os.getenv('ENVIRONMENT') == 'production' else 'development',
+                    'status': 'success',
+                    'commit': os.getenv('RENDER_GIT_COMMIT', 'unknown')[:8],
+                    'message': 'All cloud cronjobs are now active and running',
+                    'timestamp': datetime.now().isoformat(),
+                    'cronjobs': [
+                        'Health Check (every 14 min)',
+                        'External API Crawler (daily 9 AM UTC)',
+                        'Buzz2Remote-Companies (daily 10 AM UTC)',
+                        'Database Cleanup (weekly Sunday 2 AM UTC)',
+                        'Job Statistics (daily 8 AM UTC)'
+                    ]
+                }
+                await telegram_bot.send_deployment_notification(scheduler_data)
+                
+        except Exception as e:
+            logger.error(f"Failed to start scheduler service: {str(e)}")
+    else:
+        logger.warning("Scheduler service not available")
+    
+    yield  # This separates startup from shutdown
+    
+    # Shutdown
+    # Stop scheduler
+    if scheduler:
+        try:
+            await stop_scheduler()
+            logger.info("Scheduler service stopped")
+        except Exception as e:
+            logger.error(f"Error stopping scheduler service: {str(e)}")
+    
+    # Stop Telegram bot
+    if telegram_bot and telegram_bot.enabled:
+        try:
+            await telegram_bot.stop()
+            logger.info("Telegram bot stopped")
+        except Exception as e:
+            logger.error(f"Error stopping Telegram bot: {str(e)}")
+    
+    # Close database connections
+    try:
+        await close_db_connections()
+        logger.info("Database connections closed")
+    except Exception as e:
+        logger.error(f"Error closing database connections: {str(e)}")
+
+# Create FastAPI app with lifespan
 app = FastAPI(
     title="🚀 Buzz2Remote API",
     description="""
@@ -126,6 +231,7 @@ app = FastAPI(
     docs_url="/docs",  # Swagger UI at /docs
     redoc_url="/redoc",  # ReDoc at /redoc
     openapi_url="/openapi.json",  # OpenAPI schema at /openapi.json
+    lifespan=lifespan,  # Use lifespan instead of on_event
     contact={
         "name": "Buzz2Remote Team",
         "url": "https://github.com/sarperhorata/remote-jobs-api",
@@ -163,8 +269,8 @@ app.add_middleware(
 )
 
 # Mount static files for admin panel
-# Use root admin panel static files
-admin_static_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "admin_panel", "static")
+# Use backend admin panel static files
+admin_static_path = os.path.join(os.path.dirname(__file__), "admin_panel", "static")
 if os.path.exists(admin_static_path):
     app.mount("/admin/static", StaticFiles(directory=admin_static_path), name="admin_static")
 
@@ -181,8 +287,9 @@ try:
     
     # Include admin panel if available
     if ADMIN_PANEL_AVAILABLE:
-        # Include admin router (no prefix needed as it's already defined in the router)
-        app.include_router(admin_router, tags=["admin"])
+        # Include admin router with /admin prefix
+        app.include_router(admin_router, prefix="/admin", tags=["admin"])
+        # app.include_router(logs_router, prefix="/admin", tags=["admin-logs"])
         logger.info("Admin panel included successfully")
         logger.info(f"Admin routes: {[route.path for route in admin_router.routes]}")
     else:
@@ -196,107 +303,6 @@ except Exception as e:
 # Initialize Stripe
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
-
-@app.on_event("startup")
-async def startup_db_client():
-    global telegram_bot, scheduler
-    
-    try:
-        # Initialize database connection pool - use db directly instead of the generator
-        from backend.database import db
-        await db.command('ping')
-        logger.info("Async MongoDB connection pool initialized!")
-        
-        # Ensure indexes
-        await ensure_indexes()
-    except Exception as e:
-        logger.error(f"Could not connect to MongoDB: {str(e)}")
-        raise e
-    
-    # Initialize Telegram bot
-    if TELEGRAM_BOT_AVAILABLE:
-        try:
-            telegram_bot = RemoteJobsBot()
-            if telegram_bot.enabled:
-                # Start bot in background
-                asyncio.create_task(telegram_bot.run_async())
-                logger.info("Telegram bot started successfully!")
-                
-                # Send comprehensive startup notification
-                startup_data = {
-                    'environment': 'production' if os.getenv('ENVIRONMENT') == 'production' else 'development',
-                    'status': 'success',
-                    'commit': os.getenv('RENDER_GIT_COMMIT', 'unknown')[:8],
-                    'message': 'Backend service started successfully',
-                    'timestamp': datetime.now().isoformat(),
-                    'services': ['MongoDB Atlas', 'FastAPI', 'Telegram Bot', 'Scheduler Service'],
-                    'endpoints': ['/docs', '/admin', '/api/jobs', '/scheduler/status'],
-                    'features': ['External API Crawler', 'Buzz2Remote-Companies Crawler', 'Cloud Cronjobs']
-                }
-                await telegram_bot.send_deployment_notification(startup_data)
-            else:
-                logger.warning("Telegram bot is disabled")
-        except Exception as e:
-            logger.error(f"Failed to start Telegram bot: {str(e)}")
-    else:
-        logger.warning("Telegram bot not available")
-    
-    # Initialize scheduler service
-    if SCHEDULER_AVAILABLE:
-        try:
-            scheduler = await start_scheduler()
-            logger.info("Scheduler service started successfully!")
-            
-            # Send detailed scheduler startup notification
-            if telegram_bot and telegram_bot.enabled:
-                scheduler_data = {
-                    'environment': 'production' if os.getenv('ENVIRONMENT') == 'production' else 'development',
-                    'status': 'success',
-                    'commit': os.getenv('RENDER_GIT_COMMIT', 'unknown')[:8],
-                    'message': 'All cloud cronjobs are now active and running',
-                    'timestamp': datetime.now().isoformat(),
-                    'cronjobs': [
-                        'Health Check (every 14 min)',
-                        'External API Crawler (daily 9 AM UTC)',
-                        'Buzz2Remote-Companies (daily 10 AM UTC)',
-                        'Database Cleanup (weekly Sunday 2 AM UTC)',
-                        'Job Statistics (daily 8 AM UTC)'
-                    ]
-                }
-                await telegram_bot.send_deployment_notification(scheduler_data)
-                
-        except Exception as e:
-            logger.error(f"Failed to start scheduler service: {str(e)}")
-    else:
-        logger.warning("Scheduler service not available")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    global telegram_bot, scheduler
-    
-    # Stop scheduler
-    if scheduler:
-        try:
-            await stop_scheduler()
-            logger.info("Scheduler service stopped")
-        except Exception as e:
-            logger.error(f"Error stopping scheduler service: {str(e)}")
-    
-    # Stop Telegram bot
-    if telegram_bot and telegram_bot.enabled:
-        try:
-            await telegram_bot.stop()
-            logger.info("Telegram bot stopped")
-        except Exception as e:
-            logger.error(f"Error stopping Telegram bot: {str(e)}")
-    
-    # Close database connections
-    try:
-        from backend.database import close_db_connections
-        await close_db_connections()
-        logger.info("Database connections closed")
-    except Exception as e:
-        logger.error(f"Error closing database connections: {str(e)}")
 
 @app.get("/", 
     summary="🏠 API Welcome & Information",

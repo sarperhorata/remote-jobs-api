@@ -1,9 +1,12 @@
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 from typing import Optional, List, Union
 from functools import lru_cache
-from pydantic import Extra
+import os
 
 class Settings(BaseSettings):
+    model_config = ConfigDict(extra='ignore', env_file=".env", case_sensitive=True)
+    
     # Environment
     ENVIRONMENT: str = "development"
     
@@ -87,11 +90,6 @@ class Settings(BaseSettings):
         if isinstance(self.CORS_ORIGINS, str):
             return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
         return self.CORS_ORIGINS
-
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
-        extra = Extra.ignore
 
 @lru_cache()
 def get_settings() -> Settings:

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
 interface UserProfile {
   email: string;
@@ -57,7 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(false);
 
   // Static mock user for development
-  const staticMockUser: User = {
+  const staticMockUser: User = useMemo(() => ({
     id: 'user-1',
     name: 'Sarper Horata',
     email: 'sarperhorata@gmail.com',
@@ -96,10 +96,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ],
       cvUrl: 'https://example.com/cv.pdf'
     }
-  };
+  }), []);
 
   // Function to load user data
-  const loadUser = async () => {
+  const loadUser = useCallback(async () => {
     if (process.env.NODE_ENV === 'test') {
       // In test environment, start with null user
       setUser(null);
@@ -140,11 +140,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [staticMockUser]);
 
   useEffect(() => {
     loadUser();
-  }, []);
+  }, [loadUser]);
 
   const login = async (email: string, password: string) => {
     if (process.env.NODE_ENV === 'test') {

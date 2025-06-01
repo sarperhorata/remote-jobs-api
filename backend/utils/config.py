@@ -36,19 +36,24 @@ EMAIL_USERNAME = os.getenv("EMAIL_USERNAME", "")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "")
 EMAIL_FROM = os.getenv("EMAIL_FROM", "")
 
+# Database settings
+DATABASE_URL = os.getenv("DATABASE_URL", "process.env.MONGODB_URI/")
+IS_PRODUCTION = os.getenv("ENVIRONMENT", "development").lower() == "production"
+
 # Telegram settings
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "6789123456:AAEhKL_demo_token_for_development")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "-1001234567890")
 TELEGRAM_ENABLED = bool(TELEGRAM_BOT_TOKEN and TELEGRAM_BOT_TOKEN.strip())
+
+# Development mode için Telegram'ı her zaman enable et
+if not IS_PRODUCTION and TELEGRAM_BOT_TOKEN.startswith("6789123456"):
+    logger.info("Telegram bot enabled for development with demo token")
+    TELEGRAM_ENABLED = True
 
 if not TELEGRAM_ENABLED and (os.getenv("TELEGRAM_BOT_TOKEN") is not None):
     logger.warning("TELEGRAM_BOT_TOKEN is set but appears to be empty. Telegram features will be disabled.")
 elif not TELEGRAM_ENABLED:
     logger.info("TELEGRAM_BOT_TOKEN is not set. Telegram features will be disabled.")
-
-# Database settings
-DATABASE_URL = os.getenv("DATABASE_URL", "process.env.MONGODB_URI/")
-IS_PRODUCTION = os.getenv("ENVIRONMENT", "development").lower() == "production"
 
 # Crawler settings
 USER_AGENT = os.getenv("USER_AGENT", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")

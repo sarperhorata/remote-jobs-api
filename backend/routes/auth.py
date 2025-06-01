@@ -93,7 +93,7 @@ async def register_user(
     hashed_password = get_password_hash(user.password)
     user_dict = {
         "email": user.email,
-        "full_name": user.full_name,
+        "full_name": user.name,
         "hashed_password": hashed_password,
         "is_active": True,
         "created_at": datetime.utcnow(),
@@ -111,7 +111,7 @@ async def register_user(
         "user": {
             "id": str(result.inserted_id),
             "email": user.email,
-            "full_name": user.full_name
+            "full_name": user.name
         }
     }
 

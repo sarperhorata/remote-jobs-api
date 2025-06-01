@@ -63,7 +63,7 @@ class TestDatabase:
         """Test that close_db_connections properly closes client."""
         mock_client = MagicMock()
         
-        with patch('backend.database.client', mock_client):
+        with patch('backend.database.motor_client', mock_client):
             await close_db_connections()
             
         mock_client.close.assert_called_once()
@@ -74,7 +74,7 @@ class TestDatabase:
         mock_client = MagicMock()
         mock_client.close.side_effect = Exception("Connection close failed")
         
-        with patch('backend.database.client', mock_client):
+        with patch('backend.database.motor_client', mock_client):
             # Should not raise exception
             await close_db_connections()
     

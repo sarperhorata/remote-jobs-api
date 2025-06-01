@@ -1,26 +1,26 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface UserProfile {
-  name: string;
   email: string;
+  name: string;
   phone: string;
   location: string;
-  cvUrl: string;
   skills: string[];
-  experience: {
+  experience: Array<{
     title: string;
     company: string;
     startDate: string;
     endDate: string | null;
     description: string;
-  }[];
-  education: {
+  }>;
+  education: Array<{
     school: string;
     degree: string;
     field: string;
     startDate: string;
-    endDate: string | null;
-  }[];
+    endDate: string;
+  }>;
+  cvUrl: string;
 }
 
 interface User {
@@ -42,29 +42,32 @@ export interface AuthContextType {
   refreshUser: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | null>(null);
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 
-export function AuthProvider({ children }: AuthProviderProps) {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Mock user for demo purposes
-  const mockUser: User = {
+  // Static mock user for development
+  const staticMockUser: User = {
     id: 'user-1',
     name: 'Sarper Horata',
     email: 'sarperhorata@gmail.com',
     profilePicture: 'https://via.placeholder.com/150',
-    role: 'admin',
+    role: 'admin' as const,
     profile: {
-      name: 'Sarper Horata',
       email: 'sarperhorata@gmail.com',
+      name: 'Sarper Horata',
       phone: '+90 555 123 4567',
       location: 'Istanbul, Turkey',
-      cvUrl: 'https://example.com/cv.pdf',
       skills: ['React', 'TypeScript', 'Node.js', 'Python', 'Docker'],
       experience: [
         {
@@ -90,106 +93,191 @@ export function AuthProvider({ children }: AuthProviderProps) {
           startDate: '2014-09',
           endDate: '2018-05'
         }
-      ]
+      ],
+      cvUrl: 'https://example.com/cv.pdf'
     }
   };
 
-  // Sabit kullanıcı bilgisi - referansı değişmeyecek
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const staticMockUser = React.useMemo(() => mockUser, []);
+  // Function to load user data
+  const loadUser = async () => {
+    if (process.env.NODE_ENV === 'test') {
+      // In test environment, start with null user
+      setUser(null);
+      setIsLoading(false);
+      return;
+    }
 
-  useEffect(() => {
-    // Simulate loading user from localStorage or session
-    const loadUser = async () => {
+    try {
       setIsLoading(true);
-      try {
-        // In a real app, check if user is logged in from token/localStorage
-        // Set user immediately for tests to avoid async issues
-        if (process.env.NODE_ENV === 'test') {
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        // In development, show mock user for demo purposes
+        if (process.env.NODE_ENV === 'development') {
+          await new Promise(resolve => setTimeout(resolve, 500));
           setUser(staticMockUser);
         } else {
-          await new Promise(resolve => setTimeout(resolve, 500));
-          setUser(staticMockUser); // Always logged in for demo
+          setUser(null);
         }
-      } catch (error) {
-        console.error('Failed to load user:', error);
-        setUser(null);
-      } finally {
-        setIsLoading(false);
+        return;
       }
-    };
 
-    loadUser();
-  }, [staticMockUser]); // Sabit kullanıcı referansını bağımlılık olarak kullan
-
-  const login = async (email: string, password: string) => {
-    setIsLoading(true);
-    try {
-      // In a real app, make API call to authenticate
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setUser(staticMockUser);
-    } catch (error) {
-      console.error('Login failed:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const logout = () => {
-    // In a real app, clear tokens/localStorage
-    setUser(null);
-  };
-
-  const signup = async (name: string, email: string, password: string) => {
-    setIsLoading(true);
-    try {
-      // In a real app, make API call to create account
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setUser({
-        id: 'new-user',
-        name,
-        email,
+      // Try to fetch user data with token
+      const response = await fetch('/api/auth/me', {
+        headers: { Authorization: `Bearer ${token}` }
       });
-    } catch (error) {
-      console.error('Signup failed:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const refreshUser = async () => {
-    setIsLoading(true);
-    try {
-      // In a real app, make API call to refresh user data
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setUser(staticMockUser);
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+      } else {
+        localStorage.removeItem('token');
+        setUser(null);
+      }
     } catch (error) {
-      console.error('Failed to refresh user:', error);
+      console.error('Failed to load user:', error);
       setUser(null);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const value = {
-    user,
-    isAuthenticated: !!user,
-    isLoading,
-    login,
-    logout,
-    signup,
-    refreshUser,
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  const login = async (email: string, password: string) => {
+    if (process.env.NODE_ENV === 'test') {
+      // Mock login for tests
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
+      setUser(data.user);
+      localStorage.setItem('token', data.token);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        setUser(data.user || staticMockUser);
+        localStorage.setItem('token', data.token || 'demo-token');
+      } else {
+        throw new Error(data.message || 'Login failed');
+      }
+    } catch (error) {
+      throw error;
+    }
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
+  const signup = async (name: string, email: string, password: string) => {
+    if (process.env.NODE_ENV === 'test') {
+      // Mock signup for tests
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password })
+      });
 
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-} 
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Signup failed');
+      }
+
+      setUser(data.user);
+      localStorage.setItem('token', data.token);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password })
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        setUser(data.user || { ...staticMockUser, name, email });
+        localStorage.setItem('token', data.token || 'demo-token');
+      } else {
+        throw new Error(data.message || 'Signup failed');
+      }
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('token');
+  };
+
+  const refreshUser = async () => {
+    if (process.env.NODE_ENV === 'test') {
+      // Mock refresh for tests
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch('/api/auth/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+      }
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch('/api/auth/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+      }
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+    }
+  };
+
+  const isAuthenticated = !!user;
+
+  return (
+    <AuthContext.Provider value={{
+      user,
+      isAuthenticated,
+      isLoading,
+      login,
+      logout,
+      signup,
+      refreshUser
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}; 

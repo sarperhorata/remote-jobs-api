@@ -27,8 +27,15 @@ jobs:
     - name: Install dependencies
       run: npm ci
     
-    - name: Run tests
-      run: npm test -- --coverage --watchAll=false
+    - name: Run tests with coverage
+      run: npm test -- --coverage --watchAll=false --coverageReporters=text-lcov --coverageReporters=json-summary
+    
+    - name: Extract coverage percentage
+      id: coverage
+      run: |
+        COVERAGE=$(cat coverage/coverage-summary.json | jq '.total.lines.pct')
+        echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+        echo "Frontend test coverage: $COVERAGE%"
     
     - name: Build frontend
       run: npm run build
@@ -58,12 +65,24 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        pip install pytest-cov
     
-    - name: Run tests
+    - name: Run tests with coverage
       env:
         MONGODB_URL: mongodb://localhost:27017/test_db
         ENVIRONMENT: test
-      run: python -m pytest tests/ -v --tb=short
+      run: |
+        python -m pytest tests/ -v --tb=short --cov=. --cov-report=json
+    
+    - name: Extract test results
+      id: test_results
+      run: |
+        # Count test results
+        TOTAL_TESTS=$(python -m pytest tests/ --collect-only -q 2>/dev/null | grep "tests collected" | sed 's/ tests collected//' | tail -1)
+        COVERAGE=$(cat coverage.json | jq '.totals.percent_covered')
+        echo "total_tests=$TOTAL_TESTS" >> $GITHUB_OUTPUT
+        echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+        echo "Backend tests: $TOTAL_TESTS total, Coverage: $COVERAGE%"
     
     - name: Check API health
       env:
@@ -99,12 +118,13 @@ jobs:
       run: npm run build
     
     - name: Deploy to Netlify
+      id: netlify_deploy
       uses: nwtgck/actions-netlify@v2.0
       with:
         publish-dir: './frontend/build'
         production-branch: main
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        deploy-message: "Deploy from GitHub Actions"
+        deploy-message: "Deploy from GitHub Actions - Frontend Coverage: ${{ needs.test-frontend.outputs.coverage }}%"
       env:
         NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
@@ -117,25 +137,102 @@ jobs:
     
     steps:
     - name: Deploy to Render
+      id: render_deploy
       run: |
         echo "🚀 Deploying backend to Render..."
         if [ "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
-          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
-          echo "✅ Backend deployment triggered successfully"
+          RESPONSE=$(curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" -w "%{http_code}")
+          if [ $RESPONSE -eq 200 ]; then
+            echo "✅ Backend deployment triggered successfully"
+            echo "deploy_status=success" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Backend deployment failed with status: $RESPONSE"
+            echo "deploy_status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
         else
           echo "❌ RENDER_DEPLOY_HOOK_URL secret not set"
+          echo "deploy_status=failed" >> $GITHUB_OUTPUT
           exit 1
         fi
+
+  deployment-report:
+    name: Generate Deployment Report
+    runs-on: ubuntu-latest
+    needs: [test-frontend, test-backend, deploy-frontend, deploy-backend]
+    if: always()
+    
+    steps:
+    - name: Create deployment report
+      run: |
+        echo "# 🚀 Deployment Report" > deployment_report.md
+        echo "" >> deployment_report.md
+        echo "**Deployment Date:** $(date)" >> deployment_report.md
+        echo "**Commit:** ${{ github.sha }}" >> deployment_report.md
+        echo "**Branch:** ${{ github.ref_name }}" >> deployment_report.md
+        echo "" >> deployment_report.md
+        echo "## 📊 Test Results" >> deployment_report.md
+        echo "" >> deployment_report.md
+        echo "### Frontend" >> deployment_report.md
+        echo "- **Status:** ${{ needs.test-frontend.result }}" >> deployment_report.md
+        echo "- **Test Coverage:** ${{ needs.test-frontend.outputs.coverage }}%" >> deployment_report.md
+        echo "" >> deployment_report.md
+        echo "### Backend" >> deployment_report.md
+        echo "- **Status:** ${{ needs.test-backend.result }}" >> deployment_report.md
+        echo "- **Total Tests:** ${{ needs.test-backend.outputs.total_tests }}" >> deployment_report.md
+        echo "- **Coverage:** ${{ needs.test-backend.outputs.coverage }}%" >> deployment_report.md
+        echo "" >> deployment_report.md
+        echo "## 🚀 Deployment Status" >> deployment_report.md
+        echo "" >> deployment_report.md
+        echo "### Frontend (Netlify)" >> deployment_report.md
+        echo "- **Status:** ${{ needs.deploy-frontend.result }}" >> deployment_report.md
+        echo "" >> deployment_report.md
+        echo "### Backend (Render)" >> deployment_report.md
+        echo "- **Status:** ${{ needs.deploy-backend.result }}" >> deployment_report.md
+        echo "" >> deployment_report.md
+        
+        # Calculate success rate
+        SUCCESS_COUNT=0
+        TOTAL_COUNT=4
+        
+        if [ "${{ needs.test-frontend.result }}" == "success" ]; then SUCCESS_COUNT=$((SUCCESS_COUNT + 1)); fi
+        if [ "${{ needs.test-backend.result }}" == "success" ]; then SUCCESS_COUNT=$((SUCCESS_COUNT + 1)); fi
+        if [ "${{ needs.deploy-frontend.result }}" == "success" ]; then SUCCESS_COUNT=$((SUCCESS_COUNT + 1)); fi
+        if [ "${{ needs.deploy-backend.result }}" == "success" ]; then SUCCESS_COUNT=$((SUCCESS_COUNT + 1)); fi
+        
+        SUCCESS_RATE=$((SUCCESS_COUNT * 100 / TOTAL_COUNT))
+        
+        echo "## 📈 Overall Success Rate: $SUCCESS_RATE%" >> deployment_report.md
+        echo "" >> deployment_report.md
+        
+        if [ $SUCCESS_RATE -eq 100 ]; then
+          echo "🎉 **Perfect deployment! All systems operational.**" >> deployment_report.md
+        elif [ $SUCCESS_RATE -ge 75 ]; then
+          echo "✅ **Good deployment with minor issues.**" >> deployment_report.md
+        elif [ $SUCCESS_RATE -ge 50 ]; then
+          echo "⚠️ **Partial deployment success. Investigation needed.**" >> deployment_report.md
+        else
+          echo "❌ **Deployment failed. Immediate attention required.**" >> deployment_report.md
+        fi
+        
+        cat deployment_report.md
+    
+    - name: Archive deployment report
+      uses: actions/upload-artifact@v4
+      with:
+        name: deployment-report-${{ github.run_number }}
+        path: deployment_report.md
 
   notify-success:
     name: Notify Success
     runs-on: ubuntu-latest
-    needs: [deploy-frontend, deploy-backend]
+    needs: [test-frontend, test-backend, deploy-frontend, deploy-backend]
     if: success()
     
     steps:
     - name: Success notification
       run: |
         echo "🎉 All tests passed and deployments successful!"
-        echo "Frontend: Deployed to Netlify"
-        echo "Backend: Deployed to Render" 
+        echo "Frontend: Deployed to Netlify (Coverage: ${{ needs.test-frontend.outputs.coverage }}%)"
+        echo "Backend: Deployed to Render (Coverage: ${{ needs.test-backend.outputs.coverage }}%)"
+        echo "Deployment Success Rate: 100%" 

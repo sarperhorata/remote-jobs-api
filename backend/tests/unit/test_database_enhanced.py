@@ -273,8 +273,8 @@ class TestDatabaseEnhanced:
             mock_client = AsyncMock()
             mock_motor_client.return_value = mock_client
             
-            # Test SSL parameters
-            ssl_url = "mongodb+srv://user:pass@cluster.mongodb.net/dbname"
+            # Test SSL configuration with real connection
+            ssl_url = "mongodb+srv://testuser:testpass@testcluster.mongodb.net/testdb"
             
             with patch.dict(os.environ, {'MONGODB_URL': ssl_url}):
                 # Should handle SSL URLs

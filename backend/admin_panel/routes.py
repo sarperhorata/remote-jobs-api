@@ -2071,7 +2071,7 @@ def get_sort_indicator(column: str, current_sort: str, current_order: str) -> st
 async def admin_apis(request: Request, admin_auth: bool = Depends(get_admin_auth)):
     """API services management page"""
     try:
-        # API services status with Distill crawler included
+        # API services status with BUZZ2REMOTE-COMPANIES crawler included
         services = {
             "remoteok": {"status": "active", "last_run": "2024-01-15 10:00", "jobs_fetched": 120},
             "weworkremotely": {"status": "active", "last_run": "2024-01-15 10:05", "jobs_fetched": 85},
@@ -2081,7 +2081,14 @@ async def admin_apis(request: Request, admin_auth: bool = Depends(get_admin_auth
             "remotive": {"status": "active", "last_run": "2024-01-15 10:25", "jobs_fetched": 95},
             "authentic_jobs": {"status": "active", "last_run": "2024-01-15 10:30", "jobs_fetched": 25},
             "working_nomads": {"status": "active", "last_run": "2024-01-15 10:35", "jobs_fetched": 15},
-            "distill_crawler": {"status": "active", "last_run": "2024-01-15 10:00", "jobs_fetched": 78}
+            "distill_crawler": {"status": "active", "last_run": "2024-01-15 10:00", "jobs_fetched": 78},
+            "distill": [
+                {"timestamp": "2024-01-15 10:00:01", "level": "INFO", "message": "BUZZ2REMOTE-COMPANIES crawler started"},
+                {"timestamp": "2024-01-15 10:00:05", "level": "INFO", "message": "Processing company list"},
+                {"timestamp": "2024-01-15 10:00:10", "level": "INFO", "message": "Found 25 new jobs"},
+                {"timestamp": "2024-01-15 10:00:15", "level": "WARNING", "message": "Rate limit reached, waiting"},
+                {"timestamp": "2024-01-15 10:00:16", "level": "INFO", "message": "BUZZ2REMOTE-COMPANIES crawler completed successfully"}
+            ]
         }
         
         # Build HTML response
@@ -2316,11 +2323,18 @@ async def admin_service_logs(request: Request, service_name: str, admin_auth: bo
                 {"timestamp": "2024-01-15 09:30:03", "level": "WARNING", "message": "FlexJobs API slow response (2.5s)"}
             ],
             "distill_crawler": [
-                {"timestamp": "2024-01-15 10:00:01", "level": "INFO", "message": "Distill crawler started"},
+                {"timestamp": "2024-01-15 10:00:01", "level": "INFO", "message": "BUZZ2REMOTE-COMPANIES crawler started"},
                 {"timestamp": "2024-01-15 10:00:05", "level": "INFO", "message": "Processing company career pages from Distill export"},
                 {"timestamp": "2024-01-15 10:00:12", "level": "INFO", "message": "Fetched 78 jobs from career pages"},
                 {"timestamp": "2024-01-15 10:00:15", "level": "INFO", "message": "Saved 54 new jobs to database"},
-                {"timestamp": "2024-01-15 10:00:16", "level": "INFO", "message": "Distill crawler completed successfully"}
+                {"timestamp": "2024-01-15 10:00:16", "level": "INFO", "message": "BUZZ2REMOTE-COMPANIES crawler completed successfully"}
+            ],
+            "distill": [
+                {"timestamp": "2024-01-15 10:00:01", "level": "INFO", "message": "BUZZ2REMOTE-COMPANIES crawler started"},
+                {"timestamp": "2024-01-15 10:00:05", "level": "INFO", "message": "Processing company list"},
+                {"timestamp": "2024-01-15 10:00:10", "level": "INFO", "message": "Found 25 new jobs"},
+                {"timestamp": "2024-01-15 10:00:15", "level": "WARNING", "message": "Rate limit reached, waiting"},
+                {"timestamp": "2024-01-15 10:00:16", "level": "INFO", "message": "BUZZ2REMOTE-COMPANIES crawler completed successfully"}
             ]
         }
         

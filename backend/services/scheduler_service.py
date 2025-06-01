@@ -71,12 +71,12 @@ class SchedulerService:
             coalesce=True
         )
         
-        # 3. Buzz2Remote-Companies (Distill) crawler - daily at 10 AM UTC
+        # 3. BUZZ2REMOTE-COMPANIES crawler - daily at 10 AM UTC
         self.scheduler.add_job(
             self._distill_crawler_job,
             trigger=CronTrigger(hour=10, minute=0),
             id='distill_crawler',
-            name='Buzz2Remote-Companies Distill Crawler',
+            name='BUZZ2REMOTE-COMPANIES Crawler',
             max_instances=1,
             coalesce=True
         )
@@ -181,9 +181,9 @@ class SchedulerService:
                 pass
     
     async def _distill_crawler_job(self):
-        """Buzz2Remote-Companies (Distill) crawler job"""
+        """BUZZ2REMOTE-COMPANIES crawler job"""
         try:
-            logger.info("Starting Buzz2Remote-Companies (Distill) crawler job")
+            logger.info("Starting BUZZ2REMOTE-COMPANIES crawler job")
             
             # Import here to avoid circular imports
             try:
@@ -222,13 +222,13 @@ class SchedulerService:
 🕐 <b>Completed at:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
 🌐 <b>Source:</b> Company Career Pages""")
                 
-                logger.info(f"Distill crawler completed successfully. Total jobs: {len(jobs)}")
+                logger.info(f"BUZZ2REMOTE-COMPANIES crawler completed successfully. Total jobs: {len(jobs)}")
                 
             except ImportError as e:
-                logger.error(f"Failed to import distill crawler modules: {str(e)}")
+                logger.error(f"Failed to import BUZZ2REMOTE-COMPANIES crawler modules: {str(e)}")
                 
         except Exception as e:
-            logger.error(f"Distill crawler job error: {str(e)}")
+            logger.error(f"BUZZ2REMOTE-COMPANIES crawler job error: {str(e)}")
             
             # Send error notification
             try:

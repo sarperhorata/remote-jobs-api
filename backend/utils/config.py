@@ -37,8 +37,21 @@ EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "")
 EMAIL_FROM = os.getenv("EMAIL_FROM", "")
 
 # Database settings
-DATABASE_URL = os.getenv("DATABASE_URL", "process.env.MONGODB_URI/")
+DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("MONGODB_URI") or os.getenv("MONGODB_URL")
 IS_PRODUCTION = os.getenv("ENVIRONMENT", "development").lower() == "production"
+
+# Set proper database URL based on environment
+if not DATABASE_URL:
+    if IS_PRODUCTION:
+        # In production, use MongoDB Atlas - this should be set via environment variables
+        DATABASE_URL = "mongodb+srv://buzz2remote:secure_password@cluster.mongodb.net/buzz2remote?retryWrites=true&w=majority"
+        logger.warning("No DATABASE_URL set for production. Using default MongoDB Atlas URL.")
+    else:
+        # In development, use local MongoDB
+        DATABASE_URL = "mongodb://localhost:27017/buzz2remote"
+        logger.info(f"Using development database: {DATABASE_URL}")
+else:
+    logger.info(f"Database URL configured: {DATABASE_URL[:20]}...")
 
 # Telegram settings
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "6789123456:AAEhKL_demo_token_for_development")

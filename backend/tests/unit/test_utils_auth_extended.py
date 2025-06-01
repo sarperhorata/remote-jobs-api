@@ -1,5 +1,5 @@
 import pytest
-import jwt as python_jwt
+from jose import jwt as python_jwt
 from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
 import sys

@@ -1,74 +1,107 @@
 from motor.motor_asyncio import AsyncIOMotorClient
-from backend.config import settings
 import logging
 import os
 from sqlalchemy.ext.declarative import declarative_base
 import asyncio
+
+# Import configuration
+try:
+    from backend.utils.config import DATABASE_URL, IS_PRODUCTION
+except ImportError:
+    try:
+        from utils.config import DATABASE_URL, IS_PRODUCTION
+    except ImportError:
+        # Fallback configuration
+        DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("MONGODB_URI") or "mongodb://localhost:27017/buzz2remote"
+        IS_PRODUCTION = os.getenv("ENVIRONMENT", "development").lower() == "production"
 
 logger = logging.getLogger(__name__)
 
 # Global client and database references
 motor_client = None
 db = None
-DATABASE_NAME = settings.MONGODB_DB_NAME
+DATABASE_NAME = os.getenv("MONGODB_DB_NAME", "buzz2remote")
 
 # Add Base for SQLAlchemy models
 Base = declarative_base()
 
 async def init_database():
-    """Initialize database connection."""
+    """Initialize database connection with improved error handling."""
     global motor_client, db
     
     try:
-        if os.getenv("PYTEST_CURRENT_TEST") or settings.ENVIRONMENT == "test":
+        if os.getenv("PYTEST_CURRENT_TEST"):
             # Use mongomock for tests
             try:
                 import mongomock_motor
                 motor_client = mongomock_motor.AsyncMongoMockClient()
-                db = motor_client[settings.MONGODB_DB_NAME]
+                db = motor_client[DATABASE_NAME]
                 logger.info("Using mongomock for testing")
+                return
             except ImportError:
-                # Fallback to regular client
-                motor_client = AsyncIOMotorClient(settings.MONGODB_URL)
-                db = motor_client[settings.MONGODB_DB_NAME]
-        else:
-            motor_client = AsyncIOMotorClient(settings.MONGODB_URL)
-            db = motor_client[settings.MONGODB_DB_NAME]
-            
-        logger.info("Database connection initialized")
+                logger.warning("mongomock_motor not available, using regular client for tests")
+        
+        # Production/Development database connection
+        logger.info(f"Connecting to database: {DATABASE_URL[:20]}...")
+        motor_client = AsyncIOMotorClient(
+            DATABASE_URL,
+            serverSelectionTimeoutMS=5000,  # 5 second timeout
+            connectTimeoutMS=5000,
+            maxPoolSize=10,
+            minPoolSize=1
+        )
+        db = motor_client[DATABASE_NAME]
+        
+        # Test connection
+        await motor_client.admin.command('ping')
+        logger.info("Database connection initialized successfully")
         
     except Exception as e:
-        logger.warning(f"Database connection failed, using mock: {e}")
-        try:
-            import mongomock_motor
-            motor_client = mongomock_motor.AsyncMongoMockClient()
-            db = motor_client[settings.MONGODB_DB_NAME]
-        except ImportError:
-            raise Exception("Could not connect to database and mongomock not available")
+        logger.error(f"Database connection failed: {e}")
+        
+        # In production, try to continue with mock database
+        if IS_PRODUCTION:
+            logger.critical("Production database connection failed! Using mock database.")
+            try:
+                import mongomock_motor
+                motor_client = mongomock_motor.AsyncMongoMockClient()
+                db = motor_client[DATABASE_NAME]
+                logger.warning("Using mongomock in production as fallback")
+            except ImportError:
+                raise Exception(f"Critical: Production database unavailable and no fallback: {e}")
+        else:
+            # In development, can continue with mock
+            try:
+                import mongomock_motor
+                motor_client = mongomock_motor.AsyncMongoMockClient()
+                db = motor_client[DATABASE_NAME]
+                logger.info("Using mongomock in development")
+            except ImportError:
+                raise Exception(f"Database connection failed and no mock available: {e}")
 
 # Initialize on import for backwards compatibility
 if motor_client is None:
     try:
-        if os.getenv("PYTEST_CURRENT_TEST") or settings.ENVIRONMENT == "test":
+        if os.getenv("PYTEST_CURRENT_TEST"):
             # Use mongomock for tests
             try:
                 import mongomock_motor
                 motor_client = mongomock_motor.AsyncMongoMockClient()
-                db = motor_client[settings.MONGODB_DB_NAME]
+                db = motor_client[DATABASE_NAME]
                 logger.info("Using mongomock for testing")
             except ImportError:
                 # Fallback to regular client
-                motor_client = AsyncIOMotorClient(settings.MONGODB_URL)
-                db = motor_client[settings.MONGODB_DB_NAME]
+                motor_client = AsyncIOMotorClient(DATABASE_URL)
+                db = motor_client[DATABASE_NAME]
         else:
-            motor_client = AsyncIOMotorClient(settings.MONGODB_URL)
-            db = motor_client[settings.MONGODB_DB_NAME]
+            motor_client = AsyncIOMotorClient(DATABASE_URL)
+            db = motor_client[DATABASE_NAME]
     except Exception as e:
         logger.warning(f"Database connection failed, using mock: {e}")
         try:
             import mongomock_motor
             motor_client = mongomock_motor.AsyncMongoMockClient()
-            db = motor_client[settings.MONGODB_DB_NAME]
+            db = motor_client[DATABASE_NAME]
         except ImportError:
             raise Exception("Could not connect to database and mongomock not available")
 

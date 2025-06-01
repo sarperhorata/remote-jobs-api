@@ -34,8 +34,13 @@ TELEGRAM_BOT_AVAILABLE = False  # Temporarily disabled due to conflicts
 #     SCHEDULER_AVAILABLE = False
 SCHEDULER_AVAILABLE = False  # Temporarily disabled
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
+# Configure logging - optimized for minimal bandwidth usage
+log_level = os.getenv("LOG_LEVEL", "WARNING").upper()
+logging.basicConfig(
+    level=getattr(logging, log_level),
+    format='%(levelname)s:%(name)s:%(message)s',  # Shorter format to save bandwidth
+    stream=sys.stdout  # Explicit stream for better control
+)
 logger = logging.getLogger(__name__)
 
 # Import admin panel
@@ -63,7 +68,7 @@ app = FastAPI(
     
     ## 🌟 Key Features
     
-    * **36,000+ Active Remote Jobs** from 375+ companies worldwide
+    * **36,000+ Active Remote Jobs** from 470+ companies worldwide
     * **AI-Enhanced CV Parsing** with intelligent skill extraction
     * **Real-time Job Crawling** from top company career pages
     * **Advanced Search & Filtering** with location, skills, and salary filters
@@ -86,7 +91,7 @@ app = FastAPI(
     - Advanced search with AI-powered matching
     
     ### 🏢 Companies  
-    - Browse 375+ remote-friendly companies
+    - Browse 470+ remote-friendly companies
     - Get company profiles and job listings
     - Follow companies for updates
     
@@ -288,7 +293,7 @@ async def shutdown_event():
     # Close database connections
     try:
         from backend.database import close_db_connections
-        close_db_connections()
+        await close_db_connections()
         logger.info("Database connections closed")
     except Exception as e:
         logger.error(f"Error closing database connections: {str(e)}")
@@ -321,7 +326,7 @@ async def shutdown_event():
                         "status": "active",
                         "features": [
                             "AI-Enhanced CV Parsing",
-                            "375+ Company Job Crawling",
+                            "470+ Company Job Crawling",
                             "LinkedIn OAuth Integration",
                             "Advanced Job Search & Matching"
                         ]
@@ -354,7 +359,7 @@ async def root():
         "description": "The Ultimate Remote Jobs Platform API",
         "features": [
             "🤖 AI-Enhanced CV Parsing",
-            "🏢 375+ Company Job Crawling", 
+            "🏢 470+ Company Job Crawling", 
             "🔗 LinkedIn OAuth Integration",
             "🔍 Advanced Job Search & Matching",
             "📊 Real-time Job Analytics",
@@ -364,7 +369,7 @@ async def root():
         ],
         "statistics": {
             "total_jobs": "36,000+",
-            "total_companies": "375+",
+            "total_companies": "470+",
             "active_apis": 8,
             "daily_updates": "1,000+"
         },

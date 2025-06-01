@@ -21,8 +21,12 @@ from email.mime.multipart import MIMEMultipart
 sys.path.append('backend')
 from database import get_db
 
-# Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Setup logging - optimized for minimal bandwidth usage
+log_level = os.getenv("LOG_LEVEL", "WARNING").upper()
+logging.basicConfig(
+    level=getattr(logging, log_level), 
+    format='%(levelname)s:%(name)s:%(message)s'
+)
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -880,7 +884,8 @@ class DistillCrawler:
                     if filtered_jobs:
                         logger.debug(f"Found {len(filtered_jobs)} jobs with selector '{selector}'")
                         job_elements.extend(filtered_jobs)
-                        break  # Stop at first successful selector
+                        if len(job_elements) >= 500:  # Increased limit for better job coverage
+                            break
                         
             except Exception as e:
                 logger.debug(f"Error with selector '{selector}': {e}")
@@ -900,7 +905,7 @@ class DistillCrawler:
                     ]
                     if any(indicator in text_lower for indicator in job_indicators):
                         job_elements.append(elem)
-                        if len(job_elements) >= 50:  # Limit to prevent too many false positives
+                        if len(job_elements) >= 500:  # Increased limit for better job coverage
                             break
         
         return job_elements

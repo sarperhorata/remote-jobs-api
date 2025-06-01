@@ -1,19 +1,29 @@
-name: Deploy to Render
+name: Deploy to Render (Manual Only)
 
 on:
-  push:
-    branches: [main]
+  # Removed automatic push trigger for development phase
+  # push:
+  #   branches: [main]
   workflow_dispatch:
+    inputs:
+      confirm_deploy:
+        description: 'Type "deploy" to confirm deployment'
+        required: true
+        default: 'no'
 
 jobs:
   deploy:
     name: Deploy Backend to Render
     runs-on: ubuntu-latest
+    if: github.event.inputs.confirm_deploy == 'deploy'
     steps:
       - name: Deploy to Render
         run: |
           if [ "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+            echo "🚀 Deploying to production..."
             curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+            echo "✅ Deployment triggered successfully"
           else
-            echo "RENDER_DEPLOY_HOOK_URL secret not set"
+            echo "❌ RENDER_DEPLOY_HOOK_URL secret not set"
+            exit 1
           fi 

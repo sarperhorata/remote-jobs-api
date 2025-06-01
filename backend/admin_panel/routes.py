@@ -581,7 +581,7 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "job_c
             ])
             
             companies_cursor = db.jobs.aggregate(pipeline)
-            companies = await companies_cursor.to_list(length=page_size)
+            companies = list(companies_cursor)
             
             # Get total count
             total_pipeline = []
@@ -594,7 +594,7 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "job_c
             ])
             
             total_result_cursor = db.jobs.aggregate(total_pipeline)
-            total_result = await total_result_cursor.to_list(length=1)
+            total_result = list(total_result_cursor)
             total_companies = total_result[0]["total"] if total_result else 0
             
             total_pages = (total_companies + page_size - 1) // page_size
@@ -1073,7 +1073,7 @@ async def get_dashboard_stats():
     if not DATABASE_AVAILABLE or db is None:
         stats = {
             "total_jobs": 27743,
-            "total_companies": 186,
+            "total_companies": 470,
             "active_apis": 8,
             "jobs_today": 22755,
             "active_jobs": 27743,
@@ -1119,7 +1119,7 @@ async def get_dashboard_stats():
             print(f"Error getting dashboard stats: {e}")
             stats = {
                 "total_jobs": 27743,
-                "total_companies": 186,
+                "total_companies": 470,
                 "active_apis": 8,
                 "jobs_today": 22755,
                 "active_jobs": 27743,

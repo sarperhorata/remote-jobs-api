@@ -1,91 +1,122 @@
-from fastapi import APIRouter, HTTPException, Depends
-from typing import List
-from database import get_db
-from utils.auth import get_current_active_user
+from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import List, Optional
 from datetime import datetime
-from bson import ObjectId
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from backend.database import get_async_db
+from backend.schemas.ad import AdCreate, AdUpdate, AdResponse, AdListResponse
 
 router = APIRouter()
 
-@router.post("/ads/")
-def create_ad(ad: dict):
-    db = get_db()
-    ads = db["ads"]
-    ad["created_at"] = datetime.utcnow()
-    result = ads.insert_one(ad)
-    created_ad = ads.find_one({"_id": result.inserted_id})
-    created_ad["_id"] = str(created_ad["_id"])
+@router.post("/ads", response_model=AdResponse)
+async def create_ad(
+    ad: AdCreate,
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """Create a new advertisement."""
+    ad_dict = ad.dict()
+    ad_dict["created_at"] = datetime.utcnow()
+    ad_dict["updated_at"] = datetime.utcnow()
+    ad_dict["is_active"] = True
+    ad_dict["views_count"] = 0
+    ad_dict["clicks_count"] = 0
+    
+    result = await db.ads.insert_one(ad_dict)
+    created_ad = await db.ads.find_one({"_id": result.inserted_id})
     return created_ad
 
-@router.get("/ads/", response_model=List[dict])
-def get_ads(
-    skip: int = 0,
-    limit: int = 100,
-    current_user: dict = Depends(get_current_active_user)
+@router.get("/ads", response_model=AdListResponse)
+async def get_ads(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100),
+    is_active: Optional[bool] = None,
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
-    db = get_db()
-    ads = db["ads"]
-    user_ads = list(ads.find(
-        {"user_id": current_user["_id"]}
-    ).skip(skip).limit(limit))
-    for ad in user_ads:
-        ad["_id"] = str(ad["_id"])
-    return user_ads
+    """Get a list of advertisements with optional filtering."""
+    query = {}
+    if is_active is not None:
+        query["is_active"] = is_active
+    
+    # Get total count
+    total = await db.ads.count_documents(query)
+    
+    # Get ads
+    cursor = db.ads.find(query).sort("created_at", -1).skip(skip).limit(limit)
+    ads = await cursor.to_list(length=limit)
+    
+    return {
+        "items": ads,
+        "total": total,
+        "page": skip // limit + 1,
+        "per_page": limit,
+        "total_pages": (total + limit - 1) // limit
+    }
 
-@router.get("/ads/{ad_id}")
-def get_ad(
+@router.get("/ads/{ad_id}", response_model=AdResponse)
+async def get_ad(
     ad_id: str,
-    current_user: dict = Depends(get_current_active_user)
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
-    db = get_db()
-    ads = db["ads"]
-    ad = ads.find_one({
-        "_id": ObjectId(ad_id),
-        "user_id": current_user["_id"]
-    })
-    if ad is None:
-        raise HTTPException(status_code=404, detail="Ad not found")
-    ad["_id"] = str(ad["_id"])
+    """Get a specific advertisement."""
+    ad = await db.ads.find_one({"_id": ad_id})
+    if not ad:
+        raise HTTPException(status_code=404, detail="Advertisement not found")
     return ad
 
-@router.put("/ads/{ad_id}")
-def update_ad(
+@router.put("/ads/{ad_id}", response_model=AdResponse)
+async def update_ad(
     ad_id: str,
-    ad: dict,
-    current_user: dict = Depends(get_current_active_user)
+    ad: AdUpdate,
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
-    db = get_db()
-    ads = db["ads"]
-    existing_ad = ads.find_one({
-        "_id": ObjectId(ad_id),
-        "user_id": current_user["_id"]
-    })
-    if existing_ad is None:
-        raise HTTPException(status_code=404, detail="Ad not found")
-    
-    update_data = {k: v for k, v in ad.items() if v is not None}
+    """Update an advertisement."""
+    update_data = ad.dict(exclude_unset=True)
     update_data["updated_at"] = datetime.utcnow()
     
-    ads.update_one(
-        {"_id": ObjectId(ad_id)},
+    result = await db.ads.update_one(
+        {"_id": ad_id},
         {"$set": update_data}
     )
     
-    updated_ad = ads.find_one({"_id": ObjectId(ad_id)})
-    updated_ad["_id"] = str(updated_ad["_id"])
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Advertisement not found")
+    
+    updated_ad = await db.ads.find_one({"_id": ad_id})
     return updated_ad
 
-@router.delete("/ads/{ad_id}")
-def delete_ad(
+@router.delete("/ads/{ad_id}", status_code=204)
+async def delete_ad(
     ad_id: str,
-    current_user: dict = Depends(get_current_active_user)
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
-    db = get_db()
-    ads = db["ads"]
-    result = ads.delete_one({
-        "_id": ObjectId(ad_id),
-        "user_id": current_user["_id"]
-    })
+    """Delete an advertisement."""
+    result = await db.ads.delete_one({"_id": ad_id})
     if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Ad not found")
-    return {"message": "Ad deleted successfully"} 
+        raise HTTPException(status_code=404, detail="Advertisement not found")
+
+@router.post("/ads/{ad_id}/view")
+async def record_ad_view(
+    ad_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """Record a view for an advertisement."""
+    result = await db.ads.update_one(
+        {"_id": ad_id},
+        {"$inc": {"views_count": 1}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Advertisement not found")
+    return {"message": "View recorded successfully"}
+
+@router.post("/ads/{ad_id}/click")
+async def record_ad_click(
+    ad_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """Record a click for an advertisement."""
+    result = await db.ads.update_one(
+        {"_id": ad_id},
+        {"$inc": {"clicks_count": 1}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Advertisement not found")
+    return {"message": "Click recorded successfully"} 

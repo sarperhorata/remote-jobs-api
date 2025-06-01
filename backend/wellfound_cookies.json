@@ -1,0 +1,72 @@
+[
+  {
+    "name": "__stripe_mid",
+    "value": "fc71ec2b-ad13-453b-b2ed-2af5f7443e4d525b17",
+    "domain": ".wellfound.com",
+    "path": "/",
+    "expires": 1767726745,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "Strict"
+  },
+  {
+    "name": "_wellfound",
+    "value": "ec75399f5bff55a25870afb063ad8954.i",
+    "domain": "wellfound.com",
+    "path": "/",
+    "expires": 1748467135,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "cf_clearance",
+    "value": "o5woZnPlulcZQnMV6ryN_tzeGlf3NJYYnzeCuxuAyCM-1748467127-1.2.1.1-UlGqTjL3r.nB_Cq76jdj6woym1hLYPgGB6Nloy72cJfQBtMl0X6mJrqszLRYdxXNwBULuh4yPNWlOCSYYM9IIH7jCWjhI1SpueGrkbG4poEHkS6FGdBAqU7va_PGUKiguFQ8JeD8WVjTTnzRqQiGRnG5maQ.rvj4Uo34S7HfsGzlpFduEvfLGnrbMMAFgE23C6_uDBW2Y6o_hiyAkbKFUlJQaK3Y2xOnKsoyHniziljpee71RZioCFvHnx56M4WZKYdj7Q_QFnp3BloRJ4zIdNz2qaYgXCHrqyQRu_oAd5r9ayqlWzpV1pnkfJ2rwFhBuu9pWDvHkvUYJrUA6h25J8iWXJwIwqRErLLOAsm_qzs",
+    "domain": ".wellfound.com",
+    "path": "/",
+    "expires": 1767727127,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "datadome",
+    "value": "ri8X6i_3VrBAnPhzYdhUv8qsVq3sWbx8TaktnKBw13mzfkOSECn9D4_knTiDnuJzV2jEWKU1XGHki4W~qx8yQWDPyYz68ZhClThZ2du4fNkwHjVTHBklVejD2wYQJOeb",
+    "domain": ".wellfound.com",
+    "path": "/",
+    "expires": 1767727145,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "notice_behavior",
+    "value": "implied|eu",
+    "domain": ".wellfound.com",
+    "path": "/",
+    "expires": -1,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "None"
+  },
+  {
+    "name": "TAsessionID",
+    "value": "ea932be8-8efb-4803-9d07-dd049b58eede|NEW",
+    "domain": ".wellfound.com",
+    "path": "/",
+    "expires": 1748467134,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "None"
+  },
+  {
+    "name": "wellfound_default_consent",
+    "value": "1|implied-full",
+    "domain": "wellfound.com",
+    "path": "/",
+    "expires": 1767727134,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "None"
+  }
+] 

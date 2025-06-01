@@ -1,5 +1,5 @@
 import { HomeJobService } from './HomeJobService';
-import JobService from './jobService.js';
+import JobService from './jobService';
 
 // Export all services from this file
 export { HomeJobService, JobService };
@@ -15,6 +15,5 @@ export const jobService = {
   applyForJob: JobService.applyForJob,
   getFeaturedJobs: JobService.getFeaturedJobs,
   getJobStats: JobService.getJobStats,
-  getSystemStatus: JobService.getSystemStatus,
   getJobApplications: JobService.getJobApplications
 }; 

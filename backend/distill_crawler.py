@@ -677,18 +677,17 @@ class DistillCrawler:
         else:
             return 'onsite'
     
-    async def crawl_all_companies(self, max_companies: int = None) -> List[JobListing]:
-        """Crawl all companies and collect jobs"""
+    async def crawl_all_companies(self) -> List[JobListing]:
+        """Crawl ALL companies from distill export - no limit"""
         all_jobs = []
         
         if not self.companies_data:
             self.load_companies_data()
         
         companies_to_crawl = self.companies_data
-        if max_companies:
-            companies_to_crawl = companies_to_crawl[:max_companies]
+        total_companies = len(companies_to_crawl)
         
-        logger.info(f"🚀 Starting to crawl {len(companies_to_crawl)} companies...")
+        logger.info(f"🚀 Starting to crawl ALL {total_companies} companies...")
         
         connector = aiohttp.TCPConnector(limit=10, ttl_dns_cache=300)
         timeout = aiohttp.ClientTimeout(total=60)
@@ -702,7 +701,7 @@ class DistillCrawler:
             
             # Process companies in batches
             batch_size = 5
-            for i in range(0, len(companies_to_crawl), batch_size):
+            for i in range(0, total_companies, batch_size):
                 batch = companies_to_crawl[i:i + batch_size]
                 
                 logger.info(f"📦 Processing batch {i//batch_size + 1} ({len(batch)} companies)")
@@ -721,22 +720,30 @@ class DistillCrawler:
                 # Rate limiting between batches
                 await asyncio.sleep(2)
                 
-                logger.info(f"📊 Total jobs collected so far: {len(all_jobs)}")
+                # Progress update
+                processed = min(i + batch_size, total_companies)
+                logger.info(f"📊 Progress: {processed}/{total_companies} companies crawled ({len(all_jobs)} jobs found so far)")
         
-        logger.info(f"🏁 Crawling completed! Total jobs: {len(all_jobs)}")
+        logger.info(f"🏁 Crawling completed! Total jobs: {len(all_jobs)} from {total_companies} companies")
         return all_jobs
     
     def save_jobs_to_database(self, jobs: List[JobListing]):
-        """Save jobs to MongoDB database"""
+        """Save jobs and company information to MongoDB database"""
         try:
             db = get_db()
             jobs_collection = db["jobs"]
+            companies_collection = db["companies"]
             
             new_jobs = 0
             updated_jobs = 0
+            new_companies = 0
+            updated_companies = 0
+            
+            # Track processed companies to avoid duplicates
+            processed_companies = set()
             
             for job in jobs:
-                # Check if job already exists
+                # Save job
                 existing_job = jobs_collection.find_one({
                     "external_id": job.external_id,
                     "source_url": job.source_url
@@ -771,12 +778,62 @@ class DistillCrawler:
                     job_data["created_at"] = datetime.now()
                     jobs_collection.insert_one(job_data)
                     new_jobs += 1
+                
+                # Save company if not already processed
+                if job.company not in processed_companies:
+                    # Find company in companies_data
+                    company_data = next(
+                        (c for c in self.companies_data if c.get('name') == job.company),
+                        None
+                    )
+                    
+                    if company_data:
+                        company_doc = {
+                            "name": job.company,
+                            "website": company_data.get('uri', ''),  # Use URI as website
+                            "careerPage": job.source_url,  # Use job source URL as career page
+                            "description": company_data.get('description', ''),
+                            "location": "Remote",  # Default to Remote
+                            "size": "Unknown",  # Default size
+                            "industry": "Technology",  # Default industry
+                            "is_active": True,
+                            "created_at": datetime.now(),
+                            "updated_at": datetime.now(),
+                            "jobs_count": 1,  # Will be updated later
+                            "remote_policy": "Remote-first"  # Default policy
+                        }
+                        
+                        # Check if company exists
+                        existing_company = companies_collection.find_one({"name": job.company})
+                        
+                        if existing_company:
+                            # Update company
+                            companies_collection.update_one(
+                                {"_id": existing_company["_id"]},
+                                {
+                                    "$set": {
+                                        "website": company_doc["website"],
+                                        "careerPage": company_doc["careerPage"],
+                                        "updated_at": datetime.now()
+                                    },
+                                    "$inc": {"jobs_count": 1}
+                                }
+                            )
+                            updated_companies += 1
+                        else:
+                            # Insert new company
+                            companies_collection.insert_one(company_doc)
+                            new_companies += 1
+                        
+                        processed_companies.add(job.company)
             
-            logger.info(f"💾 Database save completed: {new_jobs} new, {updated_jobs} updated")
+            logger.info(f"💾 Database save completed: {new_jobs} new jobs, {updated_jobs} updated jobs, {new_companies} new companies, {updated_companies} updated companies")
             
             return {
                 "new_jobs": new_jobs,
                 "updated_jobs": updated_jobs,
+                "new_companies": new_companies,
+                "updated_companies": updated_companies,
                 "total_processed": len(jobs)
             }
             
@@ -875,7 +932,7 @@ async def main():
     crawler = DistillCrawler()
     
     # Test with first 10 companies
-    jobs = await crawler.crawl_all_companies(max_companies=10)
+    jobs = await crawler.crawl_all_companies()
     
     print(f"\n🎯 Crawling Results:")
     print(f"Total jobs found: {len(jobs)}")

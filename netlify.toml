@@ -12,6 +12,7 @@
   REACT_APP_API_URL = "https://buzz2remote-api.onrender.com/api"
   VITE_API_URL = "https://buzz2remote-api.onrender.com/api"
   VITE_APP_URL = "https://buzz2remote.netlify.app"
+  REACT_APP_STRIPE_PUBLISHABLE_KEY = "your-stripe-publishable-key"
 
 # Deploy Preview context: all deploys generated from pull/merge requests
 [context.deploy-preview]
@@ -20,6 +21,7 @@
 [context.deploy-preview.environment]
   NODE_ENV = "production"
   REACT_APP_API_URL = "https://buzz2remote-api.onrender.com/api"
+  REACT_APP_STRIPE_PUBLISHABLE_KEY = "your-stripe-publishable-key"
 
 # Branch deploy context: deploys from branches other than the Production branch
 [context.branch-deploy]
@@ -34,6 +36,7 @@
   NODE_VERSION = "18"
   NPM_VERSION = "9"
   REACT_APP_API_URL = "https://buzz2remote-api.onrender.com/api"
+  REACT_APP_STRIPE_PUBLISHABLE_KEY = "your-stripe-publishable-key"
 
 # Redirects for single page application
 [[redirects]]

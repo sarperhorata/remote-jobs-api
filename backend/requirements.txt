@@ -9,7 +9,7 @@ apscheduler>=3.10.1
 python-telegram-bot==20.8
 lxml>=4.9.3
 pydantic==2.5.2
-python-multipart==0.0.6
+python-multipart==0.0.20
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 email-validator>=2.1.0.post1
@@ -28,3 +28,8 @@ openai==1.12.0
 sqlalchemy==2.0.23
 itsdangerous>=2.0.1
 # smtplib is built-in Python module, no need to install
+stripe==7.11.0
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+mongomock==4.1.2

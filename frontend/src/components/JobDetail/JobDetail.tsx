@@ -18,7 +18,7 @@ interface ExtendedJob extends Partial<{
   };
   description: string;
   location: string;
-  type: string;
+  job_type: string;
   postedAt: string;
   skills?: string[];
 }
@@ -105,7 +105,7 @@ const JobDetail: React.FC = () => {
               <div className="flex flex-wrap gap-4 text-sm text-gray-500 mb-6">
                 <span>{job.location}</span>
                 <span>•</span>
-                <span>{job.type}</span>
+                <span>{job.job_type}</span>
                 <span>•</span>
                 <span>Posted {job.postedAt ? new Date(job.postedAt).toLocaleDateString() : 'Recently'}</span>
               </div>

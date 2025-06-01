@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, ARRAY
-from ..database import Base
+from backend.database import Base
 
 class Profile(Base):
     __tablename__ = "profiles"

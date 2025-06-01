@@ -1,91 +1,104 @@
-from fastapi import APIRouter, HTTPException, Depends
-from typing import List
-from database import get_db
-from utils.auth import get_current_active_user
+from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import List, Optional
 from datetime import datetime
-from bson import ObjectId
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from backend.database import get_async_db
+from backend.schemas.notification import NotificationCreate, NotificationResponse, NotificationListResponse
 
 router = APIRouter()
 
-@router.post("/notifications/")
-def create_notification(notification: dict):
-    db = get_db()
-    notifications = db["notifications"]
-    notification["created_at"] = datetime.utcnow()
-    result = notifications.insert_one(notification)
-    created_notification = notifications.find_one({"_id": result.inserted_id})
-    created_notification["_id"] = str(created_notification["_id"])
+@router.post("/notifications", response_model=NotificationResponse)
+async def create_notification(
+    notification: NotificationCreate,
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """Create a new notification."""
+    notification_dict = notification.dict()
+    notification_dict["created_at"] = datetime.utcnow()
+    notification_dict["is_read"] = False
+    
+    result = await db.notifications.insert_one(notification_dict)
+    created_notification = await db.notifications.find_one({"_id": result.inserted_id})
     return created_notification
 
-@router.get("/notifications/", response_model=List[dict])
-def get_notifications(
-    skip: int = 0,
-    limit: int = 100,
-    current_user: dict = Depends(get_current_active_user)
+@router.get("/notifications", response_model=NotificationListResponse)
+async def get_notifications(
+    user_id: str,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100),
+    is_read: Optional[bool] = None,
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
-    db = get_db()
-    notifications = db["notifications"]
-    user_notifications = list(notifications.find(
-        {"user_id": current_user["_id"]}
-    ).skip(skip).limit(limit))
-    for notification in user_notifications:
-        notification["_id"] = str(notification["_id"])
-    return user_notifications
+    """Get a list of notifications for a user."""
+    query = {"user_id": user_id}
+    if is_read is not None:
+        query["is_read"] = is_read
+    
+    # Get total count
+    total = await db.notifications.count_documents(query)
+    
+    # Get notifications
+    cursor = db.notifications.find(query).sort("created_at", -1).skip(skip).limit(limit)
+    notifications = await cursor.to_list(length=limit)
+    
+    return {
+        "items": notifications,
+        "total": total,
+        "page": skip // limit + 1,
+        "per_page": limit,
+        "total_pages": (total + limit - 1) // limit
+    }
 
-@router.get("/notifications/{notification_id}")
-def get_notification(
+@router.get("/notifications/{notification_id}", response_model=NotificationResponse)
+async def get_notification(
     notification_id: str,
-    current_user: dict = Depends(get_current_active_user)
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
-    db = get_db()
-    notifications = db["notifications"]
-    notification = notifications.find_one({
-        "_id": ObjectId(notification_id),
-        "user_id": current_user["_id"]
-    })
-    if notification is None:
+    """Get a specific notification."""
+    notification = await db.notifications.find_one({"_id": notification_id})
+    if not notification:
         raise HTTPException(status_code=404, detail="Notification not found")
-    notification["_id"] = str(notification["_id"])
     return notification
 
-@router.put("/notifications/{notification_id}")
-def update_notification(
+@router.put("/notifications/{notification_id}/read", response_model=NotificationResponse)
+async def mark_notification_as_read(
     notification_id: str,
-    notification: dict,
-    current_user: dict = Depends(get_current_active_user)
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
-    db = get_db()
-    notifications = db["notifications"]
-    existing_notification = notifications.find_one({
-        "_id": ObjectId(notification_id),
-        "user_id": current_user["_id"]
-    })
-    if existing_notification is None:
-        raise HTTPException(status_code=404, detail="Notification not found")
-    
-    update_data = {k: v for k, v in notification.items() if v is not None}
-    update_data["updated_at"] = datetime.utcnow()
-    
-    notifications.update_one(
-        {"_id": ObjectId(notification_id)},
-        {"$set": update_data}
+    """Mark a notification as read."""
+    result = await db.notifications.update_one(
+        {"_id": notification_id},
+        {"$set": {"is_read": True, "read_at": datetime.utcnow()}}
     )
     
-    updated_notification = notifications.find_one({"_id": ObjectId(notification_id)})
-    updated_notification["_id"] = str(updated_notification["_id"])
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    
+    updated_notification = await db.notifications.find_one({"_id": notification_id})
     return updated_notification
 
-@router.delete("/notifications/{notification_id}")
-def delete_notification(
+@router.delete("/notifications/{notification_id}", status_code=204)
+async def delete_notification(
     notification_id: str,
-    current_user: dict = Depends(get_current_active_user)
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
-    db = get_db()
-    notifications = db["notifications"]
-    result = notifications.delete_one({
-        "_id": ObjectId(notification_id),
-        "user_id": current_user["_id"]
-    })
+    """Delete a notification."""
+    result = await db.notifications.delete_one({"_id": notification_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Notification not found")
-    return {"message": "Notification deleted successfully"}
+
+@router.put("/notifications/read-all", response_model=dict)
+async def mark_all_notifications_as_read(
+    user_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """Mark all notifications as read for a user."""
+    result = await db.notifications.update_many(
+        {"user_id": user_id, "is_read": False},
+        {"$set": {"is_read": True, "read_at": datetime.utcnow()}}
+    )
+    
+    return {
+        "message": "All notifications marked as read",
+        "modified_count": result.modified_count
+    }

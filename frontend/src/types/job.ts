@@ -13,7 +13,7 @@ export interface Job {
   responsibilities: string[];
   skills: string[];
   location: string;
-  type: string;
+  job_type: string;
   salary: {
     min?: number;
     max?: number;

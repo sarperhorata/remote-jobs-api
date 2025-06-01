@@ -39,13 +39,24 @@ class RemoteJobsBot:
     """
     Telegram bot implementation for Remote Jobs Monitor
     """
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(RemoteJobsBot, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
     
     def __init__(self):
         """Initialize the bot with token"""
+        if self._initialized:
+            return
+            
         if not TELEGRAM_ENABLED:
             logger.warning("Telegram bot is disabled. Set TELEGRAM_BOT_TOKEN environment variable to enable it.")
             self.enabled = False
             self.application = None
+            self._initialized = True
             return
             
         self.token = TELEGRAM_BOT_TOKEN
@@ -58,6 +69,8 @@ class RemoteJobsBot:
             logger.error(f"Failed to initialize Telegram bot: {str(e)}")
             self.enabled = False
             self.application = None
+        
+        self._initialized = True
         
     def setup_handlers(self):
         """Setup all command and message handlers"""
@@ -737,12 +750,9 @@ class RemoteJobsBot:
             
         try:
             logger.info("🔄 Starting Telegram bot in polling mode (local development)")
-            # Use proper async task creation instead of blocking calls
             await self.application.initialize()
             await self.application.start()
-            # Run as background task without blocking
-            polling_task = asyncio.create_task(self.application.updater.start_polling())
-            await polling_task
+            await self.application.updater.start_polling(drop_pending_updates=True)
         except Exception as e:
             logger.error(f"❌ Error running Telegram bot: {e}")
             try:
@@ -752,16 +762,6 @@ class RemoteJobsBot:
             except Exception as shutdown_error:
                 logger.error(f"Error during shutdown: {shutdown_error}")
     
-    async def stop(self):
-        """Stop the bot properly"""
-        if self.application:
-            try:
-                await self.application.stop()
-                await self.application.shutdown()
-                logger.info("Telegram bot stopped successfully")
-            except Exception as e:
-                logger.error(f"Error stopping Telegram bot: {e}")
-    
     def run(self):
         """Run the bot polling in a blocking way"""
         if not self.enabled or not self.application:
@@ -770,13 +770,23 @@ class RemoteJobsBot:
             
         try:
             logger.info("Starting Telegram bot polling...")
-            self.application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True, error_callback=self._error_callback)
+            self.application.run_polling(
+                allowed_updates=Update.ALL_TYPES,
+                drop_pending_updates=True,
+                error_callback=self._error_callback,
+                close_loop=False
+            )
         except Exception as e:
             logger.error(f"Error in Telegram bot polling: {str(e)}")
             # Try to restart the bot after a short delay
             time.sleep(5)
             logger.info("Attempting to restart Telegram bot...")
-            self.application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True, error_callback=self._error_callback)
+            self.application.run_polling(
+                allowed_updates=Update.ALL_TYPES,
+                drop_pending_updates=True,
+                error_callback=self._error_callback,
+                close_loop=False
+            )
             
     def _error_callback(self, update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Log errors caused by updates."""
@@ -871,4 +881,79 @@ class RemoteJobsBot:
             
         except Exception as e:
             logger.error(f"Failed to format deployment notification: {str(e)}")
-            return False 
+            return False
+
+def init_bot():
+    try:
+        bot = RemoteJobsBot()
+        application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+        
+        # Add handlers
+        application.add_handler(CommandHandler("start", bot.start))
+        application.add_handler(CommandHandler("help", bot.help))
+        application.add_handler(CommandHandler("jobs", bot.jobs))
+        application.add_handler(CommandHandler("subscribe", bot.subscribe))
+        
+        # Profile conversation handler
+        profile_conv_handler = ConversationHandler(
+            entry_points=[CommandHandler("profile", bot.profile_start)],
+            states={
+                PROFILE_MENU: [
+                    CallbackQueryHandler(bot.create_profile, pattern="^create_profile$"),
+                    CallbackQueryHandler(bot.show_profile, pattern="^show_profile$"),
+                    CallbackQueryHandler(bot.edit_profile, pattern="^edit_profile$"),
+                    CallbackQueryHandler(bot.cancel_profile, pattern="^cancel$"),
+                ],
+                FIRST_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, bot.get_first_name)],
+                LAST_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, bot.get_last_name)],
+                EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, bot.get_email)],
+                PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, bot.get_phone)],
+                LOCATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, bot.get_location)],
+                BIO: [MessageHandler(filters.TEXT & ~filters.COMMAND, bot.get_bio)],
+                WORK_PREFERENCES: [
+                    CallbackQueryHandler(bot.get_work_preferences, pattern="^set_work_preferences$"),
+                    CallbackQueryHandler(bot.skip_work_preferences, pattern="^skip_work_preferences$"),
+                ],
+                WORK_TYPE: [
+                    CallbackQueryHandler(bot.get_work_type_remote, pattern="^remote$"),
+                    CallbackQueryHandler(bot.get_work_type_hybrid, pattern="^hybrid$"),
+                    CallbackQueryHandler(bot.get_work_type_office, pattern="^office$"),
+                    CallbackQueryHandler(bot.get_work_type_any, pattern="^any$"),
+                ],
+                JOB_TYPE: [
+                    CallbackQueryHandler(bot.get_job_type_full_time, pattern="^full_time$"),
+                    CallbackQueryHandler(bot.get_job_type_part_time, pattern="^part_time$"),
+                    CallbackQueryHandler(bot.get_job_type_contract, pattern="^contract$"),
+                    CallbackQueryHandler(bot.get_job_type_freelance, pattern="^freelance$"),
+                    CallbackQueryHandler(bot.get_job_type_internship, pattern="^internship$"),
+                    CallbackQueryHandler(bot.get_job_type_any, pattern="^any$"),
+                ],
+                SKILL_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, bot.get_skill_name)],
+                SKILL_LEVEL: [
+                    CallbackQueryHandler(bot.get_skill_level, pattern="^(beginner|intermediate|advanced|expert)$"),
+                ],
+                SKILL_EXPERIENCE: [MessageHandler(filters.TEXT & ~filters.COMMAND, bot.get_skill_experience)],
+                ADD_MORE_SKILLS: [
+                    CallbackQueryHandler(bot.add_more_skills, pattern="^add_more_skills$"),
+                    CallbackQueryHandler(bot.finish_skills, pattern="^finish_skills$"),
+                ],
+            },
+            fallbacks=[CommandHandler("cancel", bot.cancel_profile)],
+        )
+        application.add_handler(profile_conv_handler)
+        
+        # Start the bot
+        application.run_polling(allowed_updates=Update.ALL_TYPES)
+        return application
+    except Exception as e:
+        logger.error(f"Error initializing bot: {e}")
+        return None
+
+# Global variable to track bot instance
+_bot_instance = None
+
+def get_bot_instance():
+    global _bot_instance
+    if _bot_instance is None:
+        _bot_instance = init_bot()
+    return _bot_instance 

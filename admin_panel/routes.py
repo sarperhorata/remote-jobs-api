@@ -12,6 +12,8 @@ import re
 import html
 import time
 from functools import lru_cache
+import asyncio
+from bson import ObjectId
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -21,12 +23,14 @@ logger = logging.getLogger(__name__)
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__)), "backend"))
 
 try:
-    from database import get_db, get_async_db
+    from database import get_db
     from pymongo import DESCENDING
+    db = get_db()
     DATABASE_AVAILABLE = True
-    logger.info("Database connection available")
+    logger.info("Database connection successful for admin panel")
 except ImportError as e:
     DATABASE_AVAILABLE = False
+    db = None
     logger.warning(f"Database not available: {e}")
 
 # Templates - use absolute path
@@ -39,6 +43,14 @@ admin_router = APIRouter(prefix="/admin", tags=["admin"])
 # Static files - use absolute path
 static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "admin_panel", "static")
 admin_router.mount("/static", StaticFiles(directory=static_dir), name="admin_static")
+
+@admin_router.get("/", response_class=HTMLResponse)
+async def admin_root(request: Request):
+    """Redirect to login if not authenticated, otherwise to dashboard"""
+    admin_logged_in = request.session.get("admin_logged_in", False)
+    if not admin_logged_in:
+        return RedirectResponse(url="/admin/login", status_code=302)
+    return RedirectResponse(url="/admin/dashboard", status_code=302)
 
 @admin_router.get("/test")
 async def admin_test():
@@ -560,7 +572,8 @@ async def admin_jobs(
         
         # Get jobs data with pagination
         try:
-            db = await get_async_db()
+            if not DATABASE_AVAILABLE or db is None:
+                raise Exception("Database not available")
             
             total_jobs = await db.jobs.count_documents(filter_criteria)
             jobs_cursor = db.jobs.find(filter_criteria).sort(list(sort_criteria.items())).skip(skip).limit(page_size)
@@ -583,11 +596,20 @@ async def admin_jobs(
         formatted_jobs = []
         for job in jobs:
             try:
+                raw_title = job.get("title", "Unknown Title")
+                raw_location = job.get("location", "Remote")
+                # Parse the title to extract just the job title
+                clean_title = parse_job_title(raw_title)
+                # If location is still part of title, try to parse it
+                if raw_location == "Remote" or not raw_location:
+                    parsed_location = parse_location_from_title(raw_title)
+                    if parsed_location != "Remote":
+                        raw_location = parsed_location
                 formatted_jobs.append({
                     "_id": str(job.get("_id", "")),
-                    "title": sanitize_input(job.get("title", "Unknown Title")),
+                    "title": sanitize_input(clean_title),
                     "company": sanitize_input(job.get("company", "Unknown Company")),
-                    "location": sanitize_input(job.get("location", "Remote")),
+                    "location": sanitize_input(raw_location),
                     "source": sanitize_input(job.get("source", "Unknown")),
                     "url": job.get("url", ""),
                     "apply_url": job.get("apply_url", job.get("url", "")),
@@ -632,7 +654,7 @@ async def admin_jobs(
             pagination_html += f'<a href="{next_url}" style="margin: 0 5px; padding: 8px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Next &rarr;</a>'
         
         pagination_html += '</div>'
-
+    
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -915,7 +937,8 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "job_c
         
         # Get companies data with pagination
         try:
-            db = await get_async_db()
+            if not DATABASE_AVAILABLE or db is None:
+                raise Exception("Database not available")
             
             # Build match stage for search
             match_stage = {}
@@ -966,10 +989,10 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "job_c
             companies = []
             total_companies = 0
             total_pages = 1
-
+        
     # Create clear button link
     clear_button = f'<a href="/admin/companies" class="btn" style="background: #6c757d;">Clear</a>' if search else ''
-    
+        
     # Generate HTML content
     html_content = """
     <!DOCTYPE html>
@@ -1070,7 +1093,7 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "job_c
         
         # Build careers link
         careers_html = f'<a href="{careers_url}" target="_blank">Career Page</a>' if careers_url else '<span style="color: #999;">No career page</span>'
-        
+            
         html_content += f"""
                         <tr>
                             <td>
@@ -1438,11 +1461,11 @@ async def admin_apis(request: Request):
                     
                     result.textContent = data.message || 'Service started successfully';
                     result.className = data.status === 'success' ? 'badge badge-success' : 'badge badge-danger';
-                    
-                    // Hide result after 10 seconds
-                    setTimeout(() => {
-                        result.style.display = 'none';
-                    }, 10000);
+                        
+                        // Hide result after 10 seconds
+                        setTimeout(() => {
+                            result.style.display = 'none';
+                        }, 10000);
                     
                 } catch (error) {
                     result.textContent = 'Error: ' + error.message;
@@ -1737,7 +1760,7 @@ async def get_dashboard_stats():
         return _dashboard_cache["data"]
     
     # If cache miss, get fresh data
-    if not DATABASE_AVAILABLE:
+    if not DATABASE_AVAILABLE or db is None:
         stats = {
             "total_jobs": 21741,
             "total_companies": 471,
@@ -1748,8 +1771,6 @@ async def get_dashboard_stats():
         }
     else:
         try:
-            db = await get_async_db()
-            
             # Get total jobs
             total_jobs = await db.jobs.count_documents({})
             
@@ -1803,7 +1824,7 @@ async def get_dashboard_stats():
 
 async def get_recent_jobs(limit=10):
     """Get recent jobs from MongoDB"""
-    if not DATABASE_AVAILABLE:
+    if not DATABASE_AVAILABLE or db is None:
         return [
             {
                 "_id": "1",
@@ -1816,7 +1837,6 @@ async def get_recent_jobs(limit=10):
         ]
     
     try:
-        db = await get_async_db()
         jobs_cursor = db.jobs.find({}).sort("created_at", DESCENDING).limit(limit)
         jobs = await jobs_cursor.to_list(length=limit)
         return jobs
@@ -1826,7 +1846,7 @@ async def get_recent_jobs(limit=10):
 
 async def get_companies_data(limit=50):
     """Get companies data from MongoDB"""
-    if not DATABASE_AVAILABLE:
+    if not DATABASE_AVAILABLE or db is None:
         return [
             {
                 "_id": "1",
@@ -1838,8 +1858,6 @@ async def get_companies_data(limit=50):
         ]
     
     try:
-        db = await get_async_db()
-        
         # Aggregate companies with job counts
         pipeline = [
             {"$group": {
@@ -1875,10 +1893,11 @@ async def get_companies_data(limit=50):
 async def get_job_details(job_id: str):
     """Get detailed information about a specific job"""
     try:
-        from bson import ObjectId
-        from database import get_async_db
+        if not DATABASE_AVAILABLE or db is None:
+            raise HTTPException(status_code=503, detail="Database not available")
         
-        db = await get_async_db()
+        from bson import ObjectId
+        
         job = await db.jobs.find_one({"_id": ObjectId(job_id)})
         
         if not job:
@@ -1903,6 +1922,8 @@ async def get_job_details(job_id: str):
         
         return job_data
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error fetching job details: {str(e)}")
         raise HTTPException(status_code=500, detail="Error fetching job details")
@@ -1918,6 +1939,142 @@ def sanitize_input(input_str: str) -> str:
     sanitized = html.escape(sanitized)
     # Limit length
     return sanitized[:100]
+
+def parse_job_title(title_str: str) -> str:
+    """
+    Parse composite job titles to extract the actual job title.
+    
+    Expected format: "Digital Marketing ManagerSales and MarketingAnkara, Ankara, Türkiye2+ yearsFull-TimeOn-Site"
+    Extract: "Digital Marketing Manager"
+    
+    Args:
+        title_str: The composite title string
+        
+    Returns:
+        The actual job title only
+    """
+    if not title_str:
+        return "Unknown Title"
+    
+    # Common department/category keywords that might follow the title
+    department_keywords = [
+        "Sales and Marketing", "Marketing", "Engineering", "Technology", "Development",
+        "Software", "Product", "Design", "Operations", "Finance", "Human Resources",
+        "Customer Success", "Support", "Data", "Analytics", "DevOps", "Security",
+        "Business Development", "Project Management", "Quality Assurance", "Legal"
+    ]
+    
+    # Common location patterns
+    location_patterns = [
+        r'\b[A-Z][a-z]+,\s*[A-Z][a-z]+,?\s*[A-Z][a-z]+\b',  # City, State, Country
+        r'\b[A-Z][a-z]+,\s*[A-Z][a-z]+\b',                  # City, Country
+        r'\bWorldwide\b', r'\bUnited States\b', r'\bRemote\b', r'\bGlobal\b'
+    ]
+    
+    # Common experience patterns
+    experience_patterns = [
+        r'\d+\+?\s*years?', r'\d+-\d+\s*years?', r'Entry\s*level', r'Senior\s*level',
+        r'Mid\s*level', r'Junior', r'Senior'
+    ]
+    
+    # Common job type patterns
+    job_type_patterns = [
+        r'Full-Time', r'Part-Time', r'Contract', r'Freelance', r'Temporary',
+        r'On-Site', r'Remote', r'Hybrid'
+    ]
+    
+    # Start with the original title
+    cleaned_title = title_str.strip()
+    
+    # Remove department keywords
+    for dept in department_keywords:
+        if dept in cleaned_title:
+            # Find the position and split
+            idx = cleaned_title.find(dept)
+            if idx > 0:
+                cleaned_title = cleaned_title[:idx].strip()
+                break
+    
+    # Remove location patterns
+    for pattern in location_patterns:
+        cleaned_title = re.sub(pattern, '', cleaned_title, flags=re.IGNORECASE).strip()
+    
+    # Remove experience patterns
+    for pattern in experience_patterns:
+        cleaned_title = re.sub(pattern, '', cleaned_title, flags=re.IGNORECASE).strip()
+    
+    # Remove job type patterns
+    for pattern in job_type_patterns:
+        cleaned_title = re.sub(pattern, '', cleaned_title, flags=re.IGNORECASE).strip()
+    
+    # Clean up any remaining artifacts
+    # Remove multiple spaces
+    cleaned_title = re.sub(r'\s+', ' ', cleaned_title)
+    
+    # Remove common trailing characters
+    cleaned_title = re.sub(r'[,\-\|]+$', '', cleaned_title).strip()
+    
+    # If we ended up with nothing or too short, return original
+    if not cleaned_title or len(cleaned_title) < 3:
+        return title_str
+    
+    return cleaned_title
+
+def parse_location_from_title(title_str: str) -> str:
+    """
+    Extract location information from composite title strings.
+    
+    Args:
+        title_str: The composite title string
+        
+    Returns:
+        The location part or "Remote" if not found
+    """
+    if not title_str:
+        return "Remote"
+    
+    # Strategy 1: Look for clear location keywords first
+    location_keywords = [
+        r'\b(Worldwide)\b',
+        r'\b(United States)\b', 
+        r'\b(Remote)\b', 
+        r'\b(Global)\b'
+    ]
+    
+    for pattern in location_keywords:
+        match = re.search(pattern, title_str, re.IGNORECASE)
+        if match:
+            return match.group(1)
+    
+    # Strategy 2: Look for specific location patterns
+    # Pattern: City, Country (like "Ankara, Türkiye")
+    city_country_pattern = r'\b([A-Z][a-z]+,\s*[A-Za-z\u00C0-\u017F]+)\b'
+    match = re.search(city_country_pattern, title_str)
+    if match:
+        location = match.group(1)
+        # Verify it's not a department/category
+        if not any(dept in location for dept in ["Marketing", "Engineering", "Sales", "Product"]):
+            return location
+    
+    # Strategy 3: Look for pattern like "Ankara, Ankara, Türkiye"
+    detailed_location_pattern = r'\b([A-Z][a-z]+),\s*\1,\s*([A-Za-z\u00C0-\u017F]+)\b'
+    match = re.search(detailed_location_pattern, title_str)
+    if match:
+        city = match.group(1)
+        country = match.group(2)
+        return f"{city}, {country}"
+    
+    # Strategy 4: Find Turkish cities specifically
+    turkish_cities = ["Istanbul", "Ankara", "Izmir", "Bursa", "Antalya", "Adana", "Konya", "Gaziantep"]
+    for city in turkish_cities:
+        if city in title_str:
+            # Try to find the full location context
+            city_pattern = f'{city}(?:,\\s*[A-Za-z\\u00C0-\\u017F]+)*'
+            match = re.search(city_pattern, title_str)
+            if match:
+                return match.group(0)
+    
+    return "Remote"
 
 def build_safe_filter(filter_value: str, field_name: str) -> Dict[str, Any]:
     """Build a safe MongoDB filter with input validation"""

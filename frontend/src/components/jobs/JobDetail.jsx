@@ -264,13 +264,7 @@ const ApplyModal = ({ open, handleClose, job, isPremium }) => {
                 <Grid item xs={12}>
                   <Alert severity="info" sx={{ mb: 2 }}>
                     <Typography variant="body2">
-                      This job application will be sent to the employer. 
-                      <Link 
-                        to="/pricing" 
-                        style={{ marginLeft: 8 }}
-                      >
-                        Upgrade to Premium
-                      </Link> for auto-fill and direct application features.
+                      This job application will be sent to the employer.
                     </Typography>
                   </Alert>
                 </Grid>
@@ -441,6 +435,7 @@ const JobDetail = () => {
     message: '',
     severity: 'info'
   });
+  const [selectedApplyUrl, setSelectedApplyUrl] = useState(null);
 
   useEffect(() => {
     fetchJobDetails();
@@ -685,16 +680,52 @@ const JobDetail = () => {
               )}
             </Grid>
 
+            {/* Apply Button with URL Selection */}
+            <div className="mt-6">
+              {job.application_urls && job.application_urls.length > 0 ? (
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={() => {
+                      if (selectedApplyUrl) {
+                        window.open(selectedApplyUrl.url, '_blank');
+                      }
+                    }}
+                    disabled={!selectedApplyUrl}
+                    className={`px-6 py-3 rounded-lg font-medium text-white ${
+                      selectedApplyUrl
+                        ? 'bg-blue-600 hover:bg-blue-700'
+                        : 'bg-gray-400 cursor-not-allowed'
+                    }`}
+                  >
+                    Apply Now
+                  </button>
+                  <select
+                    value={selectedApplyUrl ? selectedApplyUrl.url : ''}
+                    onChange={(e) => {
+                      const url = job.application_urls.find(u => u.url === e.target.value);
+                      setSelectedApplyUrl(url);
+                    }}
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select Application Source</option>
+                    {job.application_urls.map((url, index) => (
+                      <option key={index} value={url.url}>
+                        {url.source} - {new Date(url.added_at).toLocaleDateString()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <button
+                  onClick={() => window.open(job.apply_url, '_blank')}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+                >
+                  Apply Now
+                </button>
+              )}
+            </div>
+
             <Box sx={{ display: 'flex', mb: 3 }}>
-              <Button
-                variant="contained"
-                color="primary"
-                sx={{ mr: 2 }}
-                onClick={handleApplyClick}
-              >
-                Apply Now
-              </Button>
-              
               <IconButton onClick={toggleSaveJob} color={isSaved ? 'primary' : 'default'}>
                 {isSaved ? <BookmarkIcon /> : <BookmarkBorderIcon />}
               </IconButton>

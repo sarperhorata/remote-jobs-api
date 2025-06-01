@@ -1,26 +1,75 @@
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, Text, JSON
-from sqlalchemy.sql import func
-from ..database import Base
+from datetime import datetime
+from typing import Optional, List
+from pydantic import BaseModel, EmailStr, Field
+from bson import ObjectId
 
-class User(Base):
-    __tablename__ = "users"
+class PyObjectId(ObjectId):
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.validate
 
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True)
-    hashed_password = Column(String)
-    name = Column(String, nullable=True)
-    phone = Column(String, nullable=True)
-    title = Column(String, nullable=True)
-    linkedin_url = Column(String, nullable=True)
-    github_url = Column(String, nullable=True)
-    twitter_url = Column(String, nullable=True)
-    google_url = Column(String, nullable=True)
-    profile_photo_url = Column(String, nullable=True)
-    experience = Column(Text, nullable=True)
-    education = Column(Text, nullable=True)
-    skills = Column(Text, nullable=True)
-    subscription_type = Column(String, default="free")  # free, premium
-    is_email_verified = Column(Boolean, default=False)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now()) 
+    @classmethod
+    def validate(cls, v):
+        if not ObjectId.is_valid(v):
+            raise ValueError("Invalid ObjectId")
+        return ObjectId(v)
+
+    @classmethod
+    def __get_pydantic_json_schema__(cls, core_schema, handler):
+        schema = handler(core_schema)
+        schema.update(type="string")
+        return schema
+
+class UserBase(BaseModel):
+    email: EmailStr
+    full_name: str
+    is_active: bool = True
+    is_superuser: bool = False
+    telegram_user_id: Optional[int] = None
+    telegram_username: Optional[str] = None
+    company: Optional[str] = None
+    position: Optional[str] = None
+    location: Optional[str] = None
+    bio: Optional[str] = None
+    skills: Optional[List[str]] = None
+    website: Optional[str] = None
+    github: Optional[str] = None
+    linkedin: Optional[str] = None
+    twitter: Optional[str] = None
+
+class UserCreate(UserBase):
+    password: str
+
+class UserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = None
+    password: Optional[str] = None
+    is_active: Optional[bool] = None
+    is_superuser: Optional[bool] = None
+    telegram_user_id: Optional[int] = None
+    telegram_username: Optional[str] = None
+    company: Optional[str] = None
+    position: Optional[str] = None
+    location: Optional[str] = None
+    bio: Optional[str] = None
+    skills: Optional[List[str]] = None
+    website: Optional[str] = None
+    github: Optional[str] = None
+    linkedin: Optional[str] = None
+    twitter: Optional[str] = None
+
+class UserResponse(UserBase):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        allow_population_by_field_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {
+            ObjectId: str,
+            datetime: lambda dt: dt.isoformat()
+        }
+
+class UserInDB(UserResponse):
+    hashed_password: str 

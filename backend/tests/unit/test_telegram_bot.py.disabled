@@ -1,0 +1,108 @@
+import pytest
+from unittest.mock import patch, MagicMock
+from telegram_bot.bot import RemoteJobsBot
+from telegram import Update, Message, Chat, User
+from telegram.ext import CallbackContext
+from telegram.error import InvalidToken
+import os
+
+class TestTelegramBot:
+    def test_bot_singleton(self):
+        with patch('utils.config.TELEGRAM_ENABLED', True):
+            with patch('utils.config.TELEGRAM_BOT_TOKEN', "test_token"):
+                bot1 = RemoteJobsBot()
+                bot2 = RemoteJobsBot()
+                assert bot1 is bot2
+
+    def test_bot_initialization(self):
+        bot = RemoteJobsBot()
+        assert bot is not None
+        with patch.dict('os.environ', {'TELEGRAM_BOT_ENABLED': 'false'}):
+            bot = RemoteJobsBot()
+            assert bot is not None
+
+    @pytest.mark.asyncio
+    async def test_start_command(self):
+        bot = RemoteJobsBot()
+        update = MagicMock(spec=Update)
+        update.message = MagicMock(spec=Message)
+        update.message.chat = MagicMock(spec=Chat)
+        update.message.chat.id = 123456
+        context = MagicMock(spec=CallbackContext)
+        
+        with patch('backend.telegram_bot.bot.RemoteJobsBot.get_user_profile', return_value=None) as mock_get_profile:
+            await bot.start(update, context)
+            update.message.reply_html.assert_called_once()
+            mock_get_profile.assert_called_once_with(update.effective_user.id)
+
+    @pytest.mark.asyncio
+    async def test_help_command(self):
+        bot = RemoteJobsBot()
+        update = MagicMock(spec=Update)
+        update.message = MagicMock(spec=Message)
+        context = MagicMock(spec=CallbackContext)
+        
+        await bot.help(update, context)
+        update.message.reply_text.assert_called_once()
+        assert "Here are the commands you can use" in update.message.reply_text.call_args[0][0]
+
+    @pytest.mark.asyncio
+    async def test_handle_message(self):
+        bot = RemoteJobsBot()
+        update = MagicMock(spec=Update)
+        update.message = MagicMock(spec=Message)
+        update.message.text = "test message"
+        context = MagicMock(spec=CallbackContext)
+        
+        await bot.handle_message(update, context)
+        update.message.reply_text.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_error_handler(self):
+        bot = RemoteJobsBot()
+        update = MagicMock(spec=Update)
+        context = MagicMock(spec=CallbackContext)
+        error = Exception("Test error")
+        
+        with patch('backend.telegram_bot.bot.RemoteJobsBot._error_callback') as mock_error_callback:
+            bot.application.error_handlers[0].callback(update, context, error)
+            mock_error_callback.assert_called_once_with(update, context, error)
+
+    def test_bot_token_validation(self):
+        with patch.dict('os.environ', {'TELEGRAM_ENABLED': 'False'}):
+            bot = RemoteJobsBot()
+            assert not bot.enabled
+            assert bot.application is None
+        
+        with patch.dict('os.environ', {'TELEGRAM_ENABLED': 'True', 'TELEGRAM_BOT_TOKEN': ''}):
+            RemoteJobsBot._instance = None 
+            with pytest.raises(ValueError):
+                bot = RemoteJobsBot()
+        
+        with patch.dict('os.environ', {'TELEGRAM_ENABLED': 'True', 'TELEGRAM_BOT_TOKEN': 'invalid_token'}):
+            RemoteJobsBot._instance = None
+            with pytest.raises(InvalidToken):
+                bot = RemoteJobsBot()
+
+    @pytest.mark.asyncio
+    async def test_send_notification(self):
+        bot = RemoteJobsBot()
+        chat_id = 123456
+        message = "Test notification"
+        
+        with patch('telegram.Bot.send_message') as mock_send_message:
+            with patch('backend.telegram_bot.bot.RemoteJobsBot.send_notification') as mock_bot_send_notification:
+                await bot.send_notification(chat_id, message)
+                mock_bot_send_notification.assert_called_once_with(chat_id, message)
+
+    @pytest.mark.asyncio
+    async def test_handle_invalid_command(self):
+        bot = RemoteJobsBot()
+        update = MagicMock(spec=Update)
+        update.message = MagicMock(spec=Message)
+        update.message.text = "/invalid_command"
+        context = MagicMock(spec=CallbackContext)
+        
+        await bot.unknown_command(update, context)
+        update.message.reply_text.assert_called_once()
+        assert "I'm not sure how to respond to that" in update.message.reply_text.call_args[0][0] 

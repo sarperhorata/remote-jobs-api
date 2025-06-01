@@ -15,12 +15,12 @@ class CompanyCrawler:
         self.error_log_col = self.db["crawl_errors"]
         
     async def crawl_all_companies(self):
-        """Crawl all companies in the database"""
+        """Crawl all companies in the database without any limit"""
         try:
-            # Get all companies
+            # Get all active companies without any limit
             companies = list(self.companies_col.find({"is_active": True}))
             total_companies = len(companies)
-            logger.info(f"Starting to crawl {total_companies} companies")
+            logger.info(f"Starting to crawl all {total_companies} companies")
             
             # Initialize counters
             total_jobs = 0

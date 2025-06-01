@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Search, ArrowLeft, Book } from 'lucide-react';
 
 interface FAQItem {
   question: string;

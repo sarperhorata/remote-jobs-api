@@ -1,78 +1,159 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import List, Optional
+from backend.models.company import Company
+from backend.database import get_async_db
+from bson import ObjectId
+from datetime import datetime
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from backend.schemas.company import CompanyCreate, CompanyUpdate, CompanyResponse, CompanyListResponse
+from backend.utils.auth import get_current_active_user, get_current_user, get_current_admin
 
-router = APIRouter(prefix="/companies", tags=["companies"])
+router = APIRouter(tags=["companies"])
 
-@router.get("")
-async def get_companies():
-    """Get all companies"""
-    return {
-        "companies": [
-            {
-                "_id": "1",
-                "name": "Remote Tech Co",
-                "description": "Leading remote-first technology company",
-                "website": "https://remotetech.com",
-                "location": "Remote",
-                "employees": "50-100",
-                "industry": "Technology",
-                "is_active": True
-            },
-            {
-                "_id": "2", 
-                "name": "Global Solutions",
-                "description": "Worldwide consulting and development services",
-                "website": "https://globalsolutions.com",
-                "location": "Remote",
-                "employees": "100-500",
-                "industry": "Consulting",
-                "is_active": True
-            },
-            {
-                "_id": "3",
-                "name": "Cloud Innovations",
-                "description": "Cloud infrastructure and DevOps specialists",
-                "website": "https://cloudinnovations.com",
-                "location": "Remote",
-                "employees": "10-50",
-                "industry": "Cloud Services",
-                "is_active": True
-            }
-        ],
-        "total": 3
-    }
-
-@router.get("/{company_id}")
-async def get_company(company_id: str):
-    """Get company by ID"""
-    companies = {
-        "1": {
-            "_id": "1",
-            "name": "Remote Tech Co",
-            "description": "Leading remote-first technology company specializing in modern web applications.",
-            "website": "https://remotetech.com",
-            "location": "Remote",
-            "employees": "50-100",
-            "industry": "Technology",
-            "is_active": True,
-            "jobs_count": 5,
-            "benefits": ["Remote work", "Health insurance", "Flexible hours"]
-        },
-        "2": {
-            "_id": "2",
-            "name": "Global Solutions", 
-            "description": "Worldwide consulting and development services for enterprise clients.",
-            "website": "https://globalsolutions.com",
-            "location": "Remote",
-            "employees": "100-500",
-            "industry": "Consulting",
-            "is_active": True,
-            "jobs_count": 3,
-            "benefits": ["Remote work", "401k", "Training budget"]
-        }
-    }
+@router.post("/companies", response_model=CompanyResponse)
+async def create_company(
+    company: CompanyCreate,
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """Create a new company."""
+    company_dict = company.dict()
+    company_dict["created_at"] = datetime.utcnow()
+    company_dict["updated_at"] = datetime.utcnow()
+    company_dict["is_active"] = True
     
-    if company_id not in companies:
-        from fastapi import HTTPException
+    result = await db.companies.insert_one(company_dict)
+    created_company = await db.companies.find_one({"_id": result.inserted_id})
+    return created_company
+
+@router.get("/companies", response_model=CompanyListResponse)
+async def get_companies(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100),
+    is_active: Optional[bool] = None,
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """Get a list of companies with optional filtering."""
+    query = {}
+    if is_active is not None:
+        query["is_active"] = is_active
+    
+    # Get total count
+    total = await db.companies.count_documents(query)
+    
+    # Get companies
+    cursor = db.companies.find(query).sort("created_at", -1).skip(skip).limit(limit)
+    companies = await cursor.to_list(length=limit)
+    
+    # Convert ObjectIds to strings for JSON serialization
+    for company in companies:
+        if "_id" in company and isinstance(company["_id"], ObjectId):
+            company["id"] = str(company["_id"])
+            company["_id"] = str(company["_id"])
+        # Add jobs_count if not present
+        if "jobs_count" not in company:
+            company["jobs_count"] = 0
+    
+    return {
+        "items": companies,
+        "total": total,
+        "page": skip // limit + 1,
+        "per_page": limit,
+        "total_pages": (total + limit - 1) // limit
+    }
+
+@router.get("/companies/{company_id}", response_model=CompanyResponse)
+async def get_company(
+    company_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """Get a specific company."""
+    # Try to convert to ObjectId if it's a valid ObjectId string
+    if ObjectId.is_valid(company_id):
+        query = {"_id": ObjectId(company_id)}
+    else:
+        query = {"_id": company_id}
+        
+    company = await db.companies.find_one(query)
+    if not company:
         raise HTTPException(status_code=404, detail="Company not found")
     
-    return companies[company_id] 
+    # Convert ObjectId to string for JSON serialization
+    if "_id" in company and isinstance(company["_id"], ObjectId):
+        company["id"] = str(company["_id"])
+        company["_id"] = str(company["_id"])
+    
+    # Add jobs_count if not present
+    if "jobs_count" not in company:
+        company["jobs_count"] = 0
+        
+    return company
+
+@router.put("/companies/{company_id}", response_model=CompanyResponse)
+async def update_company(
+    company_id: str,
+    company: CompanyUpdate,
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """Update a company."""
+    update_data = company.dict(exclude_unset=True)
+    update_data["updated_at"] = datetime.utcnow()
+    
+    # Try to convert to ObjectId if it's a valid ObjectId string
+    if ObjectId.is_valid(company_id):
+        query = {"_id": ObjectId(company_id)}
+    else:
+        query = {"_id": company_id}
+    
+    result = await db.companies.update_one(query, {"$set": update_data})
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    updated_company = await db.companies.find_one(query)
+    
+    # Convert ObjectId to string for JSON serialization
+    if "_id" in updated_company and isinstance(updated_company["_id"], ObjectId):
+        updated_company["id"] = str(updated_company["_id"])
+        updated_company["_id"] = str(updated_company["_id"])
+        
+    return updated_company
+
+@router.delete("/companies/{company_id}", status_code=204)
+async def delete_company(
+    company_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """Delete a company."""
+    # Try to convert to ObjectId if it's a valid ObjectId string
+    if ObjectId.is_valid(company_id):
+        query = {"_id": ObjectId(company_id)}
+    else:
+        query = {"_id": company_id}
+        
+    result = await db.companies.delete_one(query)
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+@router.get("/companies/{company_id}/jobs", response_model=List[dict])
+async def get_company_jobs(
+    company_id: str,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100),
+    is_active: Optional[bool] = None,
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """Get jobs for a specific company."""
+    query = {"company": company_id}  # Changed from company_id to company
+    if is_active is not None:
+        query["is_active"] = is_active
+    
+    cursor = db.jobs.find(query).sort("created_at", -1).skip(skip).limit(limit)
+    jobs = await cursor.to_list(length=limit)
+    
+    # Convert ObjectIds to strings
+    for job in jobs:
+        if "_id" in job and isinstance(job["_id"], ObjectId):
+            job["id"] = str(job["_id"])
+            job["_id"] = str(job["_id"])
+            
+    return jobs 

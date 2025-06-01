@@ -1,0 +1,23 @@
+#!/bin/bash
+# Pre-commit hook for Buzz2Remote backend
+# Runs tests before allowing commits
+
+echo "🧪 Running pre-commit tests..."
+
+# Change to backend directory
+cd "$(dirname "$0")/.."
+
+# Run the test suite
+python test_before_commit.py
+
+# Get the exit code
+exit_code=$?
+
+if [ $exit_code -eq 0 ]; then
+    echo "✅ All tests passed! Proceeding with commit..."
+    exit 0
+else
+    echo "❌ Tests failed! Commit blocked."
+    echo "Fix failing tests before committing."
+    exit 1
+fi 

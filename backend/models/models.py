@@ -311,4 +311,22 @@ class UserNotificationPreference(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def __repr__(self):
-        return f"<UserNotificationPreference(user_id={self.user_id})>" 
+        return f"<UserNotificationPreference(user_id={self.user_id})>"
+
+class User(BaseModel):
+    id: Optional[str] = None
+    email: EmailStr
+    name: str
+    password: Optional[str] = None
+    is_active: bool = True
+    is_superuser: bool = False
+    created_at: datetime = datetime.now()
+    updated_at: datetime = datetime.now()
+    stripe_customer_id: Optional[str] = None
+    stripe_subscription_id: Optional[str] = None
+    subscription_status: Optional[str] = None
+    subscription_plan: Optional[str] = None
+    subscription_end_date: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True 

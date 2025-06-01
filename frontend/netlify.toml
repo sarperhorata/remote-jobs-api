@@ -1,10 +1,14 @@
 [build]
+  base = "frontend"
   publish = "build"
-  command = "npm run build"
+  command = "npm install && CI=false npm run build"
 
 [build.environment]
+  NODE_VERSION = "18"
   REACT_APP_API_URL = "https://buzz2remote-api.onrender.com"
   REACT_APP_ENVIRONMENT = "production"
+  CI = "false"
+  NPM_FLAGS = "--legacy-peer-deps"
 
 [[redirects]]
   from = "/*"

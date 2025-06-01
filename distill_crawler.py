@@ -13,6 +13,9 @@ from bs4 import BeautifulSoup
 import re
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # Add backend to path
 sys.path.append('backend')
@@ -43,6 +46,7 @@ class DistillCrawler:
         self.session = None
         self.companies_data = []
         self.crawled_jobs = []
+        self.error_logs = []  # Track errors
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
@@ -72,6 +76,37 @@ class DistillCrawler:
             logger.error(f"❌ Error loading companies data: {str(e)}")
             raise
     
+    def send_error_report(self):
+        """Send error report via email"""
+        if not self.error_logs:
+            return
+
+        try:
+            msg = MIMEMultipart()
+            msg['From'] = 'buzz2remote@gmail.com'
+            msg['To'] = 'sarperhorata@gmail.com'
+            msg['Subject'] = f'Crawler Error Report - {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}'
+
+            # Create error report
+            error_report = "Crawler Error Report:\n\n"
+            for error in self.error_logs:
+                error_report += f"Company: {error['company']}\n"
+                error_report += f"Error: {error['error']}\n"
+                error_report += f"Time: {error['time']}\n"
+                error_report += "-" * 50 + "\n"
+
+            msg.attach(MIMEText(error_report, 'plain'))
+
+            # Send email
+            with smtplib.SMTP('smtp.gmail.com', 587) as server:
+                server.starttls()
+                server.login('buzz2remote@gmail.com', 'your_app_password')  # Use app password
+                server.send_message(msg)
+
+            logger.info("✅ Error report sent successfully")
+        except Exception as e:
+            logger.error(f"❌ Failed to send error report: {str(e)}")
+    
     async def crawl_company(self, company_data: Dict) -> List[JobListing]:
         """Crawl a single company using distill configuration"""
         jobs = []
@@ -80,6 +115,11 @@ class DistillCrawler:
         
         if not uri:
             logger.warning(f"⚠️ No URI for company: {company_name}")
+            self.error_logs.append({
+                'company': company_name,
+                'error': 'No URI provided',
+                'time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
             return jobs
         
         try:
@@ -102,7 +142,13 @@ class DistillCrawler:
             logger.info(f"✅ Found {len(jobs)} jobs from {company_name}")
             
         except Exception as e:
-            logger.error(f"❌ Error crawling {company_name}: {str(e)}")
+            error_msg = str(e)
+            logger.error(f"❌ Error crawling {company_name}: {error_msg}")
+            self.error_logs.append({
+                'company': company_name,
+                'error': error_msg,
+                'time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
         
         return jobs
     
@@ -723,10 +769,10 @@ class DistillCrawler:
             updated_jobs = 0
             
             for job in jobs:
-                # Check if job already exists
+                # Check if job already exists using title and company
                 existing_job = jobs_collection.find_one({
-                    "external_id": job.external_id,
-                    "source_url": job.source_url
+                    "title": job.title,
+                    "company": job.company
                 })
                 
                 job_data = {
@@ -749,11 +795,13 @@ class DistillCrawler:
                 }
                 
                 if existing_job:
-                    jobs_collection.update_one(
-                        {"_id": existing_job["_id"]},
-                        {"$set": job_data}
-                    )
-                    updated_jobs += 1
+                    # Update only if there are changes
+                    if any(job_data[key] != existing_job.get(key) for key in job_data.keys()):
+                        jobs_collection.update_one(
+                            {"_id": existing_job["_id"]},
+                            {"$set": job_data}
+                        )
+                        updated_jobs += 1
                 else:
                     job_data["created_at"] = datetime.now()
                     jobs_collection.insert_one(job_data)
@@ -872,7 +920,20 @@ async def main():
     print(f"Total jobs found: {len(jobs)}")
     
     # Save to database
-    crawler.save_jobs_to_database(jobs)
+    result = crawler.save_jobs_to_database(jobs)
+    
+    # Send error report if there are any errors
+    crawler.send_error_report()
+    
+    # Send Telegram notification
+    from utils.telegram import TelegramNotifier
+    notifier = TelegramNotifier()
+    await notifier.send_crawler_status(
+        new_jobs=result['new_jobs'],
+        updated_jobs=result['updated_jobs'],
+        total_processed=result['total_processed'],
+        error_count=len(crawler.error_logs)
+    )
     
     print("\n✅ All done!")
 

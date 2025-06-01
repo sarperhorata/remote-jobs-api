@@ -6,7 +6,7 @@ import { useTheme } from '../contexts/theme/ThemeContext';
 const Navigation: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -51,14 +51,6 @@ const Navigation: React.FC = () => {
             </Link>
             <div className="hidden md:flex items-center space-x-4">
               <Link
-                to="/jobs"
-                className={`px-3 py-2 rounded-md ${
-                  isActive('/jobs') ? 'bg-blue-700' : 'hover:bg-blue-700'
-                }`}
-              >
-                Jobs
-              </Link>
-              <Link
                 to="/dashboard"
                 className={`px-3 py-2 rounded-md ${
                   isActive('/dashboard') ? 'bg-blue-700' : 'hover:bg-blue-700'
@@ -66,14 +58,28 @@ const Navigation: React.FC = () => {
               >
                 Dashboard
               </Link>
-              <Link
-                to="/status"
-                className={`px-3 py-2 rounded-md ${
-                  isActive('/status') ? 'bg-blue-700' : 'hover:bg-blue-700'
-                }`}
-              >
-                Status
-              </Link>
+              {isAuthenticated && user?.role === 'admin' && (
+                <>
+                  <Link
+                    to="/admin/dashboard"
+                    className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    to="/admin/cronjobs"
+                    className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+                  >
+                    Cronjobs
+                  </Link>
+                  <Link
+                    to="/admin/external-api-services"
+                    className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+                  >
+                    External API Services
+                  </Link>
+                </>
+              )}
             </div>
           </div>
 
@@ -103,81 +109,29 @@ const Navigation: React.FC = () => {
             </button>
 
             {/* Profile or Login */}
-            {user ? (
-              <div className="relative" ref={profileMenuRef}>
-                <button
-                  onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  className={`flex items-center px-3 py-2 rounded-md ${
-                    isActive('/profile') ? 'bg-blue-700' : 'hover:bg-blue-700'
-                  }`}
-                >
-                  <div className="mr-2 h-8 w-8 rounded-full overflow-hidden bg-gray-200">
-                    {user.profilePicture ? (
-                      <img
-                        src={user.profilePicture}
-                        alt={user.name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center bg-blue-500 text-white">
-                        {user.name.charAt(0)}
-                      </div>
-                    )}
-                  </div>
-                  <span>{user.name}</span>
-                  <svg className="ml-1 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
-
-                {/* Profile Dropdown */}
-                {showProfileMenu && (
-                  <div className="absolute right-0 mt-2 w-48 py-2 bg-white rounded-md shadow-xl z-20">
-                    <Link
-                      to="/profile"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      onClick={() => setShowProfileMenu(false)}
-                    >
-                      Your Profile
-                    </Link>
-                    <Link
-                      to="/my-jobs"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      onClick={() => setShowProfileMenu(false)}
-                    >
-                      My Jobs
-                    </Link>
-                    <Link
-                      to="/my-resumes"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      onClick={() => setShowProfileMenu(false)}
-                    >
-                      My Resumes
-                    </Link>
-                    <div className="border-t border-gray-100"></div>
-                    <button
-                      onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Sign out
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex space-x-2">
+            {!isAuthenticated ? (
+              <div className="flex items-center space-x-4">
                 <Link
                   to="/login"
-                  className="px-3 py-2 rounded-md hover:bg-blue-700"
+                  className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
                 >
                   Login
                 </Link>
                 <Link
-                  to="/signup"
-                  className="px-3 py-2 bg-indigo-600 rounded-md hover:bg-indigo-700"
+                  to="/register"
+                  className="bg-blue-600 text-white hover:bg-blue-700 px-3 py-2 rounded-md text-sm font-medium"
                 >
-                  Sign up
+                  Register
                 </Link>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={handleLogout}
+                  className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Logout
+                </button>
               </div>
             )}
           </div>
@@ -236,15 +190,6 @@ const Navigation: React.FC = () => {
         <div className="md:hidden">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             <Link
-              to="/jobs"
-              className={`block px-3 py-2 rounded-md ${
-                isActive('/jobs') ? 'bg-blue-700' : 'hover:bg-blue-700'
-              }`}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Jobs
-            </Link>
-            <Link
               to="/dashboard"
               className={`block px-3 py-2 rounded-md ${
                 isActive('/dashboard') ? 'bg-blue-700' : 'hover:bg-blue-700'
@@ -252,15 +197,6 @@ const Navigation: React.FC = () => {
               onClick={() => setIsMenuOpen(false)}
             >
               Dashboard
-            </Link>
-            <Link
-              to="/status"
-              className={`block px-3 py-2 rounded-md ${
-                isActive('/status') ? 'bg-blue-700' : 'hover:bg-blue-700'
-              }`}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Status
             </Link>
             {user ? (
               <>
@@ -308,4 +244,4 @@ const Navigation: React.FC = () => {
   );
 };
 
-export default Navigation; 
+export default Navigation;

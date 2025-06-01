@@ -116,7 +116,7 @@ companies.forEach(company => {
       ],
       skills: company.techStack?.slice(0, 5) || [],
       location: timeZone.region,
-      type: type,
+      job_type: type,
       salary: {
         min: 80000,
         max: 150000,
@@ -166,7 +166,7 @@ export class MockDataService {
       }
       
       if (filters.type) {
-        filteredJobs = filteredJobs.filter(job => job.type === filters.type);
+        filteredJobs = filteredJobs.filter(job => job.job_type === filters.type);
       }
       
       if (filters.category) {

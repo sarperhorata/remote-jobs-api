@@ -198,14 +198,14 @@ class SchedulerService:
 
 📅 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
 🔄 <b>Starting company websites crawling...</b>
-🎯 <b>Target:</b> 500+ Company Career Pages
+🎯 <b>Target:</b> All Company Career Pages
 📋 <b>Source:</b> Distill.io Export Data""")
                 
                 # Load companies data
                 crawler.load_companies_data()
                 
-                # Run crawler (limit to reasonable number for daily run)
-                jobs = await crawler.crawl_all_companies(max_companies=100)
+                # Run crawler for all companies
+                jobs = await crawler.crawl_all_companies()
                 
                 # Save to database
                 save_results = crawler.save_jobs_to_database(jobs)
@@ -217,7 +217,7 @@ class SchedulerService:
 📊 <b>Total jobs found:</b> {len(jobs)}
 💾 <b>New jobs:</b> {save_results.get('new_jobs', 0)}
 🔄 <b>Updated jobs:</b> {save_results.get('updated_jobs', 0)}
-🏢 <b>Companies crawled:</b> {min(100, len(crawler.companies_data))}
+🏢 <b>Companies crawled:</b> {len(crawler.companies_data)}
 
 🕐 <b>Completed at:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
 🌐 <b>Source:</b> Company Career Pages""")
@@ -295,7 +295,7 @@ class SchedulerService:
             # Jobs added in last 24 hours
             yesterday = datetime.now() - timedelta(days=1)
             new_jobs_24h = jobs_collection.count_documents({
-                "created_at": {"$gte": yesterday.isoformat()}
+                "last_updated": {"$gte": yesterday.isoformat()}
             })
             
             logger.info(f"Job statistics: Total={total_jobs}, Active={active_jobs}, New(24h)={new_jobs_24h}")

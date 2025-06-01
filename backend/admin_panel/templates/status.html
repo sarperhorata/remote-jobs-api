@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">System Status</h1>
+        <p class="text-gray-600 mt-1">Real-time status of Buzz2Remote services</p>
+    </div>
+
+    <!-- Overall Status -->
+    <div class="bg-white rounded-lg shadow-sm border p-6 mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-xl font-semibold text-gray-900">Overall System Status</h2>
+                <p class="text-gray-600 mt-1">Last updated: {{ system_status.deployment.last_deploy }}</p>
+            </div>
+            <div class="text-right">
+                <span class="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                    Operational
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Services Status -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <!-- Database Status -->
+        <div class="bg-white rounded-lg shadow-sm border p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">Database</h3>
+                    <p class="text-sm text-gray-500">MongoDB</p>
+                </div>
+                <span class="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                    {{ system_status.database.status }}
+                </span>
+            </div>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <div class="text-gray-500">Latency</div>
+                    <div class="font-semibold">{{ system_status.database.latency }}</div>
+                </div>
+                <div>
+                    <div class="text-gray-500">Total Jobs</div>
+                    <div class="font-semibold">{{ system_status.database.total_jobs }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Services Status -->
+        <div class="bg-white rounded-lg shadow-sm border p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">API Services</h3>
+                    <p class="text-sm text-gray-500">External APIs</p>
+                </div>
+                <span class="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                    {{ system_status.api_services.status }}
+                </span>
+            </div>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <div class="text-gray-500">Active Sources</div>
+                    <div class="font-semibold">{{ system_status.api_services.active_sources }}</div>
+                </div>
+                <div>
+                    <div class="text-gray-500">Last Sync</div>
+                    <div class="font-semibold">{{ system_status.api_services.last_sync }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Crawler Status -->
+        <div class="bg-white rounded-lg shadow-sm border p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">Job Crawler</h3>
+                    <p class="text-sm text-gray-500">Automated Job Scraper</p>
+                </div>
+                <span class="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                    {{ system_status.crawler.status }}
+                </span>
+            </div>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <div class="text-gray-500">Last Run</div>
+                    <div class="font-semibold">{{ system_status.crawler.last_run }}</div>
+                </div>
+                <div>
+                    <div class="text-gray-500">Jobs Processed</div>
+                    <div class="font-semibold">{{ system_status.crawler.jobs_processed }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Telegram Bot Status -->
+        <div class="bg-white rounded-lg shadow-sm border p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">Telegram Bot</h3>
+                    <p class="text-sm text-gray-500">Notification Service</p>
+                </div>
+                <span class="px-3 py-1 rounded-full text-sm font-medium {% if system_status.telegram_bot.status == 'operational' %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                    {{ system_status.telegram_bot.status }}
+                </span>
+            </div>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <div class="text-gray-500">Subscribers</div>
+                    <div class="font-semibold">{{ system_status.telegram_bot.subscribers }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Incidents -->
+    <div class="bg-white rounded-lg shadow-sm border p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Incidents</h3>
+        {% if recent_incidents %}
+            <div class="space-y-4">
+                {% for incident in recent_incidents %}
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        {% if incident.severity == 'high' %}
+                            <span class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-red-100">
+                                <svg class="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                </svg>
+                            </span>
+                        {% elif incident.severity == 'medium' %}
+                            <span class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-yellow-100">
+                                <svg class="h-5 w-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                </svg>
+                            </span>
+                        {% else %}
+                            <span class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-blue-100">
+                                <svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </span>
+                        {% endif %}
+                    </div>
+                    <div class="ml-4">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-sm font-medium text-gray-900">{{ incident.title }}</h4>
+                            <span class="text-sm text-gray-500">{{ incident.timestamp }}</span>
+                        </div>
+                        <p class="mt-1 text-sm text-gray-600">{{ incident.description }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-gray-500 text-sm">No recent incidents reported.</p>
+        {% endif %}
+    </div>
+
+    <!-- Deployment Info -->
+    <div class="mt-8 bg-white rounded-lg shadow-sm border p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Deployment Information</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+                <div class="text-sm text-gray-500">Environment</div>
+                <div class="font-semibold">{{ system_status.deployment.environment }}</div>
+            </div>
+            <div>
+                <div class="text-sm text-gray-500">Version</div>
+                <div class="font-semibold">{{ system_status.deployment.version }}</div>
+            </div>
+            <div>
+                <div class="text-sm text-gray-500">Last Deploy</div>
+                <div class="font-semibold">{{ system_status.deployment.last_deploy }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

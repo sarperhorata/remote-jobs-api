@@ -1,121 +1,122 @@
 import { Job } from '../types/job';
 
-// Mock jobs data
-const mockJobs: any[] = [
+// Mock data for jobs
+const MOCK_JOBS: Job[] = [
   {
-    id: 1,
-    title: 'Head of Product',
-    company: 'Atomic',
-    logo: 'https://via.placeholder.com/150',
+    id: '1',
+    title: 'Senior Full Stack Developer',
+    companyId: '1',
+    company: { id: '1', name: 'TechCorp', logo: 'https://via.placeholder.com/150' },
+    description: 'We are looking for a senior full stack developer to join our team.',
+    requirements: ['5+ years experience', 'React expertise', 'Node.js knowledge'],
+    responsibilities: ['Lead development', 'Mentor junior developers'],
+    skills: ['React', 'TypeScript', 'Node.js'],
     location: 'Remote',
-    type: 'Full-time',
-    postedAt: '2024-03-20',
-    companyName: 'Atomic',
-    companyLogo: 'https://via.placeholder.com/150',
-    _id: '1'
+    job_type: 'Full-time',
+    salary: { currency: 'USD' },
+    experience: { min: 3, max: 8 },
+    education: 'Bachelor',
+    benefits: ['Health Insurance', 'Flexible Schedule'],
+    applicationUrl: 'https://example.com/apply',
+    source: 'company',
+    sourceUrl: 'https://techcorp.com/careers',
+    status: 'active',
+    postedAt: new Date()
   },
   {
-    id: 2,
-    title: 'Senior Frontend Developer',
-    company: 'Tech Corp',
-    logo: 'https://via.placeholder.com/150',
-    location: 'Remote',
-    type: 'Full-time',
-    postedAt: '2024-03-21',
-    companyName: 'Tech Corp',
-    companyLogo: 'https://via.placeholder.com/150',
-    _id: '2'
+    id: '2',
+    title: 'Frontend Developer',
+    companyId: '2',
+    company: { id: '2', name: 'StartupCo', logo: 'https://via.placeholder.com/150' },
+    description: 'Join our frontend team to build amazing user experiences.',
+    requirements: ['React experience', 'CSS expertise'],
+    responsibilities: ['Build UI components', 'Optimize performance'],
+    skills: ['React', 'CSS', 'JavaScript'],
+    location: 'San Francisco, CA',
+    job_type: 'Full-time',
+    salary: { currency: 'USD' },
+    experience: { min: 2, max: 5 },
+    education: 'Bachelor',
+    benefits: ['Stock Options', 'Free Lunch'],
+    applicationUrl: 'https://example.com/apply',
+    source: 'company',
+    sourceUrl: 'https://startupco.com/careers',
+    status: 'active',
+    postedAt: new Date()
   },
   {
-    id: 3,
-    title: 'DevOps Engineer',
-    company: 'Cloud Inc',
-    logo: 'https://via.placeholder.com/150',
-    location: 'Remote - US',
-    type: 'Full-time',
-    postedAt: '2024-03-22',
-    companyName: 'Cloud Inc',
-    companyLogo: 'https://via.placeholder.com/150',
-    _id: '3'
-  },
-  {
-    id: 4,
-    title: 'UX/UI Designer',
-    company: 'Creative Studio',
-    logo: 'https://via.placeholder.com/150',
-    location: 'Remote - Europe',
-    type: 'Contract',
-    postedAt: '2024-03-23',
-    companyName: 'Creative Studio',
-    companyLogo: 'https://via.placeholder.com/150',
-    _id: '4'
-  },
-  {
-    id: 5,
-    title: 'Data Scientist',
-    company: 'Data Analytics',
-    logo: 'https://via.placeholder.com/150',
-    location: 'Remote',
-    type: 'Full-time',
-    postedAt: '2024-03-24',
-    companyName: 'Data Analytics',
-    companyLogo: 'https://via.placeholder.com/150',
-    _id: '5'
-  },
-  {
-    id: 6,
-    title: 'Project Manager',
-    company: 'Global Systems',
-    logo: 'https://via.placeholder.com/150',
-    location: 'Remote - APAC',
-    type: 'Full-time',
-    postedAt: '2024-03-25',
-    companyName: 'Global Systems',
-    companyLogo: 'https://via.placeholder.com/150',
-    _id: '6'
+    id: '3',
+    title: 'Backend Engineer',
+    companyId: '3',
+    company: { id: '3', name: 'DataFlow', logo: 'https://via.placeholder.com/150' },
+    description: 'Build scalable backend systems for our data platform.',
+    requirements: ['Python expertise', 'Database knowledge'],
+    responsibilities: ['Design APIs', 'Optimize databases'],
+    skills: ['Python', 'PostgreSQL', 'Docker'],
+    location: 'New York, NY',
+    job_type: 'Full-time',
+    salary: { currency: 'USD' },
+    experience: { min: 3, max: 7 },
+    education: 'Bachelor',
+    benefits: ['Health Insurance', 'Remote Work'],
+    applicationUrl: 'https://example.com/apply',
+    source: 'company',
+    sourceUrl: 'https://dataflow.com/careers',
+    status: 'active',
+    postedAt: new Date()
   }
 ];
 
-class HomeJobService {
-  static async getFeaturedJobs(): Promise<any[]> {
-    try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Return mock data
-      return mockJobs;
-    } catch (error) {
-      console.error('Error fetching featured jobs:', error);
-      return [];
-    }
-  }
+// Get featured jobs for homepage (first 3 jobs)
+export const getFeaturedJobs = async (): Promise<Job[]> => {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 100));
+  return MOCK_JOBS.slice(0, 3);
+};
 
-  static async getJobStats() {
-    try {
-      const response = await fetch('/api/jobs/admin/data-sources-status');
-      if (!response.ok) {
-        throw new Error('Failed to fetch job statistics');
-      }
-      const data = await response.json();
-      
-      return {
-        totalJobs: data.overall_stats.total_active_jobs.toLocaleString(),
-        remoteJobs: data.overall_stats.remote_jobs.toLocaleString(),
-        hottestCompany: data.source_breakdown[0]?.source_type || 'N/A',
-        jobsLast24h: data.overall_stats.recent_jobs_24h.toLocaleString(),
-        totalCompanies: data.overall_stats.total_companies.toLocaleString(),
-        mostSearchedTerm: 'N/A' // This will be implemented in a future update
-      };
-    } catch (error) {
-      console.error('Error fetching job stats:', error);
-      return {
-        totalJobs: '0',
-        remoteJobs: '0',
-        jobsLast24h: '0',
-        totalCompanies: '0',
-      };
-    }
-  }
-}
+// Get job statistics for homepage
+export const getJobStats = async () => {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 100));
+  
+  return {
+    totalJobs: 150,
+    newJobsThisWeek: 25,
+    activeCompanies: 45,
+    remoteJobs: 95
+  };
+};
 
-export { HomeJobService }; 
+// Get all jobs
+export const getAllJobs = async (): Promise<Job[]> => {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 100));
+  return MOCK_JOBS;
+};
+
+// Get job by ID
+export const getJobById = async (id: string): Promise<Job | null> => {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 100));
+  
+  const job = MOCK_JOBS.find(job => job.id === id);
+  return job || null;
+};
+
+// Get recent jobs (sorted by posted date)
+export const getRecentJobs = async (limit: number = 5): Promise<Job[]> => {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 100));
+  
+  return MOCK_JOBS
+    .sort((a, b) => b.postedAt.getTime() - a.postedAt.getTime())
+    .slice(0, limit);
+};
+
+export class HomeJobService {
+  static getFeaturedJobs = getFeaturedJobs;
+  static getJobStats = getJobStats;
+  static getAllJobs = getAllJobs;
+  static getJobById = getJobById;
+  static getRecentJobs = getRecentJobs;
+} 

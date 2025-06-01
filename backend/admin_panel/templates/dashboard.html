@@ -80,44 +80,71 @@
                 </div>
 
                 <!-- Stats Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                    <a href="/jobs" class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm text-gray-600">Total Jobs</p>
-                                <h3 class="text-2xl font-bold">{{ stats.total_jobs }}</h3>
-                            </div>
-                            <div class="p-3 bg-blue-100 rounded-full">
-                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                                </svg>
-                            </div>
-                        </div>
-                    </a>
-                    <div class="col-md-3">
-                        <div class="card stat-card text-center">
+                <div class="row">
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-primary shadow h-100 py-2">
                             <div class="card-body">
-                                <i class="fas fa-check-circle text-success mb-2" style="font-size: 2rem;"></i>
-                                <h5 class="card-title">{{ stats.active_jobs|default(0) }}</h5>
-                                <p class="card-text text-muted">Active Jobs</p>
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                            Total Jobs</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_jobs }}</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="card stat-card text-center">
+
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-success shadow h-100 py-2">
                             <div class="card-body">
-                                <i class="fas fa-clock text-info mb-2" style="font-size: 2rem;"></i>
-                                <h5 class="card-title">{{ stats.new_jobs_24h|default(0) }}</h5>
-                                <p class="card-text text-muted">New Jobs (24h)</p>
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                            Total Companies</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_companies }}</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-building fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="card stat-card text-center">
+
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-info shadow h-100 py-2">
                             <div class="card-body">
-                                <i class="fas fa-cogs text-warning mb-2" style="font-size: 2rem;"></i>
-                                <h5 class="card-title">{{ stats.active_cronjobs|default(0) }}</h5>
-                                <p class="card-text text-muted">Active Cronjobs</p>
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                            Jobs Today</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.jobs_today }}</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-clock fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-warning shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                            Active APIs</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.active_apis }}</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-plug fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

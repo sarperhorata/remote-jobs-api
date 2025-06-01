@@ -460,4 +460,81 @@ class JobDataManager:
             return {
                 "status": "error",
                 "message": str(e)
-            } 
+            }
+
+    async def save_jobs_to_database(self, jobs: List[JobListing]):
+        """Save jobs to MongoDB database"""
+        try:
+            db = get_db()
+            jobs_collection = db["jobs"]
+            
+            new_jobs = 0
+            updated_jobs = 0
+            
+            for job in jobs:
+                # Check if job already exists using title and company
+                existing_job = jobs_collection.find_one({
+                    "title": job.title,
+                    "company": job.company
+                })
+                
+                job_data = {
+                    "title": job.title,
+                    "company": job.company,
+                    "location": job.location,
+                    "job_type": job.job_type,
+                    "salary": job.salary,
+                    "description": job.description,
+                    "requirements": job.requirements or [],
+                    "posted_date": job.posted_date,
+                    "remote_type": job.remote_type,
+                    "skills": job.skills or [],
+                    "source_url": job.source_url,
+                    "external_id": job.external_id,
+                    "is_active": True,
+                    "last_updated": datetime.now(),
+                    "source_type": "distill_crawler"
+                }
+                
+                if existing_job:
+                    # Update application URLs array
+                    application_urls = existing_job.get("application_urls", [])
+                    if job.apply_url not in application_urls:
+                        application_urls.append({
+                            "url": job.apply_url,
+                            "source": job.source_url,
+                            "added_at": datetime.now()
+                        })
+                    
+                    # Update job data with new application URLs
+                    job_data["application_urls"] = application_urls
+                    
+                    # Update only if there are changes
+                    if any(job_data[key] != existing_job.get(key) for key in job_data.keys()):
+                        jobs_collection.update_one(
+                            {"_id": existing_job["_id"]},
+                            {"$set": job_data}
+                        )
+                        updated_jobs += 1
+                else:
+                    # Create new job with initial application URL
+                    job_data["application_urls"] = [{
+                        "url": job.apply_url,
+                        "source": job.source_url,
+                        "added_at": datetime.now()
+                    }]
+                    job_data["created_at"] = datetime.now()
+                    jobs_collection.insert_one(job_data)
+                    new_jobs += 1
+            
+            logger.info(f"💾 Database save completed: {new_jobs} new, {updated_jobs} updated")
+            
+            return {
+                "new_jobs": new_jobs,
+                "updated_jobs": updated_jobs,
+                "total_processed": len(jobs)
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Error saving to database: {str(e)}")
+            raise 

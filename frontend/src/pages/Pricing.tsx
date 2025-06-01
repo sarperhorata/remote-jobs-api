@@ -1,6 +1,52 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { loadStripe } from '@stripe/stripe-js';
+import { useAuth } from '../contexts/AuthContext';
+
+// Initialize Stripe
+const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY || '');
 
 const Pricing: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+  const [loading, setLoading] = useState<string | null>(null);
+
+  const handlePurchase = async (planType: 'monthly' | 'annual') => {
+    if (!isAuthenticated) {
+      // Redirect to login or show auth modal
+      window.location.href = '/login';
+      return;
+    }
+
+    try {
+      setLoading(planType);
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          planType,
+        }),
+      });
+
+      const { sessionId } = await response.json();
+      const stripe = await stripePromise;
+      
+      if (stripe) {
+        const { error } = await stripe.redirectToCheckout({
+          sessionId,
+        });
+
+        if (error) {
+          console.error('Stripe error:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(null);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold text-center mb-8 text-gray-800 dark:text-white">Pricing Plans</h1>
@@ -14,8 +60,12 @@ const Pricing: React.FC = () => {
             <li>✅ Basic profile features</li>
             <li>✅ Email notifications</li>
           </ul>
-          <button className="w-full py-2 px-4 bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-colors">
-            Choose Monthly
+          <button 
+            onClick={() => handlePurchase('monthly')}
+            disabled={loading === 'monthly'}
+            className="w-full py-2 px-4 bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading === 'monthly' ? 'Processing...' : 'Choose Monthly'}
           </button>
         </div>
 
@@ -32,8 +82,12 @@ const Pricing: React.FC = () => {
             <li>✅ Priority email notifications</li>
             <li>✅ Automatic application preparation (Coming Soon)</li>
           </ul>
-          <button className="w-full py-2 px-4 bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-colors">
-            Choose Annual
+          <button 
+            onClick={() => handlePurchase('annual')}
+            disabled={loading === 'annual'}
+            className="w-full py-2 px-4 bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading === 'annual' ? 'Processing...' : 'Choose Annual'}
           </button>
         </div>
       </div>

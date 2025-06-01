@@ -26,7 +26,7 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
       <div className="flex flex-wrap gap-2 mb-4">
         <span className="text-sm text-gray-500">{job.location}</span>
         <span className="text-sm text-gray-500">•</span>
-        <span className="text-sm text-gray-500">{job.type}</span>
+        <span className="text-sm text-gray-500">{job.job_type}</span>
       </div>
       
       <div className="flex flex-wrap gap-2 mb-4">

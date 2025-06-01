@@ -29,15 +29,17 @@ interface User {
   email: string;
   profilePicture?: string;
   profile?: UserProfile;
+  role?: 'user' | 'admin';
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   signup: (name: string, email: string, password: string) => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -56,6 +58,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     name: 'Sarper Horata',
     email: 'sarperhorata@gmail.com',
     profilePicture: 'https://via.placeholder.com/150',
+    role: 'admin',
     profile: {
       name: 'Sarper Horata',
       email: 'sarperhorata@gmail.com',
@@ -101,8 +104,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsLoading(true);
       try {
         // In a real app, check if user is logged in from token/localStorage
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setUser(staticMockUser); // Always logged in for demo
+        // Set user immediately for tests to avoid async issues
+        if (process.env.NODE_ENV === 'test') {
+          setUser(staticMockUser);
+        } else {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          setUser(staticMockUser); // Always logged in for demo
+        }
       } catch (error) {
         console.error('Failed to load user:', error);
         setUser(null);
@@ -151,6 +159,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  const refreshUser = async () => {
+    setIsLoading(true);
+    try {
+      // In a real app, make API call to refresh user data
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setUser(staticMockUser);
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const value = {
     user,
     isAuthenticated: !!user,
@@ -158,6 +180,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     login,
     logout,
     signup,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

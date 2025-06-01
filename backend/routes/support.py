@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
-from database import get_db
+from backend.database import get_db
 from models.support import SupportTicket
 from models.user import User
-from schemas.support import SupportTicketCreate, SupportTicketResponse
-from utils.auth import get_current_active_user
-from utils.chatbot import get_chatbot_response
+from backend.schemas.support import SupportTicketCreate, SupportTicketResponse
+from backend.utils.auth import get_current_active_user
+from backend.utils.chatbot import get_chatbot_response
 
 router = APIRouter()
 

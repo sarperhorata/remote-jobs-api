@@ -27,7 +27,7 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, similarJobs = [], onApply })
       <div className="flex flex-wrap gap-4 text-sm text-gray-500 mb-6">
         <span>{job.location}</span>
         <span>•</span>
-        <span>{job.type}</span>
+        <span>{job.job_type}</span>
         <span>•</span>
         <span>Posted {new Date(job.postedAt).toLocaleDateString()}</span>
       </div>

@@ -66,6 +66,13 @@ services:
         value: admin
       - key: ADMIN_PASSWORD
         sync: false
+      # Stripe Configuration
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
     disk:
       name: tmp
       mountPath: /tmp
@@ -81,4 +88,7 @@ services:
 # EMAIL_PORT=587 (optional)
 # EMAIL_USER=your-email@gmail.com (optional)
 # EMAIL_PASSWORD=your-app-password (optional)
-# EMAIL_FROM=your-email@gmail.com (optional) 
+# EMAIL_FROM=your-email@gmail.com (optional)
+# STRIPE_SECRET_KEY=your-stripe-secret-key
+# STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
+# STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key 

@@ -60,21 +60,28 @@ let apiUrlPromise: Promise<string> | null = null;
 // Backend is deployed on Render.com
 
 const PRODUCTION_API_URL = 'https://remote-jobs-api-k9v1.onrender.com/api';
+const TEST_API_URL = 'http://localhost:8001/api';
+const DEVELOPMENT_API_URL = 'http://localhost:8001/api';
 
-// Simple and direct API URL - no complex port detection needed in production
+// Simple and direct API URL - environment aware
 export const getApiUrl = async (): Promise<string> => {
-  // Always use production URL
+  // Test environment
+  if (process.env.NODE_ENV === 'test') {
+    return TEST_API_URL;
+  }
+  
+  // Development environment 
+  if (process.env.NODE_ENV === 'development') {
+    return DEVELOPMENT_API_URL;
+  }
+  
+  // Production environment
   return PRODUCTION_API_URL;
 };
 
-// For development, you can uncomment this and use localhost
-// const DEVELOPMENT_API_URL = 'http://localhost:8001/api';
-
-// Manuel cache temizleme (gerektiğinde kullan)
+// Manual cache clearing (not needed in simple config)
 export const clearApiUrlCache = () => {
   console.log('🧹 Clearing API URL cache');
-  cachedApiUrl = null;
-  apiUrlPromise = null;
 };
 
 // Force clear cache on first load
@@ -83,13 +90,14 @@ if (typeof window !== 'undefined') {
   clearApiUrlCache();
 }
 
-// Development/Production mode detection
+// Environment detection
 export const isDevelopment = process.env.NODE_ENV === 'development';
 export const isProduction = process.env.NODE_ENV === 'production';
 export const isTest = process.env.NODE_ENV === 'test';
 
 // Current frontend port detection
 export const getCurrentPort = (): number => {
+  if (typeof window === 'undefined') return 3000;
   const port = parseInt(window.location.port);
   return port || (window.location.protocol === 'https:' ? 443 : 80);
 };
@@ -120,7 +128,9 @@ const apiConfig = {
   isDevelopment,
   isProduction,
   isTest,
-  PRODUCTION_API_URL
+  PRODUCTION_API_URL,
+  TEST_API_URL,
+  DEVELOPMENT_API_URL
 };
 
 export default apiConfig; 

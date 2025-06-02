@@ -1,15 +1,17 @@
 [build]
-  command = "cd frontend && npm install --legacy-peer-deps && npm run build"
-  publish = "frontend/build"
+  base = "frontend/"
+  publish = "frontend/build/"
+  command = "npm run build"
   functions = "functions"
 
 # Production context: all deploys from the Production branch
 [context.production]
   command = "cd frontend && npm install --legacy-peer-deps && npm run build"
+  environment = { REACT_APP_API_URL = "https://buzz2remote-backend.onrender.com" }
   
 [context.production.environment]
   NODE_ENV = "production"
-  REACT_APP_API_URL = "https://buzz2remote-api.onrender.com/api"
+  REACT_APP_API_URL = "https://buzz2remote-backend.onrender.com"
   VITE_API_URL = "https://buzz2remote-api.onrender.com/api"
   VITE_APP_URL = "https://buzz2remote.netlify.app"
   REACT_APP_STRIPE_PUBLISHABLE_KEY = "your-stripe-publishable-key"
@@ -26,6 +28,7 @@
 # Branch deploy context: deploys from branches other than the Production branch
 [context.branch-deploy]
   command = "cd frontend && npm install --legacy-peer-deps && npm run build"
+  environment = { REACT_APP_API_URL = "https://buzz2remote-backend.onrender.com" }
 
 # Specific branch context: deploys from the staging branch
 [context.staging]
@@ -35,7 +38,8 @@
 [build.environment]
   NODE_VERSION = "18"
   NPM_VERSION = "9"
-  REACT_APP_API_URL = "https://buzz2remote-api.onrender.com/api"
+  SKIP_PREFLIGHT_CHECK = "true"
+  REACT_APP_API_URL = "https://buzz2remote-backend.onrender.com"
   REACT_APP_STRIPE_PUBLISHABLE_KEY = "your-stripe-publishable-key"
 
 # Redirects for single page application

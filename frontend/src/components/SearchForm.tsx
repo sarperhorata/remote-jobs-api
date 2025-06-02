@@ -4,6 +4,7 @@ import { Autocomplete, TextField, Button, Alert, Snackbar } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search';
 import PublicIcon from '@mui/icons-material/Public';
 import WorkIcon from '@mui/icons-material/Work';
+import { getApiUrl } from '../utils/apiConfig';
 
 interface Position {
   title: string;
@@ -77,7 +78,8 @@ const SearchForm: React.FC = () => {
   const fetchPositions = async () => {
     try {
       // API'den gerçek pozisyon verilerini çek
-      const response = await fetch('http://localhost:8001/api/jobs/statistics');
+      const apiUrl = await getApiUrl();
+      const response = await fetch(`${apiUrl}/jobs/statistics`);
       const data = await response.json();
       
       if (data.positions && Array.isArray(data.positions)) {

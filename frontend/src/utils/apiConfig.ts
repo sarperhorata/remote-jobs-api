@@ -56,36 +56,19 @@ const detectBackendPort = async (): Promise<string> => {
 let cachedApiUrl: string | null = null;
 let apiUrlPromise: Promise<string> | null = null;
 
+// Production API configuration for Buzz2Remote
+// Backend is deployed on Render.com
+
+const PRODUCTION_API_URL = 'https://remote-jobs-api-k9v1.onrender.com/api';
+
+// Simple and direct API URL - no complex port detection needed in production
 export const getApiUrl = async (): Promise<string> => {
-  console.log('📡 getApiUrl called, cachedApiUrl:', cachedApiUrl);
-  
-  // Cache varsa onu kullan
-  if (cachedApiUrl) {
-    console.log('📋 Using cached API URL:', cachedApiUrl);
-    return cachedApiUrl;
-  }
-
-  // Zaten bir detection çalışıyorsa aynı promise'i bekle
-  if (apiUrlPromise) {
-    console.log('⏳ Detection already in progress, waiting...');
-    return apiUrlPromise;
-  }
-
-  // Yeni detection başlat
-  console.log('🚀 Starting new detection...');
-  apiUrlPromise = detectBackendPort();
-  
-  try {
-    cachedApiUrl = await apiUrlPromise;
-    console.log('✅ Detection complete, cached URL:', cachedApiUrl);
-    return cachedApiUrl;
-  } catch (error) {
-    console.error('❌ Backend detection failed:', error);
-    cachedApiUrl = 'http://localhost:8001/api'; // Fallback
-    console.log('🔄 Using fallback URL:', cachedApiUrl);
-    return cachedApiUrl;
-  }
+  // Always use production URL
+  return PRODUCTION_API_URL;
 };
+
+// For development, you can uncomment this and use localhost
+// const DEVELOPMENT_API_URL = 'http://localhost:8001/api';
 
 // Manuel cache temizleme (gerektiğinde kullan)
 export const clearApiUrlCache = () => {
@@ -137,4 +120,5 @@ export default {
   isDevelopment,
   isProduction,
   isTest,
+  PRODUCTION_API_URL
 }; 

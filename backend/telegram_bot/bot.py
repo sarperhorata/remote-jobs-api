@@ -8,14 +8,35 @@ import time
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ConversationHandler, ContextTypes, filters
 
-from utils.config import TELEGRAM_BOT_TOKEN, TELEGRAM_ENABLED, logger
-from models.models import UserProfile, UserProfileCreate, UserProfileUpdate, WorkType, JobType, WorkHours, UserNotificationPreference
+# Get configuration from environment variables
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_ENABLED = bool(TELEGRAM_BOT_TOKEN)
+
+# Setup logger
+logger = logging.getLogger(__name__)
+
+# Import models with proper path
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+try:
+    from backend.models.models import UserProfile, UserProfileCreate, UserProfileUpdate, WorkType, JobType, WorkHours, UserNotificationPreference
+except ImportError:
+    # Fallback for when imports are not available
+    logger.warning("Could not import models, some features will be limited")
+    UserProfile = None
+    UserProfileCreate = None 
+    UserProfileUpdate = None
+    WorkType = None
+    JobType = None
+    WorkHours = None
+    UserNotificationPreference = None
 
 # Enable logging
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
-logger = logging.getLogger(__name__)
 
 # Conversation states
 (

@@ -10,7 +10,7 @@ from backend.utils.auth import get_current_active_user, get_current_user, get_cu
 
 router = APIRouter(tags=["companies"])
 
-@router.post("/companies", response_model=CompanyResponse)
+@router.post("/companies/", response_model=CompanyResponse)
 async def create_company(
     company: CompanyCreate,
     db: AsyncIOMotorDatabase = Depends(get_async_db)
@@ -25,7 +25,7 @@ async def create_company(
     created_company = await db.companies.find_one({"_id": result.inserted_id})
     return created_company
 
-@router.get("/companies", response_model=CompanyListResponse)
+@router.get("/companies/", response_model=CompanyListResponse)
 async def get_companies(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
@@ -134,7 +134,7 @@ async def delete_company(
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Company not found")
 
-@router.get("/companies/{company_id}/jobs", response_model=List[dict])
+@router.get("/companies/{company_id}/jobs", response_model=dict)
 async def get_company_jobs(
     company_id: str,
     skip: int = Query(0, ge=0),
@@ -156,4 +156,4 @@ async def get_company_jobs(
             job["id"] = str(job["_id"])
             job["_id"] = str(job["_id"])
             
-    return jobs 
+    return {"jobs": jobs} 

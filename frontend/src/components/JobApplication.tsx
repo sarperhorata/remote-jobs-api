@@ -27,7 +27,7 @@ const JobApplication: React.FC<{ job: Job }> = ({ job }) => {
     e.preventDefault();
     try {
       // Call apply job function from service
-      await jobService.applyForJob('current-user', job.id);
+      await jobService.applyToJob('current-user', job.id);
       console.log('Application submitted successfully');
       navigate('/my-jobs');
     } catch (error) {

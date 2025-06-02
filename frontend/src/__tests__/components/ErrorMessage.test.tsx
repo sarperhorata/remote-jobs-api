@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import ErrorMessage from '../../components/ErrorMessage';
+import { ErrorMessage } from '../../components/ErrorMessage';
 
 describe('ErrorMessage', () => {
   it('renders error message with provided text', () => {
@@ -9,30 +9,31 @@ describe('ErrorMessage', () => {
     expect(screen.getByText(errorText)).toBeInTheDocument();
   });
 
-  it('has correct CSS classes', () => {
+  it('has correct CSS classes for error container', () => {
     const { container } = render(<ErrorMessage message="Error" />);
     
     const errorElement = container.firstChild;
-    expect(errorElement).toHaveClass('text-red-600', 'text-center', 'py-4');
+    expect(errorElement).toHaveClass('bg-red-50', 'border', 'border-red-200', 'rounded-md', 'p-4');
   });
 
-  it('renders empty message', () => {
-    render(<ErrorMessage message="" />);
+  it('renders error message text', () => {
+    const message = "Test error message";
+    render(<ErrorMessage message={message} />);
     
-    const errorElement = screen.getByText('');
-    expect(errorElement).toBeInTheDocument();
+    expect(screen.getByText(message)).toBeInTheDocument();
+    expect(screen.getByText('Error')).toBeInTheDocument(); // Header text
   });
 
   it('renders without crashing', () => {
     expect(() => render(<ErrorMessage message="Test error" />)).not.toThrow();
   });
 
-  it('handles undefined message gracefully', () => {
-    // @ts-ignore - testing edge case
-    render(<ErrorMessage />);
+  it('displays error icon', () => {
+    const { container } = render(<ErrorMessage message="Test" />);
     
-    const { container } = render(<ErrorMessage message={undefined as any} />);
-    expect(container.firstChild).toBeInTheDocument();
+    const svgIcon = container.querySelector('svg');
+    expect(svgIcon).toBeInTheDocument();
+    expect(svgIcon).toHaveClass('h-5', 'w-5', 'text-red-400');
   });
 
   it('handles long error messages', () => {
@@ -47,5 +48,13 @@ describe('ErrorMessage', () => {
     render(<ErrorMessage message={specialMessage} />);
     
     expect(screen.getByText(specialMessage)).toBeInTheDocument();
+  });
+
+  it('has proper semantic structure', () => {
+    const { container } = render(<ErrorMessage message="Test error" />);
+    
+    const errorTitle = screen.getByText('Error');
+    expect(errorTitle.tagName).toBe('H3');
+    expect(errorTitle).toHaveClass('text-sm', 'font-medium', 'text-red-800');
   });
 }); 

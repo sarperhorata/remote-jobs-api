@@ -1,89 +1,97 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, MapPin, Building, Globe, ArrowRight, Star, CheckCircle, Calendar, Bug, DollarSign } from 'lucide-react';
+import { Search, MapPin, Building, Globe, ArrowRight, Star, CheckCircle, Bug, DollarSign } from 'lucide-react';
 import AuthModal from '../components/AuthModal';
+import Onboarding from '../components/Onboarding';
+import { JobService } from '../services/jobService';
+import { Job } from '../types/job';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [locationCountry, setLocationCountry] = useState('');
-  const [locationRegion, setLocationRegion] = useState('');
-  const [jobType, setJobType] = useState('remote');
-  const [datePosted, setDatePosted] = useState('any');
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authModalTab, setAuthModalTab] = useState<'login' | 'register'>('register');
+  const [authModalTab, setAuthModalTab] = useState<'login' | 'register'>('login');
+  const [featuredJobs, setFeaturedJobs] = useState<Job[]>([]);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
 
-  // Sample data for filters - in a real app, these would come from an API or config
-  const countries = [
-    { value: 'us', label: 'United States' },
-    { value: 'ca', label: 'Canada' },
-    { value: 'gb', label: 'United Kingdom' },
-    { value: 'de', label: 'Germany' },
-    { value: 'any', label: 'Any Country' },
-  ];
-
-  const datePostedOptions = [
-    { value: 'any', label: 'Any Date' },
-    { value: '24h', label: 'Last 24 hours' },
-    { value: '3d', label: 'Last 3 days' },
-    { value: '7d', label: 'Last 7 days' },
-    { value: '30d', label: 'Last 30 days' },
-  ];
-
-  const workTypeOptions = [
-    { value: 'remote', label: 'Remote' },
-    { value: 'hybrid', label: 'Hybrid' },
-    { value: 'office', label: 'Office' },
-  ];
-
-  const featuredJobs = [
-    {
-      id: 1,
-      title: 'Senior Frontend Developer',
-      company: 'TechBuzz Ltd.',
-      location: 'Remote (Global)',
-      type: 'Full-time',
-      salary: '$90k - $130k',
-      tags: ['React', 'Next.js', 'Remote'],
-      posted: '1 day ago',
-      logo: '💻'
-    },
-    {
-      id: 2,
-      title: 'AI Product Manager',
-      company: 'FutureAI Corp.',
-      location: 'Remote (US)',
-      type: 'Full-time',
-      salary: '$120k - $170k',
-      tags: ['AI', 'Product', 'Remote'],
-      posted: '3 hours ago',
-      logo: '🧠'
-    },
-    {
-      id: 3,
-      title: 'Lead DevOps Engineer',
-      company: 'CloudHive Inc.',
-      location: 'Hybrid (Berlin, DE)',
-      type: 'Contract',
-      salary: '$100k - $150k',
-      tags: ['AWS', 'Kubernetes', 'CI/CD'],
-      posted: '5 days ago',
-      logo: '☁️'
+  // Check if user needs onboarding
+  useEffect(() => {
+    const onboardingCompleted = localStorage.getItem('onboardingCompleted');
+    const userToken = localStorage.getItem('userToken'); // Assuming you store auth token
+    
+    // Show onboarding for new users who just registered
+    if (userToken && !onboardingCompleted) {
+      setIsOnboardingOpen(true);
     }
-  ];
-  
+  }, []);
+
+  // Fetch featured jobs on component mount
+  useEffect(() => {
+    const loadFeaturedJobs = async () => {
+      try {
+        const jobs = await JobService.getFeaturedJobs();
+        setFeaturedJobs(jobs.slice(0, 3)); // Take first 3 jobs
+      } catch (error) {
+        console.error('Error loading featured jobs:', error);
+        // Fallback to static data if API fails
+        setFeaturedJobs([
+          {
+            _id: '1',
+            title: 'Senior Frontend Developer',
+            company: 'TechBuzz Ltd.',
+            location: 'Remote (Global)',
+            job_type: 'Full-time',
+            salary_range: '$90k - $130k',
+            skills: ['React', 'Next.js', 'Remote'],
+            created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+            description: 'Join our team as a Senior Frontend Developer working on cutting-edge web applications.',
+            company_logo: '💻',
+            url: '#',
+            is_active: true
+          },
+          {
+            _id: '2',
+            title: 'AI Product Manager',
+            company: 'FutureAI Corp.',
+            location: 'Remote (US)',
+            job_type: 'Full-time',
+            salary_range: '$120k - $170k',
+            skills: ['AI', 'Product', 'Remote'],
+            created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+            description: 'Lead AI product development and strategy for innovative machine learning solutions.',
+            company_logo: '🧠',
+            url: '#',
+            is_active: true
+          },
+          {
+            _id: '3',
+            title: 'Lead DevOps Engineer',
+            company: 'CloudHive Inc.',
+            location: 'Hybrid (Berlin, DE)',
+            job_type: 'Contract',
+            salary_range: '$100k - $150k',
+            skills: ['AWS', 'Kubernetes', 'CI/CD'],
+            created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+            description: 'Architect and maintain cloud infrastructure for high-scale applications.',
+            company_logo: '☁️',
+            url: '#',
+            is_active: true
+          }
+        ] as Job[]);
+      }
+    };
+
+    loadFeaturedJobs();
+  }, []);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     // Simulate search
-    // In a real app, construct query params based on all selected filters
+    // In a real app, construct query params based on selected filters
     const queryParams = new URLSearchParams({
-      q: searchQuery,
-      country: locationCountry,
-      region: locationRegion,
-      type: jobType,
-      posted: datePosted
+      q: searchQuery
     }).toString();
     
     setTimeout(() => {
@@ -100,6 +108,25 @@ const Home: React.FC = () => {
   const handleSignUpWithGoogleClick = () => {
     setAuthModalTab('register');
     setIsAuthModalOpen(true);
+  };
+
+  const handleOnboardingComplete = () => {
+    setIsOnboardingOpen(false);
+    // Optionally redirect to jobs page or show success message
+    navigate('/jobs');
+  };
+
+  // Helper function to format time ago
+  const getTimeAgo = (dateString: string) => {
+    const now = new Date();
+    const posted = new Date(dateString);
+    const diffMs = now.getTime() - posted.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
   };
 
   return (
@@ -142,8 +169,8 @@ const Home: React.FC = () => {
 
           <form onSubmit={handleSearch} className="max-w-5xl mx-auto mb-12 md:mb-16">
             <div className="bg-white rounded-xl shadow-2xl p-4 md:p-6 border border-gray-200">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-end">
-                {/* Job Title/Keywords */}
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-3 md:gap-4 items-end">
+                {/* Job Title/Keywords - Extended */}
                 <div className="md:col-span-4">
                   <label htmlFor="searchQuery" className="block text-sm font-medium text-gray-700 text-left mb-1">Keywords</label>
                   <div className="relative">
@@ -156,61 +183,8 @@ const Home: React.FC = () => {
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
                     />
-        </div>
-      </div>
-
-                {/* Country */}
-                <div className="md:col-span-2">
-                  <label htmlFor="locationCountry" className="block text-sm font-medium text-gray-700 text-left mb-1">Country</label>
-                  <div className="relative">
-                    <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <select 
-                      id="locationCountry"
-                      value={locationCountry}
-                      onChange={(e) => setLocationCountry(e.target.value)}
-                      className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm bg-white"
-                    >
-                      {countries.map(country => (
-                        <option key={country.value} value={country.value}>{country.label}</option>
-                      ))}
-                    </select>
-          </div>
-          </div>
-
-                {/* Region/City */}
-                <div className="md:col-span-2">
-                  <label htmlFor="locationRegion" className="block text-sm font-medium text-gray-700 text-left mb-1">Region/City</label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input
-                      type="text"
-                      id="locationRegion"
-                      placeholder="e.g., California, Berlin"
-                      value={locationRegion}
-                      onChange={(e) => setLocationRegion(e.target.value)}
-                      className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
-                      disabled={locationCountry === 'any'}
-                    />
-        </div>
-      </div>
-
-                {/* Date Posted */}
-                <div className="md:col-span-2">
-                   <label htmlFor="datePosted" className="block text-sm font-medium text-gray-700 text-left mb-1">Date Posted</label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <select 
-                      id="datePosted"
-                      value={datePosted}
-                      onChange={(e) => setDatePosted(e.target.value)}
-                      className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm bg-white"
-                    >
-                      {datePostedOptions.map(option => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
-                    </select>
-        </div>
-      </div>
+                  </div>
+                </div>
 
                 {/* Search Button */}
                 <div className="md:col-span-2">
@@ -228,32 +202,13 @@ const Home: React.FC = () => {
                       </>
                     )}
                   </button>
-          </div>
-          </div>
-              {/* Job Type Radio Buttons */}
-              <div className="mt-4 flex flex-wrap justify-center items-center gap-3 md:gap-4">
-                <span className="text-sm font-medium text-gray-700 mr-2">Type:</span>
-                {workTypeOptions.map(option => (
-                  <label key={option.value} className="flex items-center space-x-2 cursor-pointer p-2 rounded-lg hover:bg-orange-50 transition-colors">
-                    <input 
-                      type="radio" 
-                      name="jobType" 
-                      value={option.value} 
-                      checked={jobType === option.value}
-                      onChange={(e) => setJobType(e.target.value)}
-                      className="form-radio h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300"
-                    />
-                    <span className="text-sm text-gray-700">{option.label}</span>
-                  </label>
-                ))}
-          </div>
-          </div>
+                </div>
+              </div>
+            </div>
           </form>
         </div>
       </section>
       
-      {/* Stats Section (Removed, as per previous layout. Can be added back if needed) */}
-
       {/* Featured Jobs */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
@@ -264,40 +219,42 @@ const Home: React.FC = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
             {featuredJobs.map((job) => (
-              <div key={job.id} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-xl transition-shadow cursor-pointer flex flex-col justify-between">
+              <div key={job._id} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-xl transition-shadow cursor-pointer flex flex-col justify-between">
                 <div>
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center space-x-3">
                       <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-2xl shadow-sm">
-                        {job.logo}
+                        {job.company_logo || (typeof job.company === 'string' ? job.company[0] : job.company.name[0])}
                       </div>
                       <div>
                         <h3 className="font-semibold text-gray-900 text-lg">{job.title}</h3>
-                        <p className="text-gray-600 text-sm">{job.company}</p>
+                        <p className="text-gray-600 text-sm">{typeof job.company === 'string' ? job.company : job.company.name}</p>
                       </div>
                     </div>
                     <button className="p-1.5 rounded-full hover:bg-yellow-100 text-gray-400 hover:text-yellow-500 transition-colors">
                        <Star className="w-5 h-5" />
                     </button>
-                      </div>
+                  </div>
                       
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center text-sm text-gray-600">
                       <MapPin className="w-4 h-4 mr-2 text-gray-400" />
                       {job.location}
-                      </div>
+                    </div>
                     <div className="flex items-center text-sm text-gray-600">
                       <Building className="w-4 h-4 mr-2 text-gray-400" />
-                      {job.type}
+                      {job.job_type}
                     </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <DollarSign className="w-4 h-4 mr-2 text-gray-400" />
-                      {job.salary}
-                    </div>
+                    {job.salary_range && (
+                      <div className="flex items-center text-sm text-gray-600">
+                        <DollarSign className="w-4 h-4 mr-2 text-gray-400" />
+                        {job.salary_range}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap gap-2 mb-6">
-                    {job.tags.map((tag, index) => (
+                    {(job.skills || []).slice(0, 3).map((tag, index) => (
                       <span key={index} className="px-3 py-1 bg-orange-50 text-orange-600 text-xs font-medium rounded-full">
                         {tag}
                       </span>
@@ -306,9 +263,9 @@ const Home: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                  <span className="text-xs text-gray-500">Posted: {job.posted}</span>
+                  <span className="text-xs text-gray-500">Posted: {getTimeAgo(job.created_at)}</span>
                   <Link 
-                    to={`/jobs/${job.id}`} 
+                    to={`/jobs/${job._id}`} 
                     className="text-orange-600 hover:text-orange-700 font-semibold text-sm flex items-center space-x-1 group"
                   >
                     <span>View Details</span>
@@ -413,17 +370,13 @@ const Home: React.FC = () => {
               <p className="text-gray-400 text-sm mb-4">
                 Your hive for global remote opportunities, powered by AI.
               </p>
-              <div className="flex space-x-4">
-                <button type="button" className="text-gray-400 hover:text-white"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M14.016 0H9.984L0 9.984V14.016L9.984 24H14.016L24 14.016V9.984L14.016 0ZM12 19.25L4.75 12L12 4.75L19.25 12L12 19.25Z"/></svg></button>
-                <button type="button" className="text-gray-400 hover:text-white"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg></button>
-                <button type="button" className="text-gray-400 hover:text-white"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg></button>
-              </div>
             </div>
             <div>
               <h3 className="text-lg font-semibold mb-4">For Job Seekers</h3>
               <ul className="space-y-2 text-sm text-gray-400">
                 <li><Link to="/profile" className="hover:text-white">My Profile</Link></li>
                 <li><Link to="/applications" className="hover:text-white">My Applications</Link></li>
+                <li><Link to="/help" className="hover:text-white">Help Center</Link></li>
               </ul>
             </div>
             <div>
@@ -438,15 +391,6 @@ const Home: React.FC = () => {
               <h4 className="font-bold mb-4">For Employers</h4>
               <ul className="space-y-2">
                 <li><a href="/post-job" className="text-gray-400 hover:text-white">Post a Job</a></li>
-                <li><a href="/resources" className="text-gray-400 hover:text-white">Resources</a></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Resources</h3>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li><Link to="/help" className="hover:text-white">Help Center</Link></li>
-                <li><Link to="/terms" className="hover:text-white">Terms & Conditions</Link></li>
-                <li><Link to="/privacy" className="hover:text-white">Privacy Policy</Link></li>
               </ul>
             </div>
           </div>
@@ -460,6 +404,12 @@ const Home: React.FC = () => {
         isOpen={isAuthModalOpen} 
         onClose={() => setIsAuthModalOpen(false)} 
         defaultTab={authModalTab}
+      />
+
+      <Onboarding 
+        isOpen={isOnboardingOpen} 
+        onClose={() => setIsOnboardingOpen(false)}
+        onComplete={handleOnboardingComplete}
       />
     </div>
   );

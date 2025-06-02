@@ -78,36 +78,40 @@ class DistillCrawler:
     async def crawl_company(self, company_data: Dict) -> List[JobListing]:
         """Crawl a single company using distill configuration"""
         jobs = []
-        company_name = company_data.get('name', 'Unknown')
-        uri = company_data.get('uri')
-        
-        if not uri:
-            logger.warning(f"⚠️ No URI for company: {company_name}")
-            return jobs
         
         try:
-            logger.info(f"🕷️ Crawling: {company_name} - {uri}")
+            company_name = company_data.get('name', 'Unknown Company')
+            uri = company_data.get('uri', '')
+            config = company_data.get('config', {})
+            
+            if not uri:
+                logger.warning(f"⚠️ No URI found for company: {company_name}")
+                return []  # Return empty instead of raising exception
+            
+            logger.info(f"🔍 Crawling {company_name} at {uri}")
             
             # Parse distill config
-            config_str = company_data.get('config', '{}')
-            try:
-                config = json.loads(config_str) if config_str else {}
-            except json.JSONDecodeError:
-                logger.warning(f"⚠️ Invalid config for {company_name}, using basic crawling")
-                config = {}
+            selectors_config = config.get('selectors', [])
             
-            # Determine crawling strategy
             if self._is_job_platform(uri):
                 jobs = await self._crawl_job_platform(company_name, uri, config)
             else:
                 jobs = await self._crawl_custom_site(company_name, uri, config)
-                
-            logger.info(f"✅ Found {len(jobs)} jobs from {company_name}")
+            
+            logger.info(f"✅ Found {len(jobs)} jobs for {company_name}")
+            return jobs
+            
+        except asyncio.TimeoutError:
+            logger.warning(f"⏰ Timeout crawling {company_name} ({uri}) - skipping")
+            return []  # Return empty instead of raising exception
+            
+        except aiohttp.ClientError as e:
+            logger.warning(f"🌐 Network error for {company_name} ({uri}): {str(e)} - skipping")
+            return []  # Return empty instead of raising exception
             
         except Exception as e:
-            logger.error(f"❌ Error crawling {company_name}: {str(e)}")
-        
-        return jobs
+            logger.warning(f"⚠️ Error crawling {company_name} ({uri}): {str(e)} - skipping")
+            return []  # Return empty instead of raising exception
     
     def _is_job_platform(self, uri: str) -> bool:
         """Check if URI is a known job platform"""
@@ -229,7 +233,7 @@ class DistillCrawler:
                                         jobs.append(job)
                                         
                             except Exception as e:
-                                logger.debug(f"❌ Selector error for {company_name}: {str(e)}")
+                                logger.debug(f"❌ Selector error for {company_name}: {str(e)} - skipping")
                                 # Try fallback approach
                                 try:
                                     fallback_elements = soup.select(self._get_fallback_selectors())
@@ -238,7 +242,7 @@ class DistillCrawler:
                                         if job:
                                             jobs.append(job)
                                 except Exception as fallback_error:
-                                    logger.debug(f"❌ Fallback also failed: {fallback_error}")
+                                    logger.debug(f"❌ Fallback also failed: {fallback_error} - skipping")
                 
         except Exception as e:
             logger.error(f"❌ Error crawling custom site {company_name}: {str(e)}")
@@ -331,7 +335,7 @@ class DistillCrawler:
                 location = location_elem.get_text(strip=True) if location_elem else 'Remote'
                 
                 link_elem = element.select_one('a')
-                apply_url = urljoin(uri, link_elem.get('href', '')) if link_elem else uri
+                apply_url = self._safe_get_href(link_elem, uri) if link_elem else uri
                 
                 if title:
                     job = JobListing(
@@ -367,7 +371,7 @@ class DistillCrawler:
                 location = location_elem.get_text(strip=True) if location_elem else 'Remote'
                 
                 link_elem = element.select_one('a')
-                apply_url = urljoin(uri, link_elem.get('href', '')) if link_elem else uri
+                apply_url = self._safe_get_href(link_elem, uri) if link_elem else uri
                 
                 if title:
                     job = JobListing(
@@ -403,7 +407,7 @@ class DistillCrawler:
                 location = location_elem.get_text(strip=True) if location_elem else 'Remote'
                 
                 link_elem = element.select_one('a')
-                apply_url = urljoin(uri, link_elem.get('href', '')) if link_elem else uri
+                apply_url = self._safe_get_href(link_elem, uri) if link_elem else uri
                 
                 if title:
                     job = JobListing(
@@ -439,7 +443,7 @@ class DistillCrawler:
                 location = location_elem.get_text(strip=True) if location_elem else 'Remote'
                 
                 link_elem = element.select_one('a')
-                apply_url = urljoin(uri, link_elem.get('href', '')) if link_elem else uri
+                apply_url = self._safe_get_href(link_elem, uri) if link_elem else uri
                 
                 if title:
                     job = JobListing(
@@ -475,7 +479,7 @@ class DistillCrawler:
                 location = location_elem.get_text(strip=True) if location_elem else 'Remote'
                 
                 link_elem = element.select_one('a')
-                apply_url = urljoin(uri, link_elem.get('href', '')) if link_elem else uri
+                apply_url = self._safe_get_href(link_elem, uri) if link_elem else uri
                 
                 if title:
                     job = JobListing(
@@ -511,7 +515,7 @@ class DistillCrawler:
                 location = location_elem.get_text(strip=True) if location_elem else 'Remote'
                 
                 link_elem = element.select_one('a')
-                apply_url = urljoin(uri, link_elem.get('href', '')) if link_elem else uri
+                apply_url = self._safe_get_href(link_elem, uri) if link_elem else uri
                 
                 if title:
                     job = JobListing(
@@ -547,7 +551,7 @@ class DistillCrawler:
                 location = location_elem.get_text(strip=True) if location_elem else 'Remote'
                 
                 link_elem = element.select_one('a')
-                apply_url = urljoin(uri, link_elem.get('href', '')) if link_elem else uri
+                apply_url = self._safe_get_href(link_elem, uri) if link_elem else uri
                 
                 if title:
                     job = JobListing(
@@ -625,8 +629,7 @@ class DistillCrawler:
             # Try to find associated link
             link_elem = element.find('a') or element.find_parent('a')
             if link_elem:
-                href = link_elem.get('href', '')
-                apply_url = urljoin(uri, href) if href else uri
+                apply_url = self._safe_get_href(link_elem, uri)
             else:
                 apply_url = uri
             
@@ -680,6 +683,8 @@ class DistillCrawler:
     async def crawl_all_companies(self) -> List[JobListing]:
         """Crawl ALL companies from distill export - no limit"""
         all_jobs = []
+        failed_companies = []
+        successful_companies = 0
         
         if not self.companies_data:
             self.load_companies_data()
@@ -708,23 +713,108 @@ class DistillCrawler:
                 
                 # Process batch concurrently
                 tasks = [self.crawl_company(company) for company in batch]
-                batch_results = await asyncio.gather(*tasks, return_exceptions=True)
                 
-                # Collect results
-                for result in batch_results:
-                    if isinstance(result, list):
-                        all_jobs.extend(result)
-                    elif isinstance(result, Exception):
-                        logger.error(f"Batch error: {result}")
+                try:
+                    batch_results = await asyncio.gather(*tasks, return_exceptions=True)
+                except Exception as e:
+                    logger.error(f"Batch processing error: {e}")
+                    # If batch fails entirely, process companies individually
+                    batch_results = []
+                    for company in batch:
+                        try:
+                            result = await self.crawl_company(company)
+                            batch_results.append(result)
+                        except Exception as individual_error:
+                            batch_results.append(individual_error)
+                
+                # Collect results safely
+                for idx, result in enumerate(batch_results):
+                    if idx >= len(batch):  # Safety check
+                        logger.warning(f"Result index {idx} exceeds batch size {len(batch)}")
+                        continue
+                        
+                    company = batch[idx]
+                    company_name = company.get('name', 'Unknown')
+                    
+                    try:
+                        if isinstance(result, list):
+                            all_jobs.extend(result)
+                            if result:  # Has jobs
+                                successful_companies += 1
+                            logger.debug(f"✅ {company_name}: {len(result)} jobs")
+                        elif isinstance(result, Exception):
+                            failed_companies.append({
+                                'name': company_name,
+                                'error': str(result)
+                            })
+                            logger.debug(f"⚠️ {company_name}: {str(result)}")
+                        else:
+                            # Handle unexpected result types
+                            failed_companies.append({
+                                'name': company_name,
+                                'error': f'Unexpected result type: {type(result)}'
+                            })
+                            logger.debug(f"⚠️ {company_name}: Unexpected result type {type(result)}")
+                    except Exception as processing_error:
+                        failed_companies.append({
+                            'name': company_name,
+                            'error': f'Result processing error: {str(processing_error)}'
+                        })
+                        logger.debug(f"⚠️ {company_name}: Processing error {str(processing_error)}")
                 
                 # Rate limiting between batches
                 await asyncio.sleep(2)
                 
                 # Progress update
                 processed = min(i + batch_size, total_companies)
-                logger.info(f"📊 Progress: {processed}/{total_companies} companies crawled ({len(all_jobs)} jobs found so far)")
+                logger.info(f"📊 Progress: {processed}/{total_companies} companies processed ({len(all_jobs)} jobs found so far)")
         
-        logger.info(f"🏁 Crawling completed! Total jobs: {len(all_jobs)} from {total_companies} companies")
+        # Log final statistics
+        failed_count = len(failed_companies)
+        success_count = total_companies - failed_count
+        successful_job_count = len([job for job in all_jobs if job])
+        
+        logger.info(f"🏁 Crawling completed!")
+        logger.info(f"📈 Successfully processed: {success_count}/{total_companies} companies")
+        logger.info(f"📈 Companies with jobs: {successful_companies}/{total_companies}")
+        logger.info(f"📉 Failed companies: {failed_count}")
+        logger.info(f"🎯 Total jobs found: {len(all_jobs)}")
+        
+        # Log detailed success breakdown
+        if successful_companies > 0:
+            logger.info(f"🎉 Top performing companies by job count:")
+            # Count jobs by company
+            company_job_counts = {}
+            for job in all_jobs:
+                company = job.company
+                company_job_counts[company] = company_job_counts.get(company, 0) + 1
+            
+            # Sort and show top 5
+            top_companies = sorted(company_job_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+            for company, job_count in top_companies:
+                logger.info(f"   📊 {company}: {job_count} jobs")
+        
+        # Log some failed companies for debugging (but don't spam)
+        if failed_companies:
+            sample_failures = failed_companies[:5]  # Show only first 5
+            logger.info(f"⚠️ Sample failures (first {len(sample_failures)} of {failed_count}):")
+            for failure in sample_failures:
+                logger.info(f"   ❌ {failure['name']}: {failure['error'][:100]}...")
+            
+            if failed_count > 5:
+                logger.info(f"   ... and {failed_count - 5} more companies had issues")
+        
+        # Create summary for scheduler
+        self.last_crawl_summary = {
+            'total_companies': total_companies,
+            'successful_companies': success_count,
+            'companies_with_jobs': successful_companies, 
+            'failed_companies': failed_count,
+            'total_jobs': len(all_jobs),
+            'top_companies': dict(sorted(company_job_counts.items(), key=lambda x: x[1], reverse=True)[:10]) if 'company_job_counts' in locals() else {},
+            'sample_failures': [{'name': f['name'], 'error': f['error'][:100]} for f in failed_companies[:10]]
+        }
+        
         return all_jobs
     
     def save_jobs_to_database(self, jobs: List[JobListing]):
@@ -926,6 +1016,14 @@ class DistillCrawler:
                             break
         
         return job_elements
+
+    def _safe_get_href(self, link_elem, uri):
+        """Safely extract href from elements"""
+        if link_elem:
+            href = link_elem.get('href', '')
+            return urljoin(uri, href) if href else uri
+        else:
+            return uri
 
 async def main():
     """Main function for testing"""

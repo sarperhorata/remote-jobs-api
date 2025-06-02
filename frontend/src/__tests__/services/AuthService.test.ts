@@ -26,7 +26,7 @@ describe('AuthService', () => {
       expect(fetch).toHaveBeenCalledWith('http://localhost:8000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'test@example.com', password: 'password' })
+        body: JSON.stringify({ email: 'test@example.com', password: 'password', remember_me: false })
       });
       
       expect(result).toEqual(mockResponse);
@@ -222,7 +222,7 @@ describe('AuthService', () => {
         }
       });
       
-      expect(result).toBe(newToken);
+      expect(result).toEqual({ token: newToken });
       expect(localStorage.getItem('auth_token')).toBe(newToken);
     });
 
@@ -283,8 +283,8 @@ describe('AuthService', () => {
           'Authorization': 'Bearer valid-token'
         },
         body: JSON.stringify({
-          oldPassword: 'oldPassword',
-          newPassword: 'newPassword123'
+          old_password: 'oldPassword',
+          new_password: 'newPassword123'
         })
       });
       

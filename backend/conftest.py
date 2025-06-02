@@ -14,6 +14,9 @@ from bson import ObjectId
 # Add parent directory to sys.path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Add the current backend directory to the path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from main import app
 from database import get_async_db, get_db
 
@@ -190,16 +193,21 @@ def client_with_auth(client, auth_headers) -> TestClient:
     return client
 
 # Create comprehensive async mock database
-@pytest.fixture
+@pytest.fixture(scope="session")
 def mock_database():
     """Provide a comprehensive async mock database for testing."""
     mock_db = AsyncMock()
     
-    # In-memory storage for test data
+    # In-memory storage for test data - session level persistence
     _storage = {
         "jobs": {},
         "users": {},
-        "companies": {}
+        "companies": {},
+        "crawl_errors": {},
+        "service_logs": {},
+        "test_collection": {},
+        "test_concurrent": {},
+        "ads": {}
     }
     
     # Create a proper async cursor mock that supports method chaining
@@ -291,6 +299,38 @@ def mock_database():
             result.deleted_count = 0
             return result
             
+        async def delete_many(self, filter_dict):
+            """Delete many documents from the collection."""
+            result = MagicMock()
+            deleted_count = 0
+            
+            if not filter_dict:  # Delete all if filter is empty
+                deleted_count = len(self._storage)
+                self._storage.clear()
+            else:
+                # Delete documents matching the filter
+                to_delete = []
+                for doc_id, doc in self._storage.items():
+                    match = True
+                    for key, value in filter_dict.items():
+                        if key == "_id":
+                            if str(doc.get("_id")) != str(value):
+                                match = False
+                                break
+                        else:
+                            if doc.get(key) != value:
+                                match = False
+                                break
+                    if match:
+                        to_delete.append(doc_id)
+                
+                for doc_id in to_delete:
+                    del self._storage[doc_id]
+                    deleted_count += 1
+            
+            result.deleted_count = deleted_count
+            return result
+            
         async def count_documents(self, filter_dict=None):
             return len(self._storage)
             
@@ -337,8 +377,22 @@ def mock_database():
     # Companies collection
     mock_db.companies = MockCollection(_storage["companies"])
     
+    # Additional collections for test compatibility
+    mock_db.crawl_errors = MockCollection(_storage["crawl_errors"])
+    mock_db.service_logs = MockCollection(_storage["service_logs"])
+    mock_db.test_collection = MockCollection(_storage["test_collection"])
+    mock_db.test_concurrent = MockCollection(_storage["test_concurrent"])
+    mock_db.ads = MockCollection(_storage["ads"])
+    
     # Database commands
     mock_db.command = AsyncMock(return_value={"ok": 1})
+    
+    # Helper method to clear collections
+    def clear_collections():
+        for storage in _storage.values():
+            storage.clear()
+    
+    mock_db.clear_collections = clear_collections
     
     return mock_db
 
@@ -488,8 +542,22 @@ def anyio_backend():
 async def async_client(mock_database):
     """Create an async test client."""
     from main import app
+    
+    # Set up database dependency overrides
+    async def mock_get_async_db():
+        yield mock_database
+    
+    def mock_get_db():
+        return mock_database
+    
+    app.dependency_overrides[get_async_db] = mock_get_async_db
+    app.dependency_overrides[get_db] = mock_get_db
+    
     async with AsyncClient(app=app, base_url="http://test") as client:
         yield client
+    
+    # Clean up overrides
+    app.dependency_overrides.clear()
 
 @pytest.fixture
 def mock_cv_file():

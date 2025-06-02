@@ -336,7 +336,7 @@ const Profile: React.FC = () => {
                         <div className="flex justify-between items-start">
                           <div>
                             <h3 className="font-medium">{job.title}</h3>
-                            <p className="text-gray-600">{job.company?.name || job.companyName}</p>
+                            <p className="text-gray-600">{typeof job.company === 'string' ? job.company : (job.company?.name || job.companyName)}</p>
                           </div>
                           <button
                             className="text-blue-600 hover:underline"

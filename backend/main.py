@@ -9,6 +9,7 @@ import os
 import asyncio
 from datetime import datetime
 import stripe
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, FileResponse
 
 # Add admin panel to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -59,6 +60,9 @@ except ImportError as e:
 telegram_bot = None
 scheduler = None
 
+# Detect test environment
+IS_TESTING = "pytest" in sys.modules or os.getenv("TESTING") == "true"
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Modern lifespan context manager for FastAPI startup and shutdown."""
@@ -80,31 +84,25 @@ async def lifespan(app: FastAPI):
         logger.error(f"Could not connect to MongoDB: {str(e)}")
         raise e
     
-    # Initialize Telegram bot
+    # Skip Telegram bot and scheduler in test environment
+    if IS_TESTING:
+        logger.info("Test environment detected - skipping Telegram bot and scheduler initialization")
+        yield
+        return
+    
+    # Initialize Telegram bot with single instance management
     if TELEGRAM_BOT_AVAILABLE:
         try:
-            telegram_bot = RemoteJobsBot()
-            if telegram_bot.enabled:
-                # Start bot in background
-                asyncio.create_task(telegram_bot.run_async())
-                logger.info("Telegram bot started successfully!")
-                
-                # Send comprehensive startup notification
-                startup_data = {
-                    'environment': 'production' if os.getenv('ENVIRONMENT') == 'production' else 'development',
-                    'status': 'success',
-                    'commit': os.getenv('RENDER_GIT_COMMIT', 'unknown')[:8],
-                    'message': 'Backend service started successfully',
-                    'timestamp': datetime.now().isoformat(),
-                    'services': ['MongoDB Atlas', 'FastAPI', 'Telegram Bot', 'Scheduler Service'],
-                    'endpoints': ['/docs', '/admin', '/api/jobs', '/scheduler/status'],
-                    'features': ['External API Crawler', 'Buzz2Remote-Companies Crawler', 'Cloud Cronjobs']
-                }
-                await telegram_bot.send_deployment_notification(startup_data)
+            from backend.telegram_bot.bot_manager import get_managed_bot
+            telegram_bot = await get_managed_bot()
+            
+            if telegram_bot:
+                logger.info("✅ Telegram bot started with single instance management!")
             else:
-                logger.warning("Telegram bot is disabled")
+                logger.info("📴 Telegram bot not started (disabled or conflict)")
+                
         except Exception as e:
-            logger.error(f"Failed to start Telegram bot: {str(e)}")
+            logger.error(f"❌ Failed to start managed Telegram bot: {str(e)}")
     else:
         logger.warning("Telegram bot not available")
     
@@ -151,7 +149,8 @@ async def lifespan(app: FastAPI):
     # Stop Telegram bot
     if telegram_bot and telegram_bot.enabled:
         try:
-            await telegram_bot.stop()
+            from backend.telegram_bot.bot_manager import stop_managed_bot
+            await stop_managed_bot()
             logger.info("Telegram bot stopped")
         except Exception as e:
             logger.error(f"Error stopping Telegram bot: {str(e)}")
@@ -463,6 +462,16 @@ async def stripe_webhook(request: Request):
     except Exception as e:
         logger.error(f"Error processing webhook: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# Add favicon route
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """Serve favicon.ico"""
+    favicon_path = os.path.join(os.path.dirname(__file__), "static", "favicon.ico")
+    if os.path.exists(favicon_path):
+        return FileResponse(favicon_path)
+    else:
+        raise HTTPException(status_code=404, detail="Favicon not found")
 
 if __name__ == "__main__":
     import uvicorn

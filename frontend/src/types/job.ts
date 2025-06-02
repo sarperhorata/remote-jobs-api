@@ -1,36 +1,41 @@
 import { Company } from './Company';
 
 export interface Job {
-  id: string;
+  id?: string;
   _id?: string;
   title: string;
-  companyId: string;
-  company: Company;
+  companyId?: string;
+  company: Company | string; // Can be either Company object or string
   companyName?: string;
   companyLogo?: string;
+  company_logo?: string; // Additional field for API compatibility
   description: string;
-  requirements: string[];
-  responsibilities: string[];
-  skills: string[];
+  requirements?: string[];
+  responsibilities?: string[];
+  skills?: string[];
   location: string;
   job_type: string;
-  salary: {
+  salary?: {
     min?: number;
     max?: number;
     currency: string;
   };
-  experience: {
+  salary_range?: string; // Additional field for API compatibility
+  experience?: {
     min?: number;
     max?: number;
   };
-  education: string;
-  benefits: string[];
-  applicationUrl: string;
-  source: string;
-  sourceUrl: string;
-  status: string;
-  postedAt: Date;
+  education?: string;
+  benefits?: string[];
+  applicationUrl?: string;
+  url?: string; // Additional field for API compatibility
+  source?: string;
+  sourceUrl?: string;
+  status?: string;
+  postedAt?: Date;
+  created_at?: string; // Additional field for API compatibility
   expiresAt?: Date;
+  is_active?: boolean; // Additional field for API compatibility
 }
 
 export interface JobApplication {

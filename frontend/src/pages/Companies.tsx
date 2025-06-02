@@ -14,7 +14,7 @@ const Companies: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
     location: '',
-    type: '',
+    type: [] as string[],
     category: ''
   });
 

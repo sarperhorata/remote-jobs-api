@@ -182,6 +182,9 @@ class SchedulerService:
     
     async def _distill_crawler_job(self):
         """BUZZ2REMOTE-COMPANIES crawler job"""
+        crawler = None
+        notifier = None
+        
         try:
             logger.info("Starting BUZZ2REMOTE-COMPANIES crawler job")
             
@@ -193,55 +196,125 @@ class SchedulerService:
                 crawler = DistillCrawler()
                 notifier = ServiceNotifier()
                 
-                # Send start notification
-                notifier._send_message(f"""🏢 <b>BUZZ2REMOTE-COMPANIES CRAWLER STARTED</b>
+            except ImportError as e:
+                logger.error(f"Failed to import BUZZ2REMOTE-COMPANIES crawler modules: {str(e)}")
+                # This is a critical error - can't proceed without modules
+                raise e
+            
+            # Send start notification
+            notifier._send_message(f"""🏢 <b>BUZZ2REMOTE-COMPANIES CRAWLER STARTED</b>
 
 📅 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
 🔄 <b>Starting company websites crawling...</b>
 🎯 <b>Target:</b> All Company Career Pages
 📋 <b>Source:</b> Distill.io Export Data""")
-                
-                # Load companies data
+            
+            # Load companies data
+            try:
                 crawler.load_companies_data()
+                total_companies = len(crawler.companies_data)
+                logger.info(f"Loaded {total_companies} companies for crawling")
                 
-                # Run crawler for all companies
+            except Exception as e:
+                logger.error(f"Failed to load companies data: {str(e)}")
+                # This is a critical error - can't proceed without data
+                raise e
+            
+            # Run crawler for all companies
+            try:
                 jobs = await crawler.crawl_all_companies()
                 
                 # Save to database
                 save_results = crawler.save_jobs_to_database(jobs)
                 
-                # Send success notification
+                # Calculate success metrics
+                total_companies = len(crawler.companies_data)
+                total_jobs_found = len(jobs)
+                new_jobs = save_results.get('new_jobs', 0)
+                updated_jobs = save_results.get('updated_jobs', 0)
+                
+                # Send success notification with detailed stats
+                summary = getattr(crawler, 'last_crawl_summary', {})
+                total_companies = summary.get('total_companies', len(crawler.companies_data))
+                successful_companies = summary.get('successful_companies', 0)
+                companies_with_jobs = summary.get('companies_with_jobs', 0)
+                failed_companies = summary.get('failed_companies', 0)
+                top_companies = summary.get('top_companies', {})
+                
+                # Build top companies text
+                top_companies_text = ""
+                if top_companies:
+                    top_list = list(top_companies.items())[:3]  # Top 3
+                    top_companies_text = f"\n\n🏆 <b>Top Performers:</b>\n"
+                    for company, count in top_list:
+                        top_companies_text += f"• {company}: {count} jobs\n"
+                
                 notifier._send_message(f"""✅ <b>BUZZ2REMOTE-COMPANIES COMPLETED</b>
 
 🎉 <b>Company crawl successful!</b>
-📊 <b>Total jobs found:</b> {len(jobs)}
-💾 <b>New jobs:</b> {save_results.get('new_jobs', 0)}
-🔄 <b>Updated jobs:</b> {save_results.get('updated_jobs', 0)}
-🏢 <b>Companies crawled:</b> {len(crawler.companies_data)}
+📊 <b>Total jobs found:</b> {total_jobs_found}
+💾 <b>New jobs:</b> {new_jobs}
+🔄 <b>Updated jobs:</b> {updated_jobs}
+
+📈 <b>Company Breakdown:</b>
+🏢 <b>Total companies:</b> {total_companies}
+✅ <b>Successfully processed:</b> {successful_companies}
+🎯 <b>Companies with jobs:</b> {companies_with_jobs}
+❌ <b>Failed companies:</b> {failed_companies}{top_companies_text}
 
 🕐 <b>Completed at:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
-🌐 <b>Source:</b> Company Career Pages""")
+🌐 <b>Source:</b> Company Career Pages
+
+ℹ️ <i>Individual company failures are logged separately and don't affect overall success</i>""")
                 
-                logger.info(f"BUZZ2REMOTE-COMPANIES crawler completed successfully. Total jobs: {len(jobs)}")
+                logger.info(f"BUZZ2REMOTE-COMPANIES crawler completed successfully. Total jobs: {total_jobs_found} from {total_companies} companies")
                 
-            except ImportError as e:
-                logger.error(f"Failed to import BUZZ2REMOTE-COMPANIES crawler modules: {str(e)}")
+            except Exception as e:
+                logger.error(f"Error during crawling execution: {str(e)}")
+                # Even if crawling fails partially, don't send error if we loaded companies
+                # Check if it's a total failure or partial failure
+                
+                if "load_companies_data" in str(e) or not hasattr(crawler, 'companies_data'):
+                    # Critical failure - couldn't start
+                    raise e
+                else:
+                    # Partial failure - still report what we got
+                    notifier._send_message(f"""⚠️ <b>BUZZ2REMOTE-COMPANIES PARTIAL FAILURE</b>
+
+🚫 <b>Crawling encountered issues</b>
+❌ <b>Error:</b> {str(e)[:200]}...
+🏢 <b>Companies loaded:</b> {len(crawler.companies_data) if hasattr(crawler, 'companies_data') else 0}
+🕐 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
+
+ℹ️ <i>This may be due to individual company site issues, not a system failure</i>""")
+                    
+                    # Don't raise the exception - this is not a critical scheduler failure
+                    return
                 
         except Exception as e:
             logger.error(f"BUZZ2REMOTE-COMPANIES crawler job error: {str(e)}")
             
-            # Send error notification
+            # Send error notification only for critical failures
             try:
-                from service_notifications import ServiceNotifier
-                notifier = ServiceNotifier()
-                notifier._send_message(f"""❌ <b>BUZZ2REMOTE-COMPANIES ERROR</b>
+                if notifier:
+                    notifier._send_message(f"""❌ <b>BUZZ2REMOTE-COMPANIES CRITICAL ERROR</b>
 
-🚫 <b>Company crawler failed</b>
+🚫 <b>Crawler failed to start or load data</b>
 ❌ <b>Error:</b> {str(e)[:200]}...
 🕐 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
-🏢 <b>Source:</b> Distill Company Data""")
-            except:
-                pass
+🏢 <b>Source:</b> Distill Company Data
+
+⚠️ <i>This is a system-level failure requiring attention</i>""")
+                else:
+                    # Fallback notification without notifier
+                    logger.critical(f"CRITICAL: BUZZ2REMOTE-COMPANIES crawler failed to start: {str(e)}")
+            except Exception as notification_error:
+                logger.error(f"Failed to send error notification: {notification_error}")
+            
+            # Only re-raise critical errors that prevent scheduler from continuing
+            if "ImportError" in str(type(e)) or "Failed to load companies data" in str(e):
+                raise e
+            # For other errors, just log them but don't crash the scheduler
     
     async def _database_cleanup_job(self):
         """Database cleanup job"""

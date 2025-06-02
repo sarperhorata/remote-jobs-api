@@ -324,8 +324,19 @@ class JobCrawler:
                     url = ""
                     if url_selector:
                         url_elem = self._select_element(job_element, url_selector)
-                        if url_elem and hasattr(url_elem, 'get'):
-                            url = url_elem.get('href', '')
+                        if url_elem is not None:
+                            # Check if it's a BeautifulSoup element (not a string)
+                            if hasattr(url_elem, 'get') and hasattr(url_elem, 'name'):
+                                url = url_elem.get('href', '')
+                            elif isinstance(url_elem, str):
+                                url = url_elem
+                            else:
+                                # Try to get href attribute directly
+                                try:
+                                    url = url_elem['href'] if 'href' in url_elem.attrs else ''
+                                except (AttributeError, TypeError):
+                                    logger.debug(f"Could not extract URL from element: {type(url_elem)}")
+                                    url = ''
                     
                     # Convert URL to full URL
                     if url and not url.startswith(('http://', 'https://')):

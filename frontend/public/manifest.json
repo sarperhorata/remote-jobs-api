@@ -1,6 +1,6 @@
 {
-  "short_name": "JobsFromSpace",
-  "name": "JobsFromSpace - Remote Jobs For Everyone",
+  "short_name": "Buzz2Remote",
+  "name": "Buzz2Remote - Your Hive for Remote Opportunities",
   "icons": [
     {
       "src": "logo.svg",
@@ -20,6 +20,6 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#2D3748",
+  "theme_color": "#F97316",
   "background_color": "#ffffff"
 }

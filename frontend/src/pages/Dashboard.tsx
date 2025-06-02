@@ -18,7 +18,7 @@ const Dashboard: React.FC = () => {
     const fetchRecentJobs = async () => {
       try {
         setIsLoadingJobs(true);
-        const data: any = await jobService.getJobs({ limit: 5 });
+        const data: any = await jobService.getJobs(1, 5);
         setRecentJobs(Array.isArray(data) ? data : (data as any)?.jobs || []);
       } catch (error) {
         console.error('Error fetching recent jobs:', error);
@@ -30,7 +30,7 @@ const Dashboard: React.FC = () => {
     const fetchRecommendations = async () => {
       try {
         setIsLoadingRecommendations(true);
-        const data: any = await jobService.getJobs({ recommended: true, limit: 3 });
+        const data: any = await jobService.getJobs(1, 3);
         setRecommendations(Array.isArray(data) ? data : (data as any)?.jobs || []);
       } catch (error) {
         console.error('Error fetching recommendations:', error);

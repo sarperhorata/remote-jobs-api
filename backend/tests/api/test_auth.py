@@ -66,22 +66,30 @@ async def test_login_invalid_credentials(async_client, mongodb):
     assert response.status_code == 401
 
 @pytest.mark.asyncio
-async def test_register_existing_email(async_client, test_user_data, mongodb):
-    # Clear users collection before test
-    await mongodb["users"].delete_many({})
-
-    # First register a user
-    await async_client.post(
-        "/api/register",
-        json=test_user_data
-    )
+async def test_register_existing_email(async_client, mock_database):
+    # Clear the users collection before the test
+    mock_database.users._storage.clear()
     
-    # Try to register with same email
-    response = await async_client.post(
+    test_user_data = {
+        "email": "unique_test@example.com",
+        "password": "testpassword123",
+        "name": "Test User"
+    }
+    
+    # First register a user
+    response1 = await async_client.post(
         "/api/register",
         json=test_user_data
     )
-    assert response.status_code == 400
+    assert response1.status_code == 200
+    
+    # Try to register with same email - should fail
+    response2 = await async_client.post(
+        "/api/register",
+        json=test_user_data
+    )
+    assert response2.status_code == 400
+    assert "Email already registered" in response2.json()["detail"]
 
 @pytest.mark.asyncio
 async def test_register_invalid_email(async_client, mongodb):

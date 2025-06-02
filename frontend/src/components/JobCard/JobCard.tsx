@@ -7,19 +7,37 @@ interface JobCardProps {
 }
 
 const JobCard: React.FC<JobCardProps> = ({ job }) => {
+  // Helper function to get company name
+  const getCompanyName = () => {
+    if (typeof job.company === 'string') {
+      return job.company;
+    }
+    return job.company?.name || job.companyName || 'Unknown Company';
+  };
+
+  // Helper function to get company logo
+  const getCompanyLogo = () => {
+    if (typeof job.company === 'object' && job.company?.logo) {
+      return job.company.logo;
+    }
+    return job.company_logo || job.companyLogo;
+  };
+
+  const companyLogo = getCompanyLogo();
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition">
       <div className="flex items-start mb-4">
-        {job.company?.logo && (
+        {companyLogo && (
           <img 
-            src={job.company.logo} 
-            alt={job.company.name} 
+            src={companyLogo} 
+            alt={getCompanyName()} 
             className="w-12 h-12 rounded-full mr-4"
           />
         )}
         <div>
           <h3 className="font-semibold text-lg">{job.title}</h3>
-          <p className="text-gray-600">{job.company?.name || job.companyName}</p>
+          <p className="text-gray-600">{getCompanyName()}</p>
         </div>
       </div>
       

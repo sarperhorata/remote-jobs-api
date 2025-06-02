@@ -72,9 +72,9 @@ const JobDetailPage: React.FC = () => {
           <div>
             {/* Company Info */}
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold mb-4">About {job.company?.name || job.companyName}</h2>
-              <p className="text-gray-600 mb-4">{job.company?.description || ''}</p>
-              {job.company?.website && (
+              <h2 className="text-xl font-semibold mb-4">About {typeof job.company === 'string' ? job.company : (job.company?.name || job.companyName)}</h2>
+              <p className="text-gray-600 mb-4">{typeof job.company === 'object' ? job.company?.description || '' : ''}</p>
+              {(typeof job.company === 'object' && job.company?.website) && (
                 <a 
                   href={job.company.website} 
                   target="_blank" 

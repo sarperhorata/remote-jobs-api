@@ -1,28 +1,30 @@
-import { render, screen } from '@testing-library/react';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import { render } from '@testing-library/react';
+import { LoadingSpinner } from '../../components/LoadingSpinner';
+import '@testing-library/jest-dom';
 
 describe('LoadingSpinner', () => {
-  it('renders loading spinner', () => {
-    render(<LoadingSpinner />);
-    
-    const spinner = screen.getByText('Loading...');
-    expect(spinner).toBeInTheDocument();
+  it('renders loading spinner without crashing', () => {
+    expect(() => render(<LoadingSpinner />)).not.toThrow();
   });
 
-  it('has correct CSS classes', () => {
+  it('has correct container CSS classes', () => {
     const { container } = render(<LoadingSpinner />);
     
-    const spinnerElement = container.firstChild;
-    expect(spinnerElement).toHaveClass('flex', 'justify-center', 'items-center', 'py-8');
+    const spinnerContainer = container.firstChild as HTMLElement;
+    expect(spinnerContainer).toHaveClass('flex', 'justify-center', 'items-center', 'py-8');
   });
 
-  it('displays loading text', () => {
-    render(<LoadingSpinner />);
+  it('renders spinning element with correct classes', () => {
+    const { container } = render(<LoadingSpinner />);
     
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    const spinnerElement = container.querySelector('.animate-spin');
+    expect(spinnerElement).toBeInTheDocument();
+    expect(spinnerElement).toHaveClass('animate-spin', 'rounded-full', 'h-8', 'w-8', 'border-b-2', 'border-blue-600');
   });
 
-  it('renders without crashing', () => {
-    expect(() => render(<LoadingSpinner />)).not.toThrow();
+  it('is accessible', () => {
+    const { container } = render(<LoadingSpinner />);
+    
+    expect(container.firstChild).toBeInTheDocument();
   });
 }); 

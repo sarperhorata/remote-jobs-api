@@ -12,7 +12,7 @@ export const jobService = {
   getSimilarJobs: JobService.getSimilarJobs,
   saveJob: JobService.saveJob,
   unsaveJob: JobService.unsaveJob,
-  applyForJob: JobService.applyForJob,
+  applyToJob: JobService.applyToJob,
   getFeaturedJobs: JobService.getFeaturedJobs,
   getJobStats: JobService.getJobStats,
   getJobApplications: JobService.getJobApplications

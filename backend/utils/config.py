@@ -43,9 +43,8 @@ IS_PRODUCTION = os.getenv("ENVIRONMENT", "development").lower() == "production"
 # Set proper database URL based on environment
 if not DATABASE_URL:
     if IS_PRODUCTION:
-        # In production, use MongoDB Atlas - this should be set via environment variables
-        DATABASE_URL = "mongodb+srv://buzz2remote:secure_password@cluster.mongodb.net/buzz2remote?retryWrites=true&w=majority"
-        logger.warning("No DATABASE_URL set for production. Using default MongoDB Atlas URL.")
+        # In production, DATABASE_URL MUST be set via environment variables
+        raise ValueError("DATABASE_URL environment variable is required in production")
     else:
         # In development, use local MongoDB
         DATABASE_URL = "mongodb://localhost:27017/buzz2remote"
@@ -53,20 +52,15 @@ if not DATABASE_URL:
 else:
     logger.info(f"Database URL configured: {DATABASE_URL[:20]}...")
 
-# Telegram settings
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "6789123456:AAEhKL_demo_token_for_development")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "-1001234567890")
-TELEGRAM_ENABLED = bool(TELEGRAM_BOT_TOKEN and TELEGRAM_BOT_TOKEN.strip())
+# Telegram settings - use placeholder values that won't be flagged
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "YOUR_CHAT_ID_HERE")
+TELEGRAM_ENABLED = bool(TELEGRAM_BOT_TOKEN and TELEGRAM_BOT_TOKEN.strip() and not TELEGRAM_BOT_TOKEN.startswith("YOUR_"))
 
-# Development mode için Telegram'ı her zaman enable et
-if not IS_PRODUCTION and TELEGRAM_BOT_TOKEN.startswith("6789123456"):
-    logger.info("Telegram bot enabled for development with demo token")
-    TELEGRAM_ENABLED = True
-
-if not TELEGRAM_ENABLED and (os.getenv("TELEGRAM_BOT_TOKEN") is not None):
-    logger.warning("TELEGRAM_BOT_TOKEN is set but appears to be empty. Telegram features will be disabled.")
-elif not TELEGRAM_ENABLED:
-    logger.info("TELEGRAM_BOT_TOKEN is not set. Telegram features will be disabled.")
+# Development mode için Telegram'ı disable et if using placeholder
+if not IS_PRODUCTION and TELEGRAM_BOT_TOKEN.startswith("YOUR_"):
+    logger.info("Telegram bot disabled - using placeholder token")
+    TELEGRAM_ENABLED = False
 
 # Crawler settings
 USER_AGENT = os.getenv("USER_AGENT", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")

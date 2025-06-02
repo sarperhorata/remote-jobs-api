@@ -26,7 +26,7 @@ describe('JobService', () => {
         'http://localhost:8000/api/jobs/?page=1&per_page=10',
         expect.any(Object)
       );
-      expect(result.jobs).toEqual(mockJobs);
+      expect(result).toEqual(mockJobs);
     });
 
     it('should handle fetch error', async () => {
@@ -63,6 +63,16 @@ describe('JobService', () => {
         'http://localhost:8000/api/jobs/?page=1&per_page=10&location=Remote&company=TechCorp&search=developer',
         expect.any(Object)
       );
+    });
+
+    it('should handle empty response body', async () => {
+      (fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => null
+      });
+
+      const result = await JobService.getJobs();
+      expect(result).toEqual([]);
     });
   });
 
@@ -312,16 +322,6 @@ describe('JobService', () => {
       });
 
       await expect(JobService.getJobs()).rejects.toThrow('Invalid JSON');
-    });
-
-    it('should handle empty response body', async () => {
-      (fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => null
-      });
-
-      const result = await JobService.getJobs();
-      expect(result).toBeNull();
     });
   });
 

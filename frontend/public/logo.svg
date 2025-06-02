@@ -1,30 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Main circle background -->
-  <circle cx="256" cy="256" r="240" fill="#2D3748" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="buzzGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FBBF24;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F97316;stop-opacity:1" />
+    </linearGradient>
+  </defs>
   
-  <!-- Space cat silhouette -->
-  <path d="M320 176C320 176 336 160 352 160C368 160 384 176 384 176C384 176 400 160 416 160C432 160 448 176 448 176V304C448 348 412 384 368 384H144C100 384 64 348 64 304V176C64 176 80 160 96 160C112 160 128 176 128 176C128 176 144 160 160 160C176 160 192 176 192 176C192 176 208 160 224 160C240 160 256 176 256 176C256 176 272 160 288 160C304 160 320 176 320 176Z" fill="#718096" />
+  <!-- Background circle with gradient -->
+  <circle cx="50" cy="50" r="45" fill="url(#buzzGradient)" />
   
-  <!-- Cat features -->
-  <circle cx="176" cy="240" r="16" fill="white" />
-  <circle cx="336" cy="240" r="16" fill="white" />
-  <circle cx="176" cy="240" r="8" fill="#2D3748" />
-  <circle cx="336" cy="240" r="8" fill="#2D3748" />
-  <path d="M256 280C256 280 240 312 256 312C272 312 256 280 256 280Z" fill="white" />
+  <!-- Bee body -->
+  <ellipse cx="50" cy="55" rx="20" ry="25" fill="#FCD34D" />
   
-  <!-- Helmet -->
-  <circle cx="256" cy="256" r="180" stroke="#ECC94B" stroke-width="12" stroke-dasharray="12 24" />
+  <!-- Bee stripes -->
+  <ellipse cx="50" cy="48" rx="18" ry="3" fill="#92400E" />
+  <ellipse cx="50" cy="55" rx="18" ry="3" fill="#92400E" />
+  <ellipse cx="50" cy="62" rx="18" ry="3" fill="#92400E" />
   
-  <!-- Satellite antenna -->
-  <path d="M256 64V32" stroke="#ECC94B" stroke-width="12" stroke-linecap="round" />
-  <path d="M228 48L284 48" stroke="#ECC94B" stroke-width="8" stroke-linecap="round" />
+  <!-- Bee head -->
+  <circle cx="50" cy="35" r="12" fill="#FCD34D" />
   
-  <!-- Stars -->
-  <circle cx="144" cy="112" r="8" fill="#F6E05E" />
-  <circle cx="368" cy="112" r="8" fill="#F6E05E" />
-  <circle cx="112" cy="208" r="6" fill="#F6E05E" />
-  <circle cx="400" cy="208" r="6" fill="#F6E05E" />
-  <circle cx="112" cy="304" r="4" fill="#F6E05E" />
-  <circle cx="400" cy="304" r="4" fill="#F6E05E" />
+  <!-- Antennae -->
+  <circle cx="45" cy="27" r="2" fill="#92400E" />
+  <circle cx="55" cy="27" r="2" fill="#92400E" />
+  <line x1="45" y1="29" x2="45" y2="25" stroke="#92400E" stroke-width="2" stroke-linecap="round" />
+  <line x1="55" y1="29" x2="55" y2="25" stroke="#92400E" stroke-width="2" stroke-linecap="round" />
+  
+  <!-- Eyes -->
+  <circle cx="46" cy="33" r="2" fill="#92400E" />
+  <circle cx="54" cy="33" r="2" fill="#92400E" />
+  
+  <!-- Wings -->
+  <ellipse cx="35" cy="45" rx="8" ry="12" fill="#FFFFFF" fill-opacity="0.8" transform="rotate(-20 35 45)" />
+  <ellipse cx="65" cy="45" rx="8" ry="12" fill="#FFFFFF" fill-opacity="0.8" transform="rotate(20 65 45)" />
+  
+  <!-- Wing details -->
+  <ellipse cx="35" cy="45" rx="6" ry="10" fill="none" stroke="#E5E7EB" stroke-width="1" transform="rotate(-20 35 45)" />
+  <ellipse cx="65" cy="45" rx="6" ry="10" fill="none" stroke="#E5E7EB" stroke-width="1" transform="rotate(20 65 45)" />
 </svg> 

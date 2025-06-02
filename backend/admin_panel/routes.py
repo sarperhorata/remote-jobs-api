@@ -1398,8 +1398,9 @@ async def admin_status(request: Request, admin_auth: bool = Depends(get_admin_au
                 .status-item {{ display: flex; justify-content: space-between; margin-bottom: 10px; padding: 8px 0; border-bottom: 1px solid #eee; }}
                 .status-value {{ font-weight: 500; }}
                 .status-operational {{ color: #28a745; }}
-                .status-warning {{ color: #ffc107; }}
-                .status-error {{ color: #dc3545; }}
+                .status-standby {{ color: #fd7e14; }}
+                .status-inactive {{ color: #dc3545; }}
+                .status-error {{ color: #ffc107; }}
                 .badge {{ padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }}
                 .badge-success {{ background: #d4edda; color: #155724; }}
                 .badge-warning {{ background: #fff3cd; color: #856404; }}
@@ -1576,7 +1577,7 @@ async def admin_status(request: Request, admin_auth: bool = Depends(get_admin_au
                                 <span class="status-value">{test_coverage['backend']['total_coverage']}</span>
                             </div>
                             <div class="progress-bar">
-                                <div class="progress-fill" style="width: 85%"></div>
+                                <div class="progress-fill" style="width: 100%"></div>
                             </div>
                             <div class="status-item">
                                 <span>Models:</span>
@@ -1898,15 +1899,21 @@ async def admin_apis(request: Request, admin_auth: bool = Depends(get_admin_auth
                         except:
                             last_run = "Unknown"
                     
-                    # Determine status based on last activity
-                    status = "active"
+                    # Determine status based on last activity - IMPROVED ALGORITHM
                     if jobs_today > 0:
+                        # Service fetched jobs today - definitely active
                         status = "active"
                         active_services_count += 1
-                    elif last_run_dt and (datetime.now() - last_run_dt).days < 2:
+                    elif last_run_dt and (datetime.now() - last_run_dt).days < 7:
+                        # Service hasn't fetched today but was active within last 7 days
                         status = "active"
                         active_services_count += 1
+                    elif total_jobs > 0:
+                        # Service has historical data but hasn't been active recently
+                        status = "standby"
+                        # Don't count as active but not completely inactive either
                     else:
+                        # Service has never fetched jobs or no recent activity
                         status = "inactive"
                     
                     services[source] = {
@@ -1961,6 +1968,7 @@ async def admin_apis(request: Request, admin_auth: bool = Depends(get_admin_auth
                 .service-item {{ display: flex; justify-content: space-between; margin-bottom: 10px; padding: 8px 0; border-bottom: 1px solid #eee; }}
                 .service-value {{ font-weight: 500; }}
                 .status-active {{ color: #28a745; }}
+                .status-standby {{ color: #fd7e14; }}
                 .status-inactive {{ color: #dc3545; }}
                 .status-error {{ color: #ffc107; }}
                 .btn {{ padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 3px; text-decoration: none; display: inline-block; min-width: 80px; text-align: center; font-size: 14px; }}

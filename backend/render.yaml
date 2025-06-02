@@ -1,10 +1,24 @@
 services:
   - type: web
-    name: buzz2remote-api
+    name: buzz2remote-backend
     env: python
-    buildCommand: ./build.sh
+    plan: free
+    buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.12
+      - key: DATABASE_URL
+        fromDatabase:
+          name: buzz2remote-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ENVIRONMENT
+        value: production
+      - key: CORS_ORIGINS
+        value: "https://buzz2remote.netlify.app,https://buzz2remote-frontend.netlify.app"
+      
       # Database Configuration
       - key: MONGODB_URI
         sync: false
@@ -12,8 +26,6 @@ services:
         value: buzz2remote
       
       # Security
-      - key: SECRET_KEY
-        sync: false
       - key: JWT_SECRET_KEY
         sync: false
       
@@ -63,8 +75,4 @@ services:
       - key: FRONTEND_URL
         value: https://buzz2remote.netlify.app
       - key: ALLOWED_ORIGINS
-        value: https://buzz2remote.netlify.app,http://localhost:3000
-        
-      # Environment
-      - key: ENVIRONMENT
-        value: production 
+        value: https://buzz2remote.netlify.app,http://localhost:3000 

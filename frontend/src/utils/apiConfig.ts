@@ -112,7 +112,7 @@ export const checkBackendHealth = async (apiUrl?: string): Promise<boolean> => {
   }
 };
 
-export default {
+const apiConfig = {
   getApiUrl,
   clearApiUrlCache,
   checkBackendHealth,
@@ -121,4 +121,6 @@ export default {
   isProduction,
   isTest,
   PRODUCTION_API_URL
-}; 
+};
+
+export default apiConfig; 

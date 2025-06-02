@@ -241,26 +241,48 @@ class TestJobsComprehensive:
 
     @pytest.mark.asyncio
     async def test_get_job_statistics(self, async_client, mock_database):
-        """Test job statistics endpoint."""
-        # Mock statistics data
-        mock_stats = {
-            "total_jobs": 1000,
-            "active_jobs": 800,
-            "jobs_by_location": {"Remote": 500, "New York": 300},
-            "jobs_by_company": {"TechCorp": 100, "StartupXYZ": 50},
-            "average_salary": 95000
-        }
+        """Test job statistics endpoint with positions data."""
+        # Mock company and location aggregation results
+        mock_companies = [
+            {"_id": "TechCorp", "count": 100},
+            {"_id": "StartupXYZ", "count": 50}
+        ]
+        mock_locations = [
+            {"_id": "Remote", "count": 500},
+            {"_id": "New York", "count": 300}
+        ]
+        # Mock positions aggregation results
+        mock_positions = [
+            {"_id": "Software Engineer", "count": 180},
+            {"_id": "Frontend Developer", "count": 150},
+            {"_id": "Backend Developer", "count": 140}
+        ]
         
         # Mock aggregation pipeline results
         mock_agg_cursor = AsyncMock()
-        mock_agg_cursor.to_list = AsyncMock(return_value=[mock_stats])
+        mock_agg_cursor.to_list = AsyncMock(side_effect=[mock_companies, mock_locations, mock_positions])
         mock_database.jobs.aggregate = MagicMock(return_value=mock_agg_cursor)
         mock_database.jobs.count_documents = AsyncMock(return_value=1000)
         
         response = await async_client.get("/api/jobs/statistics")
         assert response.status_code == 200
         data = response.json()
+        
+        # Test basic statistics
         assert "total_jobs" in data
+        assert "active_jobs" in data
+        assert "jobs_by_company" in data
+        assert "jobs_by_location" in data
+        
+        # Test new positions field
+        assert "positions" in data
+        if data.get("positions"):
+            # Check that positions have the expected format
+            for position in data["positions"]:
+                assert "title" in position
+                assert "count" in position
+                assert isinstance(position["count"], int)
+                assert len(position["title"]) > 0
 
     @pytest.mark.asyncio
     async def test_get_job_recommendations_authenticated(self, async_client, mock_database):

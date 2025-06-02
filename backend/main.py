@@ -226,7 +226,7 @@ app = FastAPI(
     ---
     *Built with ❤️ for the remote work community*
     """,
-    version="2.1.0",
+    version="2.2.0",
     docs_url="/docs",  # Swagger UI at /docs
     redoc_url="/redoc",  # ReDoc at /redoc
     openapi_url="/openapi.json",  # OpenAPI schema at /openapi.json
@@ -359,7 +359,7 @@ async def root():
     """
     return {
         "message": "Welcome to Buzz2Remote API", 
-        "version": "2.1.0",
+        "version": "2.2.0",
         "status": "active",
         "description": "The Ultimate Remote Jobs Platform API",
         "features": [
@@ -392,7 +392,14 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint for monitoring."""
-    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+    from backend.database import db
+    db_status = "connected" if await db.command('ping') else "disconnected"
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": "2.2.0",
+        "database": db_status,
+    }
 
 @app.get("/scheduler/status")
 async def scheduler_status():

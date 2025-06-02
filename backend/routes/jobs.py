@@ -60,11 +60,26 @@ async def get_job_statistics(
             {"$group": {"_id": "$location", "count": {"$sum": 1}}}
         ]).to_list(length=None)
         
+        # Add jobs by position/title for autocomplete
+        jobs_by_position = await db.jobs.aggregate([
+            {"$group": {"_id": "$title", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": 50}  # Top 50 most common positions
+        ]).to_list(length=None)
+        
+        # Format positions for frontend autocomplete
+        positions = [
+            {"title": item["_id"], "count": item["count"]} 
+            for item in jobs_by_position 
+            if item["_id"]  # Filter out null/empty titles
+        ]
+        
         return {
             "total_jobs": total_jobs,
             "active_jobs": total_jobs,  # Assuming all jobs are active for now
             "jobs_by_company": jobs_by_company,
-            "jobs_by_location": jobs_by_location
+            "jobs_by_location": jobs_by_location,
+            "positions": positions  # New field for position autocomplete
         }
     except Exception as e:
         logging.error(f"Error getting job statistics: {str(e)}")

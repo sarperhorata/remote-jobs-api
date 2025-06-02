@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Autocomplete, TextField, Button } from '@mui/material';
+import { Autocomplete, TextField, Button, Alert, Snackbar } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import PublicIcon from '@mui/icons-material/Public';
 import WorkIcon from '@mui/icons-material/Work';
@@ -24,6 +24,8 @@ const SearchForm: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [positionInputValue, setPositionInputValue] = useState<string>('');
   const [locationInputValue, setLocationInputValue] = useState<string>('');
+  const [showWarning, setShowWarning] = useState<boolean>(false);
+  const [warningMessage, setWarningMessage] = useState<string>('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -64,6 +66,7 @@ const SearchForm: React.FC = () => {
       { name: 'Spain', count: 50, type: 'country', icon: '🇪🇸' },
       { name: 'Sweden', count: 30, type: 'country', icon: '🇸🇪' },
       { name: 'Switzerland', count: 40, type: 'country', icon: '🇨🇭' },
+      { name: 'Turkey', count: 75, type: 'country', icon: '🇹🇷' },
       { name: 'United Kingdom', count: 150, type: 'country', icon: '🇬🇧' },
       { name: 'United States', count: 250, type: 'country', icon: '🇺🇸' }
     ];
@@ -77,46 +80,71 @@ const SearchForm: React.FC = () => {
       const response = await fetch('http://localhost:8001/api/jobs/statistics');
       const data = await response.json();
       
-      // Pozisyon verilerini işle ve sayılarla birlikte kaydet
-      const positionData: Position[] = [
-        { title: 'Software Engineer', count: 180 },
-        { title: 'Frontend Developer', count: 150 },
-        { title: 'Backend Developer', count: 140 },
-        { title: 'Full Stack Developer', count: 120 },
-        { title: 'DevOps Engineer', count: 95 },
-        { title: 'Product Manager', count: 85 },
-        { title: 'Data Scientist', count: 75 },
-        { title: 'UI/UX Designer', count: 70 },
-        { title: 'Mobile Developer', count: 65 },
-        { title: 'QA Engineer', count: 60 },
-        { title: 'Machine Learning Engineer', count: 55 },
-        { title: 'Technical Writer', count: 45 },
-        { title: 'Business Analyst', count: 40 },
-        { title: 'Scrum Master', count: 35 },
-        { title: 'Sales Manager', count: 30 }
-      ].sort((a, b) => a.title.localeCompare(b.title));
-      
-      setPositions(positionData);
+      if (data.positions && Array.isArray(data.positions)) {
+        // API'den gelen gerçek pozisyon verilerini kullan
+        setPositions(data.positions.sort((a, b) => a.title.localeCompare(b.title)));
+      } else {
+        // Fallback data if API fails or returns unexpected format
+        throw new Error('Invalid API response format');
+      }
     } catch (error) {
       console.error('Error fetching positions:', error);
       // Fallback data
       const fallbackData: Position[] = [
-        { title: 'Software Engineer', count: 180 },
-        { title: 'Frontend Developer', count: 150 },
         { title: 'Backend Developer', count: 140 },
+        { title: 'Business Analyst', count: 40 },
+        { title: 'Data Scientist', count: 75 },
+        { title: 'DevOps Engineer', count: 95 },
+        { title: 'Frontend Developer', count: 150 },
         { title: 'Full Stack Developer', count: 120 },
-        { title: 'DevOps Engineer', count: 95 }
+        { title: 'Machine Learning Engineer', count: 55 },
+        { title: 'Mobile Developer', count: 65 },
+        { title: 'Product Manager', count: 85 },
+        { title: 'QA Engineer', count: 60 },
+        { title: 'Sales Manager', count: 30 },
+        { title: 'Scrum Master', count: 35 },
+        { title: 'Software Engineer', count: 180 },
+        { title: 'Technical Writer', count: 45 },
+        { title: 'UI/UX Designer', count: 70 }
       ].sort((a, b) => a.title.localeCompare(b.title));
       
       setPositions(fallbackData);
     }
   };
 
+  const handlePositionKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter') {
+      // Kullanıcı Enter'a bastı, seçili bir pozisyon var mı kontrol et
+      if (!selectedPosition && positionInputValue.trim() !== '') {
+        setWarningMessage(`Please select a position from the dropdown list. We found positions like "${positionInputValue}" in our suggestions.`);
+        setShowWarning(true);
+        event.preventDefault(); // Enter'ı engelle
+        return;
+      }
+      
+      // Seçili pozisyon varsa arama yap
+      if (selectedPosition) {
+        handleSearch();
+      }
+    }
+  };
+
   const handleSearch = () => {
+    // Pozisyon seçilmeden arama yapılamaz
+    if (!selectedPosition) {
+      setWarningMessage('Please select a job position from the dropdown list before searching.');
+      setShowWarning(true);
+      return;
+    }
+
     const searchParams = new URLSearchParams();
-    if (selectedPosition) searchParams.set('position', selectedPosition.title);
+    searchParams.set('position', selectedPosition.title);
     if (selectedLocation) searchParams.set('location', selectedLocation.name);
     navigate(`/jobs?${searchParams.toString()}`);
+  };
+
+  const handleCloseWarning = () => {
+    setShowWarning(false);
   };
 
   return (
@@ -148,6 +176,7 @@ const SearchForm: React.FC = () => {
               label="Job Title"
               placeholder="e.g. Software Engineer, Product Manager"
               fullWidth
+              onKeyDown={handlePositionKeyDown}
               sx={{
                 '& .MuiOutlinedInput-root': {
                   backgroundColor: 'white',
@@ -228,6 +257,22 @@ const SearchForm: React.FC = () => {
           Find Remote Jobs
         </Button>
       </div>
+      
+      {/* Warning Snackbar */}
+      <Snackbar
+        open={showWarning}
+        autoHideDuration={6000}
+        onClose={handleCloseWarning}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleCloseWarning} 
+          severity="warning" 
+          sx={{ width: '100%' }}
+        >
+          {warningMessage}
+        </Alert>
+      </Snackbar>
     </div>
   );
 };

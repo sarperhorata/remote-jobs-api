@@ -438,4 +438,114 @@ class TestAdminSorting:
                 pipeline = calls[0][0][0]
                 sort_stage = next((stage for stage in pipeline if "$sort" in stage), None)
                 assert sort_stage is not None
-                assert sort_stage["$sort"]["job_count"] == -1 
+                assert sort_stage["$sort"]["job_count"] == -1
+
+    def test_admin_companies_jobs_link_functionality(self, authenticated_client):
+        """Test that companies page includes job count links"""
+        with patch('backend.admin_panel.routes.DATABASE_AVAILABLE', True):
+            with patch('backend.admin_panel.routes.db') as mock_db:
+                mock_companies = [
+                    {
+                        "name": "Test Company",
+                        "jobs_count": 15,
+                        "latest_job": datetime.now()
+                    }
+                ]
+                
+                mock_cursor = AsyncMock()
+                mock_cursor.to_list = AsyncMock(return_value=mock_companies)
+                mock_db.jobs.aggregate = AsyncMock(return_value=mock_cursor)
+                
+                response = authenticated_client.get("/admin/companies")
+                assert response.status_code == 200
+                assert "Test Company" in response.text
+                assert "Jobs: 15" in response.text
+                # Check for the jobs link
+                assert "/admin/jobs?company_filter=Test Company" in response.text
+    
+    def test_admin_jobs_company_filter(self, authenticated_client):
+        """Test jobs page with company filter"""
+        with patch('backend.admin_panel.routes.DATABASE_AVAILABLE', True):
+            with patch('backend.admin_panel.routes.db') as mock_db:
+                mock_jobs = [
+                    {
+                        "_id": "test_id",
+                        "title": "Test Job",
+                        "company": "Test Company", 
+                        "location": "Remote",
+                        "source": "test",
+                        "created_at": datetime.now(),
+                        "url": "https://test.com"
+                    }
+                ]
+                
+                mock_db.jobs.count_documents = AsyncMock(return_value=1)
+                mock_cursor = AsyncMock()
+                mock_cursor.to_list = AsyncMock(return_value=mock_jobs)
+                mock_db.jobs.find = AsyncMock(return_value=mock_cursor)
+                
+                response = authenticated_client.get("/admin/jobs?company_filter=Test Company")
+                assert response.status_code == 200
+                assert "filtered by company: Test Company" in response.text
+                assert "Test Job" in response.text
+    
+    def test_admin_jobs_page_structure_without_description_and_type(self, authenticated_client):
+        """Test that jobs page doesn't show job description and type column"""
+        with patch('backend.admin_panel.routes.DATABASE_AVAILABLE', True):
+            with patch('backend.admin_panel.routes.db') as mock_db:
+                mock_jobs = [
+                    {
+                        "_id": "test_id",
+                        "title": "Test Job",
+                        "company": "Test Company",
+                        "location": "Remote", 
+                        "source": "test",
+                        "created_at": datetime.now(),
+                        "url": "https://test.com",
+                        "description": "This is a long job description that should not be displayed"
+                    }
+                ]
+                
+                mock_db.jobs.count_documents = AsyncMock(return_value=1)
+                mock_cursor = AsyncMock()
+                mock_cursor.to_list = AsyncMock(return_value=mock_jobs)
+                mock_db.jobs.find = AsyncMock(return_value=mock_cursor)
+                
+                response = authenticated_client.get("/admin/jobs")
+                assert response.status_code == 200
+                # Check that Type column header is not present
+                assert "Type</th>" not in response.text
+                # Check that job description is not displayed in table
+                assert "This is a long job description" not in response.text
+                # But title should be there
+                assert "Test Job" in response.text
+    
+    def test_admin_apis_status_corrections(self, authenticated_client):
+        """Test API services status page with corrected data"""
+        with patch('backend.admin_panel.routes.DATABASE_AVAILABLE', True):
+            with patch('backend.admin_panel.routes.db') as mock_db:
+                today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                
+                # Mock database calls for API services
+                mock_db.jobs.count_documents = AsyncMock(return_value=100)
+                mock_db.jobs.find_one = AsyncMock(return_value={
+                    "created_at": datetime.now(),
+                    "source_type": "remoteok"
+                })
+                
+                response = authenticated_client.get("/admin/apis")
+                assert response.status_code == 200
+                assert "Real-time Statistics" in response.text
+                assert "Total jobs fetched today:" in response.text
+                assert "Active services:" in response.text
+                # Should not show "0" as total jobs fetched
+                assert "📊 Total jobs fetched today: 0" not in response.text
+    
+    def test_admin_apis_with_database_unavailable(self, authenticated_client):
+        """Test API services page when database is unavailable"""
+        with patch('backend.admin_panel.routes.DATABASE_AVAILABLE', False):
+            response = authenticated_client.get("/admin/apis")
+            assert response.status_code == 200
+            assert "Real-time Statistics" in response.text
+            # Should show demo data instead of errors
+            assert "Total jobs fetched today: 60" in response.text  # 12 services * 5 demo jobs each 

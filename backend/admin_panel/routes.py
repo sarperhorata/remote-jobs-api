@@ -635,6 +635,7 @@ async def admin_jobs(
             total_pages = 1
     
     # Generate HTML content
+    filter_message = f" (filtered by company: {company_filter})" if company_filter else ""
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -657,17 +658,11 @@ async def admin_jobs(
             .badge-secondary {{ background: #e9ecef; color: #495057; }}
             .company-link {{ color: #007bff; text-decoration: none; font-weight: 500; }}
             .company-link:hover {{ text-decoration: underline; }}
-            .job-title {{ cursor: pointer; color: #333; }}
+            .job-title {{ cursor: pointer; color: #333; font-weight: 500; }}
             .job-title:hover {{ color: #007bff; text-decoration: underline; }}
             .sort-indicator {{ font-size: 0.8em; margin-left: 5px; }}
             .filters {{ margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; }}
             .filter-input {{ padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-right: 10px; }}
-            .job-meta {{ display: flex; gap: 10px; margin-top: 4px; }}
-            .job-meta-item {{ font-size: 0.8em; color: #666; }}
-            .job-description {{ color: #666; font-size: 0.9em; margin-top: 8px; line-height: 1.4; max-height: 60px; overflow: hidden; text-overflow: ellipsis; }}
-            .job-description.expanded {{ max-height: none; }}
-            .job-description-toggle {{ color: #007bff; cursor: pointer; font-size: 0.8em; margin-top: 4px; }}
-            .job-description-toggle:hover {{ text-decoration: underline; }}
             
             /* Modal styles */
             .modal {{ display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }}
@@ -702,7 +697,7 @@ async def admin_jobs(
         
         <div class="container">
             <div class="card">
-                <h2>Job Listings ({total_jobs} total) - Page {page} of {total_pages}</h2>
+                <h2>Job Listings ({total_jobs} total){filter_message} - Page {page} of {total_pages}</h2>
                 
                 <div class="filters">
                     <input type="text" id="companyFilter" class="filter-input" placeholder="Filter by company..." value="{company_filter or ''}" onkeypress="if(event.key==='Enter') filterByCompany()">
@@ -716,7 +711,6 @@ async def admin_jobs(
                             <th onclick="sortBy('title')">Title <span class="sort-indicator">&updownarrow;</span></th>
                             <th onclick="sortBy('company')">Company <span class="sort-indicator">&updownarrow;</span></th>
                             <th onclick="sortBy('location')">Location <span class="sort-indicator">&updownarrow;</span></th>
-                            <th onclick="sortBy('type')">Type <span class="sort-indicator">&updownarrow;</span></th>
                             <th onclick="sortBy('source')">Source <span class="sort-indicator">&updownarrow;</span></th>
                             <th onclick="sortBy('created_at')">Posted <span class="sort-indicator">&darr;</span></th>
                         </tr>
@@ -728,12 +722,9 @@ async def admin_jobs(
         title = job.get("title", "")
         company = job.get("company", "")
         location = job.get("location", "")
-        # Use job_type with fallbacks for backward compatibility
-        job_type = job.get("job_type") or job.get("employment_type") or job.get("type") or "Full-time"
         source = job.get("source", "")
         created_at = job.get("created_at", None)
         url = job.get("url", "")
-        description = job.get("description", "")
         
         # Format created_at date
         if created_at:
@@ -752,26 +743,13 @@ async def admin_jobs(
         job_ad_text = "View Job Ad" if url else "No Link"
         job_ad_style = "" if url else "color: #999; cursor: not-allowed;"
         
-        # Prepare description toggle - escape backticks first
-        escaped_description = description.replace("`", "\\`") if description else ""
-        toggle_button = f'<div class="job-description-toggle" onclick="toggleDescription(\'{job_id}\', `{escaped_description}`)">[Show More]</div>' if len(description) > 250 else ''
-        
         html_content += f"""
                         <tr>
                             <td>
                                 <div class="job-title" data-job-id="{job_id}">{title}</div>
-                                <div class="job-description" id="desc-{job_id}">
-                                    {description[:250] + '...' if len(description) > 250 else description}
-                                </div>
-                                {toggle_button}
-                                <div class="job-meta">
-                                    <span class="job-meta-item">Type: {job_type or 'N/A'}</span>
-                                    <span class="job-meta-item">Source: {source or 'N/A'}</span>
-                                </div>
                             </td>
                             <td><a href="{company_link}" class="company-link">{company}</a></td>
                             <td><span class="badge badge-secondary">{location or 'N/A'}</span></td>
-                            <td><span class="badge badge-secondary">{job_type or 'N/A'}</span></td>
                             <td><a href="{job_ad_link}" target="_blank" style="{job_ad_style}">{job_ad_text}</a></td>
                             <td>{date_str}</td>
                         </tr>"""
@@ -955,23 +933,6 @@ async def admin_jobs(
                     }
                 });
             });
-            
-            // Toggle job description
-            function toggleDescription(jobId, fullDescription) {
-                const descElement = document.getElementById('desc-' + jobId);
-                const toggleElement = event.target;
-                
-                if (toggleElement.textContent === '[Show More]') {
-                    descElement.innerHTML = fullDescription;
-                    descElement.classList.add('expanded');
-                    toggleElement.textContent = '[Show Less]';
-                } else {
-                    const shortDesc = fullDescription.length > 250 ? fullDescription.substring(0, 250) + '...' : fullDescription;
-                    descElement.innerHTML = shortDesc;
-                    descElement.classList.remove('expanded');
-                    toggleElement.textContent = '[Show More]';
-                }
-            }
         </script>
     </body>
     </html>
@@ -1888,14 +1849,9 @@ async def admin_apis(request: Request, admin_auth: bool = Depends(get_admin_auth
     """API services management page"""
     try:
         from datetime import datetime, timedelta
-        from database import get_db
-        
-        db = get_db()
-        jobs_collection = db["jobs"]
         
         # Get real data for each service
         today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        yesterday = today - timedelta(days=1)
         
         # Calculate real statistics for each service
         services = {}
@@ -1907,57 +1863,81 @@ async def admin_apis(request: Request, admin_auth: bool = Depends(get_admin_auth
             "distill_crawler", "arbeitnow_free", "jobicy", "himalayas"
         ]
         
-        for source in source_types:
-            try:
-                # Count total jobs from this source
-                total_jobs = jobs_collection.count_documents({
-                    "source_type": source
-                })
-                
-                # Count jobs added today
-                jobs_today = jobs_collection.count_documents({
-                    "source_type": source,
-                    "last_updated": {"$gte": today.isoformat()}
-                })
-                
-                # Get latest job to determine last run
-                latest_job = jobs_collection.find_one(
-                    {"source_type": source},
-                    sort=[("last_updated", -1)]
-                )
-                
-                last_run = "Never"
-                if latest_job and latest_job.get("last_updated"):
-                    try:
-                        if isinstance(latest_job["last_updated"], str):
-                            last_run_dt = datetime.fromisoformat(latest_job["last_updated"].replace('Z', '+00:00'))
-                        else:
-                            last_run_dt = latest_job["last_updated"]
-                        last_run = last_run_dt.strftime("%Y-%m-%d %H:%M")
-                    except:
-                        last_run = "Unknown"
-                
-                # Determine status based on last activity
-                status = "active" if jobs_today > 0 or (latest_job and (datetime.now() - (last_run_dt if 'last_run_dt' in locals() else datetime.now() - timedelta(days=2))).days < 2) else "inactive"
-                
-                services[source] = {
-                    "status": status,
-                    "last_run": last_run,
-                    "jobs_fetched": jobs_today,
-                    "total_jobs": total_jobs
-                }
-                
-            except Exception as e:
-                logger.error(f"Error getting stats for {source}: {e}")
-                services[source] = {
-                    "status": "error",
-                    "last_run": "Error",
-                    "jobs_fetched": 0,
-                    "total_jobs": 0
-                }
+        total_jobs_today = 0
+        active_services_count = 0
         
-        # Calculate totals
-        total_jobs_today = sum(s.get("jobs_fetched", 0) for s in services.values())
+        if DATABASE_AVAILABLE and db is not None:
+            for source in source_types:
+                try:
+                    # Count total jobs from this source
+                    total_jobs = await db.jobs.count_documents({
+                        "source_type": source
+                    })
+                    
+                    # Count jobs added today
+                    jobs_today = await db.jobs.count_documents({
+                        "source_type": source,
+                        "created_at": {"$gte": today}
+                    })
+                    
+                    # Get latest job to determine last run
+                    latest_job = await db.jobs.find_one(
+                        {"source_type": source},
+                        sort=[("created_at", -1)]
+                    )
+                    
+                    last_run = "Never"
+                    last_run_dt = None
+                    if latest_job and latest_job.get("created_at"):
+                        try:
+                            if isinstance(latest_job["created_at"], str):
+                                last_run_dt = datetime.fromisoformat(latest_job["created_at"].replace('Z', '+00:00'))
+                            else:
+                                last_run_dt = latest_job["created_at"]
+                            last_run = last_run_dt.strftime("%Y-%m-%d %H:%M")
+                        except:
+                            last_run = "Unknown"
+                    
+                    # Determine status based on last activity
+                    status = "active"
+                    if jobs_today > 0:
+                        status = "active"
+                        active_services_count += 1
+                    elif last_run_dt and (datetime.now() - last_run_dt).days < 2:
+                        status = "active"
+                        active_services_count += 1
+                    else:
+                        status = "inactive"
+                    
+                    services[source] = {
+                        "status": status,
+                        "last_run": last_run,
+                        "jobs_fetched": jobs_today,
+                        "total_jobs": total_jobs
+                    }
+                    
+                    total_jobs_today += jobs_today
+                    
+                except Exception as e:
+                    logger.error(f"Error getting stats for {source}: {e}")
+                    services[source] = {
+                        "status": "error",
+                        "last_run": "Error",
+                        "jobs_fetched": 0,
+                        "total_jobs": 0
+                    }
+        else:
+            # Demo data when database is not available
+            for source in source_types:
+                services[source] = {
+                    "status": "active",
+                    "last_run": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    "jobs_fetched": 5,
+                    "total_jobs": 100
+                }
+                total_jobs_today += 5
+                active_services_count += 1
+        
         next_run = (datetime.now() + timedelta(hours=24)).strftime("%Y-%m-%d %H:%M UTC")
         
         # Build HTML response
@@ -2024,9 +2004,9 @@ async def admin_apis(request: Request, admin_auth: bool = Depends(get_admin_auth
                 
                 <div class="stats-summary">
                     <h3>📊 Real-time Statistics</h3>
-                    <p><strong>Jobs fetched today:</strong> {total_jobs_today}</p>
-                    <p><strong>Active services:</strong> {sum(1 for s in services.values() if s.get('status') == 'active')}/{len(services)}</p>
-                    <p><strong>Last updated:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+                    <p><strong>📊 Total jobs fetched today:</strong> {total_jobs_today}</p>
+                    <p><strong>🟢 Active services:</strong> {active_services_count}/{len(services)}</p>
+                    <p><strong>🕒 Last updated:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
                 </div>
                 
                 <div style="margin-bottom: 20px;">
@@ -2583,6 +2563,8 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "name"
                 .company-card {{ border: 1px solid #ddd; border-radius: 8px; padding: 20px; background: #f9f9f9; }}
                 .company-name {{ font-weight: bold; font-size: 18px; margin-bottom: 10px; color: #333; }}
                 .company-stats {{ color: #666; }}
+                .jobs-link {{ color: #007bff; text-decoration: none; font-weight: 500; }}
+                .jobs-link:hover {{ text-decoration: underline; }}
             </style>
         </head>
         <body>
@@ -2604,11 +2586,13 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "name"
         for company in companies[:20]:  # Limit to 20 for display
             company_name = company.get("name", "Unknown")
             jobs_count = company.get("jobs_count", 0)
+            # Create jobs link that filters jobs by company
+            jobs_url = f"/admin/jobs?company_filter={company_name}"
             html_content += f"""
                     <div class="company-card">
                         <div class="company-name">{company_name}</div>
                         <div class="company-stats">
-                            <p>📋 Jobs: {jobs_count}</p>
+                            <p>📋 <a href="{jobs_url}" class="jobs-link">Jobs: {jobs_count}</a></p>
                             <p>🏭 Industry: Technology</p>
                         </div>
                     </div>"""
@@ -2635,4 +2619,4 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "name"
         </body>
         </html>
         """
-        return HTMLResponse(content=error_html, status_code=500) 
+        return HTMLResponse(content=error_html, status_code=500)

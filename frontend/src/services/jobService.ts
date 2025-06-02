@@ -1,6 +1,6 @@
 import { Job, JobApplication } from '../types/job';
 
-const API_BASE_URL = process.env.NODE_ENV === 'test' ? 'http://localhost:8000/api' : (process.env.REACT_APP_API_URL || 'http://localhost:8000/api');
+const API_BASE_URL = process.env.NODE_ENV === 'test' ? 'http://localhost:8001/api' : (process.env.REACT_APP_API_URL || 'http://localhost:8001/api');
 
 // Helper functions for local storage
 const APPLICATIONS_KEY = 'applications';

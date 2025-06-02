@@ -261,9 +261,15 @@ app.add_middleware(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # Only allow frontend in development
+    allow_origins=[
+        "http://localhost:3000", 
+        "http://127.0.0.1:3000",
+        "https://buzz2remote.com",  # Production frontend
+        "https://buzz2remote.netlify.app",  # Netlify backup URL
+        "https://*.netlify.app"  # All Netlify preview URLs
+    ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 

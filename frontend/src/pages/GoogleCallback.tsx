@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { Bug } from 'lucide-react';
+import { getApiUrl } from '../utils/apiConfig';
 
 const GoogleCallback: React.FC = () => {
   const navigate = useNavigate();
@@ -11,27 +13,27 @@ const GoogleCallback: React.FC = () => {
 
   useEffect(() => {
     const handleCallback = async () => {
+      const code = searchParams.get('code');
+      const state = searchParams.get('state');
+      const error = searchParams.get('error');
+
+      if (error) {
+        setStatus('error');
+        setMessage('Authentication was cancelled or failed.');
+        setTimeout(() => navigate('/'), 3000);
+        return;
+      }
+
+      if (!code || !state) {
+        setStatus('error');
+        setMessage('Invalid authentication response.');
+        setTimeout(() => navigate('/'), 3000);
+        return;
+      }
+
       try {
-        const code = searchParams.get('code');
-        const state = searchParams.get('state');
-        const error = searchParams.get('error');
-
-        if (error) {
-          setStatus('error');
-          setMessage('Google authentication was cancelled or failed.');
-          setTimeout(() => navigate('/'), 3000);
-          return;
-        }
-
-        if (!code) {
-          setStatus('error');
-          setMessage('No authorization code received from Google.');
-          setTimeout(() => navigate('/'), 3000);
-          return;
-        }
-
-        // Send the code to our backend
-        const response = await fetch('http://localhost:5001/api/google/callback', {
+        const API_BASE_URL = await getApiUrl();
+        const response = await fetch(`${API_BASE_URL}/google/callback`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -41,29 +43,31 @@ const GoogleCallback: React.FC = () => {
 
         const data = await response.json();
 
-        if (response.ok && data.access_token) {
-          // Store the token and user info
-          localStorage.setItem('access_token', data.access_token);
+        if (response.ok && data.token) {
+          // Store the auth token
+          localStorage.setItem('authToken', data.token);
           localStorage.setItem('user', JSON.stringify(data.user));
           
           setStatus('success');
-          setMessage('Successfully authenticated with Google! Redirecting...');
+          setMessage('Successfully authenticated! Redirecting...');
           
-          // Redirect to dashboard or home page
-          setTimeout(() => navigate('/'), 1500);
+          // Redirect to dashboard or home
+          setTimeout(() => navigate('/dashboard'), 2000);
         } else {
-          throw new Error(data.detail || 'Authentication failed');
+          setStatus('error');
+          setMessage(data.message || 'Authentication failed.');
+          setTimeout(() => navigate('/'), 3000);
         }
       } catch (error) {
-        console.error('Google OAuth callback error:', error);
+        console.error('Authentication error:', error);
         setStatus('error');
-        setMessage('Failed to authenticate with Google. Please try again.');
+        setMessage('Authentication failed. Please try again.');
         setTimeout(() => navigate('/'), 3000);
       }
     };
 
     handleCallback();
-  }, [searchParams, navigate, login]);
+  }, [searchParams, navigate]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">

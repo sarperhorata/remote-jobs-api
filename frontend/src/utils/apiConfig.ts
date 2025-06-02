@@ -14,19 +14,24 @@ const portConfig: PortConfig = {
 
 // Backend port detection
 const detectBackendPort = async (): Promise<string> => {
+  console.log('🔍 Starting backend port detection...');
+  
   // Environment variable varsa onu kullan
   if (process.env.REACT_APP_API_URL) {
+    console.log('✅ Using environment variable:', process.env.REACT_APP_API_URL);
     return process.env.REACT_APP_API_URL;
   }
 
   // Test environment check
   if (process.env.NODE_ENV === 'test') {
+    console.log('🧪 Test mode - using port 8001');
     return 'http://localhost:8001/api';
   }
 
   // Backend portlarını sırayla test et
   for (const port of portConfig.backendPorts) {
     try {
+      console.log(`🔍 Testing backend on port ${port}...`);
       const response = await fetch(`http://localhost:${port}/health`, {
         method: 'GET',
         signal: AbortSignal.timeout(2000), // 2 saniye timeout
@@ -38,7 +43,7 @@ const detectBackendPort = async (): Promise<string> => {
       }
     } catch (error) {
       // Port ulaşılabilir değil, bir sonrakini dene
-      console.log(`❌ Backend not found on port ${port}`);
+      console.log(`❌ Backend not found on port ${port}:`, error.message);
     }
   }
 
@@ -52,34 +57,48 @@ let cachedApiUrl: string | null = null;
 let apiUrlPromise: Promise<string> | null = null;
 
 export const getApiUrl = async (): Promise<string> => {
+  console.log('📡 getApiUrl called, cachedApiUrl:', cachedApiUrl);
+  
   // Cache varsa onu kullan
   if (cachedApiUrl) {
+    console.log('📋 Using cached API URL:', cachedApiUrl);
     return cachedApiUrl;
   }
 
   // Zaten bir detection çalışıyorsa aynı promise'i bekle
   if (apiUrlPromise) {
+    console.log('⏳ Detection already in progress, waiting...');
     return apiUrlPromise;
   }
 
   // Yeni detection başlat
+  console.log('🚀 Starting new detection...');
   apiUrlPromise = detectBackendPort();
   
   try {
     cachedApiUrl = await apiUrlPromise;
+    console.log('✅ Detection complete, cached URL:', cachedApiUrl);
     return cachedApiUrl;
   } catch (error) {
-    console.error('Backend detection failed:', error);
+    console.error('❌ Backend detection failed:', error);
     cachedApiUrl = 'http://localhost:8001/api'; // Fallback
+    console.log('🔄 Using fallback URL:', cachedApiUrl);
     return cachedApiUrl;
   }
 };
 
 // Manuel cache temizleme (gerektiğinde kullan)
 export const clearApiUrlCache = () => {
+  console.log('🧹 Clearing API URL cache');
   cachedApiUrl = null;
   apiUrlPromise = null;
 };
+
+// Force clear cache on first load
+if (typeof window !== 'undefined') {
+  console.log('🔄 Force clearing cache on page load');
+  clearApiUrlCache();
+}
 
 // Development/Production mode detection
 export const isDevelopment = process.env.NODE_ENV === 'development';

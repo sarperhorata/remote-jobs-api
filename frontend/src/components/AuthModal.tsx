@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Bug } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { getApiUrl } from '../utils/apiConfig';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -79,20 +80,17 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleAuth = async () => {
     try {
-      // Get the Google OAuth URL from backend
-      const response = await fetch('http://localhost:5001/api/google/auth-url');
+      const API_BASE_URL = await getApiUrl();
+      const response = await fetch(`${API_BASE_URL}/google/auth-url`);
       const data = await response.json();
       
       if (data.auth_url) {
-        // Redirect to Google OAuth
         window.location.href = data.auth_url;
-      } else {
-        console.error('Failed to get Google OAuth URL');
       }
     } catch (error) {
-      console.error('Google OAuth error:', error);
+      console.error('Google auth error:', error);
     }
   };
 
@@ -225,7 +223,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
 
               <button
                 type="button"
-                onClick={handleGoogleLogin}
+                onClick={handleGoogleAuth}
                 className="w-full flex items-center justify-center space-x-2 bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-50 transition-colors font-medium"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -363,7 +361,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
 
               <button
                 type="button"
-                onClick={handleGoogleLogin}
+                onClick={handleGoogleAuth}
                 className="w-full flex items-center justify-center space-x-2 bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-50 transition-colors font-medium"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">

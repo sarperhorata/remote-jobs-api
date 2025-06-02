@@ -7,7 +7,6 @@
 # Production context: all deploys from the Production branch
 [context.production]
   command = "cd frontend && npm install --legacy-peer-deps && npm run build"
-  environment = { REACT_APP_API_URL = "https://remote-jobs-api-k9v1.onrender.com/api" }
   
 [context.production.environment]
   NODE_ENV = "production"
@@ -28,7 +27,9 @@
 # Branch deploy context: deploys from branches other than the Production branch
 [context.branch-deploy]
   command = "cd frontend && npm install --legacy-peer-deps && npm run build"
-  environment = { REACT_APP_API_URL = "https://remote-jobs-api-k9v1.onrender.com/api" }
+  
+[context.branch-deploy.environment]
+  REACT_APP_API_URL = "https://remote-jobs-api-k9v1.onrender.com/api"
 
 # Specific branch context: deploys from the staging branch
 [context.staging]

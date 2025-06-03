@@ -492,6 +492,6 @@ if __name__ == "__main__":
     
     # Get configuration from environment variables
     host = os.getenv('API_HOST', '0.0.0.0')
-    port = int(os.getenv('API_PORT', 5001))
+    port = int(os.getenv('API_PORT', 8001))
     
     uvicorn.run(app, host=host, port=port) 

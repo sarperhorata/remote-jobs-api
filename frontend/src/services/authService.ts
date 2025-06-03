@@ -1,7 +1,7 @@
 import { API_URL } from '../config';
 
 // Override for test compatibility
-const API_BASE_URL = process.env.NODE_ENV === 'test' ? 'http://localhost:8000/api' : API_URL;
+const API_BASE_URL = process.env.NODE_ENV === 'test' ? 'http://localhost:8001/api' : API_URL;
 
 interface UserData {
   email: string;

@@ -172,13 +172,13 @@ const Home: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-6 gap-3 md:gap-4 items-end">
                 {/* Job Title/Keywords - Extended */}
                 <div className="md:col-span-4">
-                  <label htmlFor="searchQuery" className="block text-sm font-medium text-gray-700 text-left mb-1">Keywords</label>
+                  <label htmlFor="searchQuery" className="block text-sm font-medium text-gray-700 text-left mb-1">Please enter job title</label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                     <input
                       type="text"
                       id="searchQuery"
-                      placeholder="Job title, skill, or company"
+                      placeholder="e.g. Software Engineer, Product Manager, Data Scientist"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
@@ -342,7 +342,7 @@ const Home: React.FC = () => {
             </button>
              <button
                 onClick={handleSignUpWithGoogleClick}
-                className="flex items-center justify-center space-x-2 bg-white bg-opacity-20 text-white px-10 py-3 rounded-lg hover:bg-opacity-30 transition-colors font-semibold border border-white border-opacity-40 text-lg shadow-lg"
+                className="flex items-center justify-center space-x-2 bg-white text-orange-600 px-10 py-3 rounded-lg hover:bg-yellow-50 transition-colors font-semibold border border-orange-200 text-lg shadow-lg"
               >
                 <svg className="w-6 h-6" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>

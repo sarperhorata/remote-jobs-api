@@ -88,8 +88,8 @@ describe('Home Page', () => {
   test('renders search form with keywords input', () => {
     renderHome();
     
-    expect(screen.getByLabelText(/Keywords/)).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/Job title, skill, or company/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Please enter job title/)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/e.g. Software Engineer, Product Manager, Data Scientist/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Search/ })).toBeInTheDocument();
   });
 
@@ -106,7 +106,7 @@ describe('Home Page', () => {
   test('renders search input with extended width', () => {
     renderHome();
     
-    const keywordsInput = screen.getByLabelText(/Keywords/);
+    const keywordsInput = screen.getByLabelText(/Please enter job title/);
     const keywordsDiv = keywordsInput.closest('.md\\:col-span-4');
     expect(keywordsDiv).toBeInTheDocument();
   });
@@ -114,7 +114,7 @@ describe('Home Page', () => {
   test('handles search form submission', async () => {
     renderHome();
     
-    const input = screen.getByPlaceholderText('Job title, skill, or company');
+    const input = screen.getByPlaceholderText('e.g. Software Engineer, Product Manager, Data Scientist');
     
     // Type in the input field
     fireEvent.change(input, { target: { value: 'React Developer' } });

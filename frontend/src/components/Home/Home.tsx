@@ -25,13 +25,13 @@ const Home: React.FC = () => {
   const fetchHotJobs = async () => {
     try {
       setLoading(true);
-      // API'den gerçek iş ilanlarını çek
-      const jobs = await JobService.getJobs(1, 6);
+      // API'den gerçek iş ilanlarını çek - 10 ilan
+      const jobs = await JobService.getJobs(1, 10);
       
       if (jobs.length > 0) {
         setHotJobs(jobs);
       } else {
-        // Fallback veriler - crawler'dan çekilen örnek gerçek ilanlar
+        // Fallback veriler - 10 ilan
         setHotJobs([
           {
             id: '1',
@@ -156,6 +156,90 @@ const Home: React.FC = () => {
             applicationUrl: 'https://huggingface.co/careers',
             source: 'Company website',
             sourceUrl: 'https://huggingface.co/careers',
+            status: 'active',
+            postedAt: new Date()
+          },
+          {
+            id: '7',
+            title: 'Frontend Engineer',
+            companyId: '7',
+            company: { id: '7', name: 'Vercel', logo: '' },
+            description: 'Build the platform that powers the modern web. Work on tools that millions of developers use every day.',
+            requirements: ['React', 'Next.js', 'TypeScript'],
+            responsibilities: ['Feature development', 'Performance optimization', 'Developer tools'],
+            skills: ['React', 'Next.js', 'TypeScript', 'Vercel'],
+            location: 'Remote - Global',
+            job_type: 'Full-time',
+            salary: { min: 130000, max: 180000, currency: 'USD' },
+            experience: { min: 3, max: 6 },
+            education: 'Bachelor',
+            benefits: ['Health insurance', 'Stock options', 'Remote work'],
+            applicationUrl: 'https://vercel.com/careers',
+            source: 'Company website',
+            sourceUrl: 'https://vercel.com/careers',
+            status: 'active',
+            postedAt: new Date()
+          },
+          {
+            id: '8',
+            title: 'Data Engineer',
+            companyId: '8',
+            company: { id: '8', name: 'Snowflake', logo: '' },
+            description: 'Build data infrastructure that scales to petabytes. Help companies unlock the power of their data.',
+            requirements: ['Python', 'SQL', 'Data Pipelines'],
+            responsibilities: ['Data pipeline development', 'ETL processes', 'Data architecture'],
+            skills: ['Python', 'SQL', 'Apache Spark', 'Snowflake'],
+            location: 'Remote - US',
+            job_type: 'Full-time',
+            salary: { min: 140000, max: 190000, currency: 'USD' },
+            experience: { min: 4, max: 8 },
+            education: 'Bachelor',
+            benefits: ['Health insurance', 'Equity', 'Learning budget'],
+            applicationUrl: 'https://snowflake.com/careers',
+            source: 'Company website',
+            sourceUrl: 'https://snowflake.com/careers',
+            status: 'active',
+            postedAt: new Date()
+          },
+          {
+            id: '9',
+            title: 'Cloud Security Engineer',
+            companyId: '9',
+            company: { id: '9', name: 'CrowdStrike', logo: '' },
+            description: 'Protect organizations from cyber threats. Build next-generation security solutions for the cloud.',
+            requirements: ['Cloud Security', 'AWS', 'Kubernetes'],
+            responsibilities: ['Security architecture', 'Threat detection', 'Incident response'],
+            skills: ['AWS', 'Kubernetes', 'Security', 'Python'],
+            location: 'Remote - Global',
+            job_type: 'Full-time',
+            salary: { min: 130000, max: 170000, currency: 'USD' },
+            experience: { min: 4, max: 7 },
+            education: 'Bachelor',
+            benefits: ['Health insurance', 'Security training', 'Remote work'],
+            applicationUrl: 'https://crowdstrike.com/careers',
+            source: 'Company website',
+            sourceUrl: 'https://crowdstrike.com/careers',
+            status: 'active',
+            postedAt: new Date()
+          },
+          {
+            id: '10',
+            title: 'Full Stack Developer',
+            companyId: '10',
+            company: { id: '10', name: 'Supabase', logo: '' },
+            description: 'Build the open source Firebase alternative. Work on database, auth, and real-time features.',
+            requirements: ['React', 'Node.js', 'PostgreSQL'],
+            responsibilities: ['Full stack development', 'API design', 'Database optimization'],
+            skills: ['React', 'Node.js', 'PostgreSQL', 'TypeScript'],
+            location: 'Remote - Global',
+            job_type: 'Full-time',
+            salary: { min: 120000, max: 160000, currency: 'USD' },
+            experience: { min: 3, max: 6 },
+            education: 'Bachelor',
+            benefits: ['Health insurance', 'Equity', 'Open source time'],
+            applicationUrl: 'https://supabase.com/careers',
+            source: 'Company website',
+            sourceUrl: 'https://supabase.com/careers',
             status: 'active',
             postedAt: new Date()
           }
@@ -317,10 +401,31 @@ const Home: React.FC = () => {
               <p className="mt-2 text-gray-600">Loading hot jobs...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {hotJobs.map((job: Job) => (
-                <JobCard key={job._id || job.id} job={job} />
-              ))}
+            <div className="relative">
+              {/* Horizontal scrollable container */}
+              <div 
+                className="flex gap-6 overflow-x-auto scrollbar-hide pb-4"
+                style={{
+                  scrollbarWidth: 'none', /* Firefox */
+                  msOverflowStyle: 'none', /* IE and Edge */
+                }}
+              >
+                {hotJobs.map((job: Job) => (
+                  <div key={job._id || job.id} className="flex-none w-80">
+                    <JobCard job={job} />
+                  </div>
+                ))}
+              </div>
+              
+              {/* Gradient fade effect on right edge */}
+              <div className="absolute top-0 right-0 h-full w-20 bg-gradient-to-l from-white to-transparent pointer-events-none"></div>
+              
+              {/* Scroll indicator */}
+              <div className="text-center mt-4">
+                <p className="text-sm text-gray-500">
+                  ← Scroll horizontally to see more jobs →
+                </p>
+              </div>
             </div>
           )}
 

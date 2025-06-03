@@ -23,7 +23,7 @@ describe('AuthService', () => {
 
       const result = await authService.login('test@example.com', 'password');
       
-      expect(fetch).toHaveBeenCalledWith('http://localhost:8000/api/auth/login', {
+      expect(fetch).toHaveBeenCalledWith('http://localhost:8001/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: 'test@example.com', password: 'password', remember_me: false })
@@ -84,7 +84,7 @@ describe('AuthService', () => {
 
       const result = await authService.register(userData);
       
-      expect(fetch).toHaveBeenCalledWith('http://localhost:8000/api/auth/register', {
+      expect(fetch).toHaveBeenCalledWith('http://localhost:8001/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData)
@@ -133,7 +133,7 @@ describe('AuthService', () => {
 
       await authService.logout();
       
-      expect(fetch).toHaveBeenCalledWith('http://localhost:8000/api/auth/logout', {
+      expect(fetch).toHaveBeenCalledWith('http://localhost:8001/api/auth/logout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -170,7 +170,7 @@ describe('AuthService', () => {
 
       const result = await authService.getCurrentUser();
       
-      expect(fetch).toHaveBeenCalledWith('http://localhost:8000/api/auth/me', {
+      expect(fetch).toHaveBeenCalledWith('http://localhost:8001/api/auth/me', {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer valid-token'
@@ -214,7 +214,7 @@ describe('AuthService', () => {
 
       const result = await authService.refreshToken();
       
-      expect(fetch).toHaveBeenCalledWith('http://localhost:8000/api/auth/refresh', {
+      expect(fetch).toHaveBeenCalledWith('http://localhost:8001/api/auth/refresh', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -250,7 +250,7 @@ describe('AuthService', () => {
 
       const result = await authService.resetPassword('test@example.com');
       
-      expect(fetch).toHaveBeenCalledWith('http://localhost:8000/api/auth/reset-password', {
+      expect(fetch).toHaveBeenCalledWith('http://localhost:8001/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: 'test@example.com' })
@@ -276,7 +276,7 @@ describe('AuthService', () => {
 
       const result = await authService.changePassword('oldPassword', 'newPassword123');
       
-      expect(fetch).toHaveBeenCalledWith('http://localhost:8000/api/auth/change-password', {
+      expect(fetch).toHaveBeenCalledWith('http://localhost:8001/api/auth/change-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -309,7 +309,7 @@ describe('AuthService', () => {
 
       const result = await authService.updateProfile(profileData);
       
-      expect(fetch).toHaveBeenCalledWith('http://localhost:8000/api/auth/profile', {
+      expect(fetch).toHaveBeenCalledWith('http://localhost:8001/api/auth/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

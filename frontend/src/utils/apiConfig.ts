@@ -1,5 +1,5 @@
 // Dinamik API URL detection sistemi
-// Backend için 8xxx portları (8000, 8001, 8002, vb.) kontrol eder
+// Backend için 8xxx portları (8001, 8000, 8002, vb.) kontrol eder
 // Frontend için 5xxx portları ile çalışabilir
 
 interface PortConfig {
@@ -12,6 +12,17 @@ const portConfig: PortConfig = {
   frontendPorts: [3001, 3000, 5000, 5001, 5173], // Frontend için öncelik sırası
 };
 
+// API URL cache - Global değişkenler
+let cachedApiUrl: string | null = null;
+let apiUrlPromise: Promise<string> | null = null;
+
+// Cache temizleme fonksiyonu
+export const clearApiUrlCache = () => {
+  console.log('🧹 Clearing API URL cache');
+  cachedApiUrl = null;
+  apiUrlPromise = null;
+};
+
 // Backend port detection
 const detectBackendPort = async (): Promise<string> => {
   console.log('🔍 Starting backend port detection...');
@@ -22,9 +33,9 @@ const detectBackendPort = async (): Promise<string> => {
     return process.env.REACT_APP_API_URL;
   }
 
-  // Test environment check
+  // Test environment check - force port 8001
   if (process.env.NODE_ENV === 'test') {
-    console.log('🧪 Test mode - using port 8001');
+    console.log('🧪 Test mode - forcing port 8001');
     return 'http://localhost:8001/api';
   }
 
@@ -41,7 +52,7 @@ const detectBackendPort = async (): Promise<string> => {
         console.log(`✅ Backend detected on port ${port}`);
         return `http://localhost:${port}/api`;
       }
-    } catch (error) {
+    } catch (error: any) {
       // Port ulaşılabilir değil, bir sonrakini dene
       console.log(`❌ Backend not found on port ${port}:`, error.message);
     }
@@ -52,52 +63,53 @@ const detectBackendPort = async (): Promise<string> => {
   return 'http://localhost:8001/api';
 };
 
-// API URL cache
-let cachedApiUrl: string | null = null;
-let apiUrlPromise: Promise<string> | null = null;
-
-// Production API configuration for Buzz2Remote
-// Backend is deployed on Render.com
-
-const PRODUCTION_API_URL = 'https://remote-jobs-api-k9v1.onrender.com/api';
-const TEST_API_URL = 'http://localhost:8001/api';
-const DEVELOPMENT_API_URL = 'http://localhost:8001/api';
-
-// Simple and direct API URL - environment aware
 export const getApiUrl = async (): Promise<string> => {
-  // Test environment
+  console.log('📡 getApiUrl called, cachedApiUrl:', cachedApiUrl);
+  
+  // Test ortamında her zaman cache'i temizle
   if (process.env.NODE_ENV === 'test') {
-    return TEST_API_URL;
+    console.log('🧪 Test mode - clearing cache for fresh detection');
+    clearApiUrlCache();
   }
   
-  // Development environment 
-  if (process.env.NODE_ENV === 'development') {
-    return DEVELOPMENT_API_URL;
+  // Cache varsa onu kullan
+  if (cachedApiUrl) {
+    console.log('📋 Using cached API URL:', cachedApiUrl);
+    return cachedApiUrl;
   }
+
+  // Zaten bir detection çalışıyorsa aynı promise'i bekle
+  if (apiUrlPromise) {
+    console.log('⏳ Detection already in progress, waiting...');
+    return apiUrlPromise;
+  }
+
+  // Yeni detection başlat
+  console.log('🚀 Starting new detection...');
+  apiUrlPromise = detectBackendPort();
   
-  // Production environment
-  return PRODUCTION_API_URL;
+  try {
+    cachedApiUrl = await apiUrlPromise;
+    console.log('✅ Detection complete, cached URL:', cachedApiUrl);
+    return cachedApiUrl;
+  } catch (error) {
+    console.error('❌ Backend detection failed:', error);
+    cachedApiUrl = 'http://localhost:8001/api'; // Fallback
+    console.log('🔄 Using fallback URL:', cachedApiUrl);
+    return cachedApiUrl;
+  } finally {
+    apiUrlPromise = null; // Promise'i temizle
+  }
 };
 
-// Manual cache clearing (not needed in simple config)
-export const clearApiUrlCache = () => {
-  console.log('🧹 Clearing API URL cache');
-};
-
-// Force clear cache on first load
-if (typeof window !== 'undefined') {
-  console.log('🔄 Force clearing cache on page load');
-  clearApiUrlCache();
-}
-
-// Environment detection
+// Development/Production mode detection
 export const isDevelopment = process.env.NODE_ENV === 'development';
 export const isProduction = process.env.NODE_ENV === 'production';
 export const isTest = process.env.NODE_ENV === 'test';
 
 // Current frontend port detection
 export const getCurrentPort = (): number => {
-  if (typeof window === 'undefined') return 3000;
+  if (typeof window === 'undefined') return 3000; // SSR or test environment
   const port = parseInt(window.location.port);
   return port || (window.location.protocol === 'https:' ? 443 : 80);
 };
@@ -120,6 +132,13 @@ export const checkBackendHealth = async (apiUrl?: string): Promise<boolean> => {
   }
 };
 
+// Force cache temizleme - sadece gerekli durumlarda
+if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'test') {
+  console.log('🔄 Initial page load - clearing API URL cache');
+  clearApiUrlCache();
+}
+
+// Test ortamında export edilen konfigürasyon objesi
 const apiConfig = {
   getApiUrl,
   clearApiUrlCache,
@@ -128,9 +147,6 @@ const apiConfig = {
   isDevelopment,
   isProduction,
   isTest,
-  PRODUCTION_API_URL,
-  TEST_API_URL,
-  DEVELOPMENT_API_URL
 };
 
 export default apiConfig; 

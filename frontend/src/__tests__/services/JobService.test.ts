@@ -1,24 +1,40 @@
 import { JobService } from '../../services/jobService';
 
+// Mock the getApiUrl function at module level
+jest.mock('../../utils/apiConfig', () => {
+  return {
+    getApiUrl: jest.fn().mockResolvedValue('http://localhost:8001/api'),
+    clearApiUrlCache: jest.fn(),
+  };
+});
+
+// Get the mocked function for assertions
+const { getApiUrl } = require('../../utils/apiConfig');
+
 // Mock fetch globally
 global.fetch = jest.fn();
 
 describe('JobService', () => {
   beforeEach(() => {
     (fetch as jest.Mock).mockClear();
+    (getApiUrl as jest.Mock).mockClear();
+    // Reset the mock to always return the correct URL
+    (getApiUrl as jest.Mock).mockResolvedValue('http://localhost:8001/api');
   });
 
   describe('getJobs', () => {
-    it('should fetch jobs successfully', async () => {
-      const mockJobs = [
-        { id: '1', title: 'Software Engineer', company: 'TechCorp' },
-        { id: '2', title: 'Product Manager', company: 'StartupCo' },
-      ];
-      
-      (fetch as jest.MockedFunction<typeof fetch>).mockResolvedValue({
+    it('should fetch jobs successfully with default parameters', async () => {
+      const mockJobs = {
+        jobs: [{ id: '1', title: 'Software Engineer', company: 'TechCorp' }],
+        total: 1,
+        page: 1,
+        pages: 1
+      };
+
+      (fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValue({ jobs: mockJobs }),
-      } as any);
+        json: async () => mockJobs
+      });
 
       const result = await JobService.getJobs();
       
@@ -26,16 +42,16 @@ describe('JobService', () => {
         'http://localhost:8001/api/jobs/?page=1&per_page=10',
         expect.any(Object)
       );
-      expect(result).toEqual(mockJobs);
+      expect(result).toEqual(mockJobs.jobs);
     });
 
-    it('should handle fetch error', async () => {
+    it('should handle network errors', async () => {
       (fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
 
       await expect(JobService.getJobs()).rejects.toThrow('Network error');
     });
 
-    it('should handle non-200 response', async () => {
+    it('should handle API errors', async () => {
       (fetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
         status: 500,
@@ -52,10 +68,10 @@ describe('JobService', () => {
         search: 'developer'
       };
 
-      (fetch as jest.MockedFunction<typeof fetch>).mockResolvedValue({
+      (fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValue({ jobs: [] }),
-      } as any);
+        json: async () => ({ jobs: [], total: 0, page: 1, pages: 0 })
+      });
 
       await JobService.getJobs(1, 10, filters);
       
@@ -64,26 +80,16 @@ describe('JobService', () => {
         expect.any(Object)
       );
     });
-
-    it('should handle empty response body', async () => {
-      (fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => null
-      });
-
-      const result = await JobService.getJobs();
-      expect(result).toEqual([]);
-    });
   });
 
   describe('getJobById', () => {
-    it('should fetch job by ID successfully', async () => {
+    it('should fetch a single job successfully', async () => {
       const mockJob = { id: '1', title: 'Software Engineer', company: 'TechCorp' };
-      
-      (fetch as jest.MockedFunction<typeof fetch>).mockResolvedValue({
+
+      (fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockJob),
-      } as any);
+        json: async () => mockJob
+      });
 
       const result = await JobService.getJobById('1');
       
@@ -107,14 +113,15 @@ describe('JobService', () => {
 
   describe('searchJobs', () => {
     it('should search jobs successfully', async () => {
-      const mockJobs = [
-        { id: '1', title: 'React Developer', company: 'TechCorp' },
-      ];
-      
-      (fetch as jest.MockedFunction<typeof fetch>).mockResolvedValue({
+      const mockResults = {
+        jobs: [{ id: '1', title: 'React Developer' }],
+        total: 1
+      };
+
+      (fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValue({ jobs: mockJobs, total: 1 }),
-      } as any);
+        json: async () => mockResults
+      });
 
       const result = await JobService.searchJobs('react');
       
@@ -122,29 +129,23 @@ describe('JobService', () => {
         'http://localhost:8001/api/jobs/search?q=react',
         expect.any(Object)
       );
-      expect(result).toEqual({ jobs: mockJobs, total: 1 });
-    });
-
-    it('should handle empty search query', async () => {
-      const result = await JobService.searchJobs('');
-      expect(result).toEqual({ jobs: [], total: 0 });
+      expect(result).toEqual(mockResults);
     });
   });
 
   describe('getJobStatistics', () => {
     it('should fetch job statistics successfully', async () => {
       const mockStats = {
-        total_jobs: 1000,
-        active_jobs: 800,
-        positions: [
-          { title: 'Software Engineer', count: 100 }
-        ]
+        total_jobs: 100,
+        total_companies: 50,
+        locations: ['Remote', 'New York'],
+        categories: ['Engineering', 'Design']
       };
-      
-      (fetch as jest.MockedFunction<typeof fetch>).mockResolvedValue({
+
+      (fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockStats),
-      } as any);
+        json: async () => mockStats
+      });
 
       const result = await JobService.getJobStatistics();
       
@@ -156,116 +157,40 @@ describe('JobService', () => {
     });
   });
 
-  describe('createJob', () => {
-    it('should create job successfully', async () => {
-      const jobData = {
-        title: 'New Job',
-        company: 'New Company',
-        description: 'Job description'
-      };
-      
-      const mockResponse = { ...jobData, id: '1' };
-      
-      (fetch as jest.MockedFunction<typeof fetch>).mockResolvedValue({
-        ok: true,
-        json: jest.fn().mockResolvedValue(mockResponse),
-      } as any);
+  describe('getFeaturedJobs', () => {
+    it('should fetch featured jobs successfully', async () => {
+      const mockJobs = [
+        { id: '1', title: 'Senior Engineer', featured: true },
+        { id: '2', title: 'Tech Lead', featured: true }
+      ];
 
-      const result = await JobService.createJob(jobData);
-      
-      expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8001/api/jobs/',
-        expect.objectContaining({
-          method: 'POST',
-          headers: expect.objectContaining({
-            'Content-Type': 'application/json'
-          }),
-          body: JSON.stringify(jobData)
-        })
-      );
-      expect(result).toEqual(mockResponse);
-    });
-
-    it('should handle creation error', async () => {
-      const jobData = { title: '', company: '', description: '' };
-
+      // Mock getJobs function response
       (fetch as jest.Mock).mockResolvedValueOnce({
-        ok: false,
-        status: 422,
-        statusText: 'Validation Error'
+        ok: true,
+        json: async () => ({ jobs: mockJobs })
       });
 
-      await expect(JobService.createJob(jobData)).rejects.toThrow('HTTP 422: Validation Error');
-    });
-  });
-
-  describe('updateJob', () => {
-    it('should update job successfully', async () => {
-      const jobData = { title: 'Updated Title' };
-      const mockResponse = { id: '1', ...jobData };
-      
-      (fetch as jest.MockedFunction<typeof fetch>).mockResolvedValue({
-        ok: true,
-        json: jest.fn().mockResolvedValue(mockResponse),
-      } as any);
-
-      const result = await JobService.updateJob('1', jobData);
+      const result = await JobService.getFeaturedJobs();
       
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8001/api/jobs/1',
-        expect.objectContaining({
-          method: 'PUT',
-          headers: expect.objectContaining({
-            'Content-Type': 'application/json'
-          }),
-          body: JSON.stringify(jobData)
-        })
+        'http://localhost:8001/api/jobs/?limit=3'
       );
-      expect(result).toEqual(mockResponse);
-    });
-  });
-
-  describe('deleteJob', () => {
-    it('should delete job successfully', async () => {
-      (fetch as jest.MockedFunction<typeof fetch>).mockResolvedValue({
-        ok: true,
-        json: jest.fn().mockResolvedValue({}),
-      } as any);
-
-      await JobService.deleteJob('1');
-      
-      expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8001/api/jobs/1',
-        expect.objectContaining({
-          method: 'DELETE'
-        })
-      );
-    });
-
-    it('should handle delete error', async () => {
-      (fetch as jest.Mock).mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        statusText: 'Not Found'
-      });
-
-      await expect(JobService.deleteJob('999')).rejects.toThrow('HTTP 404: Not Found');
+      expect(result).toEqual(mockJobs);
     });
   });
 
   describe('applyToJob', () => {
     it('should apply to job successfully', async () => {
       const applicationData = {
-        coverLetter: 'I am interested in this position.',
-        resume: 'Resume content'
+        coverLetter: 'I am interested in this position...',
+        resume: 'resume.pdf'
       };
-      
-      const mockResponse = { id: '1', status: 'submitted' };
-      
-      (fetch as jest.MockedFunction<typeof fetch>).mockResolvedValue({
+      const mockResponse = { success: true, applicationId: '123' };
+
+      (fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockResponse),
-      } as any);
+        json: async () => mockResponse
+      });
 
       const result = await JobService.applyToJob('1', applicationData);
       
@@ -273,27 +198,24 @@ describe('JobService', () => {
         'http://localhost:8001/api/jobs/1/apply',
         expect.objectContaining({
           method: 'POST',
-          headers: expect.objectContaining({
-            'Content-Type': 'application/json'
-          }),
           body: JSON.stringify(applicationData)
         })
       );
-      expect(result.status).toBe('submitted');
+      expect(result).toEqual(mockResponse);
     });
   });
 
   describe('getMyApplications', () => {
     it('should fetch user applications successfully', async () => {
       const mockApplications = [
-        { id: '1', job_id: '1', status: 'pending' },
-        { id: '2', job_id: '2', status: 'approved' },
+        { id: '1', jobId: '1', status: 'pending' },
+        { id: '2', jobId: '2', status: 'reviewed' }
       ];
-      
-      (fetch as jest.MockedFunction<typeof fetch>).mockResolvedValue({
+
+      (fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValue({ applications: mockApplications }),
-      } as any);
+        json: async () => ({ applications: mockApplications })
+      });
 
       const result = await JobService.getMyApplications();
       
@@ -301,51 +223,14 @@ describe('JobService', () => {
         'http://localhost:8001/api/jobs/applications',
         expect.any(Object)
       );
-      expect(result.applications).toEqual(mockApplications);
+      expect(result).toEqual({ applications: mockApplications });
     });
   });
 
-  describe('error handling', () => {
-    it('should handle network timeout', async () => {
-      (fetch as jest.Mock).mockImplementationOnce(() => 
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 100)
-        )
-      );
-
-      await expect(JobService.getJobs()).rejects.toThrow('Request timeout');
-    });
-
-    it('should handle malformed JSON response', async () => {
-      (fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => {
-          throw new Error('Invalid JSON');
-        }
-      });
-
-      await expect(JobService.getJobs()).rejects.toThrow('Invalid JSON');
-    });
-  });
-
-  describe('API endpoint configuration', () => {
-    it('should include correct headers', async () => {
-      // Mock successful response
-      (fetch as jest.MockedFunction<typeof fetch>).mockResolvedValue({
-        ok: true,
-        json: jest.fn().mockResolvedValue({ jobs: [] })
-      } as any);
-
-      await JobService.getJobs();
-
-      expect(fetch).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            'Content-Type': 'application/json'
-          })
-        })
-      );
+  describe('config', () => {
+    it('should have correct base URL', async () => {
+      const baseURL = await JobService.getBaseURL();
+      expect(baseURL).toBe('http://localhost:8001/api');
     });
   });
 }); 

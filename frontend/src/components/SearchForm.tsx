@@ -4,7 +4,6 @@ import { Autocomplete, TextField, Button, Alert, Snackbar } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search';
 import PublicIcon from '@mui/icons-material/Public';
 import WorkIcon from '@mui/icons-material/Work';
-import { getApiUrl } from '../utils/apiConfig';
 
 interface Position {
   title: string;
@@ -30,8 +29,44 @@ const SearchForm: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // API'den pozisyon verilerini çek
-    fetchPositions();
+    // Static job positions data sorted by count (desc) and then alphabetically (asc)
+    const jobPositions: Position[] = [
+      { title: 'Software Engineer', count: 180 },
+      { title: 'Frontend Developer', count: 150 },
+      { title: 'Backend Developer', count: 140 },
+      { title: 'Full Stack Developer', count: 120 },
+      { title: 'DevOps Engineer', count: 95 },
+      { title: 'Product Manager', count: 85 },
+      { title: 'Data Scientist', count: 75 },
+      { title: 'UI/UX Designer', count: 70 },
+      { title: 'Mobile Developer', count: 65 },
+      { title: 'QA Engineer', count: 60 },
+      { title: 'Machine Learning Engineer', count: 55 },
+      { title: 'Technical Writer', count: 45 },
+      { title: 'Business Analyst', count: 40 },
+      { title: 'Scrum Master', count: 35 },
+      { title: 'Sales Manager', count: 30 },
+      // Additional popular positions
+      { title: 'Cloud Engineer', count: 25 },
+      { title: 'Cybersecurity Specialist', count: 22 },
+      { title: 'Database Administrator', count: 20 },
+      { title: 'Game Developer', count: 18 },
+      { title: 'Blockchain Developer', count: 15 },
+      { title: 'AI Engineer', count: 12 },
+      { title: 'Site Reliability Engineer', count: 10 },
+      { title: 'Performance Engineer', count: 8 },
+      { title: 'Solutions Architect', count: 8 }
+    ];
+
+    // Sort by count (desc) first, then alphabetically (asc) within same counts
+    const sortedPositions = jobPositions.sort((a, b) => {
+      if (a.count !== b.count) {
+        return b.count - a.count; // Count descending
+      }
+      return a.title.localeCompare(b.title); // Title ascending within same count
+    });
+
+    setPositions(sortedPositions);
     
     // Lokasyon verilerini oluştur (ülkeler + kıtalar + Anywhere)
     const locationData: Location[] = [
@@ -74,45 +109,6 @@ const SearchForm: React.FC = () => {
 
     setLocations(locationData);
   }, []);
-
-  const fetchPositions = async () => {
-    try {
-      // API'den gerçek pozisyon verilerini çek
-      const apiUrl = await getApiUrl();
-      const response = await fetch(`${apiUrl}/jobs/statistics`);
-      const data = await response.json();
-      
-      if (data.positions && Array.isArray(data.positions)) {
-        // API'den gelen gerçek pozisyon verilerini kullan
-        setPositions(data.positions.sort((a, b) => a.title.localeCompare(b.title)));
-      } else {
-        // Fallback data if API fails or returns unexpected format
-        throw new Error('Invalid API response format');
-      }
-    } catch (error) {
-      console.error('Error fetching positions:', error);
-      // Fallback data
-      const fallbackData: Position[] = [
-        { title: 'Backend Developer', count: 140 },
-        { title: 'Business Analyst', count: 40 },
-        { title: 'Data Scientist', count: 75 },
-        { title: 'DevOps Engineer', count: 95 },
-        { title: 'Frontend Developer', count: 150 },
-        { title: 'Full Stack Developer', count: 120 },
-        { title: 'Machine Learning Engineer', count: 55 },
-        { title: 'Mobile Developer', count: 65 },
-        { title: 'Product Manager', count: 85 },
-        { title: 'QA Engineer', count: 60 },
-        { title: 'Sales Manager', count: 30 },
-        { title: 'Scrum Master', count: 35 },
-        { title: 'Software Engineer', count: 180 },
-        { title: 'Technical Writer', count: 45 },
-        { title: 'UI/UX Designer', count: 70 }
-      ].sort((a, b) => a.title.localeCompare(b.title));
-      
-      setPositions(fallbackData);
-    }
-  };
 
   const handlePositionKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'Enter') {
@@ -175,8 +171,8 @@ const SearchForm: React.FC = () => {
           renderInput={(params) => (
             <TextField
               {...params}
-              label="Job Title"
-              placeholder="e.g. Software Engineer, Product Manager"
+              label="Please enter job title"
+              placeholder="e.g. Software Engineer, Product Manager, Data Scientist"
               fullWidth
               onKeyDown={handlePositionKeyDown}
               sx={{

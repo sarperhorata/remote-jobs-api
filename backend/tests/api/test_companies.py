@@ -33,16 +33,22 @@ class TestCompaniesAPI:
             }
         ]
         
-        # Mock aggregation result
+        # Mock companies collection result
         mock_cursor = AsyncMock()
         mock_cursor.to_list = AsyncMock(return_value=companies_data)
-        mock_database.jobs.aggregate = MagicMock(return_value=mock_cursor)
+        mock_cursor.sort = MagicMock(return_value=mock_cursor)
+        mock_cursor.skip = MagicMock(return_value=mock_cursor)
+        mock_cursor.limit = MagicMock(return_value=mock_cursor)
+        mock_database.companies.find = MagicMock(return_value=mock_cursor)
+        mock_database.companies.count_documents = AsyncMock(return_value=len(companies_data))
+        # Mock jobs.count_documents for jobs_count field
+        mock_database.jobs.count_documents = AsyncMock(return_value=5)
         
         response = await async_client.get("/api/companies/")
         assert response.status_code == 200
         data = response.json()
-        assert "companies" in data
-        assert len(data["companies"]) == 2
+        assert "items" in data
+        assert len(data["items"]) == 2
 
     async def test_get_companies_with_pagination(self, async_client: AsyncClient, mock_database):
         """Test companies retrieval with pagination."""
@@ -62,7 +68,7 @@ class TestCompaniesAPI:
         response = await async_client.get("/api/companies/?page=1&per_page=2")
         assert response.status_code == 200
         data = response.json()
-        assert len(data["companies"]) == 2
+        assert len(data["items"]) == 2
 
     async def test_get_company_by_id_success(self, async_client: AsyncClient, mock_database):
         """Test successful company retrieval by ID."""
@@ -138,7 +144,7 @@ class TestCompaniesAPI:
         response = await async_client.get("/api/companies/search?q=tech")
         assert response.status_code == 200
         data = response.json()
-        assert "companies" in data
+        assert "items" in data
 
     async def test_get_companies_filtering(self, async_client: AsyncClient, mock_database):
         """Test companies filtering by various criteria."""

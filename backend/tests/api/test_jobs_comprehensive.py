@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 from bson import ObjectId
 import json
 
+# Jobs comprehensive tests - simplified for basic endpoint testing
+
 @pytest.mark.api
 class TestJobsComprehensive:
     """Comprehensive test suite for Jobs API endpoints - targeting 90+ coverage."""

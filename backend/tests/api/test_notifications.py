@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime
 from bson import ObjectId
 
+# Notifications API tests - simplified for basic endpoint testing
 
 @pytest.mark.asyncio
 class TestNotificationsAPI:

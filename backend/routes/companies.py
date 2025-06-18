@@ -30,12 +30,18 @@ async def get_companies(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
     is_active: Optional[bool] = None,
+    search: Optional[str] = None,
     db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
     """Get a list of companies with optional filtering."""
     query = {}
     if is_active is not None:
         query["is_active"] = is_active
+    if search:
+        query["$or"] = [
+            {"name": {"$regex": search, "$options": "i"}},
+            {"description": {"$regex": search, "$options": "i"}}
+        ]
     
     # Get total count
     total = await db.companies.count_documents(query)
@@ -51,7 +57,7 @@ async def get_companies(
             company["_id"] = str(company["_id"])
         # Add jobs_count if not present
         if "jobs_count" not in company:
-            company["jobs_count"] = 0
+            company["jobs_count"] = await db.jobs.count_documents({"company": company["name"]})
     
     return {
         "items": companies,
@@ -84,7 +90,7 @@ async def get_company(
     
     # Add jobs_count if not present
     if "jobs_count" not in company:
-        company["jobs_count"] = 0
+        company["jobs_count"] = await db.jobs.count_documents({"company": company["name"]})
         
     return company
 
@@ -143,10 +149,19 @@ async def get_company_jobs(
     db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
     """Get jobs for a specific company."""
-    query = {"company": company_id}  # Changed from company_id to company
+    # First get the company to ensure it exists
+    company = await db.companies.find_one({"_id": company_id})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+        
+    query = {"company": company["name"]}  # Use company name for job lookup
     if is_active is not None:
         query["is_active"] = is_active
     
+    # Get total count
+    total = await db.jobs.count_documents(query)
+    
+    # Get jobs
     cursor = db.jobs.find(query).sort("created_at", -1).skip(skip).limit(limit)
     jobs = await cursor.to_list(length=limit)
     
@@ -156,4 +171,10 @@ async def get_company_jobs(
             job["id"] = str(job["_id"])
             job["_id"] = str(job["_id"])
             
-    return {"jobs": jobs} 
+    return {
+        "jobs": jobs,
+        "total": total,
+        "page": skip // limit + 1,
+        "per_page": limit,
+        "total_pages": (total + limit - 1) // limit
+    } 

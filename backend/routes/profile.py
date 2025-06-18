@@ -18,7 +18,7 @@ async def upload_profile_photo(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_active_user)
 ):
-    db = get_async_db()
+    db = await get_async_db()
     profiles = db["profiles"]
     if not os.path.exists(UPLOAD_DIR):
         os.makedirs(UPLOAD_DIR)
@@ -29,8 +29,8 @@ async def upload_profile_photo(
     return {"message": "Profile photo uploaded successfully"}
 
 @router.post("/profiles/")
-def create_profile(profile: dict):
-    db = get_async_db()
+async def create_profile(profile: dict):
+    db = await get_async_db()
     profiles = db["profiles"]
     result = profiles.insert_one(profile)
     created_profile = profiles.find_one({"_id": result.inserted_id})
@@ -38,8 +38,8 @@ def create_profile(profile: dict):
     return created_profile
 
 @router.get("/profiles/{profile_id}")
-def get_profile(profile_id: str):
-    db = get_async_db()
+async def get_profile(profile_id: str):
+    db = await get_async_db()
     profiles = db["profiles"]
     profile = profiles.find_one({"_id": ObjectId(profile_id)})
     if profile is None:
@@ -48,8 +48,8 @@ def get_profile(profile_id: str):
     return profile
 
 @router.put("/profiles/{profile_id}")
-def update_profile(profile_id: str, profile: dict):
-    db = get_async_db()
+async def update_profile(profile_id: str, profile: dict):
+    db = await get_async_db()
     profiles = db["profiles"]
     existing_profile = profiles.find_one({"_id": ObjectId(profile_id)})
     if existing_profile is None:
@@ -65,7 +65,7 @@ async def update_profile(
     profile: dict,
     current_user: dict = Depends(get_current_active_user)
 ):
-    db = get_async_db()
+    db = await get_async_db()
     profiles = db["profiles"]
     update_data = {k: v for k, v in profile.items() if k not in ["password", "password_confirm"]}
     update_data["updated_at"] = datetime.utcnow()
@@ -77,7 +77,7 @@ async def upload_profile_photo(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_active_user)
 ):
-    db = get_async_db()
+    db = await get_async_db()
     profiles = db["profiles"]
     if not os.path.exists(UPLOAD_DIR):
         os.makedirs(UPLOAD_DIR)

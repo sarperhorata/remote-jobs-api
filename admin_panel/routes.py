@@ -28,8 +28,7 @@ try:
     
     # Create a connection directly for admin panel
     async def get_admin_db():
-        async for db in get_async_db():
-            return db
+        return await get_async_db()
     
     DATABASE_AVAILABLE = True
     logger.info("Database connection successful for admin panel")

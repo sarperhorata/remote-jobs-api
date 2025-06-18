@@ -70,16 +70,14 @@ async def lifespan(app: FastAPI):
     
     # Startup
     try:
-        # Initialize database connection
+        # Initialize database connection and ensure indexes
         await init_database()
         
         # Test database connection
-        from backend.database import db
-        await db.command('ping')
-        logger.info("Async MongoDB connection pool initialized!")
-        
-        # Ensure indexes
-        await ensure_indexes()
+        from backend.database import get_database_client
+        db = await get_database_client()
+        await db.admin.command('ping')
+        logger.info("MongoDB connection pool initialized!")
     except Exception as e:
         logger.error(f"Could not connect to MongoDB: {str(e)}")
         raise e

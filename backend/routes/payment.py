@@ -76,7 +76,7 @@ async def stripe_webhook(request: Request):
         session = event["data"]["object"]
         
         # Update user's subscription status
-        db = get_async_db()
+        db = await get_async_db()
         users = db["users"]
         
         users.update_one(
@@ -121,7 +121,7 @@ async def verify_payment(
             )
         
         # Update user's subscription status
-        db = get_async_db()
+        db = await get_async_db()
         users = db["users"]
         
         users.update_one(

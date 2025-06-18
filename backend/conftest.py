@@ -5,11 +5,12 @@ import pytest
 import pytest_asyncio
 from typing import Generator, AsyncGenerator
 from fastapi.testclient import TestClient
-from motor.motor_asyncio import AsyncIOMotorClient
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 import mongomock
 from unittest.mock import MagicMock, patch, AsyncMock
 from httpx import AsyncClient
 from bson import ObjectId
+from contextlib import asynccontextmanager
 
 # Add parent directory to sys.path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -31,95 +32,59 @@ def event_loop():
 # Mock database for testing
 @pytest.fixture(scope="session")
 def mock_db_client():
-    """Create a mock MongoDB client for testing."""
-    client = mongomock.MongoClient()
-    return client
+    """Create a mock database client."""
+    mock_client = AsyncMock()
+    mock_client.__getitem__.return_value = mock_client
+    mock_client.__getattr__.return_value = mock_client
+    return mock_client
 
 @pytest.fixture(scope="session")
 def mock_db(mock_db_client):
-    """Create a mock database for testing."""
-    return mock_db_client.get_database("test_buzz2remote")
+    """Create a mock database instance."""
+    mock_db = AsyncMock(spec=AsyncIOMotorDatabase)
+    mock_db.client = mock_db_client
+    
+    # Create mock collections
+    mock_collections = {
+        'companies': AsyncMock(),
+        'jobs': AsyncMock(),
+        'users': AsyncMock(),
+        'notifications': AsyncMock(),
+        'admin': AsyncMock(),
+        'ads': AsyncMock(),
+        'notification_settings': AsyncMock()
+    }
+    
+    # Set up mock collections with common operations
+    for collection in mock_collections.values():
+        collection.find = AsyncMock()
+        collection.find_one = AsyncMock()
+        collection.insert_one = AsyncMock()
+        collection.update_one = AsyncMock()
+        collection.delete_one = AsyncMock()
+        collection.count_documents = AsyncMock()
+        collection.aggregate = AsyncMock()
+        
+        # Set up cursor mock
+        mock_cursor = AsyncMock()
+        mock_cursor.to_list = AsyncMock(return_value=[])
+        mock_cursor.sort = MagicMock(return_value=mock_cursor)
+        mock_cursor.skip = MagicMock(return_value=mock_cursor)
+        mock_cursor.limit = MagicMock(return_value=mock_cursor)
+        collection.find.return_value = mock_cursor
+    
+    # Attach collections to database mock
+    for name, collection in mock_collections.items():
+        setattr(mock_db, name, collection)
+    
+    return mock_db
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 async def async_db_override(mock_db):
-    """Override async database dependency for testing."""
-    # Create a comprehensive mock async collection
-    class MockAsyncCollection:
-        def __init__(self, collection):
-            self._collection = collection
-            
-        async def find_one(self, filter_dict=None):
-            return self._collection.find_one(filter_dict)
-            
-        async def find(self, filter_dict=None):
-            class AsyncCursor:
-                def __init__(self, cursor):
-                    self._cursor = cursor
-                    
-                async def to_list(self, length=None):
-                    return list(self._cursor)
-                    
-                def sort(self, *args):
-                    return AsyncCursor(self._cursor.sort(*args))
-                    
-                def skip(self, count):
-                    return AsyncCursor(self._cursor.skip(count))
-                    
-                def limit(self, count):
-                    return AsyncCursor(self._cursor.limit(count))
-                    
-            return AsyncCursor(self._collection.find(filter_dict))
-            
-        async def insert_one(self, document):
-            return self._collection.insert_one(document)
-            
-        async def insert_many(self, documents):
-            return self._collection.insert_many(documents)
-            
-        async def update_one(self, filter_dict, update):
-            return self._collection.update_one(filter_dict, update)
-            
-        async def update_many(self, filter_dict, update):
-            return self._collection.update_many(filter_dict, update)
-            
-        async def delete_one(self, filter_dict):
-            return self._collection.delete_one(filter_dict)
-            
-        async def delete_many(self, filter_dict):
-            return self._collection.delete_many(filter_dict)
-            
-        async def count_documents(self, filter_dict=None):
-            return self._collection.count_documents(filter_dict or {})
-            
-        async def aggregate(self, pipeline):
-            class AsyncAggCursor:
-                def __init__(self, cursor):
-                    self._cursor = list(cursor)
-                    
-                async def to_list(self, length=None):
-                    return self._cursor[:length] if length else self._cursor
-                    
-            return AsyncAggCursor(mock_db.get_collection("jobs").aggregate(pipeline))
-            
-        def distinct(self, field):
-            return AsyncMock(return_value=[])
-    
-    class MockAsyncDB:
-        def __init__(self, db):
-            self._db = db
-            
-        def __getattr__(self, name):
-            return MockAsyncCollection(self._db[name])
-            
-        def get_collection(self, name):
-            return MockAsyncCollection(self._db[name])
-            
-        async def command(self, command):
-            """Mock MongoDB command like ping"""
-            return {"ok": 1}
-    
-    async_mock_db = MockAsyncDB(mock_db)
-    return async_mock_db
+    """Override the database dependency for testing."""
+    async def get_async_db_override():
+        return mock_db
+    return get_async_db_override
 
 @pytest.fixture(scope="function") 
 def db_override(mock_db):
@@ -130,13 +95,10 @@ def db_override(mock_db):
 def client(async_db_override, db_override) -> Generator[TestClient, None, None]:
     """Create test client with database overrides."""
     
-    async def get_async_db_override():
-        yield async_db_override
-        
     def get_db_override():
         return db_override
     
-    app.dependency_overrides[get_async_db] = get_async_db_override
+    app.dependency_overrides[get_async_db] = async_db_override
     app.dependency_overrides[get_db] = get_db_override
     
     with TestClient(app) as test_client:
@@ -194,207 +156,28 @@ def client_with_auth(client, auth_headers) -> TestClient:
 
 # Create comprehensive async mock database
 @pytest.fixture(scope="session")
-def mock_database():
-    """Provide a comprehensive async mock database for testing."""
-    mock_db = AsyncMock()
-    
-    # In-memory storage for test data - session level persistence
-    _storage = {
-        "jobs": {},
-        "users": {},
-        "companies": {},
-        "crawl_errors": {},
-        "service_logs": {},
-        "test_collection": {},
-        "test_concurrent": {},
-        "ads": {}
-    }
-    
-    # Create a proper async cursor mock that supports method chaining
-    class MockAsyncCursor:
-        def __init__(self, data=None, collection_storage=None):
-            self._data = data or []
-            self._storage = collection_storage or {}
-            
-        def skip(self, count):
-            return MockAsyncCursor(self._data[count:], self._storage)
-            
-        def limit(self, count):
-            return MockAsyncCursor(self._data[:count] if count else self._data, self._storage)
-            
-        def sort(self, *args):
-            return MockAsyncCursor(self._data, self._storage)
-            
-        async def to_list(self, length=None):
-            return self._data[:length] if length else self._data
-            
-        def __aiter__(self):
-            return self
-            
-        async def __anext__(self):
-            if self._data:
-                return self._data.pop(0)
-            raise StopAsyncIteration
-    
-    # Mock collection class with persistence
-    class MockCollection:
-        def __init__(self, storage_dict):
-            self._storage = storage_dict
-            
-        async def find_one(self, filter_dict=None):
-            if not filter_dict:
-                return None
-            
-            for doc_id, doc in self._storage.items():
-                # Check all filter conditions
-                match = True
-                for key, value in filter_dict.items():
-                    if key == "_id":
-                        if str(doc.get("_id")) != str(value):
-                            match = False
-                            break
-                    else:
-                        if doc.get(key) != value:
-                            match = False
-                            break
-                
-                if match:
-                    return doc
-            
-            return None
-            
-        def find(self, filter_dict=None):
-            data = list(self._storage.values())
-            return MockAsyncCursor(data, self._storage)
-            
-        async def insert_one(self, document):
-            doc_id = ObjectId()
-            document["_id"] = doc_id
-            self._storage[str(doc_id)] = document
-            
-            result = MagicMock()
-            result.inserted_id = doc_id
-            return result
-            
-        async def update_one(self, filter_dict, update_dict):
-            result = MagicMock()
-            if "_id" in filter_dict:
-                doc_id = str(filter_dict["_id"])
-                if doc_id in self._storage:
-                    if "$set" in update_dict:
-                        self._storage[doc_id].update(update_dict["$set"])
-                    result.modified_count = 1
-                    return result
-            result.modified_count = 0
-            return result
-            
-        async def delete_one(self, filter_dict):
-            result = MagicMock()
-            if "_id" in filter_dict:
-                doc_id = str(filter_dict["_id"])
-                if doc_id in self._storage:
-                    del self._storage[doc_id]
-                    result.deleted_count = 1
-                    return result
-            result.deleted_count = 0
-            return result
-            
-        async def delete_many(self, filter_dict):
-            """Delete many documents from the collection."""
-            result = MagicMock()
-            deleted_count = 0
-            
-            if not filter_dict:  # Delete all if filter is empty
-                deleted_count = len(self._storage)
-                self._storage.clear()
-            else:
-                # Delete documents matching the filter
-                to_delete = []
-                for doc_id, doc in self._storage.items():
-                    match = True
-                    for key, value in filter_dict.items():
-                        if key == "_id":
-                            if str(doc.get("_id")) != str(value):
-                                match = False
-                                break
-                        else:
-                            if doc.get(key) != value:
-                                match = False
-                                break
-                    if match:
-                        to_delete.append(doc_id)
-                
-                for doc_id in to_delete:
-                    del self._storage[doc_id]
-                    deleted_count += 1
-            
-            result.deleted_count = deleted_count
-            return result
-            
-        async def count_documents(self, filter_dict=None):
-            return len(self._storage)
-            
-        def aggregate(self, pipeline):
-            # Simple aggregation simulation for statistics
-            if not self._storage:
-                return MockAsyncCursor([], self._storage)
-                
-            # Simulate common aggregation patterns
-            jobs = list(self._storage.values())
-            
-            # Check for group by company aggregation
-            for stage in pipeline:
-                if "$group" in stage:
-                    group_stage = stage["$group"]
-                    if group_stage.get("_id") == "$company":
-                        # Group by company
-                        company_stats = {}
-                        for job in jobs:
-                            company = job.get("company", "Unknown")
-                            if company not in company_stats:
-                                company_stats[company] = {"_id": company, "count": 0}
-                            company_stats[company]["count"] += 1
-                        return MockAsyncCursor(list(company_stats.values()), self._storage)
-                    
-                    elif group_stage.get("_id") == "$location":
-                        # Group by location
-                        location_stats = {}
-                        for job in jobs:
-                            location = job.get("location", "Unknown")
-                            if location not in location_stats:
-                                location_stats[location] = {"_id": location, "count": 0}
-                            location_stats[location]["count"] += 1
-                        return MockAsyncCursor(list(location_stats.values()), self._storage)
-            
-            return MockAsyncCursor([], self._storage)
-    
-    # Jobs collection
-    mock_db.jobs = MockCollection(_storage["jobs"])
-    
-    # Users collection
-    mock_db.users = MockCollection(_storage["users"])
-    
-    # Companies collection
-    mock_db.companies = MockCollection(_storage["companies"])
-    
-    # Additional collections for test compatibility
-    mock_db.crawl_errors = MockCollection(_storage["crawl_errors"])
-    mock_db.service_logs = MockCollection(_storage["service_logs"])
-    mock_db.test_collection = MockCollection(_storage["test_collection"])
-    mock_db.test_concurrent = MockCollection(_storage["test_concurrent"])
-    mock_db.ads = MockCollection(_storage["ads"])
-    
-    # Database commands
-    mock_db.command = AsyncMock(return_value={"ok": 1})
-    
-    # Helper method to clear collections
-    def clear_collections():
-        for storage in _storage.values():
-            storage.clear()
-    
-    mock_db.clear_collections = clear_collections
-    
-    return mock_db
+def mock_collection():
+    """Create a mock collection with common operations."""
+    collection = AsyncMock()
+    collection.find = AsyncMock()
+    collection.find_one = AsyncMock()
+    collection.insert_one = AsyncMock()
+    collection.update_one = AsyncMock()
+    collection.delete_one = AsyncMock()
+    collection.count_documents = AsyncMock()
+    collection.aggregate = AsyncMock()
+    return collection
+
+@pytest.fixture(scope="session")
+def mock_database(mock_collection):
+    """Create a mock database with collections."""
+    db = AsyncMock(spec=AsyncIOMotorDatabase)
+    db.companies = mock_collection
+    db.jobs = mock_collection
+    db.users = mock_collection
+    db.notifications = mock_collection
+    db.admin = mock_collection
+    return db
 
 # Database setup/teardown with proper async mocking
 @pytest.fixture(autouse=True)
@@ -406,7 +189,7 @@ def setup_test_db(mock_database):
                 with patch('database.db', mock_database):
                     # Also patch the async database getter
                     async def mock_get_async_db():
-                        yield mock_database
+                        return mock_database
                     
                     with patch('backend.database.get_async_db', mock_get_async_db):
                         with patch('database.get_async_db', mock_get_async_db):
@@ -545,7 +328,7 @@ async def async_client(mock_database):
     
     # Set up database dependency overrides
     async def mock_get_async_db():
-        yield mock_database
+        return mock_database
     
     def mock_get_db():
         return mock_database
@@ -582,4 +365,23 @@ def mock_token():
 def client_with_auth_header(client, mock_token):
     """Create a client with authentication headers."""
     client.headers.update({"Authorization": f"Bearer {mock_token}"})
-    return client 
+    return client
+
+@pytest.fixture
+def mock_auth():
+    """Create mock authentication."""
+    return {
+        "username": "test_admin",
+        "password": "test_password",
+        "is_admin": True
+    }
+
+@pytest.fixture
+def mock_session():
+    """Create mock session data."""
+    return {
+        "user": {
+            "username": "test_admin",
+            "is_admin": True
+        }
+    } 

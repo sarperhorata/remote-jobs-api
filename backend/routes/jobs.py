@@ -282,7 +282,7 @@ async def get_similar_jobs(
     Get similar jobs based on skills.
     """
     try:
-        db = get_async_db()
+        db = await get_async_db()
         jobs_col = db["jobs"]
         job = jobs_col.find_one({"_id": ObjectId(job_id), "is_archived": {"$ne": True}})
         if not job:
@@ -313,7 +313,7 @@ async def apply_for_job(job_id: str, current_user: dict = Depends(get_current_us
     Apply for a job.
     """
     try:
-        db = get_async_db()
+        db = await get_async_db()
         jobs_col = db["jobs"]
         job = jobs_col.find_one({"_id": ObjectId(job_id), "is_archived": {"$ne": True}})
         if not job:
@@ -335,7 +335,7 @@ async def save_job(job_id: str, current_user: dict = Depends(get_current_user)):
     Save a job for later.
     """
     try:
-        db = get_async_db()
+        db = await get_async_db()
         jobs_col = db["jobs"]
         job = jobs_col.find_one({"_id": ObjectId(job_id), "is_archived": {"$ne": True}})
         if not job:
@@ -390,7 +390,7 @@ async def get_archived_jobs_admin(
     Get archived jobs (admin only).
     """
     try:
-        db = get_async_db()
+        db = await get_async_db()
         jobs_col = db["jobs"]
         archived_jobs = list(jobs_col.find({"is_archived": True}).skip(skip).limit(limit))
         for job in archived_jobs:
@@ -405,7 +405,7 @@ async def restore_job_admin(job_id: str, current_user: dict = Depends(get_curren
     Restore an archived job (admin only).
     """
     try:
-        db = get_async_db()
+        db = await get_async_db()
         jobs_col = db["jobs"]
         success = jobs_col.update_one({"_id": ObjectId(job_id)}, {"$set": {"is_archived": False}})
         if not success.modified_count:
@@ -426,7 +426,7 @@ async def archive_old_jobs_endpoint(current_user: dict = Depends(get_current_adm
     Manually trigger the archiving of old jobs (admin only).
     """
     try:
-        db = get_async_db()
+        db = await get_async_db()
         jobs_col = db["jobs"]
         archived_count = jobs_col.count_documents({"is_archived": True})
         jobs_col.update_many({"is_archived": True}, {"$set": {"is_archived": False}})
@@ -478,7 +478,7 @@ async def trigger_api_job_fetching(
         jobs = await api_integration.fetch_jobs_from_all_apis(query, location)
         
         # Save to database
-        db = get_async_db()
+        db = await get_async_db()
         jobs_collection = db["jobs"]
         
         new_jobs = 0
@@ -565,7 +565,7 @@ async def get_data_sources_status(current_user: dict = Depends(get_current_admin
     Get status of all job data sources (admin only).
     """
     try:
-        db = get_async_db()
+        db = await get_async_db()
         jobs_col = db["jobs"]
         
         # Get statistics by source
@@ -643,7 +643,7 @@ async def get_job_quality_metrics(current_user: dict = Depends(get_current_admin
     Get job data quality metrics (admin only).
     """
     try:
-        db = get_async_db()
+        db = await get_async_db()
         jobs_col = db["jobs"]
         
         # Quality metrics
@@ -719,7 +719,7 @@ async def cleanup_inactive_jobs(
     try:
         from datetime import datetime, timedelta
         
-        db = get_async_db()
+        db = await get_async_db()
         jobs_col = db["jobs"]
         
         cutoff_date = datetime.now() - timedelta(days=days_old)
@@ -752,7 +752,7 @@ async def update_job_skills(current_user: dict = Depends(get_current_admin)):
     try:
         from utils.job_crawler import JobCrawler
         
-        db = get_async_db()
+        db = await get_async_db()
         jobs_col = db["jobs"]
         
         crawler = JobCrawler()

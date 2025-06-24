@@ -189,3 +189,28 @@ backup/
 
 # Local Netlify folder
 .netlify
+
+# Rate limiting and API cache files
+.api_requests_*.json
+.disabled_api_endpoints.json
+.quota_exceeded_apis.json
+
+# Backup directories
+backend_backup/
+frontend_backup/
+*_backup/
+backup/
+backups/
+
+# Cache directories
+htmlcov/
+.pytest_cache/
+.coverage
+coverage.json
+
+# Redis dumps
+dump.rdb
+
+# Service files
+render_service_backup.json
+.env.backup

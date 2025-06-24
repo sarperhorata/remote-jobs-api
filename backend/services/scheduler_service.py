@@ -321,15 +321,15 @@ class SchedulerService:
         try:
             logger.info("Starting database cleanup job")
             
-            from database import get_db
+            from backend.database import get_async_db
             
-            db = get_db()
+            db = await get_async_db()
             
             # Remove old job postings (older than 90 days)
             cutoff_date = datetime.now() - timedelta(days=90)
             
             jobs_collection = db["jobs"]
-            result = jobs_collection.delete_many({
+            result = await jobs_collection.delete_many({
                 "posted_at": {"$lt": cutoff_date.isoformat()}
             })
             
@@ -356,18 +356,18 @@ class SchedulerService:
         try:
             logger.info("Starting job statistics job")
             
-            from database import get_db
+            from backend.database import get_async_db
             
-            db = get_db()
+            db = await get_async_db()
             jobs_collection = db["jobs"]
             
             # Get statistics
-            total_jobs = jobs_collection.count_documents({})
-            active_jobs = jobs_collection.count_documents({"is_active": True})
+            total_jobs = await jobs_collection.count_documents({})
+            active_jobs = await jobs_collection.count_documents({"is_active": True})
             
             # Jobs added in last 24 hours
             yesterday = datetime.now() - timedelta(days=1)
-            new_jobs_24h = jobs_collection.count_documents({
+            new_jobs_24h = await jobs_collection.count_documents({
                 "last_updated": {"$gte": yesterday.isoformat()}
             })
             

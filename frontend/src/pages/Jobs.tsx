@@ -15,7 +15,7 @@ import {
   Calendar,
   Users
 } from 'lucide-react';
-import { JobService } from '../services/jobService';
+import { jobService } from '../services/jobService';
 import { Job } from '../types/job';
 
 interface FilterState {
@@ -34,6 +34,8 @@ const Jobs: React.FC = () => {
   const [totalJobs, setTotalJobs] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(true);
+  const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
+  const [savedJobs, setSavedJobs] = useState<Set<string>>(new Set());
   
   // Filter states
   const [filters, setFilters] = useState<FilterState>({
@@ -113,7 +115,8 @@ const Jobs: React.FC = () => {
       const location = searchParams.get('location') || '';
       
       // In a real app, you'd pass filters to the API
-      const response = await JobService.searchJobs(position, {
+      const response = await jobService.searchJobs({
+        q: position,
         page: currentPage,
         per_page: 20,
         location,
@@ -198,6 +201,36 @@ const Jobs: React.FC = () => {
       ...prev,
       [section]: !prev[section]
     }));
+  };
+
+  const toggleJobExpansion = (jobId: string) => {
+    setExpandedJobs(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(jobId)) {
+        newSet.delete(jobId);
+      } else {
+        newSet.add(jobId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleJobSave = (jobId: string) => {
+    setSavedJobs(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(jobId)) {
+        newSet.delete(jobId);
+      } else {
+        newSet.add(jobId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleApplyToJob = (jobId: string) => {
+    // Navigate to application page or open modal
+    console.log('Applying to job:', jobId);
+    // You could open a modal or navigate to application page
   };
 
   const getTimeAgo = (dateString: string) => {

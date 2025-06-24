@@ -176,4 +176,124 @@ async def test_google_callback_invalid_code(async_client):
 @pytest.mark.asyncio
 async def test_google_callback_no_code(async_client):
     response = await async_client.get("/api/google/callback")
-    assert response.status_code == 400 
+    assert response.status_code == 400
+
+@pytest.mark.asyncio
+async def test_forgot_password_existing_email(async_client, mongodb):
+    """Test forgot password with existing email."""
+    # Clear users collection before test
+    await mongodb["users"].delete_many({})
+
+    # Create a user
+    await mongodb["users"].insert_one({
+        "email": "test@example.com",
+        "hashed_password": "hashed_password",
+        "created_at": datetime.now(),
+        "updated_at": datetime.now()
+    })
+
+    with patch('backend.routes.auth.send_password_reset_email', return_value=True):
+        response = await async_client.post(
+            "/api/forgot-password",
+            json={"email": "test@example.com"}
+        )
+        
+    assert response.status_code == 200
+    data = response.json()
+    assert "password reset link has been sent" in data["message"]
+
+@pytest.mark.asyncio
+async def test_forgot_password_nonexistent_email(async_client, mongodb):
+    """Test forgot password with non-existent email."""
+    # Clear users collection before test
+    await mongodb["users"].delete_many({})
+
+    with patch('backend.routes.auth.send_password_reset_email', return_value=True):
+        response = await async_client.post(
+            "/api/forgot-password",
+            json={"email": "nonexistent@example.com"}
+        )
+        
+    assert response.status_code == 200
+    # Should return same message for security
+    data = response.json()
+    assert "password reset link has been sent" in data["message"]
+
+@pytest.mark.asyncio
+async def test_reset_password_valid_token(async_client, mongodb):
+    """Test password reset with valid token."""
+    # Clear users collection before test
+    await mongodb["users"].delete_many({})
+
+    # Create a user
+    result = await mongodb["users"].insert_one({
+        "email": "test@example.com",
+        "hashed_password": "old_hashed_password",
+        "created_at": datetime.now(),
+        "updated_at": datetime.now()
+    })
+
+    # Mock token verification
+    with patch('backend.routes.auth.verify_token') as mock_verify:
+        mock_verify.return_value = {
+            "sub": "test@example.com",
+            "type": "password_reset",
+            "exp": 1234567890
+        }
+        
+        response = await async_client.post(
+            "/api/reset-password",
+            json={
+                "token": "valid_reset_token",
+                "new_password": "NewSecurePass123!"
+            }
+        )
+        
+    assert response.status_code == 200
+    data = response.json()
+    assert "successfully reset" in data["message"]
+
+    # Check password was updated
+    user = await mongodb["users"].find_one({"_id": result.inserted_id})
+    assert user["hashed_password"] != "old_hashed_password"
+
+@pytest.mark.asyncio
+async def test_reset_password_invalid_token(async_client):
+    """Test password reset with invalid token."""
+    with patch('backend.routes.auth.verify_token', return_value=None):
+        response = await async_client.post(
+            "/api/reset-password",
+            json={
+                "token": "invalid_token",
+                "new_password": "NewSecurePass123!"
+            }
+        )
+        
+    assert response.status_code == 400
+    assert "Invalid or expired" in response.json()["detail"]
+
+@pytest.mark.asyncio
+async def test_login_unverified_email(async_client, mongodb):
+    """Test login with unverified email should fail."""
+    # Clear users collection before test
+    await mongodb["users"].delete_many({})
+
+    # Create an unverified user
+    from backend.routes.auth import get_password_hash
+    await mongodb["users"].insert_one({
+        "email": "unverified@example.com",
+        "hashed_password": get_password_hash("testpassword123"),
+        "email_verified": False,
+        "created_at": datetime.now(),
+        "updated_at": datetime.now()
+    })
+
+    response = await async_client.post(
+        "/api/login",
+        data={
+            "username": "unverified@example.com",
+            "password": "testpassword123"
+        }
+    )
+    assert response.status_code == 403
+    assert "Email not verified" in response.json()["detail"] 

@@ -1569,44 +1569,141 @@ class ExternalJobAPIManager:
         return all_jobs
     
     def save_jobs_to_database(self, jobs_data: Dict[str, List[JobData]]) -> Dict[str, int]:
-        """Save fetched jobs to database"""
-        
-        # This would integrate with your existing database
-        # For now, let's save to JSON for testing
+        """Save fetched jobs to database - REAL DATABASE INTEGRATION"""
         
         results = {}
+        total_new = 0
+        total_updated = 0
         
-        for api_name, jobs in jobs_data.items():
-            saved_count = 0
+        try:
+            # Import database connection - REAL DB
+            import sys
+            import os
+            sys.path.append('/Users/sarperhorata/buzz2remote/backend')
             
-            # Save to JSON file for testing
-            filename = f"external_jobs_{api_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            from database import get_async_db
+            import asyncio
             
-            jobs_json = []
-            for job in jobs:
-                jobs_json.append({
-                    'title': job.title,
-                    'company': job.company,
-                    'location': job.location,
-                    'description': job.description[:500] + "..." if len(job.description) > 500 else job.description,
-                    'url': job.url,
-                    'salary': job.salary,
-                    'job_type': job.job_type,
-                    'posted_date': job.posted_date,
-                    'source': job.source,
-                    'external_id': job.external_id,
-                    'fetched_at': datetime.now().isoformat()
-                })
+            async def save_to_mongodb():
+                nonlocal total_new, total_updated
+                
+                db = await get_async_db()
+                jobs_collection = db.jobs
+                
+                for api_name, jobs in jobs_data.items():
+                    new_count = 0
+                    updated_count = 0
+                    
+                    for job in jobs:
+                        try:
+                            # Create job document
+                            job_doc = {
+                                'title': job.title,
+                                'company': job.company,
+                                'location': job.location,
+                                'description': job.description,
+                                'url': job.url,
+                                'salary': job.salary,
+                                'job_type': job.job_type,
+                                'employment_type': job.job_type,  # Legacy field
+                                'posted_date': job.posted_date,
+                                'source': job.source,
+                                'source_type': api_name,
+                                'external_id': job.external_id,
+                                'is_active': True,
+                                'created_at': datetime.now(),
+                                'last_updated': datetime.now().isoformat(),
+                                'fetched_at': datetime.now().isoformat()
+                            }
+                            
+                            # Check if job already exists
+                            existing = await jobs_collection.find_one({
+                                'external_id': job.external_id,
+                                'source_type': api_name
+                            })
+                            
+                            if existing:
+                                # Update existing job
+                                await jobs_collection.update_one(
+                                    {'_id': existing['_id']},
+                                    {'$set': job_doc}
+                                )
+                                updated_count += 1
+                                total_updated += 1
+                            else:
+                                # Insert new job
+                                await jobs_collection.insert_one(job_doc)
+                                new_count += 1
+                                total_new += 1
+                                
+                        except Exception as e:
+                            print(f"❌ Error saving job {job.title}: {e}")
+                            continue
+                    
+                    results[api_name] = new_count
+                    print(f"✅ {api_name}: {new_count} new, {updated_count} updated")
+                
+                return results
             
-            try:
-                with open(filename, 'w', encoding='utf-8') as f:
-                    json.dump(jobs_json, f, indent=2, ensure_ascii=False)
-                saved_count = len(jobs)
-                print(f"✅ Saved {saved_count} jobs from {api_name} to {filename}")
-            except Exception as e:
-                print(f"❌ Error saving {api_name} jobs: {e}")
+            # Run async database operation
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If already in async context, create new task
+                results = asyncio.run_coroutine_threadsafe(save_to_mongodb(), loop).result()
+            else:
+                # If not in async context, run normally
+                results = asyncio.run(save_to_mongodb())
             
-            results[api_name] = saved_count
+            # Send REAL results notification
+            self.notifier._send_message(f"""💾 <b>DATABASE SAVE COMPLETE - REAL DATA</b>
+
+✅ <b>Total NEW jobs:</b> {total_new}
+🔄 <b>Total UPDATED jobs:</b> {total_updated}
+📊 <b>Total processed:</b> {total_new + total_updated}
+
+🔧 <b>API Breakdown (NEW jobs only):</b>
+• Fantastic Jobs: {results.get('fantastic_jobs', 0)} new
+• Job Posting Feed: {results.get('job_posting_feed', 0)} new
+• RemoteOK: {results.get('remoteok', 0)} new
+• Arbeitnow Free: {results.get('arbeitnow_free', 0)} new
+• Jobicy: {results.get('jobicy', 0)} new
+• Remote Jobs Plans: {results.get('remote_jobs_plans', 0)} new
+• Job Postings RSS: {results.get('job_postings_rss', 0)} new
+• Remotive: {results.get('remotive', 0)} new
+• Himalayas: {results.get('himalayas', 0)} new
+
+🕐 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+💾 <b>Database:</b> MongoDB Atlas (buzz2remote)""")
+            
+        except Exception as e:
+            print(f"❌ Database error: {e}")
+            # Fallback to JSON for debugging
+            for api_name, jobs in jobs_data.items():
+                filename = f"external_jobs_{api_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                try:
+                    jobs_json = []
+                    for job in jobs:
+                        jobs_json.append({
+                            'title': job.title,
+                            'company': job.company,
+                            'location': job.location,
+                            'description': job.description[:500] + "..." if len(job.description) > 500 else job.description,
+                            'url': job.url,
+                            'salary': job.salary,
+                            'job_type': job.job_type,
+                            'posted_date': job.posted_date,
+                            'source': job.source,
+                            'external_id': job.external_id,
+                            'fetched_at': datetime.now().isoformat()
+                        })
+                    
+                    with open(filename, 'w', encoding='utf-8') as f:
+                        json.dump(jobs_json, f, indent=2, ensure_ascii=False)
+                    results[api_name] = len(jobs)
+                    print(f"⚠️ Fallback: Saved {len(jobs)} jobs from {api_name} to {filename}")
+                except Exception as fe:
+                    print(f"❌ Fallback error for {api_name}: {fe}")
+                    results[api_name] = 0
         
         return results
 

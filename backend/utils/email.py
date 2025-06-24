@@ -1,59 +1,45 @@
 import os
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import logging
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 from jose import jwt
+from backend.services.mailgun_service import mailgun_service
+
+logger = logging.getLogger(__name__)
 
 # JWT settings
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-def send_email(to_email: str, subject: str, body: str, 
-               smtp_server: str = None, smtp_port: int = None,
-               smtp_username: str = None, smtp_password: str = None) -> bool:
+def send_email(to_email: str, subject: str, body: str, **kwargs) -> bool:
     """
-    E-posta gönderir.
+    E-posta gönderir (Mailgun üzerinden).
     
     Args:
         to_email: Alıcı e-posta adresi
         subject: E-posta konusu
-        body: E-posta içeriği
-        smtp_server: SMTP sunucu adresi (opsiyonel)
-        smtp_port: SMTP port numarası (opsiyonel)
-        smtp_username: SMTP kullanıcı adı (opsiyonel)
-        smtp_password: SMTP şifre (opsiyonel)
+        body: E-posta içeriği (HTML)
         
     Returns:
         bool: E-posta gönderildi mi?
     """
     try:
-        # E-posta ayarları - parametreler varsa kullan, yoksa environment'tan al
-        sender_email = smtp_username or os.getenv("EMAIL_USERNAME", "noreply@remotejobs.com")
-        password = smtp_password or os.getenv("EMAIL_PASSWORD", "")
-        server_host = smtp_server or os.getenv("SMTP_HOST", "smtp.gmail.com")
-        server_port = smtp_port or int(os.getenv("SMTP_PORT", "587"))
+        result = mailgun_service.send_email(
+            to_email=to_email,
+            subject=subject,
+            html_content=body
+        )
         
-        # E-posta içeriği
-        msg = MIMEMultipart()
-        msg["From"] = sender_email
-        msg["To"] = to_email
-        msg["Subject"] = subject
-        
-        msg.attach(MIMEText(body, "html"))
-        
-        # E-posta gönder
-        server = smtplib.SMTP(server_host, server_port)
-        server.starttls()
-        server.login(sender_email, password)
-        server.send_message(msg)
-        server.quit()
-        
-        return True
+        if result.get("success"):
+            logger.info(f"Email sent successfully to {to_email}")
+            return True
+        else:
+            logger.error(f"Failed to send email: {result.get('error')}")
+            return False
+            
     except Exception as e:
-        print(f"E-posta gönderme hatası: {e}")
+        logger.error(f"E-posta gönderme hatası: {e}")
         return False
 
 def create_email_verification_token(email: str) -> str:
@@ -119,61 +105,17 @@ def verify_token(token: str) -> Optional[Dict[str, Any]]:
         return None
 
 def send_verification_email(email: str, token: str) -> bool:
+    """Send email verification using Mailgun service"""
     try:
-        msg = MIMEMultipart()
-        msg['From'] = os.getenv("SMTP_USERNAME", "your-email@example.com")
-        msg['To'] = email
-        msg['Subject'] = "Verify your email address"
-
-        body = f"""
-        Hello,
-
-        Please click the link below to verify your email address:
-        {os.getenv("FRONTEND_URL", "http://localhost:3000")}/verify-email?token={token}
-
-        If you did not request this verification, please ignore this email.
-
-        Best regards,
-        Your App Team
-        """
-        msg.attach(MIMEText(body, 'plain'))
-
-        server = smtplib.SMTP(os.getenv("SMTP_HOST", "smtp.gmail.com"), int(os.getenv("SMTP_PORT", "587")))
-        server.starttls()
-        server.login(os.getenv("SMTP_USERNAME", "your-email@example.com"), os.getenv("SMTP_PASSWORD", "your-password"))
-        server.send_message(msg)
-        server.quit()
-        return True
+        return mailgun_service.send_verification_email(email, token)
     except Exception as e:
-        print(f"Error sending email: {str(e)}")
+        logger.error(f"Error sending verification email: {str(e)}")
         return False
 
 def send_password_reset_email(email: str, token: str) -> bool:
+    """Send password reset email using Mailgun service"""
     try:
-        msg = MIMEMultipart()
-        msg['From'] = os.getenv("SMTP_USERNAME", "your-email@example.com")
-        msg['To'] = email
-        msg['Subject'] = "Reset your password"
-
-        body = f"""
-        Hello,
-
-        Please click the link below to reset your password:
-        {os.getenv("FRONTEND_URL", "http://localhost:3000")}/reset-password?token={token}
-
-        If you did not request a password reset, please ignore this email.
-
-        Best regards,
-        Your App Team
-        """
-        msg.attach(MIMEText(body, 'plain'))
-
-        server = smtplib.SMTP(os.getenv("SMTP_HOST", "smtp.gmail.com"), int(os.getenv("SMTP_PORT", "587")))
-        server.starttls()
-        server.login(os.getenv("SMTP_USERNAME", "your-email@example.com"), os.getenv("SMTP_PASSWORD", "your-password"))
-        server.send_message(msg)
-        server.quit()
-        return True
+        return mailgun_service.send_password_reset_email(email, token)
     except Exception as e:
-        print(f"Error sending email: {str(e)}")
+        logger.error(f"Error sending password reset email: {str(e)}")
         return False 

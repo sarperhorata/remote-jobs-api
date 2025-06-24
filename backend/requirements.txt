@@ -123,3 +123,15 @@ webdriver-manager==4.0.1
 webencodings==0.5.1
 wsproto==1.2.0
 yarl==1.19.0
+
+# Translation dependencies
+langdetect==1.0.9
+
+# Error monitoring
+sentry-sdk[fastapi]==2.30.0
+
+# Email service
+requests==2.31.0
+
+# User agent parsing
+user-agent==0.1.10

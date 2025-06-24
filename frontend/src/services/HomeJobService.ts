@@ -113,7 +113,7 @@ export const getRecentJobs = async (limit: number = 5): Promise<Job[]> => {
     .slice(0, limit);
 };
 
-export class HomeJobService {
+export class HomejobService {
   static getFeaturedJobs = getFeaturedJobs;
   static getJobStats = getJobStats;
   static getAllJobs = getAllJobs;

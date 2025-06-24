@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BsSearch, BsMap, BsBuilding, BsBriefcase, BsCode, BsMegaphone, BsPencil, BsChatDots, BsServer } from 'react-icons/bs';
 import { BiHealth, BiDollar, BiChalkboard, BiStore, BiPalette } from 'react-icons/bi';
-import { HomeJobService } from '../../services/AllServices';
+import { HomejobService } from '../../services/AllServices';
 import JobCard from '../JobCard/JobCard';
 import { Job } from '../../types/job';
 import { IconType } from 'react-icons';
-import { JobService } from '../../services/jobService';
+import { jobService } from '../../services/jobService';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
@@ -26,7 +26,7 @@ const Home: React.FC = () => {
     try {
       setLoading(true);
       // API'den gerçek iş ilanlarını çek - 10 ilan
-      const jobs = await JobService.getJobs(1, 10);
+      const jobs = await jobService.getJobs(1, 10);
       
       if (jobs.length > 0) {
         setHotJobs(jobs);
@@ -256,7 +256,7 @@ const Home: React.FC = () => {
 
   const fetchJobStats = async () => {
     try {
-      const stats = await JobService.getJobStats();
+      const stats = await jobService.getJobStats();
       setJobStats(stats);
     } catch (error) {
       console.error('Error fetching job stats:', error);

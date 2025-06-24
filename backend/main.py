@@ -11,11 +11,41 @@ from datetime import datetime
 import stripe
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, FileResponse
 
+# Sentry configuration for error monitoring
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
+
+# Initialize Sentry for error monitoring
+sentry_sdk.init(
+    dsn="https://e307d92640eb7e8b60a7ebabf76db882@o4509547047616512.ingest.us.sentry.io/4509547146575872",
+    integrations=[
+        FastApiIntegration(
+            failed_request_status_codes={400, 401, 403, 404, 422, 500, 501, 502, 503}
+        ),
+        LoggingIntegration(
+            level=logging.INFO,
+            event_level=logging.ERROR
+        ),
+    ],
+    traces_sample_rate=0.1,  # 10% of transactions for performance monitoring
+    profiles_sample_rate=0.1,  # 10% of profiles for performance monitoring
+    environment=os.getenv("ENVIRONMENT", "development"),
+    release=os.getenv("RENDER_GIT_COMMIT", "unknown"),
+    send_default_pii=True,  # Include user IP, headers etc.
+    max_breadcrumbs=50,  # Increase from default 30
+    before_send=lambda event, hint: event if event.get('level') != 'debug' else None,  # Filter debug events
+)
+
 # Add admin panel to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from backend.routes import auth, profile, jobs, ads, notification_routes, companies, payment
+from backend.routes import auth, profile, jobs, ads, notification_routes, companies, payment, onboarding, applications, translation
 from backend.routes.legal import router as legal_router
+from backend.routes.fake_job_detection import router as fake_job_router
+from backend.routes.email_test import router as email_test_router
+from backend.routes.sentry_test import router as sentry_test_router
+from backend.routes.sentry_webhook import router as sentry_webhook_router
 from backend.database import get_async_db, ensure_indexes, close_db_connections, init_database
 
 # Import Telegram bot
@@ -74,9 +104,8 @@ async def lifespan(app: FastAPI):
         await init_database()
         
         # Test database connection
-        from backend.database import get_database_client
-        db = await get_database_client()
-        await db.admin.command('ping')
+        db = await get_async_db()
+        await db.command('ping')
         logger.info("MongoDB connection pool initialized!")
     except Exception as e:
         logger.error(f"Could not connect to MongoDB: {str(e)}")
@@ -256,6 +285,14 @@ app.add_middleware(
     secret_key=os.getenv("SESSION_SECRET_KEY", "buzz2remote-secret-key-change-in-production")
 )
 
+# Activity tracking middleware
+from backend.middleware.activity_middleware import ActivityTrackingMiddleware
+app.add_middleware(ActivityTrackingMiddleware)
+
+# Performance middleware - GZip compression
+from fastapi.middleware.gzip import GZipMiddleware
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -280,6 +317,7 @@ if os.path.exists(admin_static_path):
 # Include routers
 try:
     app.include_router(auth.router, prefix="/api", tags=["auth"])
+    app.include_router(onboarding.router, prefix="/api", tags=["onboarding"])
     app.include_router(profile.router, prefix="/api", tags=["profile"])
     app.include_router(jobs.router, prefix="/api", tags=["jobs"])
     app.include_router(ads.router, prefix="/api", tags=["ads"])
@@ -287,6 +325,12 @@ try:
     app.include_router(companies.router, prefix="/api", tags=["companies"])
     app.include_router(legal_router, prefix="/api", tags=["legal"])
     app.include_router(payment.router, prefix="/api", tags=["payment"])
+    app.include_router(applications.router, prefix="/api", tags=["applications"])
+    app.include_router(translation.router, prefix="/api", tags=["translation"])
+    app.include_router(fake_job_router, prefix="/api", tags=["fake-job-detection"])
+    app.include_router(email_test_router, prefix="/api", tags=["email-test"])
+    app.include_router(sentry_test_router, prefix="/api", tags=["sentry-test"])
+    app.include_router(sentry_webhook_router, prefix="/api", tags=["webhooks"])
     
     # Include admin panel if available
     if ADMIN_PANEL_AVAILABLE:
@@ -396,8 +440,13 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint for monitoring."""
-    from backend.database import db
-    db_status = "connected" if await db.command('ping') else "disconnected"
+    try:
+        db = await get_async_db()
+        await db.command('ping')
+        db_status = "connected"
+    except Exception:
+        db_status = "disconnected"
+    
     return {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),

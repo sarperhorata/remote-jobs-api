@@ -903,6 +903,133 @@ class RemoteJobsBot:
         except Exception as e:
             logger.error(f"Failed to format deployment notification: {str(e)}")
             return False
+    
+    async def send_error_notification(self, message: str, error_data: Dict[str, Any] = None) -> bool:
+        """
+        Send error notification from Sentry to Telegram
+        
+        Args:
+            message: Formatted error message
+            error_data: Additional error data from Sentry
+        """
+        if not self.enabled or not self.application:
+            logger.warning("Cannot send error notification: Bot is disabled")
+            return False
+            
+        try:
+            # Get notification chat ID from environment
+            notification_chat_id = os.getenv('TELEGRAM_CHAT_ID')
+            
+            if not notification_chat_id:
+                logger.warning("TELEGRAM_CHAT_ID not set, cannot send error notification")
+                return False
+            
+            try:
+                notification_chat_id = int(notification_chat_id)
+            except ValueError:
+                logger.error(f"Invalid TELEGRAM_CHAT_ID format: {notification_chat_id}")
+                return False
+            
+            # Send notification
+            try:
+                await self.application.bot.send_message(
+                    chat_id=notification_chat_id,
+                    text=message,
+                    parse_mode='Markdown',
+                    disable_web_page_preview=True
+                )
+                logger.info(f"Error notification sent successfully to chat {notification_chat_id}")
+                return True
+                
+            except Exception as e:
+                logger.error(f"Failed to send error notification: {str(e)}")
+                return False
+            
+        except Exception as e:
+            logger.error(f"Failed to process error notification: {str(e)}")
+            return False
+    
+    async def send_crawler_notification(self, crawler_data: Dict[str, Any]) -> bool:
+        """
+        Send crawler status notification to Telegram
+        
+        Args:
+            crawler_data: Dictionary containing crawler information
+        """
+        if not self.enabled or not self.application:
+            logger.warning("Cannot send crawler notification: Bot is disabled")
+            return False
+            
+        try:
+            # Format the crawler message
+            status_emoji = "✅" if crawler_data.get('status') == 'success' else "⚠️" if crawler_data.get('status') == 'warning' else "❌"
+            
+            message = f"{status_emoji} **CRAWLER UPDATE**\n\n"
+            message += f"**Service:** {crawler_data.get('service', 'Unknown')}\n"
+            message += f"**Status:** {crawler_data.get('status', 'unknown').upper()}\n"
+            
+            if 'companies_processed' in crawler_data:
+                message += f"**Companies Processed:** {crawler_data['companies_processed']}\n"
+            
+            if 'jobs_found' in crawler_data:
+                message += f"**Jobs Found:** {crawler_data['jobs_found']}\n"
+            
+            if 'new_jobs' in crawler_data:
+                message += f"**New Jobs:** {crawler_data['new_jobs']}\n"
+            
+            if 'disabled_endpoints' in crawler_data and crawler_data['disabled_endpoints']:
+                message += f"\n🚫 **Disabled Endpoints:** {len(crawler_data['disabled_endpoints'])}\n"
+                for endpoint in crawler_data['disabled_endpoints'][:5]:  # Show max 5
+                    reason = endpoint.get('reason', 'Unknown')
+                    company = endpoint.get('company', 'Unknown')
+                    message += f"• {company}: {reason}\n"
+                
+                if len(crawler_data['disabled_endpoints']) > 5:
+                    message += f"• ... and {len(crawler_data['disabled_endpoints']) - 5} more\n"
+            
+            if 'errors' in crawler_data and crawler_data['errors']:
+                message += f"\n❌ **Errors:** {len(crawler_data['errors'])}\n"
+                for error in crawler_data['errors'][:3]:  # Show max 3 errors
+                    message += f"• {error}\n"
+                
+                if len(crawler_data['errors']) > 3:
+                    message += f"• ... and {len(crawler_data['errors']) - 3} more\n"
+            
+            if 'duration' in crawler_data:
+                message += f"\n⏱️ **Duration:** {crawler_data['duration']}\n"
+            
+            message += f"\n🕐 **Time:** {crawler_data.get('timestamp', datetime.now().isoformat())}"
+            
+            # Get notification chat ID from environment
+            notification_chat_id = os.getenv('TELEGRAM_CHAT_ID')
+            
+            if not notification_chat_id:
+                logger.warning("TELEGRAM_CHAT_ID not set, cannot send crawler notification")
+                return False
+            
+            try:
+                notification_chat_id = int(notification_chat_id)
+            except ValueError:
+                logger.error(f"Invalid TELEGRAM_CHAT_ID format: {notification_chat_id}")
+                return False
+            
+            # Send notification
+            try:
+                await self.application.bot.send_message(
+                    chat_id=notification_chat_id,
+                    text=message,
+                    parse_mode='Markdown'
+                )
+                logger.info(f"Crawler notification sent successfully to chat {notification_chat_id}")
+                return True
+                
+            except Exception as e:
+                logger.error(f"Failed to send crawler notification: {str(e)}")
+                return False
+            
+        except Exception as e:
+            logger.error(f"Failed to format crawler notification: {str(e)}")
+            return False
 
 def init_bot():
     try:

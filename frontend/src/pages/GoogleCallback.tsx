@@ -1,96 +1,100 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { getApiUrl } from '../utils/apiConfig';
+import { useAuth } from '../contexts/AuthContext';
 
 const GoogleCallback: React.FC = () => {
-  const [searchParams] = useSearchParams();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [message, setMessage] = useState('');
+  const [searchParams] = useSearchParams();
+  const { login } = useAuth();
 
   useEffect(() => {
-    const handleCallback = async () => {
-      const code = searchParams.get('code');
-      const state = searchParams.get('state');
-      const error = searchParams.get('error');
-
-      if (error) {
-        setStatus('error');
-        setMessage('Authentication was cancelled or failed.');
-        setTimeout(() => navigate('/'), 3000);
-        return;
-      }
-
-      if (!code) {
-        setStatus('error');
-        setMessage('No authorization code received.');
-        setTimeout(() => navigate('/'), 3000);
-        return;
-      }
-
+    const handleGoogleCallback = async () => {
       try {
-        const API_BASE_URL = await getApiUrl();
-        const response = await fetch(`${API_BASE_URL}/google/callback`, {
+        const code = searchParams.get('code');
+        const error = searchParams.get('error');
+
+        if (error) {
+          throw new Error(`Google OAuth error: ${error}`);
+        }
+
+        if (!code) {
+          throw new Error('No authorization code received from Google');
+        }
+
+        console.log('🔑 Processing Google OAuth callback...');
+
+        // Send code to backend
+        const response = await fetch('http://localhost:8000/api/google/callback', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            code,
-            state
-          }),
+          body: JSON.stringify({ code }),
         });
 
-        const data = await response.json();
-
-        if (response.ok) {
-          setStatus('success');
-          setMessage('Successfully authenticated! Redirecting...');
-          // Store user data if needed
-          if (data.user) {
-            localStorage.setItem('user', JSON.stringify(data.user));
-          }
-          setTimeout(() => navigate('/'), 2000);
-        } else {
-          setStatus('error');
-          setMessage(data.detail || 'Authentication failed.');
-          setTimeout(() => navigate('/'), 3000);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Google authentication failed');
         }
-      } catch (error) {
-        setStatus('error');
-        setMessage('Network error occurred.');
-        setTimeout(() => navigate('/'), 3000);
+
+        const data = await response.json();
+        
+        // Store token and user data
+        localStorage.setItem('token', data.access_token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+
+        console.log('✅ Google login successful!', data.user);
+
+        // Navigate to home or dashboard
+        navigate('/', { replace: true });
+
+      } catch (err) {
+        console.error('❌ Google callback error:', err);
+        setError(err instanceof Error ? err.message : 'Unknown error occurred');
+      } finally {
+        setLoading(false);
       }
     };
 
-    handleCallback();
-  }, [searchParams, navigate]);
+    handleGoogleCallback();
+  }, [searchParams, navigate, login]);
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8">
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          {status === 'loading' && (
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          )}
-          {status === 'success' && (
-            <div className="text-green-600 text-2xl font-bold">✓</div>
-          )}
-          {status === 'error' && (
-            <div className="text-red-600 text-2xl font-bold">✗</div>
-          )}
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            {status === 'loading' && 'Processing...'}
-            {status === 'success' && 'Success!'}
-            {status === 'error' && 'Error'}
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            {message}
-          </p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Completing Google sign-in...</p>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center max-w-md">
+          <div className="text-red-500 mb-4">
+            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Authentication Failed</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <button
+            onClick={() => navigate('/', { replace: true })}
+            className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 transition-colors"
+          >
+            Back to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 };
 
 export default GoogleCallback; 

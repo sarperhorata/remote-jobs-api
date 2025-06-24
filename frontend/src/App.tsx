@@ -27,6 +27,16 @@ const ApplicationsPage = lazy(() => import('./pages/Applications'));
 const ExternalAPIServicesPage = lazy(() => import('./pages/ExternalAPIServices'));
 const GoogleCallbackPage = lazy(() => import('./pages/GoogleCallback'));
 
+// Onboarding Pages
+const CheckEmailPage = lazy(() => import('./pages/CheckEmail'));
+const EmailVerificationPage = lazy(() => import('./pages/EmailVerification'));
+const SetPasswordPage = lazy(() => import('./pages/SetPassword'));
+const OnboardingProfileSetupPage = lazy(() => import('./pages/OnboardingProfileSetup'));
+
+// Auth Pages
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPassword'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPassword'));
+
 const queryClient = new QueryClient();
 
 const App: React.FC = () => {
@@ -52,6 +62,16 @@ const App: React.FC = () => {
                 <Route path="/auth/callback" element={<AuthCallback />} />
                 <Route path="/auth/error" element={<AuthError />} />
                 <Route path="/payment/success" element={<PaymentSuccess />} />
+
+                {/* Auth Routes */}
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+                {/* Onboarding Routes */}
+                <Route path="/onboarding/check-email" element={<CheckEmailPage />} />
+                <Route path="/onboarding/verify-email" element={<EmailVerificationPage />} />
+                <Route path="/onboarding/set-password" element={<SetPasswordPage />} />
+                <Route path="/onboarding/profile-setup" element={<OnboardingProfileSetupPage />} />
 
                 {/* Protected Routes (Require Authentication) */}
                 <Route 

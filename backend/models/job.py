@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Optional, Annotated
-from pydantic import BaseModel, Field, GetCoreSchemaHandler, GetJsonSchemaHandler
+from pydantic import BaseModel, Field, GetCoreSchemaHandler, GetJsonSchemaHandler, ConfigDict
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema
 from bson import ObjectId
@@ -83,13 +83,15 @@ class JobResponse(JobBase):
     views_count: int = 0
     applications_count: int = 0
 
-    class Config:
-        allow_population_by_field_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+        json_encoders={
             ObjectId: str,
             datetime: lambda dt: dt.isoformat()
-        }
+        },
+        json_schema_serialization_defaults_required=True
+    )
 
 class JobListResponse(BaseModel):
     items: List[JobResponse]

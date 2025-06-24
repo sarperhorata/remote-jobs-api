@@ -8,7 +8,7 @@ interface PortConfig {
 }
 
 const portConfig: PortConfig = {
-  backendPorts: [8001, 8000, 8002, 8003, 8004], // Backend için öncelik sırası
+  backendPorts: [8000, 8001, 8002, 8003, 8004], // Backend için öncelik sırası - 8000'i ilk sıraya aldım
   frontendPorts: [3001, 3000, 5000, 5001, 5173], // Frontend için öncelik sırası
 };
 

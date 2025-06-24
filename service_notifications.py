@@ -234,19 +234,10 @@ def send_api_notification(success: bool, **kwargs):
 if __name__ == "__main__":
     print("🧪 Testing Service Notifications...")
     
-    # Test all notification types
+    # Test all notification types - NO MORE FAKE DATA
     notifier = ServiceNotifier()
     
-    print("Testing crawler notification...")
-    notifier.notify_crawler_status(True, new_jobs=679, updated_jobs=21062, total_jobs=21741, duration="6m 51s")
+    print("Note: Remove fake test data to prevent misleading notifications")
+    print("Use external_job_apis.py for real API testing")
     
-    print("Testing GitHub notification...")
-    notifier.notify_github_deploy(True, commit_hash="e24dcc0", commit_message="Fix backend server startup")
-    
-    print("Testing Render notification...")
-    notifier.notify_render_deploy(False, error_details="Service deployment pending")
-    
-    print("Testing MongoDB notification...")
-    notifier.notify_mongodb_status(False, connection_type="Atlas", error_details="Authentication failed")
-    
-    print("✅ All notifications sent!") 
+    print("✅ Notification framework ready!") 

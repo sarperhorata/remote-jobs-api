@@ -2,8 +2,11 @@ from pydantic import BaseModel, HttpUrl, Field, EmailStr
 from typing import List, Optional, Dict, Any, Union
 from enum import Enum
 from datetime import datetime
-from sqlalchemy import Column, Integer, BigInteger, String, Boolean, DateTime
+from sqlalchemy import Column, Integer, BigInteger, String, Boolean, DateTime, Text, JSON, ForeignKey, Index
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+from datetime import datetime
+import uuid
 
 # SQLAlchemy Base for database models
 Base = declarative_base()
@@ -316,10 +319,17 @@ class UserNotificationPreference(Base):
 class User(BaseModel):
     id: Optional[str] = None
     email: EmailStr
-    name: str
-    password: Optional[str] = None
+    name: Optional[str] = None  # İlk kayıtta opsiyonel
+    password: Optional[str] = None  # Email doğrulandıktan sonra set edilecek
     is_active: bool = True
     is_superuser: bool = False
+    email_verified: bool = False  # Email doğrulama durumu
+    onboarding_completed: bool = False  # Onboarding tamamlandı mı?
+    onboarding_step: int = 0  # Hangi adımda (0: email, 1: password, 2: profile, 3: completed)
+    linkedin_id: Optional[str] = None  # LinkedIn ID
+    linkedin_profile: Optional[dict] = None  # LinkedIn profil bilgileri
+    profile_picture_url: Optional[str] = None
+    resume_url: Optional[str] = None  # CV dosya URL'i
     created_at: datetime = datetime.now()
     updated_at: datetime = datetime.now()
     stripe_customer_id: Optional[str] = None
@@ -329,4 +339,136 @@ class User(BaseModel):
     subscription_end_date: Optional[datetime] = None
 
     class Config:
-        from_attributes = True 
+        from_attributes = True
+
+# Enhanced Job Model for MongoDB with Translation Support
+class EnhancedJob(BaseModel):
+    id: Optional[str] = None
+    title: str
+    company: str
+    location: Optional[str] = None
+    description: Optional[str] = None
+    requirements: Optional[str] = None
+    benefits: Optional[str] = None
+    salary: Optional[Union[str, Dict[str, Any]]] = None
+    jobType: Optional[str] = None  # Full-time, Part-time, Contract, etc.
+    experienceLevel: Optional[str] = None  # Entry, Mid, Senior, Executive
+    skills: Optional[List[str]] = None
+    isRemote: bool = False
+    url: Optional[str] = None
+    companyUrl: Optional[str] = None
+    
+    # Translation fields
+    original_language: str = 'en'  # ISO language code (tr, de, fr, etc.)
+    is_translated: bool = False
+    original_data: Optional[Dict[str, Any]] = None  # Store original non-English data
+    translation_metadata: Optional[Dict[str, Any]] = None  # Store translation details
+    
+    # Additional metadata
+    source: Optional[str] = None  # Source website/platform
+    posted_date: Optional[datetime] = None
+    applicant_count: Optional[int] = None
+    views: int = 0
+    
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        from_attributes = True
+
+# Translation Models
+class TranslationRequest(BaseModel):
+    text: str
+    source_language: Optional[str] = None
+    target_language: str = 'en'
+
+class TranslationResponse(BaseModel):
+    translated_text: str
+    original_text: str
+    source_language: str
+    target_language: str
+    translation_confidence: float
+    error: Optional[str] = None
+
+class JobTranslationResult(BaseModel):
+    job_id: str
+    needs_translation: bool
+    original_language: str
+    translated_data: Optional[Dict[str, Any]] = None
+    original_data: Optional[Dict[str, Any]] = None
+    translation_metadata: Optional[Dict[str, Any]] = None
+
+class BatchTranslationRequest(BaseModel):
+    job_ids: List[str]
+    target_language: str = 'en'
+    batch_size: int = 10
+
+class BatchTranslationResponse(BaseModel):
+    total_jobs: int
+    translated_jobs: int
+    failed_jobs: int
+    results: List[JobTranslationResult]
+    errors: List[str] = []
+
+class JobApplication(Base):
+    __tablename__ = 'job_applications'
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey('users.id'), nullable=False)
+    job_id = Column(String(36), ForeignKey('jobs.id'), nullable=False)
+    
+    # Application status
+    status = Column(String(50), default='applied')  # applied, viewed, rejected, hired, withdrawn
+    application_type = Column(String(20), nullable=False)  # external, scraped, automated
+    
+    # Application data
+    cover_letter = Column(Text)
+    resume_url = Column(String(500))
+    additional_notes = Column(Text)
+    form_data = Column(JSON)  # Store scraped form responses
+    
+    # External tracking
+    external_url = Column(String(1000))  # Company application URL
+    external_reference = Column(String(200))  # Company reference/confirmation number
+    
+    # Metadata
+    applied_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Response tracking
+    viewed_by_company = Column(Boolean, default=False)
+    company_response_date = Column(DateTime)
+    company_response = Column(Text)
+    
+    # Relationships
+    user = relationship('User', backref='job_applications')
+    job = relationship('Job', backref='applications')
+    
+    # Indexes for performance
+    __table_args__ = (
+        Index('idx_user_job', 'user_id', 'job_id'),
+        Index('idx_user_applied_at', 'user_id', 'applied_at'),
+        Index('idx_job_applied_at', 'job_id', 'applied_at'),
+        Index('idx_status', 'status'),
+    )
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'job_id': self.job_id,
+            'status': self.status,
+            'application_type': self.application_type,
+            'cover_letter': self.cover_letter,
+            'resume_url': self.resume_url,
+            'additional_notes': self.additional_notes,
+            'form_data': self.form_data,
+            'external_url': self.external_url,
+            'external_reference': self.external_reference,
+            'applied_at': self.applied_at.isoformat() if self.applied_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'viewed_by_company': self.viewed_by_company,
+            'company_response_date': self.company_response_date.isoformat() if self.company_response_date else None,
+            'company_response': self.company_response,
+            'job': self.job.to_dict() if self.job else None
+        } 

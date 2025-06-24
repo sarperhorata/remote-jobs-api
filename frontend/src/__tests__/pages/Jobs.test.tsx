@@ -3,12 +3,12 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 import Jobs from '../../pages/Jobs';
-import { JobService } from '../../services/jobService';
+import { jobService } from '../../services/jobService';
 import '@testing-library/jest-dom';
 
-// Mock JobService
+// Mock jobService
 jest.mock('../../services/jobService');
-const mockJobService = JobService as jest.Mocked<typeof JobService>;
+const mockjobService = jobService as jest.Mocked<typeof jobService>;
 
 // Mock useSearchParams
 const mockSearchParams = new URLSearchParams();
@@ -68,7 +68,7 @@ describe('Jobs', () => {
     const keys = Array.from(mockSearchParams.keys());
     keys.forEach(key => mockSearchParams.delete(key));
     
-    mockJobService.searchJobs.mockResolvedValue({
+    mockjobService.searchJobs.mockResolvedValue({
       jobs: mockJobs,
       total: 1890
     });
@@ -146,7 +146,7 @@ describe('Jobs', () => {
 
   it('handles API errors gracefully', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    mockJobService.searchJobs.mockRejectedValue(new Error('API Error'));
+    mockjobService.searchJobs.mockRejectedValue(new Error('API Error'));
     
     renderWithRouter(<Jobs />);
     

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Bug } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getApiUrl } from '../utils/apiConfig';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -12,7 +11,7 @@ interface AuthModalProps {
 
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'login' }) => {
   const navigate = useNavigate();
-  const { signup } = useAuth();
+  const { login } = useAuth();
   const [activeTab, setActiveTab] = useState<'login' | 'register'>(defaultTab);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -25,15 +24,34 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
   const [loginError, setLoginError] = useState<string | null>(null);
   
   // Register form state
-  const [registerFullName, setRegisterFullName] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
+  const [registerFullName, setRegisterFullName] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [registerConfirmPassword, setRegisterConfirmPassword] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
   const [registerError, setRegisterError] = useState<string | null>(null);
+  const [registerSuccess, setRegisterSuccess] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  const handleGoogleLogin = async () => {
+    try {
+      // Get Google auth URL from backend
+      const response = await fetch("http://localhost:8000/api/google/auth-url");
+      const data = await response.json();
+      
+      if (data.auth_url) {
+        // Redirect to Google OAuth
+        window.location.href = data.auth_url;
+      } else {
+        throw new Error("Failed to get Google auth URL");
+      }
+    } catch (error) {
+      console.error("Google login error:", error);
+      setLoginError("Failed to initialize Google login");
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,14 +59,39 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
     setLoginError(null);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Login attempt with:', { email: loginEmail, password: loginPassword });
+      console.log('🔑 Attempting login with API...');
+      const API_BASE_URL = "http://localhost:8000/api";
+      
+      // FormData kullanarak OAuth2PasswordRequestForm formatına uygun gönder
+      const formData = new FormData();
+      formData.append('username', loginEmail);
+      formData.append('password', loginPassword);
+      
+      const response = await fetch(`${API_BASE_URL}/login`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Login failed');
+      }
+      
+      const data = await response.json();
+      
+      // Token'ı localStorage'a kaydet
+      localStorage.setItem('auth_token', data.access_token);
+      localStorage.setItem('userToken', data.access_token); // Compatibility
+      
+      console.log('✅ Login successful!');
       onClose();
-      navigate('/');
-    } catch (err) {
-      setLoginError('Login failed. Please check your credentials.');
-      console.error('Login error:', err);
+      
+      // Sayfayı yenile veya state'i güncelle
+      window.location.reload();
+      
+    } catch (err: any) {
+      console.error('❌ Login error:', err);
+      setLoginError(err.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoginLoading(false);
     }
@@ -56,25 +99,73 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (registerPassword !== registerConfirmPassword) {
-      return setRegisterError('Passwords do not match');
-    }
-    
-    if (!agreedToTerms) {
-      return setRegisterError('Please agree to the Terms and Conditions');
-    }
-    
-    setRegisterError('');
     setRegisterLoading(true);
+    setRegisterError(null);
+    setRegisterSuccess(null);
     
     try {
-      await signup(registerFullName, registerEmail, registerPassword);
-      onClose();
-      navigate('/');
-    } catch (err) {
-      setRegisterError('Failed to create an account');
-      console.error(err);
+      // Basic validations
+      if (!registerEmail || !registerFullName || !registerPassword) {
+        throw new Error('Please fill in all required fields');
+      }
+      
+      if (registerPassword !== registerConfirmPassword) {
+        throw new Error('Passwords do not match');
+      }
+      
+      if (registerPassword.length < 8) {
+        throw new Error('Password must be at least 8 characters long');
+      }
+      
+      if (!agreedToTerms) {
+        throw new Error('Please agree to the Terms of Service');
+      }
+      
+      console.log('🔑 Attempting registration with API...');
+      const API_BASE_URL = "http://localhost:8000/api";
+      
+      const response = await fetch(`${API_BASE_URL}/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: registerEmail,
+          name: registerFullName,
+          password: registerPassword
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (errorData.detail && Array.isArray(errorData.detail)) {
+          // Pydantic validation errors
+          const errorMessage = errorData.detail.map((err: any) => err.msg).join(', ');
+          throw new Error(errorMessage);
+        }
+        throw new Error(errorData.detail || 'Registration failed');
+      }
+      
+      const data = await response.json();
+      console.log('✅ Registration successful:', data);
+      
+      // Store token if provided (direct registration)
+      if (data.access_token) {
+        localStorage.setItem('auth_token', data.access_token);
+        localStorage.setItem('userToken', data.access_token);
+        setRegisterSuccess('Registration successful! Welcome to Buzz2Remote!');
+        setTimeout(() => {
+          onClose();
+          window.location.reload();
+        }, 2000);
+      } else {
+        // Onboarding flow - redirect to email verification
+        setRegisterSuccess('Registration successful! Please check your email to verify your account.');
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Registration failed:', error);
+      setRegisterError(error.message || 'Registration failed. Please try again.');
     } finally {
       setRegisterLoading(false);
     }
@@ -82,7 +173,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
 
   const handleGoogleAuth = async () => {
     try {
-      const API_BASE_URL = await getApiUrl();
+      const API_BASE_URL = "http://localhost:8000/api";
       const response = await fetch(`${API_BASE_URL}/google/auth-url`);
       const data = await response.json();
       
@@ -153,13 +244,11 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label htmlFor="loginEmail" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Email Address
                 </label>
                 <input
-                  type="email"
-                  required
-                  value={loginEmail}
+                  type="email" required value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   placeholder="your@email.com"
@@ -167,13 +256,26 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Password
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label htmlFor="loginPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Password
+                  </label>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      onClose();
+                      navigate('/forgot-password');
+                    }}
+                    className="text-xs text-orange-600 hover:text-orange-500 underline"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
                 <div className="relative">
                   <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
+                    id="loginPassword"
+                    type={showPassword ? 'text' : 'password'} 
+                    required 
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
@@ -182,26 +284,21 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={loginRememberMe}
-                    onChange={(e) => setLoginRememberMe(e.target.checked)}
-                    className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
-                  />
-                  <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">Remember me</span>
-                </label>
-                <button type="button" className="text-sm text-orange-600 hover:text-orange-500">
-                  Forgot password?
-                </button>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={loginRememberMe}
+                  onChange={(e) => setLoginRememberMe(e.target.checked)}
+                  className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+                />
+                <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">Remember me</span>
               </div>
 
               <button
@@ -223,7 +320,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
 
               <button
                 type="button"
-                onClick={handleGoogleAuth}
+                onClick={handleGoogleLogin}
                 className="w-full flex items-center justify-center space-x-2 bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-50 transition-colors font-medium"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -239,7 +336,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
             /* Register Form */
             <form onSubmit={handleRegister} className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Create your account
+                Create Account
               </h3>
               
               {registerError && (
@@ -248,27 +345,20 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
                 </div>
               )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={registerFullName}
-                  onChange={(e) => setRegisterFullName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  placeholder="John Doe"
-                />
-              </div>
+              {registerSuccess && (
+                <div className="p-3 text-sm text-green-700 bg-green-100 border border-green-200 rounded-lg">
+                  {registerSuccess}
+                </div>
+              )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label htmlFor="registerEmail" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Email Address
                 </label>
                 <input
-                  type="email"
-                  required
+                  id="registerEmail" 
+                  type="email" 
+                  required 
                   value={registerEmail}
                   onChange={(e) => setRegisterEmail(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
@@ -277,17 +367,33 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label htmlFor="registerFullName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Full Name
+                </label>
+                <input
+                  id="registerFullName" 
+                  type="text" 
+                  required 
+                  value={registerFullName}
+                  onChange={(e) => setRegisterFullName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  placeholder="John Doe"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="registerPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Password
                 </label>
                 <div className="relative">
                   <input
+                    id="registerPassword"
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={registerPassword}
                     onChange={(e) => setRegisterPassword(e.target.value)}
                     className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                    placeholder="Create a strong password"
+                    placeholder="Minimum 8 characters"
                   />
                   <button
                     type="button"
@@ -300,11 +406,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label htmlFor="registerConfirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Confirm Password
                 </label>
                 <div className="relative">
                   <input
+                    id="registerConfirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
                     required
                     value={registerConfirmPassword}
@@ -324,21 +431,15 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
 
               <div className="flex items-start">
                 <input
+                  id="agreedToTerms"
                   type="checkbox"
-                  id="terms"
+                  required
                   checked={agreedToTerms}
                   onChange={(e) => setAgreedToTerms(e.target.checked)}
-                  className="h-4 w-4 mt-0.5 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded mt-1"
                 />
-                <label htmlFor="terms" className="ml-2 text-sm text-gray-600 dark:text-gray-400">
-                  I agree to the{' '}
-                  <button type="button" className="text-orange-600 hover:text-orange-500 underline">
-                    Terms and Conditions
-                  </button>{' '}
-                  and{' '}
-                  <button type="button" className="text-orange-600 hover:text-orange-500 underline">
-                    Privacy Policy
-                  </button>
+                <label htmlFor="agreedToTerms" className="ml-2 text-sm text-gray-600 dark:text-gray-400">
+                  I agree to the <button type="button" className="text-orange-600 hover:text-orange-500 underline">Terms of Service</button> and <button type="button" className="text-orange-600 hover:text-orange-500 underline">Privacy Policy</button>
                 </label>
               </div>
 
@@ -347,7 +448,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
                 disabled={registerLoading}
                 className="w-full bg-gradient-to-r from-orange-500 to-yellow-500 text-white py-3 px-4 rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {registerLoading ? 'Creating account...' : 'Create Account'}
+                {registerLoading ? 'Creating Account...' : 'Create Account'}
               </button>
 
               <div className="relative my-6">

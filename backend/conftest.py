@@ -33,16 +33,13 @@ def event_loop():
 @pytest.fixture(scope="session")
 def mock_db_client():
     """Create a mock database client."""
-    mock_client = AsyncMock()
-    mock_client.__getitem__.return_value = mock_client
-    mock_client.__getattr__.return_value = mock_client
+    mock_client = MagicMock()
     return mock_client
 
 @pytest.fixture(scope="session")
-def mock_db(mock_db_client):
+def mock_db():
     """Create a mock database instance."""
     mock_db = AsyncMock(spec=AsyncIOMotorDatabase)
-    mock_db.client = mock_db_client
     
     # Create mock collections
     mock_collections = {
@@ -63,7 +60,6 @@ def mock_db(mock_db_client):
         collection.update_one = AsyncMock()
         collection.delete_one = AsyncMock()
         collection.count_documents = AsyncMock()
-        collection.aggregate = AsyncMock()
         
         # Set up cursor mock
         mock_cursor = AsyncMock()
@@ -72,6 +68,7 @@ def mock_db(mock_db_client):
         mock_cursor.skip = MagicMock(return_value=mock_cursor)
         mock_cursor.limit = MagicMock(return_value=mock_cursor)
         collection.find.return_value = mock_cursor
+        collection.aggregate = AsyncMock(return_value=mock_cursor)
     
     # Attach collections to database mock
     for name, collection in mock_collections.items():
@@ -165,7 +162,16 @@ def mock_collection():
     collection.update_one = AsyncMock()
     collection.delete_one = AsyncMock()
     collection.count_documents = AsyncMock()
-    collection.aggregate = AsyncMock()
+    
+    # Set up cursor mock
+    mock_cursor = AsyncMock()
+    mock_cursor.to_list = AsyncMock(return_value=[])
+    mock_cursor.sort = MagicMock(return_value=mock_cursor)
+    mock_cursor.skip = MagicMock(return_value=mock_cursor)
+    mock_cursor.limit = MagicMock(return_value=mock_cursor)
+    collection.find.return_value = mock_cursor
+    collection.aggregate = AsyncMock(return_value=mock_cursor)
+    
     return collection
 
 @pytest.fixture(scope="session")
@@ -176,7 +182,16 @@ def mock_database(mock_collection):
     db.jobs = mock_collection
     db.users = mock_collection
     db.notifications = mock_collection
-    db.admin = mock_collection
+    db.notification_settings = mock_collection
+    
+    # Create admin collection with command method for health checks
+    admin_collection = AsyncMock()
+    admin_collection.command = AsyncMock(return_value={"ok": 1})
+    db.admin = admin_collection
+    
+    # Add command method to database itself for health checks
+    db.command = AsyncMock(return_value={"ok": 1})
+    
     return db
 
 # Database setup/teardown with proper async mocking
@@ -193,7 +208,8 @@ def setup_test_db(mock_database):
                     
                     with patch('backend.database.get_async_db', mock_get_async_db):
                         with patch('database.get_async_db', mock_get_async_db):
-                            yield mock_database
+                            with patch('backend.database.get_database', return_value=mock_database):
+                                yield mock_database
 
 # Test data fixtures
 @pytest.fixture

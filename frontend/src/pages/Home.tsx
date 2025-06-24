@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Search, MapPin, Building, Globe, ArrowRight, Star, CheckCircle, Bug, DollarSign } from 'lucide-react';
 import AuthModal from '../components/AuthModal';
 import Onboarding from '../components/Onboarding';
-import { JobService } from '../services/jobService';
+import JobAutocomplete from '../components/JobAutocomplete';
+import { jobService } from '../services/jobService';
 import { Job } from '../types/job';
 
 const Home: React.FC = () => {
@@ -30,10 +31,37 @@ const Home: React.FC = () => {
   useEffect(() => {
     const loadFeaturedJobs = async () => {
       try {
-        const jobs = await JobService.getFeaturedJobs();
-        setFeaturedJobs(jobs.slice(0, 3)); // Take first 3 jobs
+        console.log('🔥 Loading Hot Remote Jobs from API...');
+        const response = await jobService.getJobs(1, 6); // İlk 6 job'u al
+        console.log('API Response:', response);
+        
+        // API'den gelen verileri kontrol et
+        const jobs = (response as any)?.jobs || (response as any)?.items || response || [];
+        if (jobs && jobs.length > 0) {
+          // Real API'den gelen job'ları kullan
+          const formattedJobs = jobs.map((job: any) => ({
+            _id: job._id || job.id,
+            title: job.title,
+            company: job.company || 'Unknown Company',
+            location: job.location || 'Remote',
+            job_type: job.job_type || job.employment_type || 'Full-time',
+            salary_range: job.salary || job.salary_range || 'Competitive',
+            skills: job.skills || (job.title ? job.title.split(' ').slice(0, 3) : ['Remote']),
+            created_at: job.created_at || job.posted_date || new Date().toISOString(),
+            description: job.description || 'Exciting remote opportunity',
+            company_logo: job.company_logo || (typeof job.company === 'string' ? job.company[0]?.toUpperCase() : '🏢'),
+            url: job.url || job.external_url || '#',
+            is_active: job.is_active !== false
+          }));
+          
+          setFeaturedJobs(formattedJobs.slice(0, 3)); // İlk 3'ünü göster
+          console.log('✅ Hot Remote Jobs loaded successfully:', formattedJobs.length);
+        } else {
+          console.warn('⚠️ No jobs returned from API, using fallback data');
+          throw new Error('No jobs from API');
+        }
       } catch (error) {
-        console.error('Error loading featured jobs:', error);
+        console.error('❌ Error loading featured jobs from API:', error);
         // Fallback to static data if API fails
         setFeaturedJobs([
           {
@@ -79,6 +107,7 @@ const Home: React.FC = () => {
             is_active: true
           }
         ] as Job[]);
+        console.log('📋 Using fallback job data');
       }
     };
 
@@ -173,17 +202,21 @@ const Home: React.FC = () => {
                 {/* Job Title/Keywords - Extended */}
                 <div className="md:col-span-4">
                   <label htmlFor="searchQuery" className="block text-sm font-medium text-gray-700 text-left mb-1">Please enter job title</label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input
-                      type="text"
-                      id="searchQuery"
-                      placeholder="e.g. Software Engineer, Product Manager, Data Scientist"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
-                    />
-                  </div>
+                  <JobAutocomplete
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    onSelect={(position) => {
+                      console.log('Selected position:', position);
+                      setSearchQuery(position.title);
+                      // Navigate to search results with selected position
+                      const queryParams = new URLSearchParams({
+                        q: position.title,
+                        position: position.title
+                      }).toString();
+                      navigate(`/jobs?${queryParams}`);
+                    }}
+                    placeholder="e.g. Software Engineer, Product Manager, Data Scientist"
+                  />
                 </div>
 
                 {/* Search Button */}

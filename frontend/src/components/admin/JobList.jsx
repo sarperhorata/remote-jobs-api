@@ -87,7 +87,7 @@ const JobList = () => {
     // Search filter
     const matchesSearch = 
       job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ((typeof job.company === 'string' ? job.company : job.company?.name) || 'Unknown').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (job.location && job.location.toLowerCase().includes(searchTerm.toLowerCase()));
     
     // Remote filter

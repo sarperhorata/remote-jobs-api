@@ -1,19 +1,8 @@
-import { HomeJobService } from './HomeJobService';
-import JobService from './jobService';
+import { HomejobService } from './HomeJobService';
+import jobServiceInstance from './jobService';
 
 // Export all services from this file
-export { HomeJobService, JobService };
+export { HomejobService };
 
 // For compatibility with existing code
-export const jobService = {
-  // JobService methods
-  getJobs: JobService.getJobs,
-  getJobById: JobService.getJobById,
-  getSimilarJobs: JobService.getSimilarJobs,
-  saveJob: JobService.saveJob,
-  unsaveJob: JobService.unsaveJob,
-  applyToJob: JobService.applyToJob,
-  getFeaturedJobs: JobService.getFeaturedJobs,
-  getJobStats: JobService.getJobStats,
-  getJobApplications: JobService.getJobApplications
-}; 
+export const jobService = jobServiceInstance; 

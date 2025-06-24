@@ -179,8 +179,8 @@ export const getSavedJobsForUser = async (userId: string): Promise<Job[]> => {
   return savedJobs;
 };
 
-// Export a named JobService class for consistency
-export class JobService {
+// Export a named JobServiceClass for consistency
+export class JobServiceClass {
   static async getBaseURL(): Promise<string> {
     return await getApiUrl();
   }
@@ -454,6 +454,158 @@ export class JobService {
       savedJobs: await getSavedJobsForUser(userId)
     };
   }
+
+  // v2: Form Scraping Methods
+  static async scrapeJobApplicationForm(jobId: string, url: string): Promise<any> {
+    try {
+      const API_BASE_URL = await getApiUrl();
+      const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/scrape-form`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({ url })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to scrape form: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error scraping form:', error);
+      throw error;
+    }
+  }
+
+  static async submitScrapedFormApplication(jobId: string, applicationData: any): Promise<any> {
+    try {
+      const API_BASE_URL = await getApiUrl();
+      const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/apply-scraped`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify(applicationData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to submit application: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error submitting scraped application:', error);
+      throw error;
+    }
+  }
+
+  // v3: Automated Application Methods
+  static async submitAutomatedApplication(jobId: string, applicationData: any): Promise<any> {
+    try {
+      const API_BASE_URL = await getApiUrl();
+      const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/apply-automated`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify(applicationData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to submit automated application: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error submitting automated application:', error);
+      throw error;
+    }
+  }
+
+  // User Profile Methods
+  static async getUserProfile(): Promise<any> {
+    try {
+      const API_BASE_URL = await getApiUrl();
+      const response = await fetch(`${API_BASE_URL}/users/profile`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to get user profile: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      throw error;
+    }
+  }
+
+  // Analytics and Tracking
+  static async trackJobInteraction(jobId: string, action: string): Promise<void> {
+    try {
+      const API_BASE_URL = await getApiUrl();
+      await fetch(`${API_BASE_URL}/jobs/${jobId}/track`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action, timestamp: new Date().toISOString() })
+      });
+    } catch (error) {
+      console.error('Failed to track job interaction:', error);
+    }
+  }
 }
 
-export default JobService; 
+// Export individual functions for compatibility
+export const jobService = {
+  searchJobs: async (params: any) => {
+    const result = await getJobs(params);
+    return { jobs: result.items || result.jobs || [], total: result.total };
+  },
+  getJobs: async (page = 1, perPage = 10, filters?: any) => {
+    return await JobServiceClass.getJobs(page, perPage, filters);
+  },
+  getJobById: async (id: string) => {
+    return await JobServiceClass.getJobById(id);
+  },
+  getSimilarJobs: async (jobId: string) => {
+    return await JobServiceClass.getSimilarJobs(jobId);
+  },
+  getFeaturedJobs: async () => {
+    return await JobServiceClass.getFeaturedJobs();
+  },
+  getJobStats: async () => {
+    return await JobServiceClass.getJobStats();
+  },
+  getJobStatistics: async () => {
+    return await JobServiceClass.getJobStatistics();
+  },
+  applyToJob: async (jobId: string, applicationData: any) => {
+    return await JobServiceClass.applyToJob(jobId, applicationData);
+  },
+  createJob: async (jobData: any) => {
+    return await JobServiceClass.createJob(jobData);
+  },
+  updateJob: async (id: string, jobData: any) => {
+    return await JobServiceClass.updateJob(id, jobData);
+  },
+  deleteJob: async (id: string) => {
+    return await JobServiceClass.deleteJob(id);
+  },
+  getUserProfile: JobServiceClass.getUserProfile,
+  scrapeJobApplicationForm: JobServiceClass.scrapeJobApplicationForm,
+  submitScrapedFormApplication: JobServiceClass.submitScrapedFormApplication,
+  submitAutomatedApplication: JobServiceClass.submitAutomatedApplication,
+  getMyApplications: JobServiceClass.getMyApplications,
+  trackJobInteraction: JobServiceClass.trackJobInteraction
+};
+
+export default JobServiceClass; 

@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from bson import ObjectId
 
 class PyObjectId(ObjectId):
@@ -63,13 +63,15 @@ class UserResponse(UserBase):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    class Config:
-        allow_population_by_field_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+        json_encoders={
             ObjectId: str,
             datetime: lambda dt: dt.isoformat()
-        }
+        },
+        json_schema_serialization_defaults_required=True
+    )
 
 class UserInDB(UserResponse):
     hashed_password: str 

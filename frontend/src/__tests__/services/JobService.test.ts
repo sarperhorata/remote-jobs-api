@@ -1,4 +1,4 @@
-import { JobService } from '../../services/jobService';
+import { jobService } from '../../services/jobService';
 
 // Mock the getApiUrl function at module level
 jest.mock('../../utils/apiConfig', () => {
@@ -14,7 +14,7 @@ const { getApiUrl } = require('../../utils/apiConfig');
 // Mock fetch globally
 global.fetch = jest.fn();
 
-describe('JobService', () => {
+describe('jobService', () => {
   beforeEach(() => {
     (fetch as jest.Mock).mockClear();
     (getApiUrl as jest.Mock).mockClear();
@@ -36,7 +36,7 @@ describe('JobService', () => {
         json: async () => mockJobs
       });
 
-      const result = await JobService.getJobs();
+      const result = await jobService.getJobs();
       
       expect(fetch).toHaveBeenCalledWith(
         'http://localhost:8001/api/jobs/?page=1&per_page=10',
@@ -48,7 +48,7 @@ describe('JobService', () => {
     it('should handle network errors', async () => {
       (fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
 
-      await expect(JobService.getJobs()).rejects.toThrow('Network error');
+      await expect(jobService.getJobs()).rejects.toThrow('Network error');
     });
 
     it('should handle API errors', async () => {
@@ -58,7 +58,7 @@ describe('JobService', () => {
         statusText: 'Internal Server Error'
       });
 
-      await expect(JobService.getJobs()).rejects.toThrow('HTTP 500: Internal Server Error');
+      await expect(jobService.getJobs()).rejects.toThrow('HTTP 500: Internal Server Error');
     });
 
     it('should pass filters correctly', async () => {
@@ -73,7 +73,7 @@ describe('JobService', () => {
         json: async () => ({ jobs: [], total: 0, page: 1, pages: 0 })
       });
 
-      await JobService.getJobs(1, 10, filters);
+      await jobService.getJobs(1, 10, filters);
       
       expect(fetch).toHaveBeenCalledWith(
         'http://localhost:8001/api/jobs/?page=1&per_page=10&location=Remote&company=TechCorp&search=developer',
@@ -91,7 +91,7 @@ describe('JobService', () => {
         json: async () => mockJob
       });
 
-      const result = await JobService.getJobById('1');
+      const result = await jobService.getJobById('1');
       
       expect(fetch).toHaveBeenCalledWith(
         'http://localhost:8001/api/jobs/1',
@@ -107,7 +107,7 @@ describe('JobService', () => {
         statusText: 'Not Found'
       });
 
-      await expect(JobService.getJobById('999')).rejects.toThrow('HTTP 404: Not Found');
+      await expect(jobService.getJobById('999')).rejects.toThrow('HTTP 404: Not Found');
     });
   });
 
@@ -123,7 +123,7 @@ describe('JobService', () => {
         json: async () => mockResults
       });
 
-      const result = await JobService.searchJobs('react');
+      const result = await jobService.searchJobs('react');
       
       expect(fetch).toHaveBeenCalledWith(
         'http://localhost:8001/api/jobs/search?q=react',
@@ -147,7 +147,7 @@ describe('JobService', () => {
         json: async () => mockStats
       });
 
-      const result = await JobService.getJobStatistics();
+      const result = await jobService.getJobStatistics();
       
       expect(fetch).toHaveBeenCalledWith(
         'http://localhost:8001/api/jobs/statistics',
@@ -170,7 +170,7 @@ describe('JobService', () => {
         json: async () => ({ jobs: mockJobs })
       });
 
-      const result = await JobService.getFeaturedJobs();
+      const result = await jobService.getFeaturedJobs();
       
       expect(fetch).toHaveBeenCalledWith(
         'http://localhost:8001/api/jobs/?limit=3'
@@ -192,7 +192,7 @@ describe('JobService', () => {
         json: async () => mockResponse
       });
 
-      const result = await JobService.applyToJob('1', applicationData);
+      const result = await jobService.applyToJob('1', applicationData);
       
       expect(fetch).toHaveBeenCalledWith(
         'http://localhost:8001/api/jobs/1/apply',
@@ -217,7 +217,7 @@ describe('JobService', () => {
         json: async () => ({ applications: mockApplications })
       });
 
-      const result = await JobService.getMyApplications();
+      const result = await jobService.getMyApplications();
       
       expect(fetch).toHaveBeenCalledWith(
         'http://localhost:8001/api/jobs/applications',
@@ -229,7 +229,7 @@ describe('JobService', () => {
 
   describe('config', () => {
     it('should have correct base URL', async () => {
-      const baseURL = await JobService.getBaseURL();
+      const baseURL = await jobService.getBaseURL();
       expect(baseURL).toBe('http://localhost:8001/api');
     });
   });

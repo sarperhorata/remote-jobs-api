@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from bson import ObjectId
@@ -11,8 +11,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.crud import job as job_crud
 from backend.schemas.job import JobUpdate, JobListResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from backend.models.models import Job, JobApplication
+from schemas.job import JobSearchQuery, ApplicationCreate
+from services.job_scraping_service import JobScrapingService
+from services.auto_application_service import AutoApplicationService
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
+logger = logging.getLogger(__name__)
 
 @router.get("/search", response_model=dict)
 async def search_jobs(
@@ -865,4 +870,277 @@ async def bookmark_job(
         raise
     except Exception as e:
         logging.error(f"Error bookmarking job: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bookmark failed") 
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bookmark failed")
+
+@router.post("/{job_id}/scrape-form")
+async def scrape_job_application_form(
+    job_id: str,
+    request_data: Dict[str, Any] = Body(...),
+    current_user: Any = Depends(get_current_user),
+    db=Depends(get_async_db)
+):
+    """
+    v2: Scrape application form fields from job posting URL
+    """
+    try:
+        url = request_data.get('url')
+        if not url:
+            raise HTTPException(status_code=400, detail="URL is required")
+
+        # Get job details
+        job = await db["jobs"].find_one({"_id": job_id})
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+
+        # Initialize scraping service
+        scraping_service = JobScrapingService()
+        
+        # Scrape the application form
+        form_data = await scraping_service.scrape_application_form(url)
+        
+        if not form_data.get('success'):
+            return {
+                "success": False,
+                "error": form_data.get('error', 'Failed to scrape form'),
+                "fallback_url": url
+            }
+
+        # Store scraped form data for this job
+        await db["scraped_forms"].update_one(
+            {"job_id": job_id, "user_id": current_user["id"]},
+            {
+                "$set": {
+                    "job_id": job_id,
+                    "user_id": current_user["id"],
+                    "url": url,
+                    "fields": form_data["fields"],
+                    "scraped_at": datetime.utcnow(),
+                    "form_action": form_data.get("form_action"),
+                    "form_method": form_data.get("form_method", "POST")
+                }
+            },
+            upsert=True
+        )
+
+        return {
+            "success": True,
+            "fields": form_data["fields"],
+            "form_action": form_data.get("form_action"),
+            "instructions": "Fill out the form fields and submit"
+        }
+
+    except Exception as e:
+        logger.error(f"Error scraping form for job {job_id}: {str(e)}")
+        return {
+            "success": False,
+            "error": str(e),
+            "fallback_url": request_data.get('url')
+        }
+
+@router.post("/{job_id}/apply-scraped")
+async def submit_scraped_form_application(
+    job_id: str,
+    application_data: Dict[str, Any] = Body(...),
+    current_user: Any = Depends(get_current_user),
+    db=Depends(get_async_db)
+):
+    """
+    v2: Submit application using scraped form data
+    """
+    try:
+        # Get scraped form data
+        scraped_form = await db["scraped_forms"].find_one({
+            "job_id": job_id,
+            "user_id": current_user["id"]
+        })
+        
+        if not scraped_form:
+            raise HTTPException(status_code=404, detail="No scraped form found for this job")
+
+        # Initialize scraping service
+        scraping_service = JobScrapingService()
+        
+        # Submit the application
+        submission_result = await scraping_service.submit_application(
+            scraped_form["url"],
+            scraped_form["form_action"],
+            scraped_form["form_method"],
+            application_data["answers"],
+            application_data.get("documents", {})
+        )
+
+        # Store application record
+        application_record = {
+            "job_id": job_id,
+            "user_id": current_user["id"],
+            "application_method": "scraped_form",
+            "application_data": application_data,
+            "submission_result": submission_result,
+            "status": "submitted" if submission_result.get("success") else "failed",
+            "applied_at": datetime.utcnow()
+        }
+
+        await db["applications"].insert_one(application_record)
+
+        if submission_result.get("success"):
+            return {
+                "success": True,
+                "message": "Application submitted successfully",
+                "confirmation": submission_result.get("confirmation"),
+                "application_id": str(application_record["_id"])
+            }
+        else:
+            return {
+                "success": False,
+                "error": submission_result.get("error", "Submission failed"),
+                "fallback_url": scraped_form["url"]
+            }
+
+    except Exception as e:
+        logger.error(f"Error submitting scraped application for job {job_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{job_id}/apply-automated")
+async def submit_automated_application(
+    job_id: str,
+    application_data: Dict[str, Any] = Body(...),
+    current_user: Any = Depends(get_current_user),
+    db=Depends(get_async_db)
+):
+    """
+    v3: Submit automated application with AI assistance
+    """
+    try:
+        # Get job details
+        job = await db["jobs"].find_one({"_id": job_id})
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+
+        # Get user profile
+        user = await db["users"].find_one({"_id": current_user["id"]})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Check if user has required profile data
+        required_fields = ["name", "email", "resume_url"]
+        missing_fields = [field for field in required_fields if not user.get(field)]
+        
+        if missing_fields:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Missing required profile fields: {', '.join(missing_fields)}"
+            )
+
+        # Initialize auto application service
+        auto_service = AutoApplicationService()
+        
+        # Get or scrape application form
+        application_url = job.get("apply_url") or job.get("source_url")
+        if not application_url:
+            raise HTTPException(status_code=400, detail="No application URL found for this job")
+
+        # Auto-fill and submit application
+        result = await auto_service.submit_automated_application(
+            job_data=job,
+            user_profile=user,
+            application_url=application_url,
+            preferences=application_data.get("preferences", {})
+        )
+
+        # Store application record
+        application_record = {
+            "job_id": job_id,
+            "user_id": current_user["id"],
+            "application_method": "automated",
+            "application_data": application_data,
+            "auto_fill_data": result.get("auto_fill_data"),
+            "submission_result": result,
+            "status": "submitted" if result.get("success") else "failed",
+            "applied_at": datetime.utcnow()
+        }
+
+        await db["applications"].insert_one(application_record)
+
+        if result.get("success"):
+            return {
+                "success": True,
+                "message": "Automated application submitted successfully",
+                "details": result.get("details"),
+                "application_id": str(application_record["_id"]),
+                "tracking_info": result.get("tracking_info")
+            }
+        else:
+            return {
+                "success": False,
+                "error": result.get("error", "Automated submission failed"),
+                "fallback_url": application_url,
+                "suggestions": result.get("suggestions", [])
+            }
+
+    except Exception as e:
+        logger.error(f"Error submitting automated application for job {job_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{job_id}/track")
+async def track_job_interaction(
+    job_id: str,
+    tracking_data: Dict[str, Any] = Body(...),
+    db=Depends(get_async_db)
+):
+    """
+    Track user interactions with job postings for analytics
+    """
+    try:
+        interaction_record = {
+            "job_id": job_id,
+            "action": tracking_data.get("action"),
+            "timestamp": tracking_data.get("timestamp"),
+            "user_agent": tracking_data.get("user_agent"),
+            "ip_address": tracking_data.get("ip_address"),
+            "session_id": tracking_data.get("session_id")
+        }
+
+        await db["job_interactions"].insert_one(interaction_record)
+        
+        return {"success": True, "message": "Interaction tracked"}
+
+    except Exception as e:
+        logger.error(f"Error tracking job interaction: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+@router.get("/{job_id}/application-analytics")
+async def get_job_application_analytics(
+    job_id: str,
+    current_user: Any = Depends(get_current_user),
+    db=Depends(get_async_db)
+):
+    """
+    Get analytics for job applications (for job posters)
+    """
+    try:
+        # Check if user has permission to view analytics
+        job = await db["jobs"].find_one({"_id": job_id})
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+
+        # Get application statistics
+        applications = await db["applications"].find({"job_id": job_id}).to_list(None)
+        interactions = await db["job_interactions"].find({"job_id": job_id}).to_list(None)
+
+        analytics = {
+            "total_applications": len(applications),
+            "application_methods": {
+                "external_redirect": len([a for a in applications if a.get("application_method") == "external"]),
+                "scraped_form": len([a for a in applications if a.get("application_method") == "scraped_form"]),
+                "automated": len([a for a in applications if a.get("application_method") == "automated"])
+            },
+            "total_views": len([i for i in interactions if i.get("action") == "view"]),
+            "total_clicks": len([i for i in interactions if i.get("action") == "external_redirect"]),
+            "conversion_rate": len(applications) / max(len(interactions), 1) * 100
+        }
+
+        return analytics
+
+    except Exception as e:
+        logger.error(f"Error getting application analytics for job {job_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e)) 

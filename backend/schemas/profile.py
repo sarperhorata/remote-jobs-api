@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import List, Optional
 
 class ProfileBase(BaseModel):
@@ -22,5 +22,4 @@ class ProfileUpdate(ProfileBase):
 class ProfileResponse(ProfileBase):
     id: int
 
-    class Config:
-        orm_mode = True 
+    model_config = ConfigDict(from_attributes=True) 

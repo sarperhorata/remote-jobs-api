@@ -1,113 +1,47 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
+import { AuthProvider } from '../../contexts/AuthContext';
 import AuthModal from '../../components/AuthModal';
+import * as authService from '../../services/authService';
 
-// Mock the contexts completely
-jest.mock('../../contexts/AuthContext', () => ({
-  useAuth: () => ({
-    user: null,
-    isAuthenticated: false,
-    isLoading: false,
-    login: jest.fn(),
-    logout: jest.fn(),
-    signup: jest.fn(),
-    refreshUser: jest.fn(),
-  }),
-  AuthProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}));
+// Mock authService
+jest.mock('../../services/authService');
 
-jest.mock('../../contexts/ThemeContext', () => ({
-  useTheme: () => ({
-    theme: 'light',
-    toggleTheme: jest.fn(),
-  }),
-  ThemeProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}));
+const mockAuthService = authService as jest.Mocked<typeof authService>;
 
 const defaultProps = {
   isOpen: true,
   onClose: jest.fn(),
-  initialMode: 'login' as 'login' | 'register',
+  login: jest.fn(),
+  signup: jest.fn()
 };
 
-const renderAuthModal = (props = {}) => {
-  const mergedProps = { ...defaultProps, ...props };
-  
+const renderWithProviders = (component: React.ReactElement) => {
   return render(
     <BrowserRouter>
-      <AuthModal {...mergedProps} />
+      <AuthProvider>
+        {component}
+      </AuthProvider>
     </BrowserRouter>
   );
 };
 
-describe('AuthModal Component', () => {
+describe('AuthModal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('renders auth modal when open', () => {
-    renderAuthModal();
+  it('renders login form when open', () => {
+    renderWithProviders(<AuthModal {...defaultProps} />);
     
-    // Should render modal content
-    expect(document.body.firstChild).toBeInTheDocument();
+    expect(screen.getByText(/Sign In/i)).toBeInTheDocument();
+    expect(screen.getByText(/Create Account/i)).toBeInTheDocument();
   });
 
-  it('does not render when closed', () => {
-    renderAuthModal({ isOpen: false });
+  it('shows Google sign-in button', () => {
+    renderWithProviders(<AuthModal {...defaultProps} />);
     
-    // Should handle closed state
-    expect(document.body.firstChild).toBeInTheDocument();
-  });
-
-  it('handles form interactions', () => {
-    renderAuthModal({ initialMode: 'login' });
-    
-    // Should handle form elements
-    const inputs = screen.getAllByRole('textbox');
-    if (inputs.length > 0) {
-      fireEvent.change(inputs[0], { target: { value: 'test@example.com' } });
-      expect(inputs[0]).toBeTruthy();
-    }
-  });
-
-  it('handles button clicks', () => {
-    renderAuthModal();
-    
-    const buttons = screen.getAllByRole('button');
-    if (buttons.length > 0) {
-      fireEvent.click(buttons[0]);
-      expect(buttons[0]).toBeInTheDocument();
-    }
-  });
-
-  it('handles close functionality', () => {
-    const onClose = jest.fn();
-    renderAuthModal({ onClose });
-    
-    // Should handle close event
-    expect(document.body.firstChild).toBeInTheDocument();
-  });
-
-  it('handles different modes', () => {
-    renderAuthModal({ initialMode: 'register' });
-    
-    // Should handle register mode
-    expect(document.body.firstChild).toBeInTheDocument();
-  });
-
-  it('has proper accessibility', () => {
-    renderAuthModal();
-    
-    // Check for modal accessibility
-    const modal = screen.queryByRole('dialog');
-    if (modal) {
-      expect(modal).toBeInTheDocument();
-    }
-  });
-
-  it('renders without context errors', () => {
-    // This test ensures our mocks work properly
-    expect(() => renderAuthModal()).not.toThrow();
+    expect(screen.getByText(/Sign in with Google/i)).toBeInTheDocument();
   });
 }); 

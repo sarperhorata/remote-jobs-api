@@ -99,7 +99,7 @@ def test_admin_run_api_service(admin_session, mock_subprocess, mock_send_notific
 
 def test_unauthenticated_access(client):
     """Test unauthenticated access"""
-    response = client.get("/admin/companies")
+    response = client.get("/admin/companies", follow_redirects=False)
     assert response.status_code in [302, 401, 404]  # Redirect to login or unauthorized
 
 def test_admin_login(client):

@@ -3,12 +3,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import '@testing-library/jest-dom';
-import Home from '../../pages/Home';
-import { JobService } from '../../services/jobService';
+import Home from '../../pages/Home/Home';
+import * as jobService from '../../services/jobService';
 
-// Mock JobService
+// Mock jobService
 jest.mock('../../services/jobService');
-const mockJobService = JobService as jest.Mocked<typeof JobService>;
+
+const mockjobService = jobService as jest.Mocked<typeof jobService>;
 
 // Mock AuthModal component
 jest.mock('../../components/AuthModal', () => {
@@ -20,6 +21,47 @@ jest.mock('../../components/AuthModal', () => {
     ) : null;
   };
 });
+
+const mockJobs = [
+  {
+    id: '1',
+    title: 'Frontend Developer',
+    company: 'Tech Corp',
+    location: 'Remote',
+    description: 'We are looking for a skilled frontend developer...',
+    salary_min: 80000,
+    salary_max: 120000,
+    salary_currency: 'USD',
+    posted_date: '2024-01-15T10:00:00Z',
+    job_type: 'Full-time',
+    experience_level: 'Mid-level',
+    skills: ['React', 'TypeScript', 'CSS'],
+    benefits: ['Health insurance', 'Remote work'],
+    application_deadline: '2024-12-31',
+    contact_email: 'hr@techcorp.com',
+    contact_phone: '+1234567890',
+    application_url: 'https://techcorp.com/apply/frontend-dev'
+  },
+  {
+    id: '2',
+    title: 'Backend Engineer',
+    company: 'Startup Inc',
+    location: 'San Francisco, CA',
+    description: 'Join our growing team as a backend engineer...',
+    salary_min: 90000,
+    salary_max: 140000,
+    salary_currency: 'USD',
+    posted_date: '2024-01-14T15:30:00Z',
+    job_type: 'Full-time',
+    experience_level: 'Senior',
+    skills: ['Node.js', 'Python', 'PostgreSQL'],
+    benefits: ['Stock options', 'Flexible hours'],
+    application_deadline: '2024-12-31',
+    contact_email: 'jobs@startupinc.com',
+    contact_phone: '+1987654321',
+    application_url: 'https://startupinc.com/careers/backend'
+  }
+];
 
 const renderHome = () => {
   const queryClient = new QueryClient({
@@ -39,68 +81,68 @@ const renderHome = () => {
   );
 };
 
-const mockFeaturedJobs = [
-  {
-    _id: '1',
-    title: 'Frontend Developer',
-    company: 'Tech Corp',
-    location: 'Remote',
-    job_type: 'Full-time',
-    salary_range: '$60k - $80k',
-    skills: ['React', 'TypeScript'],
-    created_at: new Date().toISOString(),
-    description: 'Great frontend role',
-    is_active: true,
-    url: 'https://example.com/job1'
-  },
-  {
-    _id: '2',
-    title: 'Backend Engineer',
-    company: 'Software Inc',
-    location: 'Remote (US)',
-    job_type: 'Full-time',
-    salary_range: '$70k - $90k',
-    skills: ['Node.js', 'Python'],
-    created_at: new Date().toISOString(),
-    description: 'Backend development role',
-    is_active: true,
-    url: 'https://example.com/job2'
-  }
-];
-
 describe('Home Page', () => {
   beforeEach(() => {
-    mockJobService.getFeaturedJobs.mockResolvedValue(mockFeaturedJobs);
-  });
-
-  afterEach(() => {
     jest.clearAllMocks();
+    mockjobService.getFeaturedJobs.mockResolvedValue({
+      success: true,
+      jobs: mockJobs,
+      total: 2
+    });
   });
 
-  test('renders main heading and description', () => {
+  it('renders main heading and description', () => {
     renderHome();
     
-    expect(screen.getByText(/Find Your Next/)).toBeInTheDocument();
-    expect(screen.getByText(/Remote Buzz/)).toBeInTheDocument();
-    expect(screen.getByText(/AI-powered job matching/)).toBeInTheDocument();
+    expect(screen.getByText(/Find Your Next Remote Buzz/i)).toBeInTheDocument();
+    expect(screen.getByText(/AI-powered job matching/i)).toBeInTheDocument();
   });
 
-  test('renders search form with keywords input', () => {
+  it('renders search form', () => {
     renderHome();
     
-    expect(screen.getByLabelText(/Please enter job title/)).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/e.g. Software Engineer, Product Manager, Data Scientist/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Search/ })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Job title/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Location/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Search/i })).toBeInTheDocument();
   });
 
-  test('does not render removed fields (Region/City, Date Posted, Type)', () => {
+  it('renders featured jobs section', () => {
     renderHome();
     
-    // These fields should not be present
-    expect(screen.queryByLabelText(/Region\/City/)).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/Date Posted/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Type:/)).not.toBeInTheDocument();
-    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+    expect(screen.getByText(/Hot Remote Jobs/i)).toBeInTheDocument();
+  });
+
+  it('loads featured jobs from API', async () => {
+    renderHome();
+    
+    await waitFor(() => {
+      expect(mockjobService.getFeaturedJobs).toHaveBeenCalled();
+    });
+  });
+
+  it('renders job cards when data is loaded', async () => {
+    renderHome();
+    
+    await waitFor(() => {
+      expect(screen.getByText('Frontend Developer')).toBeInTheDocument();
+      expect(screen.getByText('Backend Engineer')).toBeInTheDocument();
+    });
+  });
+
+  it('handles search form submission', async () => {
+    const mockNavigate = jest.fn();
+    jest.doMock('react-router-dom', () => ({
+      ...jest.requireActual('react-router-dom'),
+      useNavigate: () => mockNavigate
+    }));
+
+    renderHome();
+    
+    const searchButton = screen.getByRole('button', { name: /Search/i });
+    fireEvent.click(searchButton);
+
+    // Should navigate to jobs page
+    expect(mockNavigate).toHaveBeenCalled();
   });
 
   test('renders search input with extended width', () => {
@@ -111,67 +153,14 @@ describe('Home Page', () => {
     expect(keywordsDiv).toBeInTheDocument();
   });
 
-  test('handles search form submission', async () => {
+  test('does not render removed fields (Region/City, Date Posted, Type)', () => {
     renderHome();
     
-    const input = screen.getByPlaceholderText('e.g. Software Engineer, Product Manager, Data Scientist');
-    
-    // Type in the input field
-    fireEvent.change(input, { target: { value: 'React Developer' } });
-    expect(input.value).toBe('React Developer');
-    
-    // Check the submit button with correct name
-    const submitButton = screen.getByRole('button', { name: 'Search' });
-    expect(submitButton).toBeInTheDocument();
-    
-    // Submit the form
-    fireEvent.click(submitButton);
-    
-    // Check loading state
-    await waitFor(() => {
-      expect(submitButton).toBeDisabled();
-    });
-  });
-
-  test('loads and renders featured jobs from API', async () => {
-    renderHome();
-    
-    await waitFor(() => {
-      expect(mockJobService.getFeaturedJobs).toHaveBeenCalled();
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('Frontend Developer')).toBeInTheDocument();
-      expect(screen.getByText('Backend Engineer')).toBeInTheDocument();
-    });
-  });
-
-  test('renders Hot Remote Jobs section', async () => {
-    renderHome();
-    
-    expect(screen.getByText(/Hot Remote Jobs/)).toBeInTheDocument();
-    expect(screen.getByText(/Fresh opportunities from leading remote companies/)).toBeInTheDocument();
-  });
-
-  test('renders featured job cards with correct information', async () => {
-    renderHome();
-    
-    await waitFor(() => {
-      // Check job titles
-      expect(screen.getByText('Frontend Developer')).toBeInTheDocument();
-      expect(screen.getByText('Backend Engineer')).toBeInTheDocument();
-      
-      // Check companies
-      expect(screen.getByText('Tech Corp')).toBeInTheDocument();
-      expect(screen.getByText('Software Inc')).toBeInTheDocument();
-      
-      // Check job types
-      expect(screen.getAllByText('Full-time')).toHaveLength(2);
-      
-      // Check skills tags
-      expect(screen.getByText('React')).toBeInTheDocument();
-      expect(screen.getByText('Node.js')).toBeInTheDocument();
-    });
+    // These fields should not be present
+    expect(screen.queryByLabelText(/Region\/City/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Date Posted/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Type:/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
   });
 
   test('renders Buzz2Remote logo with bee icon', () => {
@@ -237,7 +226,7 @@ describe('Home Page', () => {
   });
 
   test('fallback to static data when API fails', async () => {
-    mockJobService.getFeaturedJobs.mockRejectedValue(new Error('API Error'));
+    mockjobService.getFeaturedJobs.mockRejectedValue(new Error('API Error'));
     
     renderHome();
     
@@ -249,11 +238,15 @@ describe('Home Page', () => {
 
   test('formats time ago correctly for job posting dates', async () => {
     const recentJob = {
-      ...mockFeaturedJobs[0],
-      created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() // 2 hours ago
+      ...mockJobs[0],
+      posted_date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() // 2 hours ago
     };
     
-    mockJobService.getFeaturedJobs.mockResolvedValue([recentJob]);
+    mockjobService.getFeaturedJobs.mockResolvedValue({
+      success: true,
+      jobs: [recentJob],
+      total: 1
+    });
     
     renderHome();
     

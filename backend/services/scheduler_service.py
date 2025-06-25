@@ -106,9 +106,15 @@ class SchedulerService:
     async def _health_check_job(self):
         """Health check job to keep Render service awake"""
         try:
-            render_url = os.getenv('RENDER_URL', 'https://buzz2remote-api.onrender.com')
+            # Use different URLs based on environment
+            if os.getenv('ENVIRONMENT') == 'production':
+                render_url = os.getenv('RENDER_URL', 'https://buzz2remote-api.onrender.com')
+                health_endpoint = f"{render_url}/health"
+            else:
+                # For local development, use localhost with correct port
+                health_endpoint = "http://localhost:5001/health"
             
-            response = requests.get(f"{render_url}/health", timeout=10)
+            response = requests.get(health_endpoint, timeout=10)
             
             if response.status_code == 200:
                 logger.info(f"Health check successful at {datetime.now()}")
@@ -116,7 +122,7 @@ class SchedulerService:
                 logger.warning(f"Health check failed with status {response.status_code}")
                 
         except Exception as e:
-            logger.error(f"Health check error: {str(e)}")
+            logger.warning(f"Health check failed: {str(e)}")
     
     async def _external_api_crawler_job(self):
         """External API crawler job"""
@@ -379,7 +385,7 @@ class SchedulerService:
                 notifier = ServiceNotifier()
                 notifier._send_message(f"""📊 <b>DAILY JOB STATISTICS</b>
 
-📈 <b>Total jobs:</b> {total_jobs:,}
+�� <b>Total jobs:</b> {total_jobs:,}
 ✅ <b>Active jobs:</b> {active_jobs:,}
 🆕 <b>New jobs (24h):</b> {new_jobs_24h:,}
 

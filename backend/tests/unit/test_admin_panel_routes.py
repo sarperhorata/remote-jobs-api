@@ -205,11 +205,16 @@ class TestAdminStatistics:
     """Test admin statistics"""
 
     @patch('backend.admin_panel.routes.get_admin_auth')
-    @patch('backend.admin_panel.routes.db')
-    def test_get_dashboard_stats_with_db(self, mock_db, mock_auth):
-        """Test dashboard stats with database"""
+    @patch('backend.admin_panel.routes.get_database')
+    async def test_get_dashboard_stats_with_db(self, mock_get_db, mock_auth):
+        """Test dashboard stats with database connection"""
+        # Mock database with specific collections and counts
+        mock_db = MagicMock()
+        mock_db.jobs.count_documents.return_value = 150
+        mock_db.users.count_documents.return_value = 75
+        mock_db.companies.count_documents.return_value = 30
+        mock_get_db.return_value = mock_db
         mock_auth.return_value = True
-        mock_db.jobs.count_documents.return_value = 1000
         
         with TestClient(app) as client:
             response = client.get("/admin/")

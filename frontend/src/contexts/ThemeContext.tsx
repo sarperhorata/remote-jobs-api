@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
 interface ThemeContextType {
   theme: 'light' | 'dark';
@@ -31,7 +31,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     }
   });
 
-  const applyTheme = (newTheme?: 'light' | 'dark') => {
+  const applyTheme = useCallback((newTheme?: 'light' | 'dark') => {
     const themeToApply = newTheme || theme;
     
     // Apply to document
@@ -42,7 +42,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       docElement.classList.remove('dark');
     }
     docElement.setAttribute('data-theme', themeToApply);
-  };
+  }, [theme]);
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';

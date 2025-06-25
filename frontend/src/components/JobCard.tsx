@@ -5,7 +5,7 @@ interface JobCardProps {
   job: Job;
 }
 
-export const JobCard: React.FC<JobCardProps> = ({ job }) => {
+const JobCard: React.FC<JobCardProps> = ({ job }) => {
   // Handle company field properly - it can be string or Company object
   const getCompanyName = () => {
     if (typeof job.company === 'string') {
@@ -14,14 +14,92 @@ export const JobCard: React.FC<JobCardProps> = ({ job }) => {
     return job.company?.name || 'Unknown Company';
   };
 
+  // Get company logo URL using multiple sources
+  const getCompanyLogo = () => {
+    const companyName = getCompanyName();
+    
+    // Try to extract domain from company name or use clearbit
+    const cleanCompanyName = companyName.toLowerCase()
+      .replace(/\s+/g, '')
+      .replace(/inc\.|ltd\.|llc|corp\.?|corporation|company|co\.|gmbh|ag/gi, '');
+    
+    // Common domain mappings for major companies
+    const domainMap: { [key: string]: string } = {
+      'google': 'google.com',
+      'microsoft': 'microsoft.com',
+      'apple': 'apple.com',
+      'amazon': 'amazon.com',
+      'meta': 'meta.com',
+      'facebook': 'meta.com',
+      'netflix': 'netflix.com',
+      'tesla': 'tesla.com',
+      'spotify': 'spotify.com',
+      'uber': 'uber.com',
+      'airbnb': 'airbnb.com',
+      'slack': 'slack.com',
+      'zoom': 'zoom.us',
+      'dropbox': 'dropbox.com',
+      'github': 'github.com',
+      'linkedin': 'linkedin.com',
+      'twitter': 'twitter.com',
+      'shopify': 'shopify.com',
+      'stripe': 'stripe.com',
+      'coinbase': 'coinbase.com'
+    };
+
+    const domain = domainMap[cleanCompanyName] || `${cleanCompanyName}.com`;
+    
+    return `https://logo.clearbit.com/${domain}`;
+  };
+
+  // Fallback component for when logo fails to load
+  const CompanyLogoFallback = ({ companyName }: { companyName: string }) => {
+    const firstLetter = companyName.charAt(0).toUpperCase();
+    const colors = [
+      'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-red-500', 
+      'bg-yellow-500', 'bg-indigo-500', 'bg-pink-500', 'bg-teal-500'
+    ];
+    const colorIndex = firstLetter.charCodeAt(0) % colors.length;
+    
+    return (
+      <div className={`w-12 h-12 rounded-lg ${colors[colorIndex]} flex items-center justify-center text-white font-bold text-lg`}>
+        {firstLetter}
+      </div>
+    );
+  };
+
+  // Logo component with error handling
+  const CompanyLogo = () => {
+    const [imageError, setImageError] = React.useState(false);
+    const companyName = getCompanyName();
+    const logoUrl = getCompanyLogo();
+
+    if (imageError) {
+      return <CompanyLogoFallback companyName={companyName} />;
+    }
+
+    return (
+      <img
+        src={logoUrl}
+        alt={`${companyName} logo`}
+        className="w-12 h-12 rounded-lg object-contain bg-gray-50 p-1"
+        onError={() => setImageError(true)}
+        loading="lazy"
+      />
+    );
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
       <div className="flex justify-between items-start mb-4">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">
-            {job.title}
-          </h3>
-          <p className="text-gray-600">{getCompanyName()}</p>
+        <div className="flex items-start space-x-3">
+          <CompanyLogo />
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+              {job.title}
+            </h3>
+            <p className="text-gray-600">{getCompanyName()}</p>
+          </div>
         </div>
         <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
           {job.job_type}
@@ -62,4 +140,6 @@ export const JobCard: React.FC<JobCardProps> = ({ job }) => {
       </div>
     </div>
   );
-}; 
+};
+
+export default JobCard; 

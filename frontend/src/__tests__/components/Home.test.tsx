@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import '@testing-library/jest-dom';
-import Home from '../../pages/Home/Home';
+import Home from '../../pages/Home';
 import * as jobService from '../../services/jobService';
 
 // Mock jobService

@@ -22,7 +22,7 @@ class ActivityLogger:
     async def initialize(self):
         """Initialize the activity logger"""
         from backend.database import get_async_db
-        if not self.db:
+        if self.db is None:
             self.db = await get_async_db()
             
         # Create indexes for better performance
@@ -102,7 +102,7 @@ class ActivityLogger:
     ) -> str:
         """Log a user activity"""
         try:
-            if not self.db:
+            if self.db is None:
                 await self.initialize()
             
             activity = {
@@ -129,7 +129,7 @@ class ActivityLogger:
     ) -> str:
         """Start a new user session"""
         try:
-            if not self.db:
+            if self.db is None:
                 await self.initialize()
             
             headers = request_data.get('headers', {})
@@ -172,7 +172,7 @@ class ActivityLogger:
     async def end_session(self, session_token: str):
         """End a user session"""
         try:
-            if not self.db:
+            if self.db is None:
                 await self.initialize()
             
             # Get session
@@ -276,7 +276,7 @@ class ActivityLogger:
     ) -> List[Dict[str, Any]]:
         """Get user activities with filtering"""
         try:
-            if not self.db:
+            if self.db is None:
                 await self.initialize()
             
             # Build query
@@ -316,7 +316,7 @@ class ActivityLogger:
     ) -> List[Dict[str, Any]]:
         """Get user sessions"""
         try:
-            if not self.db:
+            if self.db is None:
                 await self.initialize()
             
             query = {"user_id": user_id}
@@ -344,7 +344,7 @@ class ActivityLogger:
     ) -> Dict[str, Any]:
         """Get activity analytics"""
         try:
-            if not self.db:
+            if self.db is None:
                 await self.initialize()
             
             # Build base query

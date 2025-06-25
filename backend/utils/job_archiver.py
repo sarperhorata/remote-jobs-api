@@ -6,10 +6,10 @@ from bson import ObjectId
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from ..models.job import Job
-from ..database import get_db
+from backend.models.job import Job
+from backend.database.db import get_async_db
 
-from utils.db import async_jobs
+from backend.utils.db import async_jobs
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +20,9 @@ async def archive_old_jobs():
     try:
         # Get jobs older than 30 days
         cutoff_date = datetime.utcnow() - timedelta(days=30)
-        db = next(get_db())
-        old_jobs = db.query(Job).filter(Job.created_at < cutoff_date).all()
+        db = await get_async_db()
+        old_jobs_cursor = db.jobs.find({"created_at": {"$lt": cutoff_date}})
+        old_jobs = await old_jobs_cursor.to_list(length=None)
         
         if not old_jobs:
             logger.info("No old jobs to archive")
@@ -31,9 +32,8 @@ async def archive_old_jobs():
         archived_count = await archive_to_sheets(old_jobs)
         
         # Delete archived jobs from database
-        for job in old_jobs:
-            db.delete(job)
-        db.commit()
+        job_ids = [job["_id"] for job in old_jobs]
+        await db.jobs.delete_many({"_id": {"$in": job_ids}})
         
         logger.info(f"Successfully archived {archived_count} old jobs")
         
@@ -60,12 +60,12 @@ async def archive_to_sheets(jobs):
         values = []
         for job in jobs:
             values.append([
-                job.title,
-                job.company,
-                job.location,
-                job.description,
-                job.created_at.isoformat(),
-                job.url
+                job.get("title", ""),
+                job.get("company", ""),
+                job.get("location", ""),
+                job.get("description", ""),
+                job.get("created_at", datetime.utcnow()).isoformat(),
+                job.get("url", "")
             ])
         
         # Append to sheets

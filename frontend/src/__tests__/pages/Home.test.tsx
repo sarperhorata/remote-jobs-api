@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import '@testing-library/jest-dom';
-import Home from '../../pages/Home/Home';
+import Home from '../../pages/Home';
 import * as jobService from '../../services/jobService';
 
 // Mock jobService

@@ -2,6 +2,7 @@ from pydantic_settings import BaseSettings
 from typing import Optional
 import os
 from dotenv import load_dotenv
+from functools import lru_cache
 
 load_dotenv()
 
@@ -13,6 +14,7 @@ class Settings(BaseSettings):
     
     # Security
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here")
+    JWT_SECRET: str = os.getenv("JWT_SECRET", "your-jwt-secret-key-here")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
@@ -50,5 +52,9 @@ class Settings(BaseSettings):
     
     class Config:
         case_sensitive = True
+
+@lru_cache()
+def get_settings() -> Settings:
+    return Settings()
 
 settings = Settings() 

@@ -1,47 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { CheckCircle, AlertCircle, Mail, RefreshCw } from 'lucide-react';
 import { onboardingService } from '../services/onboardingService';
 
-const EmailVerification: React.FC = () => {
+export const EmailVerification: React.FC = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'expired'>('loading');
   const [message, setMessage] = useState('');
-  const [userId, setUserId] = useState<string>('');
+  const [error, setError] = useState('');
+
+  const verifyEmail = useCallback(async (token: string) => {
+    try {
+      const result = await onboardingService.verifyEmail(token);
+      setStatus('success');
+      setMessage(result.message);
+      
+      // 3 saniye sonra şifre belirleme sayfasına yönlendir
+      setTimeout(() => {
+        navigate(`/onboarding/set-password?token=${token}`);
+      }, 3000);
+      
+    } catch (error) {
+      setStatus('error');
+      setError(error instanceof Error ? error.message : 'Email doğrulama başarısız');
+    }
+  }, [navigate]);
 
   useEffect(() => {
-    const verifyEmail = async () => {
-      const token = searchParams.get('token');
-      
-      if (!token) {
-        setStatus('error');
-        setMessage('Doğrulama token\'ı bulunamadı');
-        return;
-      }
-
-      try {
-        const result = await onboardingService.verifyEmail(token);
-        setStatus('success');
-        setMessage(result.message);
-        setUserId(result.user_id || '');
-        
-        // 3 saniye sonra şifre belirleme sayfasına yönlendir
-        setTimeout(() => {
-          navigate(`/onboarding/set-password?token=${token}`);
-        }, 3000);
-        
-      } catch (error) {
-        setStatus('error');
-        setMessage(error instanceof Error ? error.message : 'Email doğrulama başarısız');
-      }
-    };
-
-    verifyEmail();
-  }, [searchParams, navigate]);
+    const urlParams = new URLSearchParams(location.search);
+    const token = urlParams.get('token');
+    
+    if (token) {
+      verifyEmail(token);
+    }
+  }, [location.search, verifyEmail]);
 
   const handleContinue = () => {
-    const token = searchParams.get('token');
+    const urlParams = new URLSearchParams(location.search);
+    const token = urlParams.get('token');
     if (token) {
       navigate(`/onboarding/set-password?token=${token}`);
     }
@@ -111,7 +108,7 @@ const EmailVerification: React.FC = () => {
                     Doğrulama Başarısız
                   </h3>
                   <p className="text-gray-600 dark:text-gray-400">
-                    {message}
+                    {error}
                   </p>
                 </div>
                 <div className="space-y-3">

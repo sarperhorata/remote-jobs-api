@@ -1,4 +1,4 @@
-from ..models.user import User
+from backend.models.user import User
 
 def is_premium_user(user: User) -> bool:
     """

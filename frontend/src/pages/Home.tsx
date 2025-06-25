@@ -201,7 +201,7 @@ const Home: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-6 gap-3 md:gap-4 items-end">
                 {/* Job Title/Keywords - Extended */}
                 <div className="md:col-span-4">
-                  <label htmlFor="searchQuery" className="block text-sm font-medium text-gray-700 text-left mb-1">Please enter job title</label>
+                  <label htmlFor="searchQuery" className="block text-sm font-medium text-gray-700 text-left mb-1">Job Search</label>
                   <JobAutocomplete
                     value={searchQuery}
                     onChange={setSearchQuery}
@@ -264,7 +264,20 @@ const Home: React.FC = () => {
                         <p className="text-gray-600 text-sm">{typeof job.company === 'string' ? job.company : job.company.name}</p>
                       </div>
                     </div>
-                    <button className="p-1.5 rounded-full hover:bg-yellow-100 text-gray-400 hover:text-yellow-500 transition-colors">
+                    <button 
+                      onClick={() => {
+                        // Check if user is logged in for favoriting
+                        const userToken = localStorage.getItem('userToken');
+                        if (!userToken) {
+                          setAuthModalTab('login');
+                          setIsAuthModalOpen(true);
+                        } else {
+                          // Add to favorites logic here
+                          console.log('Adding job to favorites:', job._id);
+                        }
+                      }}
+                      className="p-1.5 rounded-full hover:bg-yellow-100 text-gray-400 hover:text-yellow-500 transition-colors"
+                    >
                        <Star className="w-5 h-5" />
                     </button>
                   </div>

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from typing import List, Optional
 from backend.models.company import Company
 from backend.database import get_async_db
@@ -7,8 +7,54 @@ from datetime import datetime
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from backend.schemas.company import CompanyCreate, CompanyUpdate, CompanyResponse, CompanyListResponse
 from backend.utils.auth import get_current_active_user, get_current_user, get_current_admin
+import logging
 
 router = APIRouter(tags=["companies"])
+logger = logging.getLogger(__name__)
+
+@router.get("/companies/statistics", response_model=dict)
+async def get_companies_statistics(
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """Get companies statistics for admin dashboard."""
+    try:
+        # Total companies count
+        total_companies = await db.companies.count_documents({})
+        
+        # Active companies count
+        active_companies = await db.companies.count_documents({"is_active": {"$ne": False}})
+        
+        # Companies with jobs
+        companies_with_jobs = await db.companies.aggregate([
+            {
+                "$lookup": {
+                    "from": "jobs",
+                    "localField": "name",
+                    "foreignField": "company",
+                    "as": "jobs"
+                }
+            },
+            {
+                "$match": {
+                    "jobs": {"$ne": []}
+                }
+            },
+            {
+                "$count": "total"
+            }
+        ]).to_list(length=None)
+        
+        companies_with_jobs_count = companies_with_jobs[0]["total"] if companies_with_jobs else 0
+        
+        return {
+            "total_companies": total_companies,
+            "active_companies": active_companies,
+            "companies_with_jobs": companies_with_jobs_count
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting companies statistics: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Statistics not available")
 
 @router.post("/companies/", response_model=CompanyResponse)
 async def create_company(

@@ -438,12 +438,18 @@ async def upload_cv(
 
 @router.post("/complete-profile", response_model=OnboardingResponse)
 async def complete_profile(
-    user_id: str,
-    profile_data: ProfileCompletion,
+    profile_data: dict,
     db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
     """Complete user profile and finish onboarding."""
     try:
+        user_id = profile_data.get("user_id")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User ID is required"
+            )
+        
         user = await db.users.find_one({"_id": ObjectId(user_id)})
         if not user:
             raise HTTPException(
@@ -458,18 +464,23 @@ async def complete_profile(
             "updated_at": datetime.utcnow()
         }
         
-        if profile_data.name:
-            update_data["name"] = profile_data.name
-        if profile_data.bio:
-            update_data["bio"] = profile_data.bio
-        if profile_data.location:
-            update_data["location"] = profile_data.location
-        if profile_data.skills:
-            update_data["skills"] = profile_data.skills
-        if profile_data.experience_years:
-            update_data["experience_years"] = profile_data.experience_years
-        if profile_data.job_preferences:
-            update_data["job_preferences"] = profile_data.job_preferences
+        # Map frontend data to backend fields
+        if profile_data.get("location"):
+            update_data["location"] = profile_data["location"]
+        if profile_data.get("job_titles"):
+            update_data["job_titles"] = profile_data["job_titles"]
+        if profile_data.get("experience_levels"):
+            update_data["experience_levels"] = profile_data["experience_levels"]
+        if profile_data.get("skills"):
+            update_data["skills"] = profile_data["skills"]
+        if profile_data.get("salary_ranges"):
+            update_data["salary_ranges"] = profile_data["salary_ranges"]
+        if profile_data.get("work_types"):
+            update_data["work_types"] = profile_data["work_types"]
+        if "email_notifications" in profile_data:
+            update_data["email_notifications"] = profile_data["email_notifications"]
+        if "browser_notifications" in profile_data:
+            update_data["browser_notifications"] = profile_data["browser_notifications"]
         
         await db.users.update_one(
             {"_id": user["_id"]},
@@ -480,7 +491,7 @@ async def complete_profile(
         access_token = create_access_token(data={"sub": user_id})
         
         return OnboardingResponse(
-            message="Onboarding tamamlandı! Hoş geldiniz!",
+            message="Profile completed successfully!",
             user_id=user_id,
             onboarding_step=4,
             next_step="dashboard",

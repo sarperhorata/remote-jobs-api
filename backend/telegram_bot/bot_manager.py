@@ -110,6 +110,30 @@ class TelegramBotManager:
             logger.info("📴 Telegram bot disabled (no token provided)")
             return None
             
+        # Production environment check for Render
+        if os.getenv('ENVIRONMENT') == 'production':
+            # In production, check for multiple instances more aggressively
+            try:
+                import psutil
+                current_pid = os.getpid()
+                
+                # Look for other Python processes that might be running our bot
+                bot_processes = []
+                for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                    try:
+                        if proc.info['name'] == 'python' and proc.info['pid'] != current_pid:
+                            cmdline = ' '.join(proc.info['cmdline'] or [])
+                            if 'telegram_bot' in cmdline or 'bot_manager' in cmdline:
+                                bot_processes.append(proc.info['pid'])
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
+                
+                if bot_processes:
+                    logger.warning(f"⚠️  Found other potential bot processes: {bot_processes}. Skipping bot start to avoid conflicts.")
+                    return None
+            except ImportError:
+                logger.info("psutil not available, using basic process checking")
+                
         # Check for existing instance
         existing_pid = self.check_existing_instance()
         if existing_pid:

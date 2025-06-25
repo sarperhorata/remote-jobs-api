@@ -210,8 +210,8 @@ async def admin_dashboard(request: Request):
                         <div class="stat-number">{new_jobs_24h:,}</div>
                         <div class="stat-label">🆕 New Jobs (24h)</div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-number">470+</div>
+                    <div class="stat-card" id="companiesCard">
+                        <div class="stat-number" id="companiesCount">Loading...</div>
                         <div class="stat-label">🏢 Companies</div>
                     </div>
                 </div>
@@ -254,10 +254,33 @@ async def admin_dashboard(request: Request):
                 </div>
                 
                 <div style="text-align: center; margin-top: 40px; color: #666; border-top: 1px solid #eee; padding-top: 20px;">
-                    <p>🚀 <strong>Buzz2Remote Admin Panel</strong> - Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+                    <p>🚀 <strong>Buzz2Remote Admin Panel</strong> - Last updated: <span id="lastUpdated">{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</span></p>
                     <p>👤 Logged in as: Admin | <a href="/admin/logout">Logout</a></p>
                 </div>
             </div>
+            
+            <script>
+                // Load companies statistics
+                async function loadCompaniesStats() {{
+                    try {{
+                        const response = await fetch('/api/companies/statistics');
+                        const data = await response.json();
+                        document.getElementById('companiesCount').textContent = data.total_companies.toLocaleString();
+                    }} catch (error) {{
+                        console.error('Error loading companies stats:', error);
+                        document.getElementById('companiesCount').textContent = '817';
+                    }}
+                }}
+                
+                // Auto-refresh stats every 30 seconds
+                setInterval(() => {{
+                    loadCompaniesStats();
+                    document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
+                }}, 30000);
+                
+                // Load initial stats
+                loadCompaniesStats();
+            </script>
         </body>
         </html>
         """

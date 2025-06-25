@@ -1,4 +1,0 @@
-# AuthModal label-input fix commands
-sed -i '' 's/type="email"/id="loginEmail" type="email"/' src/components/AuthModal.tsx
-sed -i '' 's/type={showPassword ? '\''text'\'' : '\''password'\''}/id="loginPassword" type={showPassword ? '\''text'\'' : '\''password'\''}/' src/components/AuthModal.tsx  
-sed -i '' 's/<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">/<label htmlFor="loginEmail" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">/' src/components/AuthModal.tsx

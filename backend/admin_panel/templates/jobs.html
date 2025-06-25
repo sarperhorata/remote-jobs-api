@@ -1,51 +1,82 @@
-<div class="bg-white rounded-lg shadow">
-    <div class="p-6">
-        <h2 class="text-xl font-bold mb-4">Jobs</h2>
-        <div class="overflow-x-auto">
-            <table class="min-w-full">
-                <thead>
-                    <tr class="bg-gray-50">
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onclick="sortTable('title')">
-                            Title <span id="titleSort"></span>
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onclick="sortTable('company')">
-                            Company <span id="companySort"></span>
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onclick="sortTable('location')">
-                            Location <span id="locationSort"></span>
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onclick="sortTable('posted_at')">
-                            Posted <span id="postedSort"></span>
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Job Ad
-                        </th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200" id="jobsTableBody">
-                    {% for job in jobs %}
-                    <tr>
-                        <td class="px-6 py-4 whitespace-nowrap">{{ job.title }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <a href="/jobs?company={{ job.company }}" class="text-blue-600 hover:text-blue-800">{{ job.company }}</a>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">{{ job.location }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">{{ job.posted_at }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <a href="{{ job.apply_url }}" target="_blank" class="text-blue-600 hover:text-blue-800">View</a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        <div class="mt-4 flex justify-between items-center">
-            <div class="text-sm text-gray-700">
-                Showing <span id="startIndex">1</span> to <span id="endIndex">10</span> of <span id="totalItems">{{ total_jobs }}</span> jobs
+{% extends "base.html" %}
+
+{% block content %}
+<div class="py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Page Header -->
+        <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shadow-lg p-6 mb-6">
+            <div class="flex items-center">
+                <div class="mr-4">
+                    <div class="bg-white p-3 rounded-full">
+                        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2V6"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <h1 class="text-3xl font-bold text-white">🚀 Buzz2Remote Admin Panel</h1>
+                    <p class="text-blue-100 mt-1">Jobs Management Dashboard</p>
+                </div>
+                <div class="hidden md:block">
+                    <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                        <p class="text-white text-sm">System Status</p>
+                        <p class="text-green-300 font-medium">🟢 All Systems Operational</p>
+                    </div>
+                </div>
             </div>
-            <div class="flex space-x-2">
-                <button id="prevPage" class="px-3 py-1 border rounded hover:bg-gray-100" disabled>Previous</button>
-                <button id="nextPage" class="px-3 py-1 border rounded hover:bg-gray-100">Next</button>
+        </div>
+
+        <!-- Jobs Table -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="p-6">
+                <h2 class="text-xl font-bold mb-4">Jobs</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr class="bg-gray-50">
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onclick="sortTable('title')">
+                                    Title <span id="titleSort"></span>
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onclick="sortTable('company')">
+                                    Company <span id="companySort"></span>
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onclick="sortTable('location')">
+                                    Location <span id="locationSort"></span>
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onclick="sortTable('posted_at')">
+                                    Posted <span id="postedSort"></span>
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Job Ad
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200" id="jobsTableBody">
+                            {% for job in jobs %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap">{{ job.title }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <a href="/jobs?company={{ job.company }}" class="text-blue-600 hover:text-blue-800">{{ job.company }}</a>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">{{ job.location }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">{{ job.posted_at }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <a href="{{ job.apply_url }}" target="_blank" class="text-blue-600 hover:text-blue-800">View</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-4 flex justify-between items-center">
+                    <div class="text-sm text-gray-700">
+                        Showing <span id="startIndex">1</span> to <span id="endIndex">10</span> of <span id="totalItems">{{ total_jobs }}</span> jobs
+                    </div>
+                    <div class="flex space-x-2">
+                        <button id="prevPage" class="px-3 py-1 border rounded hover:bg-gray-100" disabled>Previous</button>
+                        <button id="nextPage" class="px-3 py-1 border rounded hover:bg-gray-100">Next</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -122,4 +153,5 @@ document.getElementById('nextPage').addEventListener('click', () => {
 
 // Initial load
 loadJobs();
-</script> 
+</script>
+{% endblock %} 

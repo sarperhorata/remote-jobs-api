@@ -27,7 +27,7 @@
     "react-icons": "^5.0.1",
     "react-query": "^3.39.3",
     "react-router-dom": "^6.30.0",
-    "react-scripts": "5.0.1",
+    "react-scripts": "^0.0.0",
     "tailwind-merge": "^3.3.0",
     "web-vitals": "^2.1.4"
   },
@@ -35,8 +35,17 @@
     "start": "react-scripts start",
     "dev": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test",
+    "test": "NODE_OPTIONS='--max-old-space-size=4096' react-scripts test",
+    "test:quick": "NODE_OPTIONS='--max-old-space-size=4096' react-scripts test --watchAll=false",
     "eject": "react-scripts eject"
+  },
+  "jest": {
+    "collectCoverageFrom": [
+      "src/**/*.{js,jsx,ts,tsx}",
+      "!src/**/*.d.ts",
+      "!src/index.tsx",
+      "!src/reportWebVitals.ts"
+    ]
   },
   "eslintConfig": {
     "extends": [
@@ -64,7 +73,10 @@
     "follow-redirects": "^1.15.4",
     "nth-check": "^2.1.1",
     "semver": "^7.5.3",
-    "typescript": "4.9.5"
+    "typescript": "4.9.5",
+    "postcss": "^8.4.31",
+    "tar-fs": "^3.0.9",
+    "brace-expansion": "^2.0.2"
   },
   "devDependencies": {
     "@testing-library/user-event": "^14.6.1",
@@ -72,7 +84,7 @@
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.3.7",
     "autoprefixer": "^10.4.21",
-    "netlify-cli": "^20.0.0",
+    "netlify-cli": "^21.6.0",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
     "tslib": "^2.8.1",

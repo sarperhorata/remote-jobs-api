@@ -10,6 +10,8 @@ jobs:
   test-frontend:
     name: Test Frontend
     runs-on: ubuntu-latest
+    outputs:
+      coverage: ${{ steps.coverage.outputs.coverage }}
     defaults:
       run:
         working-directory: ./frontend
@@ -43,6 +45,9 @@ jobs:
   test-backend:
     name: Test Backend
     runs-on: ubuntu-latest
+    outputs:
+      total_tests: ${{ steps.test_results.outputs.total_tests }}
+      coverage: ${{ steps.test_results.outputs.coverage }}
     defaults:
       run:
         working-directory: ./backend

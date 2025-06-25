@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { useAuth } from '../contexts/AuthContext';
-import { Check, X, Star, Zap, Crown, Shield, Users, Target } from 'lucide-react';
+import { Check, X, Star, Crown, Users } from 'lucide-react';
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY || '');

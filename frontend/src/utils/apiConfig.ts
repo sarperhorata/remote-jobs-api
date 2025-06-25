@@ -8,13 +8,16 @@ interface PortConfig {
 }
 
 const portConfig: PortConfig = {
-  backendPorts: [8000, 8001, 8002, 8003, 8004], // Backend için öncelik sırası - 8000'i ilk sıraya aldım
+  backendPorts: [8001, 8000, 8002, 8003, 8004], // 8001'i ilk sıraya aldım - stable port
   frontendPorts: [3001, 3000, 5000, 5001, 5173], // Frontend için öncelik sırası
 };
 
 // API URL cache - Global değişkenler
 let cachedApiUrl: string | null = null;
 let apiUrlPromise: Promise<string> | null = null;
+
+// Sync API Base URL - fallback for components that need immediate access
+export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001';
 
 // Cache temizleme fonksiyonu
 export const clearApiUrlCache = () => {
@@ -33,10 +36,10 @@ const detectBackendPort = async (): Promise<string> => {
     return process.env.REACT_APP_API_URL;
   }
 
-  // Test environment check - force port 8001
+  // Test environment check - force port 8000 for tests
   if (process.env.NODE_ENV === 'test') {
-    console.log('🧪 Test mode - forcing port 8001');
-    return 'http://localhost:8001/api';
+    console.log('🧪 Test mode - forcing port 8000');
+    return 'http://localhost:8000/api';
   }
 
   // Backend portlarını sırayla test et

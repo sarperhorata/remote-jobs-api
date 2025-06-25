@@ -11,10 +11,11 @@ from datetime import datetime
 from backend.config import Settings
 import pytest_asyncio
 from bson import ObjectId
+from fastapi.testclient import TestClient
+import sys
 
-# Set testing environment
+# Set testing environment before importing the app
 os.environ["TESTING"] = "true"
-os.environ["ENVIRONMENT"] = "test"
 
 # Set test environment variables
 os.environ.setdefault("EMAIL_HOST", "smtp.gmail.com")
@@ -33,13 +34,59 @@ os.environ.setdefault("TELEGRAM_CHAT_ID", "123456789")
 # Configure asyncio mode for pytest-asyncio
 pytest_plugins = ['pytest_asyncio']
 
-@pytest_asyncio.fixture(scope="session")
+# Add project root to path to allow imports from backend
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from backend.database.db import get_database
+
+@pytest.fixture(scope="session")
 def event_loop():
-    """Create an instance of the default event loop for the test session."""
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
+    """Create an instance of the default event loop for each test session."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
     yield loop
     loop.close()
+
+@pytest.fixture(scope="module")
+def client():
+    """
+    Create a test client for the FastAPI app for each test module.
+    This fixture is used for API-level tests.
+    """
+    with TestClient(app) as test_client:
+        yield test_client
+
+@pytest.fixture(scope="function")
+async def db_mock():
+    """
+    Provides a mock of the database connection for function-scoped tests.
+    This is ideal for unit tests of services or CRUD operations.
+    """
+    db = MagicMock()
+    db.users = AsyncMock()
+    db.jobs = AsyncMock()
+    db.companies = AsyncMock()
+    
+    # Default return values
+    db.users.find_one.return_value = None
+    db.jobs.find_one.return_value = None
+    
+    return db
+
+@pytest.fixture(autouse=True)
+def override_db(db_mock):
+    """
+    Automatically override the `get_database` dependency for all tests
+    to use the mock database.
+    """
+    async def _override_get_db():
+        return db_mock
+
+    app.dependency_overrides[get_database] = _override_get_db
+    yield
+    app.dependency_overrides.clear()
 
 @pytest_asyncio.fixture(scope="session")
 async def mongodb_client():
@@ -439,4 +486,16 @@ def mock_external_services(monkeypatch):
     try:
         monkeypatch.setattr("external_job_apis.fetch_jobs", mock_fetch_external_jobs)
     except AttributeError:
-        pass 
+        pass
+
+def test_pytest_is_working():
+    """A simple sanity check to ensure pytest runs."""
+    assert 1 + 1 == 2
+
+def test_can_import_fastapi_app():
+    """Checks if the main FastAPI app instance can be imported without errors."""
+    try:
+        from backend.main import app
+        assert app is not None
+    except ImportError as e:
+        pytest.fail(f"Failed to import the FastAPI app from backend.main: {e}") 

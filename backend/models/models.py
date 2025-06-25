@@ -390,6 +390,24 @@ class TranslationResponse(BaseModel):
     translation_confidence: float
     error: Optional[str] = None
 
+class JobTranslation(BaseModel):
+    """Translation data for a job listing"""
+    job_id: str
+    original_language: str
+    target_language: str
+    translated_fields: Dict[str, str]  # field_name -> translated_text
+    translation_metadata: Optional[Dict[str, Any]] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class CompanyTranslation(BaseModel):
+    """Translation data for company information"""
+    company_id: str
+    original_language: str
+    target_language: str
+    translated_fields: Dict[str, str]  # field_name -> translated_text
+    translation_metadata: Optional[Dict[str, Any]] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
 class JobTranslationResult(BaseModel):
     job_id: str
     needs_translation: bool

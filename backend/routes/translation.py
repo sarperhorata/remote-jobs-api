@@ -4,14 +4,15 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 import logging
 from bson import ObjectId
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from ..database import get_async_db
-from ..services.translation_service import translation_service
-from ..models.models import (
+from backend.database.db import get_async_db
+from backend.services.translation_service import translation_service
+from backend.models.models import (
     TranslationRequest, TranslationResponse, 
     JobTranslationResult, BatchTranslationRequest, BatchTranslationResponse
 )
-from ..routes.auth import get_current_user_dependency
+from backend.routes.auth import get_current_user_dependency
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, ChevronDown } from 'lucide-react';
+import { API_BASE_URL } from '../utils/apiConfig';
 
 interface Position {
   title: string;
@@ -28,25 +29,49 @@ const JobAutocomplete: React.FC<JobAutocompleteProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Fetch positions from backend
-  useEffect(() => {
-    const fetchPositions = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch('http://localhost:8000/api/jobs/statistics');
-        if (response.ok) {
-          const data = await response.json();
-          setPositions(data.positions || []);
-        }
-      } catch (error) {
-        console.error('Error fetching positions:', error);
-      } finally {
-        setIsLoading(false);
+  const fetchPositions = useCallback(async () => {
+    if (isLoading) return;
+    
+    setIsLoading(true);
+    try {
+      // Use the job-titles/search endpoint for autocomplete
+      const response = await fetch(`${API_BASE_URL}/api/jobs/job-titles/search?q=${encodeURIComponent(value)}&limit=20`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    };
+      
+      const data = await response.json();
+      console.log('🔍 Autocomplete API Response:', data);
+      
+      // Convert job titles to position format
+      const formattedPositions = data.map((item: any) => ({
+        title: item.title,
+        count: 1 // Default count since API doesn't provide this
+      }));
+      
+      setPositions(formattedPositions);
+    } catch (error) {
+      console.error('❌ Error fetching positions:', error);
+      setPositions([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [value, isLoading]);
 
-    fetchPositions();
-  }, []);
+  // Fetch positions when value changes
+  useEffect(() => {
+    if (value.length >= 2) {
+      const timeoutId = setTimeout(() => {
+        fetchPositions();
+      }, 300); // Debounce
+      
+      return () => clearTimeout(timeoutId);
+    } else {
+      setPositions([]);
+      setFilteredPositions([]);
+    }
+  }, [value, fetchPositions]);
 
   // Filter positions based on input value
   useEffect(() => {

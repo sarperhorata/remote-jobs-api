@@ -4,8 +4,8 @@ from typing import Optional, List
 from datetime import datetime, timedelta
 import uuid
 
-from ..database import get_async_db
-from ..routes.auth import get_current_user_dependency
+from backend.database import get_async_db
+from backend.routes.auth import get_current_user_dependency
 from bson import ObjectId
 import logging
 

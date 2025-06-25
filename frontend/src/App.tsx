@@ -16,6 +16,7 @@ const LoginPage = lazy(() => import('./pages/Login'));
 const RegisterPage = lazy(() => import('./pages/Register'));
 
 const JobDetailPage = lazy(() => import('./pages/JobDetailPage'));
+const JobSearchResultsPage = lazy(() => import('./pages/JobSearchResults'));
 const UserProfilePage = lazy(() => import('./pages/UserProfile'));
 const ResumeUploadPage = lazy(() => import('./pages/ResumeUpload'));
 const TermsConditionsPage = lazy(() => import('./pages/TermsConditions'));
@@ -32,6 +33,7 @@ const CheckEmailPage = lazy(() => import('./pages/CheckEmail'));
 const EmailVerificationPage = lazy(() => import('./pages/EmailVerification'));
 const SetPasswordPage = lazy(() => import('./pages/SetPassword'));
 const OnboardingProfileSetupPage = lazy(() => import('./pages/OnboardingProfileSetup'));
+const OnboardingCompleteProfilePage = lazy(() => import('./pages/OnboardingCompleteProfile'));
 
 // Auth Pages
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPassword'));
@@ -53,10 +55,13 @@ const App: React.FC = () => {
                 <Route path="/register" element={<RegisterPage />} />
                 
                 <Route path="/jobs/:id" element={<JobDetailPage />} />
+                <Route path="/jobs/search" element={<JobSearchResultsPage />} />
                 
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/terms" element={<TermsConditionsPage />} />
+                <Route path="/terms-conditions" element={<TermsConditionsPage />} />
                 <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                 <Route path="/help" element={<HelpPage />} />
                 <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
@@ -72,6 +77,7 @@ const App: React.FC = () => {
                 <Route path="/onboarding/verify-email" element={<EmailVerificationPage />} />
                 <Route path="/onboarding/set-password" element={<SetPasswordPage />} />
                 <Route path="/onboarding/profile-setup" element={<OnboardingProfileSetupPage />} />
+                <Route path="/onboarding/complete-profile" element={<OnboardingCompleteProfilePage />} />
 
                 {/* Protected Routes (Require Authentication) */}
                 <Route 

@@ -2,6 +2,7 @@ import pytest
 import asyncio
 from unittest.mock import AsyncMock, patch, MagicMock
 from datetime import datetime
+from typing import Dict, Any
 
 from backend.services.translation_service import TranslationService, translation_service
 
@@ -9,12 +10,12 @@ class TestTranslationService:
     """Test suite for Translation Service"""
     
     @pytest.fixture
-    def translation_svc(self):
+    def translation_svc(self) -> TranslationService:
         """Create translation service instance"""
         return TranslationService()
     
     @pytest.fixture
-    def sample_turkish_job(self):
+    def sample_turkish_job(self) -> Dict[str, Any]:
         """Sample Turkish job data"""
         return {
             "_id": "test_job_id",
@@ -31,7 +32,7 @@ class TestTranslationService:
         }
     
     @pytest.fixture
-    def sample_english_job(self):
+    def sample_english_job(self) -> Dict[str, Any]:
         """Sample English job data"""
         return {
             "_id": "test_job_id_en",
@@ -47,7 +48,8 @@ class TestTranslationService:
             "isRemote": True
         }
 
-    async def test_detect_language_turkish(self, translation_svc):
+    @pytest.mark.asyncio
+    async def test_detect_language_turkish(self, translation_svc: TranslationService):
         """Test Turkish language detection"""
         turkish_text = "Merhaba dünya, bu bir Türkçe metin örneğidir."
         
@@ -58,7 +60,8 @@ class TestTranslationService:
         assert isinstance(confidence, float)
         assert confidence > 0
 
-    async def test_detect_language_english(self, translation_svc):
+    @pytest.mark.asyncio
+    async def test_detect_language_english(self, translation_svc: TranslationService):
         """Test English language detection"""
         english_text = "Hello world, this is an English text example."
         
@@ -68,7 +71,8 @@ class TestTranslationService:
         assert language == 'en'
         assert isinstance(confidence, float)
 
-    async def test_detect_language_short_text(self, translation_svc):
+    @pytest.mark.asyncio
+    async def test_detect_language_short_text(self, translation_svc: TranslationService):
         """Test language detection with short text"""
         short_text = "Hi"
         
@@ -77,7 +81,8 @@ class TestTranslationService:
         assert language == 'en'  # Default to English for short texts
         assert confidence == 0.5
 
-    async def test_detect_language_empty_text(self, translation_svc):
+    @pytest.mark.asyncio
+    async def test_detect_language_empty_text(self, translation_svc: TranslationService):
         """Test language detection with empty text"""
         empty_text = ""
         
@@ -86,7 +91,8 @@ class TestTranslationService:
         assert language == 'en'
         assert confidence == 0.5
 
-    async def test_clean_text_for_detection(self, translation_svc):
+    @pytest.mark.asyncio
+    async def test_clean_text_for_detection(self, translation_svc: TranslationService):
         """Test text cleaning for language detection"""
         dirty_text = "Test text with https://example.com and email@test.com and 123-456-7890"
         
@@ -96,7 +102,8 @@ class TestTranslationService:
         assert "email@test.com" not in cleaned
         assert "Test text" in cleaned
 
-    async def test_translate_text_success(self, translation_svc):
+    @pytest.mark.asyncio
+    async def test_translate_text_success(self, translation_svc: TranslationService):
         """Test successful text translation"""
         turkish_text = "Merhaba dünya"
         
@@ -114,7 +121,8 @@ class TestTranslationService:
         assert result['target_language'] == 'en'
         assert result['translation_confidence'] == 0.85
 
-    async def test_translate_text_same_language(self, translation_svc):
+    @pytest.mark.asyncio
+    async def test_translate_text_same_language(self, translation_svc: TranslationService):
         """Test translation when source and target are the same"""
         english_text = "Hello world"
         
@@ -128,7 +136,8 @@ class TestTranslationService:
         assert result['original_text'] == english_text
         assert result['translation_confidence'] == 1.0
 
-    async def test_translate_text_empty(self, translation_svc):
+    @pytest.mark.asyncio
+    async def test_translate_text_empty(self, translation_svc: TranslationService):
         """Test translation with empty text"""
         result = await translation_svc.translate_text("", target_lang='en')
         
@@ -136,7 +145,8 @@ class TestTranslationService:
         assert result['original_text'] == ""
         assert result['translation_confidence'] == 1.0
 
-    async def test_translate_text_error_handling(self, translation_svc):
+    @pytest.mark.asyncio
+    async def test_translate_text_error_handling(self, translation_svc: TranslationService):
         """Test translation error handling"""
         problematic_text = "Some text"
         
@@ -147,7 +157,8 @@ class TestTranslationService:
         assert 'error' in result
         assert result['translation_confidence'] == 0.0
 
-    async def test_translate_job_listing_turkish(self, translation_svc, sample_turkish_job):
+    @pytest.mark.asyncio
+    async def test_translate_job_listing_turkish(self, translation_svc: TranslationService, sample_turkish_job: Dict[str, Any]):
         """Test translating a Turkish job listing"""
         # Mock language detection
         with patch.object(translation_svc, 'detect_language', return_value=('tr', 0.9)):
@@ -169,7 +180,8 @@ class TestTranslationService:
         assert translated_data['title'] == "Translated text"
         assert translated_data['description'] == "Translated text"
 
-    async def test_translate_job_listing_english(self, translation_svc, sample_english_job):
+    @pytest.mark.asyncio
+    async def test_translate_job_listing_english(self, translation_svc: TranslationService, sample_english_job: Dict[str, Any]):
         """Test translating an English job listing (should skip)"""
         # Mock language detection to return English
         with patch.object(translation_svc, 'detect_language', return_value=('en', 0.9)):
@@ -180,7 +192,8 @@ class TestTranslationService:
         assert result['translated_data'] == sample_english_job
         assert result['translation_metadata']['translation_required'] == False
 
-    async def test_translate_job_listing_skills_array(self, translation_svc):
+    @pytest.mark.asyncio
+    async def test_translate_job_listing_skills_array(self, translation_svc: TranslationService):
         """Test translation of skills array in job listing"""
         job_with_foreign_skills = {
             "title": "Desarrollador",
@@ -214,7 +227,8 @@ class TestTranslationService:
         assert "Database" in translated_skills
         assert "Python" in translated_skills  # Should remain unchanged
 
-    async def test_batch_translate_jobs(self, translation_svc, sample_turkish_job, sample_english_job):
+    @pytest.mark.asyncio
+    async def test_batch_translate_jobs(self, translation_svc: TranslationService, sample_turkish_job: Dict[str, Any], sample_english_job: Dict[str, Any]):
         """Test batch translation of multiple jobs"""
         jobs = [sample_turkish_job, sample_english_job]
         
@@ -242,7 +256,8 @@ class TestTranslationService:
         assert results[0]['needs_translation'] == True
         assert results[1]['needs_translation'] == False
 
-    async def test_batch_translate_with_rate_limiting(self, translation_svc):
+    @pytest.mark.asyncio
+    async def test_batch_translate_with_rate_limiting(self, translation_svc: TranslationService):
         """Test batch translation with rate limiting"""
         jobs = [{"title": f"Job {i}", "description": f"Description {i}"} for i in range(25)]
         
@@ -262,7 +277,8 @@ class TestTranslationService:
                 # Should have called sleep for rate limiting
                 assert mock_sleep.call_count >= 2  # At least 2 batches, so at least 2 sleep calls
 
-    async def test_validate_translation_quality_good(self, translation_svc):
+    @pytest.mark.asyncio
+    async def test_validate_translation_quality_good(self, translation_svc: TranslationService):
         """Test translation quality validation for good translation"""
         original = "This is a test sentence with reasonable length"
         translated = "Esta es una oración de prueba con longitud razonable"
@@ -273,7 +289,8 @@ class TestTranslationService:
         assert result['quality_score'] >= 0.6
         assert len(result['issues']) == 0
 
-    async def test_validate_translation_quality_poor(self, translation_svc):
+    @pytest.mark.asyncio
+    async def test_validate_translation_quality_poor(self, translation_svc: TranslationService):
         """Test translation quality validation for poor translation"""
         original = "This is a test sentence"
         translated = ""  # Empty translation
@@ -284,7 +301,8 @@ class TestTranslationService:
         assert result['quality_score'] < 0.6
         assert "Empty translation" in result['issues']
 
-    async def test_validate_translation_quality_error_keywords(self, translation_svc):
+    @pytest.mark.asyncio
+    async def test_validate_translation_quality_error_keywords(self, translation_svc: TranslationService):
         """Test quality validation catches error keywords"""
         original = "Hello world"
         translated = "Translation failed due to error"
@@ -294,7 +312,8 @@ class TestTranslationService:
         assert result['is_acceptable'] == False
         assert "error keywords" in str(result['issues'])
 
-    async def test_validate_translation_quality_unusual_length(self, translation_svc):
+    @pytest.mark.asyncio
+    async def test_validate_translation_quality_unusual_length(self, translation_svc: TranslationService):
         """Test quality validation catches unusual length ratios"""
         original = "Short"
         translated = "This is an extremely long translation that doesn't make sense for such a short original text"
@@ -304,7 +323,8 @@ class TestTranslationService:
         assert result['is_acceptable'] == False
         assert any("length ratio" in issue for issue in result['issues'])
 
-    async def test_get_supported_languages(self, translation_svc):
+    @pytest.mark.asyncio
+    async def test_get_supported_languages(self, translation_svc: TranslationService):
         """Test getting supported languages"""
         languages = translation_svc.get_supported_languages()
         
@@ -314,7 +334,8 @@ class TestTranslationService:
         assert 'es' in languages
         assert languages['en'] == 'english'
 
-    async def test_translation_caching(self, translation_svc):
+    @pytest.mark.asyncio
+    async def test_translation_caching(self, translation_svc: TranslationService):
         """Test that translations are cached"""
         text = "Test text for caching"
         
@@ -334,7 +355,8 @@ class TestTranslationService:
         assert mock_translate.call_count == 1
         assert result1 == result2
 
-    async def test_error_handling_in_batch_translation(self, translation_svc):
+    @pytest.mark.asyncio
+    async def test_error_handling_in_batch_translation(self, translation_svc: TranslationService):
         """Test error handling during batch translation"""
         jobs = [{"title": "Job 1"}, {"title": "Job 2"}]
         
@@ -358,7 +380,8 @@ class TestTranslationService:
         assert results[0]['needs_translation'] == True
         assert 'error' in results[1]['translation_metadata']
 
-    async def test_language_detection_exception_handling(self, translation_svc):
+    @pytest.mark.asyncio
+    async def test_language_detection_exception_handling(self, translation_svc: TranslationService):
         """Test handling of language detection exceptions"""
         from langdetect.lang_detect_exception import LangDetectException
         
@@ -368,7 +391,8 @@ class TestTranslationService:
         assert language == 'en'  # Should default to English
         assert confidence == 0.3  # Low confidence
 
-    async def test_complex_job_translation_scenario(self, translation_svc):
+    @pytest.mark.asyncio
+    async def test_complex_job_translation_scenario(self, translation_svc: TranslationService):
         """Test complex job translation with multiple fields and edge cases"""
         complex_job = {
             "_id": "complex_job",

@@ -1,22 +1,40 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
+from pydantic import BaseModel, Field, HttpUrl, ConfigDict
 from bson import ObjectId
+from .common import PyObjectId
 
 class JobBase(BaseModel):
-    title: str
-    company: str
-    location: str
-    description: str
-    requirements: Optional[str] = None
-    salary_range: Optional[str] = None
-    job_type: str
-    experience_level: Optional[str] = None
-    apply_url: str
-    remote_type: Optional[str] = None
-    benefits: Optional[str] = None
-    skills: Optional[str] = None
-    application_deadline: Optional[datetime] = None
+    title: str = Field(...)
+    company: str = Field(...)
+    location: Optional[str] = None
+    description: str = Field(...)
+    apply_url: HttpUrl
+    tags: Optional[List[str]] = []
+
+class JobCreate(JobBase):
+    pass
+
+class JobUpdate(BaseModel):
+    title: Optional[str] = None
+    company: Optional[str] = None
+    location: Optional[str] = None
+    description: Optional[str] = None
+    apply_url: Optional[HttpUrl] = None
+    tags: Optional[List[str]] = None
+    is_active: Optional[bool] = None
+
+class Job(JobBase):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True, json_encoders={ObjectId: str})
+
+class JobListResponse(BaseModel):
+    items: List[Job]
+    total: int
 
 class JobSearchQuery(BaseModel):
     """Search query schema for job filtering"""
@@ -41,25 +59,6 @@ class ApplicationCreate(BaseModel):
     application_type: str = Field(default="external", pattern="^(external|internal)$")
     additional_notes: Optional[str] = None
 
-class JobCreate(JobBase):
-    pass
-
-class JobUpdate(BaseModel):
-    title: Optional[str] = None
-    company: Optional[str] = None
-    location: Optional[str] = None
-    description: Optional[str] = None
-    requirements: Optional[str] = None
-    salary_range: Optional[str] = None
-    job_type: Optional[str] = None
-    experience_level: Optional[str] = None
-    apply_url: Optional[str] = None
-    remote_type: Optional[str] = None
-    benefits: Optional[str] = None
-    skills: Optional[str] = None
-    application_deadline: Optional[datetime] = None
-    is_active: Optional[bool] = None
-
 class JobResponse(JobBase):
     id: str = Field(alias="_id")
     is_active: bool
@@ -74,12 +73,4 @@ class JobResponse(JobBase):
     def __get_pydantic_json_schema__(cls, core_schema, handler):
         json_schema = handler(core_schema)
         json_schema["properties"]["id"] = {"type": "string"}
-        return json_schema
-
-class JobListResponse(BaseModel):
-    jobs: List[JobResponse]
-    total: int
-    page: int
-    per_page: int
-    limit: int
-    total_pages: int 
+        return json_schema 

@@ -6,18 +6,91 @@ from backend.database import get_async_db
 from backend.utils.auth import get_current_user, get_current_admin, get_current_active_user
 import os
 import logging
-from backend.models.job import JobCreate, JobResponse
+from backend.schemas.job import JobCreate, JobResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.crud import job as job_crud
 from backend.schemas.job import JobUpdate, JobListResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from backend.models.models import Job, JobApplication
+from backend.schemas.job import Job, JobCreate
+from backend.models.models import JobApplication
 from backend.schemas.job import JobSearchQuery, ApplicationCreate
 from backend.services.job_scraping_service import JobScrapingService
 from backend.services.auto_application_service import AutoApplicationService
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 logger = logging.getLogger(__name__)
+
+@router.post("/", response_model=Job, status_code=status.HTTP_201_CREATED)
+async def create_job(
+    job: JobCreate, db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """Create a new job."""
+    job_dict = job.model_dump()
+    result = await db.jobs.insert_one(job_dict)
+    created_job = await db.jobs.find_one({"_id": result.inserted_id})
+    return created_job
+
+@router.get("/", response_model=JobListResponse)
+async def read_jobs(
+    skip: int = 0, limit: int = 100, db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """Retrieve all jobs with pagination."""
+    jobs_cursor = db.jobs.find().skip(skip).limit(limit)
+    total_jobs = await db.jobs.count_documents({})
+    jobs = await jobs_cursor.to_list(limit)
+    return {
+        "items": jobs,
+        "total": total_jobs,
+        "page": (skip // limit) + 1,
+        "per_page": limit,
+        "total_pages": (total_jobs + limit - 1) // limit,
+    }
+
+@router.get("/{job_id}", response_model=Job)
+async def read_job(job_id: str, db: AsyncIOMotorDatabase = Depends(get_async_db)):
+    """Retrieve a single job by its ID."""
+    if not ObjectId.is_valid(job_id):
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+    job = await db.jobs.find_one({"_id": ObjectId(job_id)})
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
+
+@router.put("/{job_id}", response_model=Job)
+async def update_job(
+    job_id: str, job: JobUpdate, db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """Update a job."""
+    if not ObjectId.is_valid(job_id):
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+    
+    update_data = job.model_dump(exclude_unset=True)
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No update data provided")
+
+    result = await db.jobs.update_one(
+        {"_id": ObjectId(job_id)}, {"$set": update_data}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Job not found")
+        
+    updated_job = await db.jobs.find_one({"_id": ObjectId(job_id)})
+    return updated_job
+
+@router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_job(job_id: str, db: AsyncIOMotorDatabase = Depends(get_async_db)):
+    """Delete a job."""
+    if not ObjectId.is_valid(job_id):
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+        
+    result = await db.jobs.delete_one({"_id": ObjectId(job_id)})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    return None
 
 @router.get("/search", response_model=dict)
 async def search_jobs(
@@ -467,74 +540,6 @@ async def get_jobs(
             "limit": limit,
             "total_pages": 1
         }
-
-@router.put("/{job_id}", response_model=JobResponse)
-async def update_job(
-    job_id: str,
-    job: JobUpdate,
-    db: AsyncIOMotorDatabase = Depends(get_async_db)
-):
-    """Update a job posting."""
-    # Try to convert to ObjectId if it's a valid ObjectId string
-    if ObjectId.is_valid(job_id):
-        query = {"_id": ObjectId(job_id)}
-    else:
-        query = {"_id": job_id}
-        
-    update_data = job.model_dump(exclude_unset=True)
-    update_data["updated_at"] = datetime.utcnow()
-    
-    result = await db.jobs.update_one(query, {"$set": update_data})
-    
-    if result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="Job not found")
-    
-    updated_job = await db.jobs.find_one(query)
-    
-    # Handle case where job might not be found (e.g., in mock database)
-    if not updated_job:
-        # In mock database, create a complete job object
-        updated_job = {
-            "title": "Updated Job Title",
-            "company": "Updated Company",
-            "location": "Remote",
-            "description": "Updated description",
-            "requirements": "Updated requirements",
-            "salary_range": "80000-120000",
-            "job_type": "Full-time",
-            "experience_level": "Mid-level",
-            "apply_url": "https://example.com/apply",
-            "is_active": True,
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow(),
-            "views_count": 0,
-            "applications_count": 0,
-            "_id": ObjectId(job_id) if ObjectId.is_valid(job_id) else job_id
-        }
-        # Merge with actual update data
-        updated_job.update(update_data)
-
-    # Convert ObjectId to string for JSON serialization
-    if "_id" in updated_job and isinstance(updated_job["_id"], ObjectId):
-        updated_job["id"] = str(updated_job["_id"])
-        
-    return updated_job
-
-@router.delete("/{job_id}", status_code=204)
-async def delete_job(
-    job_id: str,
-    db: AsyncIOMotorDatabase = Depends(get_async_db)
-):
-    """Delete a job posting."""
-    # Try to convert to ObjectId if it's a valid ObjectId string
-    if ObjectId.is_valid(job_id):
-        query = {"_id": ObjectId(job_id)}
-    else:
-        query = {"_id": job_id}
-        
-    result = await db.jobs.delete_one(query)
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Job not found")
 
 @router.get("/{job_id}/similar", response_model=List[dict])
 async def get_similar_jobs(

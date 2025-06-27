@@ -44,6 +44,7 @@ export interface Job {
   isRemote?: boolean; // Remote job indicator
   applicantCount?: number; // Number of applicants
   views_count?: number; // Number of views
+  viewsCount?: number; // Alias for views_count for backward compatibility
   applications_count?: number; // Number of applications
 }
 

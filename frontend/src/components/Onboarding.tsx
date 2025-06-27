@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { 
-  User, 
+import { User, 
   MapPin, 
   Briefcase, 
   Star, 
@@ -9,8 +8,7 @@ import {
   ArrowLeft,
   Bell,
   Target,
-  Zap
-} from 'lucide-react';
+  Zap } from './icons/EmojiIcons';
 
 interface OnboardingProps {
   isOpen: boolean;

@@ -3,7 +3,7 @@ from datetime import datetime
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 from passlib.context import CryptContext
-from backend.models.user import UserCreate, UserUpdate, UserResponse, UserInDB
+from backend.schemas.user import UserCreate, UserUpdate, UserResponse, UserInDB
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

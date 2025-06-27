@@ -1,21 +1,32 @@
-from pydantic import BaseModel, EmailStr, Field, ConfigDict, validator, field_validator
-from typing import Optional, Dict, Any, List
 from datetime import datetime
+from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 from bson import ObjectId
+from .common import PyObjectId
 
 class UserBase(BaseModel):
-    email: EmailStr
-    name: Optional[str] = None
+    email: EmailStr = Field(...)
+    full_name: Optional[str] = None
+    is_active: bool = True
+    is_superuser: bool = False
 
 class UserCreate(UserBase):
-    password: str = Field(..., min_length=8, description="Password must be at least 8 characters long")
-    
-    @field_validator('password')
-    @classmethod
-    def validate_password(cls, v):
-        if len(v) < 8:
-            raise ValueError('Password must be at least 8 characters long')
-        return v
+    password: str = Field(...)
+    name: Optional[str] = None  # For backward compatibility
+
+class UserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class User(UserBase):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True, json_encoders={ObjectId: str})
+
+class UserInDB(User):
+    hashed_password: str
 
 # Onboarding için yeni schema'lar
 class EmailOnlyRegister(BaseModel):
@@ -81,9 +92,6 @@ class ProfileCompletion(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
-
-class UserUpdate(UserBase):
-    password: Optional[str] = None
 
 class UserResponse(UserBase):
     id: str = Field(alias="_id")

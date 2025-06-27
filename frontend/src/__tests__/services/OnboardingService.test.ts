@@ -2,8 +2,11 @@
 // For mocking, we use jest.fn() instead of vi
 import { onboardingService } from '../../services/onboardingService';
 
-// Mock fetch globally
-const mockFetch = jest.fn();
+jest.mock('../../utils/apiConfig', () => ({
+  getApiUrl: jest.fn().mockResolvedValue('http://localhost:8001/api/v1')
+}));
+
+let mockFetch = jest.fn();
 global.fetch = mockFetch;
 
 describe('OnboardingService', () => {

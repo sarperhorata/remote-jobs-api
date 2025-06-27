@@ -42,6 +42,7 @@ sentry_sdk.init(
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from backend.routes import auth, profile, jobs, ads, notification_routes, companies, payment, onboarding, applications, translation
+from backend.routes.auto_apply import router as auto_apply_router
 from backend.routes.ai_recommendations import router as ai_router
 from backend.routes.legal import router as legal_router
 from backend.routes.fake_job_detection import router as fake_job_router
@@ -131,20 +132,21 @@ if os.path.exists(admin_static_path):
 
 # Include all application routers
 routers_to_include = [
-    (auth.router, "/api", ["auth"]),
-    (onboarding.router, "/api", ["onboarding"]),
-    (profile.router, "/api", ["profile"]),
-    (jobs.router, "/api", ["jobs"]),
-    (ads.router, "/api", ["ads"]),
-    (notification_routes.router, "/api", ["notifications"]),
-    (companies.router, "/api", ["companies"]),
-    (legal_router, "/api", ["legal"]),
-    (payment.router, "/api", ["payment"]),
-    (applications.router, "/api", ["applications"]),
-    (translation.router, "/api", ["translation"]),
-    (ai_router, "/api", ["ai"]),
-    (fake_job_router, "/api", ["fake-job-detection"]),
-    (sentry_webhook_router, "/api", ["webhooks"])
+    (auth.router, "/api/v1/auth", ["auth"]),
+    (onboarding.router, "/api/v1", ["onboarding"]),
+    (profile.router, "/api/v1", ["profile"]),
+    (jobs.router, "/api/v1", ["jobs"]),
+    (ads.router, "/api/v1", ["ads"]),
+    (notification_routes.router, "/api/v1", ["notifications"]),
+    (companies.router, "/api/v1", ["companies"]),
+    (legal_router, "/api/v1", ["legal"]),
+    (payment.router, "/api/v1", ["payment"]),
+    (applications.router, "/api/v1", ["applications"]),
+    (auto_apply_router, "/api/v1/auto-apply", ["auto-apply"]),
+    (translation.router, "/api/v1", ["translation"]),
+    (ai_router, "/api/v1", ["ai"]),
+    (fake_job_router, "/api/v1", ["fake-job-detection"]),
+    (sentry_webhook_router, "/api/v1", ["webhooks"])
 ]
 
 for router, prefix, tags in routers_to_include:

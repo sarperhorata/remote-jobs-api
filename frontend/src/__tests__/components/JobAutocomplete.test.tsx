@@ -9,7 +9,7 @@ jest.mock('../../utils/apiConfig', () => ({
   API_BASE_URL: 'http://localhost:8000'
 }));
 
-const mockPositions = [
+const mockJobTitles = [
   { title: 'Software Engineer', count: 150 },
   { title: 'Data Scientist', count: 75 },
   { title: 'Product Manager', count: 50 }
@@ -37,7 +37,7 @@ describe("JobAutocomplete", () => {
     jest.clearAllMocks();
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
-      json: async () => ({ positions: mockPositions })
+      json: async () => mockJobTitles
     });
   });
 
@@ -75,7 +75,7 @@ describe("JobAutocomplete", () => {
     );
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith("http://localhost:8000/api/jobs/statistics");
+      expect(global.fetch).toHaveBeenCalledWith("http://localhost:8000/api/jobs/job-titles/search?q=soft&limit=20");
     });
   });
 

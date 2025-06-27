@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Mail, CheckCircle } from 'lucide-react';
+import { Mail, CheckCircle } from '../components/icons/EmojiIcons';
 
 const CheckEmail: React.FC = () => {
   const location = useLocation();

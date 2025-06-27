@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  MapPin, 
-  User, 
+import { MapPin, 
   Briefcase, 
   Star, 
   DollarSign, 
   Settings, 
   Bell,
-  X
-} from 'lucide-react';
+  X,
+  Clock,
+  CheckCircle,
+  Globe,
+  Mail } from '../components/icons/EmojiIcons';
 import { notificationService } from '../services/notificationService';
 
 interface LocationResult {
@@ -28,6 +29,13 @@ interface JobTitle {
   id: string;
   title: string;
   category: string;
+}
+
+interface ExperienceLevel {
+  value: string;
+  label: string;
+  minYears: number;
+  maxYears: number | null;
 }
 
 const OnboardingCompleteProfile: React.FC = () => {
@@ -75,7 +83,7 @@ const OnboardingCompleteProfile: React.FC = () => {
   const jobTitleTimeoutRef = useRef<NodeJS.Timeout>();
   const skillTimeoutRef = useRef<NodeJS.Timeout>();
 
-  const experienceLevels = [
+  const experienceLevels: ExperienceLevel[] = [
     { value: 'entry', label: 'Entry Level (0-2 years)', minYears: 0, maxYears: 2 },
     { value: 'mid', label: 'Mid Level (2-4 years)', minYears: 2, maxYears: 4 },
     { value: 'senior', label: 'Senior Level (4-6 years)', minYears: 4, maxYears: 6 },
@@ -143,60 +151,51 @@ const OnboardingCompleteProfile: React.FC = () => {
     }, 300);
   };
 
-  const getCurrentLocation = () => {
+  const getCurrentLocation = async () => {
     if (!navigator.geolocation) {
-      setError('Geolocation is not supported by this browser');
+      setError('Geolocation is not supported by this browser.');
       return;
     }
 
     setGettingLocation(true);
-    setError('');
-
+    
     navigator.geolocation.getCurrentPosition(
       async (position) => {
+        const { latitude, longitude } = position.coords;
+        
         try {
-          const { latitude, longitude } = position.coords;
+          // Reverse geocoding to get location name
           const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`
           );
           const data = await response.json();
           
-          if (data.display_name) {
-            const locationResult: LocationResult = {
+          if (data && data.display_name) {
+            setLocationInput(data.display_name);
+            setSelectedLocation({
+              place_id: data.place_id?.toString() || '',
               display_name: data.display_name,
               lat: latitude.toString(),
-              lon: longitude.toString(),
-              place_id: data.place_id
-            };
-            
-            setSelectedLocation(locationResult);
-            setLocationInput(data.display_name);
-            setLocationSuggestions([]);
+              lon: longitude.toString()
+            });
           }
         } catch (error) {
+          console.error('Reverse geocoding error:', error);
           setError('Failed to get location details');
         } finally {
           setGettingLocation(false);
         }
       },
       (error) => {
+        console.error('Geolocation error:', error);
+        setError('Failed to get your location. Please check location permissions.');
         setGettingLocation(false);
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            setError('Location access denied');
-            break;
-          case error.POSITION_UNAVAILABLE:
-            setError('Location information unavailable');
-            break;
-          case error.TIMEOUT:
-            setError('Location request timeout');
-            break;
-          default:
-            setError('An unknown error occurred');
-            break;
-        }
       },
-      { timeout: 10000, enableHighAccuracy: true }
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000
+      }
     );
   };
 
@@ -208,7 +207,7 @@ const OnboardingCompleteProfile: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:8000/api/jobs/job-titles/search?q=${encodeURIComponent(query)}`);
+      const response = await fetch(`http://localhost:8001/api/v1/jobs/job-titles/search?q=${encodeURIComponent(query)}`);
       
       if (!response.ok) {
         throw new Error('API not available');
@@ -217,18 +216,16 @@ const OnboardingCompleteProfile: React.FC = () => {
       const data = await response.json();
       setJobTitleSuggestions(data.slice(0, 10));
     } catch (error) {
-      console.error('Job title search error:', error);
+      console.error('Job titles search error:', error);
       // Fallback with common job titles
-      const commonTitles = [
+      const commonJobTitles = [
         'Software Engineer', 'Frontend Developer', 'Backend Developer', 'Full Stack Developer',
-        'Product Manager', 'Data Scientist', 'UX/UI Designer', 'DevOps Engineer',
-        'Marketing Manager', 'Sales Representative', 'Customer Success Manager',
-        'Mobile Developer', 'Cloud Architect', 'Security Engineer', 'QA Engineer',
-        'Scrum Master', 'Technical Writer', 'Business Analyst', 'System Administrator'
+        'DevOps Engineer', 'Data Scientist', 'Product Manager', 'UX Designer', 'UI Designer',
+        'Marketing Manager', 'Sales Representative', 'Business Analyst', 'Project Manager'
       ].filter(title => title.toLowerCase().includes(query.toLowerCase()))
        .map((title, index) => ({ id: `common-${index}`, title, category: 'Technology' }));
       
-      setJobTitleSuggestions(commonTitles);
+      setJobTitleSuggestions(commonJobTitles);
     }
   };
 
@@ -246,7 +243,7 @@ const OnboardingCompleteProfile: React.FC = () => {
   };
 
   const addJobTitle = (jobTitle: JobTitle) => {
-    if (selectedJobTitles.find(jt => jt.id === jobTitle.id)) return;
+    if (selectedJobTitles.find(jt => jt.id === jobTitle.id || jt.title.toLowerCase() === jobTitle.title.toLowerCase())) return;
     
     setSelectedJobTitles([...selectedJobTitles, jobTitle]);
     setJobTitleInput('');
@@ -266,7 +263,7 @@ const OnboardingCompleteProfile: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:8000/api/jobs/skills/search?q=${encodeURIComponent(query)}`);
+      const response = await fetch(`http://localhost:8001/api/v1/jobs/skills/search?q=${encodeURIComponent(query)}`);
       
       if (!response.ok) {
         throw new Error('API not available');
@@ -415,7 +412,7 @@ const OnboardingCompleteProfile: React.FC = () => {
       localStorage.setItem('userPreferences', JSON.stringify(profileData));
 
       // Save to backend
-      const response = await fetch(`http://localhost:8000/api/onboarding/complete-profile`, {
+      const response = await fetch(`http://localhost:8001/api/v1/onboarding/complete-profile`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -463,83 +460,88 @@ const OnboardingCompleteProfile: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-gray-900 dark:to-gray-800 py-8 px-4">
       <div className="max-w-4xl mx-auto">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-orange-500 to-yellow-500 p-8 text-white">
-            <div className="text-center">
-              <User className="w-16 h-16 mx-auto mb-4" />
-              <h1 className="text-3xl font-bold mb-2">Complete Your Profile</h1>
-              <p className="text-orange-100">Help us find the perfect remote jobs for you</p>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-10 h-10 text-white" />
             </div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              Complete Your Profile
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Tell us about yourself to get personalized job recommendations
+            </p>
           </div>
 
-          <div className="p-8 space-y-8">
-            {error && (
-              <div className="p-4 text-sm text-red-700 bg-red-100 border border-red-200 rounded-lg">
-                {error}
-              </div>
-            )}
+          {error && (
+            <div className="mb-6 p-4 bg-red-100 border border-red-200 rounded-lg text-red-700">
+              {error}
+            </div>
+          )}
 
-            {success && (
-              <div className="p-4 text-sm text-green-700 bg-green-100 border border-green-200 rounded-lg">
-                {success}
-              </div>
-            )}
+          {success && (
+            <div className="mb-6 p-4 bg-green-100 border border-green-200 rounded-lg text-green-700">
+              {success}
+            </div>
+          )}
 
-            {/* Location */}
+          <div className="space-y-8">
+            {/* Location with geolocation */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 <MapPin className="w-4 h-4 inline mr-2" />
                 Location
               </label>
               <div className="relative">
-                <input
-                  type="text"
-                  value={locationInput}
-                  onChange={(e) => handleLocationInput(e.target.value)}
-                  className="w-full px-3 py-2 pr-20 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  placeholder="Enter your location"
-                />
-                <button
-                  type="button"
-                  onClick={getCurrentLocation}
-                  disabled={gettingLocation}
-                  className="absolute right-2 top-2 p-1 text-orange-500 hover:text-orange-600 disabled:opacity-50"
-                  title="Get current location"
-                >
-                  {gettingLocation ? (
-                    <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <MapPin className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-              
-              {/* Location suggestions */}
-              {locationSuggestions.length > 0 && (
-                <div className="mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                  {locationSuggestions.map((suggestion, index) => (
-                    <button
-                      key={index}
-                      onClick={() => {
-                        setSelectedLocation(suggestion);
-                        setLocationInput(suggestion.display_name);
-                        setLocationSuggestions([]);
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 text-sm"
-                    >
-                      {suggestion.display_name}
-                    </button>
-                  ))}
+                <div className="flex">
+                  <input
+                    type="text"
+                    value={locationInput}
+                    onChange={(e) => handleLocationInput(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-l-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    placeholder="Enter your location or use GPS"
+                  />
+                  <button
+                    type="button"
+                    onClick={getCurrentLocation}
+                    disabled={gettingLocation}
+                    aria-label="Use GPS"
+                    className="px-4 py-2 bg-orange-500 text-white rounded-r-lg hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  >
+                    {gettingLocation ? (
+                      <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                    ) : (
+                      <Globe className="w-4 h-4" />
+                    )}
+                  </button>
                 </div>
-              )}
+                
+                {/* Location suggestions */}
+                {locationSuggestions.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {locationSuggestions.map((location) => (
+                      <button
+                        key={location.place_id}
+                        onClick={() => {
+                          setSelectedLocation(location);
+                          setLocationInput(location.display_name);
+                          setLocationSuggestions([]);
+                        }}
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 text-sm"
+                      >
+                        {location.display_name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Job Titles */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 <Briefcase className="w-4 h-4 inline mr-2" />
-                Current/Desired Job Titles
+                Current/Desired Job Titles (multiple selection allowed)
               </label>
               <div className="relative">
                 <input
@@ -637,7 +639,7 @@ const OnboardingCompleteProfile: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 <Settings className="w-4 h-4 inline mr-2" />
-                Skills (max 30)
+                Skills (max 30, searchable)
               </label>
               <div className="relative">
                 <input
@@ -721,13 +723,14 @@ const OnboardingCompleteProfile: React.FC = () => {
             {/* Work Type */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <Clock className="w-4 h-4 inline mr-2" />
                 Work Type
               </label>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {workTypeOptions.map((type) => (
                   <label
                     key={type}
-                    className="flex items-center cursor-pointer p-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+                    className="flex items-center cursor-pointer p-4 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
                   >
                     <input
                       type="checkbox"
@@ -735,63 +738,71 @@ const OnboardingCompleteProfile: React.FC = () => {
                       onChange={() => toggleWorkType(type)}
                       className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
                     />
-                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                    <span className="ml-3 text-sm font-medium text-gray-700 dark:text-gray-300">
                       {type}
                     </span>
                   </label>
                 ))}
               </div>
+              <p className="mt-2 text-xs text-gray-500">
+                Remote Jobs is selected by default. You can select multiple options.
+              </p>
             </div>
 
-            {/* Notifications */}
+            {/* Notification Preferences */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                 <Bell className="w-4 h-4 inline mr-2" />
-                Notifications
+                Notification Preferences
               </label>
               <div className="space-y-3">
-                <label className="flex items-center cursor-pointer">
+                {/* Email notifications */}
+                <label className="flex items-center cursor-pointer p-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
                   <input
                     type="checkbox"
                     checked={emailNotifications}
                     onChange={(e) => setEmailNotifications(e.target.checked)}
                     className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
                   />
-                  <span className="ml-3 text-sm text-gray-700 dark:text-gray-300">
+                  <Mail className="w-4 h-4 ml-3 mr-2 text-gray-500" />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
                     Email notifications for new jobs
                   </span>
                 </label>
-                
-                <label className="flex items-center cursor-pointer">
+
+                {/* Browser notifications */}
+                <label className="flex items-center cursor-pointer p-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
                   <input
                     type="checkbox"
                     checked={sendNotifications}
                     onChange={(e) => handleNotificationToggle(e.target.checked)}
                     className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
                   />
-                  <span className="ml-3 text-sm text-gray-700 dark:text-gray-300">
+                  <Bell className="w-4 h-4 ml-3 mr-2 text-gray-500" />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
                     Send notifications for new jobs
                   </span>
                 </label>
-                
-                {notificationPermission === 'denied' && (
-                  <p className="text-xs text-red-600">
-                    Browser notifications are blocked. Please enable them in your browser settings.
-                  </p>
-                )}
               </div>
             </div>
+          </div>
 
-            {/* Complete Button */}
-            <div className="pt-6">
-              <button
-                onClick={handleComplete}
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-orange-500 to-yellow-500 text-white py-4 px-6 rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-colors font-medium text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Completing Profile...' : 'Complete Profile & Find Jobs'}
-              </button>
-            </div>
+          {/* Complete Button */}
+          <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-600">
+            <button
+              onClick={handleComplete}
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-orange-500 to-yellow-500 text-white py-4 px-6 rounded-lg font-medium text-lg hover:from-orange-600 hover:to-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                  Completing Profile...
+                </div>
+              ) : (
+                'Complete Profile & Find Jobs'
+              )}
+            </button>
           </div>
         </div>
       </div>

@@ -200,11 +200,11 @@ class PreDeploymentTester:
     
     def _check_packages(self) -> bool:
         """Check if required packages are installed"""
-        backend_requirements = self.backend_dir / "requirements.txt"
+        backend_requirements = self.project_root / "config" / "requirements.txt"
         frontend_package = self.frontend_dir / "package.json"
         
         if not backend_requirements.exists():
-            logger.error("Backend requirements.txt not found")
+            logger.error("Backend requirements.txt not found in config/")
             return False
         
         if not frontend_package.exists():

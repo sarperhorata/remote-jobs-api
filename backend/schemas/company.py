@@ -1,17 +1,18 @@
-from pydantic import BaseModel, Field
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
+from pydantic import BaseModel, Field, HttpUrl, ConfigDict
+from bson import ObjectId
+from .common import PyObjectId
 
 class CompanyBase(BaseModel):
-    name: str
-    description: str
-    website: Optional[str] = None
+    name: str = Field(...)
+    description: Optional[str] = None
+    website: Optional[HttpUrl] = None
     logo_url: Optional[str] = None
     location: Optional[str] = None
     industry: Optional[str] = None
     size: Optional[str] = None
     founded_year: Optional[int] = None
-    is_active: bool = True
 
 class CompanyCreate(CompanyBase):
     pass
@@ -19,7 +20,7 @@ class CompanyCreate(CompanyBase):
 class CompanyUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    website: Optional[str] = None
+    website: Optional[HttpUrl] = None
     logo_url: Optional[str] = None
     location: Optional[str] = None
     industry: Optional[str] = None
@@ -27,14 +28,20 @@ class CompanyUpdate(BaseModel):
     founded_year: Optional[int] = None
     is_active: Optional[bool] = None
 
+class Company(CompanyBase):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True, json_encoders={ObjectId: str})
+
 class CompanyResponse(CompanyBase):
     id: str
     created_at: datetime
     updated_at: datetime
     jobs_count: int = 0
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class CompanyListResponse(BaseModel):
     items: List[CompanyResponse]

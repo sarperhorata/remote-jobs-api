@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Mail, ArrowLeft, CheckCircle } from '../components/icons/EmojiIcons';
 import { getApiUrl } from '../utils/apiConfig';
 
 const ForgotPassword: React.FC = () => {

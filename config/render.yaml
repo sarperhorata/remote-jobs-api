@@ -1,0 +1,94 @@
+services:
+  # Backend API Service
+  - type: web
+    name: buzz2remote-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r ../config/requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    plan: starter
+    autoDeploy: true
+    branch: main
+    numInstances: 1
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: ENVIRONMENT
+        value: production
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: API_DEBUG
+        value: false
+      - key: API_RELOAD
+        value: false
+      - key: CORS_ORIGINS
+        value: https://buzz2remote.netlify.app,https://buzz2remote.com
+      - key: CORS_ALLOW_CREDENTIALS
+        value: true
+      # Database
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB_NAME
+        value: buzz2remote
+      # Security
+      - key: SESSION_SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 30
+      # External APIs
+      - key: OPENAI_API_KEY
+        sync: false
+      # Telegram settings
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_ENABLED
+        value: true
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      # Email settings (optional)
+      - key: EMAIL_HOST
+        sync: false
+      - key: EMAIL_PORT
+        sync: false
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      # Admin Panel
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false
+      # Stripe Configuration
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+    disk:
+      name: tmp
+      mountPath: /tmp
+      sizeGB: 1
+
+# Add these environment variables manually in Render dashboard:
+# MONGODB_URI=mongodb+srv://your-mongodb-connection-string
+# TELEGRAM_BOT_TOKEN=your-telegram-bot-token
+# TELEGRAM_CHAT_ID=your-telegram-chat-id
+# OPENAI_API_KEY=your-openai-api-key
+# ADMIN_PASSWORD=your-secure-admin-password
+# EMAIL_HOST=smtp.gmail.com (optional)
+# EMAIL_PORT=587 (optional)
+# EMAIL_USER=your-email@gmail.com (optional)
+# EMAIL_PASSWORD=your-app-password (optional)
+# EMAIL_FROM=your-email@gmail.com (optional)
+# STRIPE_SECRET_KEY=your-stripe-secret-key
+# STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
+# STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key 

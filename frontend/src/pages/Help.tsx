@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Mail, MessageCircle, Book, Users, Settings, Shield, CreditCard } from 'lucide-react';
+import { Search, Mail, MessageCircle, Book, Users, Settings, Shield, CreditCard } from '../components/icons/EmojiIcons';
 
 interface FAQItem {
   question: string;

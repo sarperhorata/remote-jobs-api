@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Briefcase } from 'lucide-react'; // Assuming you're using lucide-react for icons
+import { Briefcase } from '../components/icons/EmojiIcons'; // Assuming you're using lucide-react for icons
 
 const Login: React.FC = () => {
   const navigate = useNavigate();

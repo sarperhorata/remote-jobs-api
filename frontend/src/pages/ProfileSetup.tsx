@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, Upload, CheckCircle, AlertCircle, Linkedin, FileText, Edit } from 'lucide-react';
+import { User, Upload, CheckCircle, AlertCircle, Linkedin, FileText, Edit } from '../components/icons/EmojiIcons';
 import { onboardingService } from '../services/onboardingService';
 
 const ProfileSetup: React.FC = () => {

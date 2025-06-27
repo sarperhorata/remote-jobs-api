@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Filter, X, Search } from "lucide-react";
+import { Filter, X, Search } from './icons/EmojiIcons';
 
 interface FilterProps {
   onFiltersChange: (filters: any) => void;

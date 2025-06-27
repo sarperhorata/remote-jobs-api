@@ -1,16 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, MapPin, Building, Globe, ArrowRight, Star, CheckCircle, Bug, DollarSign } from 'lucide-react';
 import AuthModal from '../components/AuthModal';
 import Onboarding from '../components/Onboarding';
-import JobAutocomplete from '../components/JobAutocomplete';
+import MultiJobAutocomplete from '../components/MultiJobAutocomplete';
 import { jobService } from '../services/jobService';
 import { Job } from '../types/job';
 
+// Icons temporarily replaced with text
+const Search = () => <span>🔍</span>;
+const MapPin = () => <span>📍</span>;
+const Building = () => <span>🏢</span>;
+const Globe = () => <span>🌍</span>;
+const ArrowRight = () => <span>→</span>;
+const Star = () => <span>⭐</span>;
+const CheckCircle = () => <span>✅</span>;
+const Bug = () => <span>🐛</span>;
+const DollarSign = () => <span>💲</span>;
+
+interface Position {
+  title: string;
+  count: number;
+  category?: string;
+}
+
 const Home: React.FC = () => {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [selectedPositions, setSelectedPositions] = useState<Position[]>([]);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalTab, setAuthModalTab] = useState<'login' | 'register'>('login');
   const [featuredJobs, setFeaturedJobs] = useState<Job[]>([]);
@@ -114,19 +129,18 @@ const Home: React.FC = () => {
     loadFeaturedJobs();
   }, []);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    // Simulate search
-    // In a real app, construct query params based on selected filters
-    const queryParams = new URLSearchParams({
-      q: searchQuery
-    }).toString();
+  // Handle search with multiple positions
+  const handleMultiPositionSearch = (positions: Position[]) => {
+    if (positions.length === 0) {
+      alert('Please select at least one position to search.');
+      return;
+    }
+
+    const searchParams = new URLSearchParams();
+    searchParams.set('multi_search', 'true');
+    searchParams.set('job_titles', positions.map(p => p.title).join(','));
     
-    setTimeout(() => {
-      setIsLoading(false);
-      navigate(`/jobs?${queryParams}`);
-    }, 1000);
+    navigate(`/jobs/search?${searchParams.toString()}`);
   };
 
   const handleGetStartedClick = () => {
@@ -166,7 +180,9 @@ const Home: React.FC = () => {
           <div className="flex justify-between items-center h-16">
             <Link to="/" className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center shadow-md">
-                <Bug className="w-6 h-6 text-white" />
+                <div className="w-6 h-6 text-white flex items-center justify-center">
+                  <Bug />
+                </div>
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Buzz2Remote</h1>
@@ -193,52 +209,27 @@ const Home: React.FC = () => {
             Find Your Next <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-yellow-500">Remote Buzz</span>
           </h1>
           <p className="text-lg md:text-xl text-gray-600 mb-10 md:mb-12 max-w-3xl mx-auto">
-            AI-powered job matching to connect you with global remote opportunities. Your dream job is just a search away.
+            AI-powered job matching to connect you with global remote opportunities. Select multiple job titles and let our smart search find the perfect matches.
           </p>
 
-          <form onSubmit={handleSearch} className="max-w-5xl mx-auto mb-12 md:mb-16">
-            <div className="bg-white rounded-xl shadow-2xl p-4 md:p-6 border border-gray-200">
-              <div className="grid grid-cols-1 md:grid-cols-6 gap-3 md:gap-4 items-end">
-                {/* Job Title/Keywords - Extended */}
-                <div className="md:col-span-4">
-                  <label htmlFor="searchQuery" className="block text-sm font-medium text-gray-700 text-left mb-1">Job Search</label>
-                  <JobAutocomplete
-                    value={searchQuery}
-                    onChange={setSearchQuery}
-                    onSelect={(position) => {
-                      console.log('Selected position:', position);
-                      setSearchQuery(position.title);
-                      // Navigate to search results with selected position
-                      const queryParams = new URLSearchParams({
-                        q: position.title,
-                        position: position.title
-                      }).toString();
-                      navigate(`/jobs?${queryParams}`);
-                    }}
-                    placeholder="e.g. Software Engineer, Product Manager, Data Scientist"
-                  />
-                </div>
-
-                {/* Search Button */}
-                <div className="md:col-span-2">
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full bg-gradient-to-r from-orange-500 to-yellow-500 text-white py-2.5 px-4 rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-all duration-200 font-semibold flex items-center justify-center space-x-2 text-sm shadow-md"
-                  >
-                    {isLoading ? (
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    ) : (
-                      <>
-                        <Search className="w-5 h-5" />
-                        <span>Search</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </form>
+          {/* Updated Search Section with MultiJobAutocomplete */}
+          <div className="max-w-3xl mx-auto">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+              Find Your Perfect Remote Job
+            </h2>
+            
+            <MultiJobAutocomplete
+              selectedPositions={selectedPositions}
+              onPositionsChange={setSelectedPositions}
+              onSearch={handleMultiPositionSearch}
+              placeholder="Search job titles (e.g., Frontend Developer, Backend Engineer)"
+              maxSelections={10}
+            />
+            
+            <p className="text-center text-gray-600 text-sm mt-4">
+              Select up to 10 job positions to find the best matches for your skills
+            </p>
+          </div>
         </div>
       </section>
       
@@ -278,22 +269,30 @@ const Home: React.FC = () => {
                       }}
                       className="p-1.5 rounded-full hover:bg-yellow-100 text-gray-400 hover:text-yellow-500 transition-colors"
                     >
-                       <Star className="w-5 h-5" />
+                       <div className="w-5 h-5 flex items-center justify-center">
+                         <Star />
+                       </div>
                     </button>
                   </div>
                       
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center text-sm text-gray-600">
-                      <MapPin className="w-4 h-4 mr-2 text-gray-400" />
+                      <div className="w-4 h-4 mr-2 text-gray-400 flex items-center justify-center">
+                        <MapPin />
+                      </div>
                       {job.location}
                     </div>
                     <div className="flex items-center text-sm text-gray-600">
-                      <Building className="w-4 h-4 mr-2 text-gray-400" />
+                      <div className="w-4 h-4 mr-2 text-gray-400 flex items-center justify-center">
+                        <Building />
+                      </div>
                       {job.job_type}
                     </div>
                     {job.salary_range && (
                       <div className="flex items-center text-sm text-gray-600">
-                        <DollarSign className="w-4 h-4 mr-2 text-gray-400" />
+                        <div className="w-4 h-4 mr-2 text-gray-400 flex items-center justify-center">
+                          <DollarSign />
+                        </div>
                         {job.salary_range}
                       </div>
                     )}
@@ -315,7 +314,9 @@ const Home: React.FC = () => {
                     className="text-orange-600 hover:text-orange-700 font-semibold text-sm flex items-center space-x-1 group"
                   >
                     <span>View Details</span>
-                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                    <div className="w-4 h-4 transition-transform group-hover:translate-x-1 flex items-center justify-center">
+                      <ArrowRight />
+                    </div>
                   </Link>
                 </div>
               </div>
@@ -328,7 +329,9 @@ const Home: React.FC = () => {
               className="inline-flex items-center space-x-2 bg-gradient-to-r from-orange-500 to-yellow-500 text-white px-8 py-3 rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-colors font-semibold shadow-lg"
             >
               <span>Browse All Jobs</span>
-              <ArrowRight className="w-5 h-5" />
+              <div className="w-5 h-5 flex items-center justify-center">
+                <ArrowRight />
+              </div>
             </Link>
           </div>
         </div>
@@ -343,17 +346,17 @@ const Home: React.FC = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[{
-                icon: <Search className="w-8 h-8 text-orange-500" />,
+                icon: <div className="w-8 h-8 text-orange-500 flex items-center justify-center"><Search /></div>,
                 title: "AI-Powered Matching",
                 description: "Our AI finds perfect job matches for you."
               },
               {
-                icon: <CheckCircle className="w-8 h-8 text-green-500" />,
+                icon: <div className="w-8 h-8 text-green-500 flex items-center justify-center"><CheckCircle /></div>,
                 title: "One-Click Apply",
                 description: "Apply to jobs instantly with your saved profile."
               },
               {
-                icon: <Globe className="w-8 h-8 text-blue-500" />,
+                icon: <div className="w-8 h-8 text-blue-500 flex items-center justify-center"><Globe /></div>,
                 title: "Global Opportunities",
                 description: "Access thousands of remote jobs worldwide."
               }
@@ -409,7 +412,9 @@ const Home: React.FC = () => {
             <div>
               <Link to="/" className="flex items-center space-x-3 mb-4">
                 <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center shadow-md">
-                  <Bug className="w-5 h-5 text-white" />
+                  <div className="w-5 h-5 text-white flex items-center justify-center">
+                    <Bug />
+                  </div>
                 </div>
                 <span className="text-xl font-bold">Buzz2Remote</span>
               </Link>

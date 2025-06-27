@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { CheckCircle, AlertCircle, Mail, RefreshCw } from 'lucide-react';
+import { CheckCircle, AlertCircle, Mail, RefreshCw } from '../components/icons/EmojiIcons';
 import { onboardingService } from '../services/onboardingService';
 
 export const EmailVerification: React.FC = () => {

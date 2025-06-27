@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User } from 'lucide-react';
+import { User } from '../components/icons/EmojiIcons';
 
 const OnboardingProfileSetup: React.FC = () => {
   const navigate = useNavigate();

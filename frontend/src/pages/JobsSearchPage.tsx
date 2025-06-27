@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Search, Filter, MapPin, Clock, DollarSign, Building2, ExternalLink, BookmarkPlus, Bookmark, CheckCircle2, Briefcase } from 'lucide-react';
+import { Search, Filter, MapPin, Clock, DollarSign, Building2, ExternalLink, BookmarkPlus, Bookmark, CheckCircle2, Briefcase } from '../components/icons/EmojiIcons';
 import { Job } from '../types/job';
 import { jobService } from '../services/jobService';
 import JobApplicationModal from '../components/JobSearch/JobApplicationModal';

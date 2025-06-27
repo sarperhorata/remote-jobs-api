@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import List, Optional
 from datetime import datetime
 
@@ -11,7 +11,8 @@ class AdBase(BaseModel):
     is_active: bool = True
 
 class AdCreate(AdBase):
-    @validator('title')
+    @field_validator('title')
+    @classmethod
     def title_must_not_be_empty(cls, v):
         if not v or not v.strip():
             raise ValueError('Title must not be empty')
@@ -38,8 +39,10 @@ class AdResponse(AdBase):
     clicks: Optional[int] = None
     impressions: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+# Alias for backward compatibility
+Ad = AdResponse
 
 class AdListResponse(BaseModel):
     items: List[AdResponse]

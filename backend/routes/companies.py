@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from typing import List, Optional
-from backend.models.company import Company
+from backend.schemas.company import Company
 from backend.database import get_async_db
 from bson import ObjectId
 from datetime import datetime

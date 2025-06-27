@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Briefcase, FileText, ArrowLeft, ChevronDown, ChevronRight, Calendar, Mail, Shield, AlertTriangle } from 'lucide-react';
+import { Briefcase, FileText, ArrowLeft, ChevronDown, ChevronRight, Calendar, Mail, Shield, AlertTriangle } from '../components/icons/EmojiIcons';
 
 const TermsConditions: React.FC = () => {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());

@@ -2,7 +2,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
-from backend.models.job import JobCreate, JobUpdate, JobResponse
+from backend.schemas.job import JobCreate, JobUpdate, JobResponse
 
 async def create_job(db: AsyncIOMotorDatabase, job: JobCreate) -> str:
     """Create a new job in the database."""

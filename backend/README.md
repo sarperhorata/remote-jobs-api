@@ -10,10 +10,17 @@ Backend API for Buzz2Remote job aggregation platform.
 - Payment processing
 - Admin panel
 
-## Setup
-1. Install dependencies: `pip install -r requirements.txt`
+## Quick Start
+
+### Prerequisites
+- Python 3.11+
+- MongoDB (local or Atlas)
+- OpenAI API Key (optional)
+
+### Installation
+1. Install dependencies: `pip install -r ../config/requirements.txt`
 2. Configure environment variables
-3. Run: `python -m uvicorn main:app --reload`
+3. Run the application: `uvicorn main:app --reload --port 8001`
 
 ## Testing
 Run tests: `python -m pytest tests/`

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Eye, EyeOff, Lock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, Lock, CheckCircle, AlertCircle } from '../components/icons/EmojiIcons';
 import { getApiUrl } from '../utils/apiConfig';
 
 const ResetPassword: React.FC = () => {

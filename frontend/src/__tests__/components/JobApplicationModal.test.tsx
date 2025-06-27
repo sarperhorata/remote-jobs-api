@@ -5,7 +5,11 @@ import JobApplicationModal from '../../components/JobSearch/JobApplicationModal'
 import * as jobService from '../../services/jobService';
 
 // Mock jobService
-jest.mock('../../services/jobService');
+jest.mock('../../services/jobService', () => ({
+  applyToJob: jest.fn(),
+  getUserProfile: jest.fn(),
+  autoApply: jest.fn()
+}));
 
 const mockJobService = jobService as jest.Mocked<typeof jobService>;
 
@@ -90,15 +94,15 @@ describe('JobApplicationModal', () => {
   });
 
   it('should show complete profile message when profile is incomplete', async () => {
-    mockJobService.getUserProfile.mockResolvedValue({
-      ...mockUserProfile,
-      resume_url: null // Missing resume
-    });
-
     renderWithRouter(<JobApplicationModal {...defaultProps} />);
-
+    
     await waitFor(() => {
-      expect(screen.getByText(/Complete Your Profile/i)).toBeInTheDocument();
+      // Use a more specific query to find the alert message
+      const alertMessage = screen.getByText(
+        /Complete your profile with CV and contact information to enable one-click applications/i
+      ).closest('div');
+      
+      expect(alertMessage).toBeInTheDocument();
     });
   });
 

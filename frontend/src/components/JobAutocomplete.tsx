@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, ChevronDown } from 'lucide-react';
+import { Search, ChevronDown } from './icons/EmojiIcons';
 import { API_BASE_URL } from '../utils/apiConfig';
 
 interface Position {

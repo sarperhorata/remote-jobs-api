@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Brain, 
+  Brain,
   Star, 
   MapPin, 
   DollarSign, 
   Clock,
   TrendingUp,
   Target,
-  Zap
-} from 'lucide-react';
+  Zap } from '../icons/EmojiIcons';
 import JobCard from '../JobCard/JobCard';
 import { Job } from '../../types/job';
 import { getApiUrl } from '../../utils/apiConfig';

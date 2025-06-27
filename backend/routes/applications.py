@@ -1,18 +1,25 @@
 from fastapi import APIRouter, HTTPException, Depends, status, Query
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 import uuid
+from fastapi.security import HTTPBearer
 
-from backend.database import get_async_db
+from backend.database.db import get_async_db
 from backend.routes.auth import get_current_user_dependency
 from bson import ObjectId
 import logging
 
-logger = logging.getLogger(__name__)
+from backend.models.user_application import (
+    UserApplicationCreate, 
+    UserApplicationUpdate, 
+    UserApplicationResponse
+)
+from backend.services.user_application_service import get_user_application_service
 
-# Create router
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/applications", tags=["applications"])
+security = HTTPBearer()
 
 # Pydantic models
 class JobApplicationCreate(BaseModel):
@@ -49,137 +56,60 @@ class JobApplicationResponse(BaseModel):
     company_response_date: Optional[datetime] = None
     company_response: Optional[str] = None
 
-@router.post("/apply", response_model=dict)
+@router.post("/apply", response_model=UserApplicationResponse)
 async def apply_to_job(
-    application_data: JobApplicationCreate,
-    db=Depends(get_async_db),
+    application_data: UserApplicationCreate,
     current_user: dict = Depends(get_current_user_dependency)
 ):
     """Apply to a job"""
     try:
-        current_user_id = current_user["_id"]
+        # Set user_id from current user
+        application_data.user_id = current_user["_id"]
         
-        # Check if user already applied to this job
-        existing_application = await db.job_applications.find_one({
-            "user_id": current_user_id,
-            "job_id": application_data.job_id
-        })
+        # Get service instance
+        service = get_user_application_service()
         
-        if existing_application:
+        # Check if already applied
+        existing = await service.get_user_application(
+            user_id=current_user["_id"],
+            job_id=application_data.job_id
+        )
+        
+        if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="You have already applied to this job"
             )
-            
-        # Verify job exists
-        job = await db.jobs.find_one({"_id": ObjectId(application_data.job_id)})
-        if not job:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Job not found"
-            )
-            
-        # Create new application
-        application_id = str(uuid.uuid4())
-        application_doc = {
-            "_id": application_id,
-            "user_id": current_user_id,
-            "job_id": application_data.job_id,
-            "application_type": application_data.application_type,
-            "cover_letter": application_data.cover_letter,
-            "resume_url": application_data.resume_url,
-            "additional_notes": application_data.additional_notes,
-            "form_data": application_data.form_data,
-            "external_url": application_data.external_url,
-            "external_reference": application_data.external_reference,
-            "status": "applied",
-            "applied_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow(),
-            "viewed_by_company": False,
-            "company_response_date": None,
-            "company_response": None
-        }
         
-        result = await db.job_applications.insert_one(application_doc)
+        application = await service.create_application(application_data)
+        logger.info(f"User {current_user['_id']} applied to job {application_data.job_id}")
         
-        return {
-            "message": "Application submitted successfully",
-            "application_id": application_id,
-            "status": "applied"
-        }
+        return application
         
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Error applying to job: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to submit application"
+            detail="Failed to apply to job"
         )
 
-@router.get("/my-applications", response_model=dict)
+@router.get("/my-applications", response_model=List[UserApplicationResponse])
 async def get_my_applications(
-    page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
-    status_filter: Optional[str] = Query(None),
-    db=Depends(get_async_db),
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user_dependency),
+    skip: int = 0,
+    limit: int = 100,
+    status_filter: Optional[str] = None
 ):
     """Get current user's job applications"""
     try:
-        current_user_id = current_user["_id"]
-        
-        # Build query
-        query = {"user_id": current_user_id}
-        
-        if status_filter:
-            query["status"] = status_filter
-            
-        # Get total count
-        total = await db.job_applications.count_documents(query)
-        
-        # Apply pagination and ordering
-        skip = (page - 1) * per_page
-        applications_cursor = db.job_applications.find(query).sort("applied_at", -1).skip(skip).limit(per_page)
-        
-        applications = []
-        async for app in applications_cursor:
-            # Get job details
-            job = await db.jobs.find_one({"_id": ObjectId(app["job_id"])})
-            
-            app_dict = {
-                "id": app["_id"],
-                "user_id": app["user_id"],
-                "job_id": app["job_id"],
-                "status": app["status"],
-                "application_type": app["application_type"],
-                "cover_letter": app.get("cover_letter"),
-                "resume_url": app.get("resume_url"),
-                "additional_notes": app.get("additional_notes"),
-                "form_data": app.get("form_data"),
-                "external_url": app.get("external_url"),
-                "external_reference": app.get("external_reference"),
-                "applied_at": app["applied_at"].isoformat(),
-                "updated_at": app["updated_at"].isoformat(),
-                "viewed_by_company": app.get("viewed_by_company", False),
-                "company_response_date": app.get("company_response_date").isoformat() if app.get("company_response_date") else None,
-                "company_response": app.get("company_response"),
-                "job": {
-                    "title": job.get("title", "Unknown"),
-                    "company": job.get("company", "Unknown"),
-                    "location": job.get("location", "Unknown"),
-                    "jobType": job.get("jobType", "Unknown")
-                } if job else None
-            }
-            applications.append(app_dict)
-        
-        return {
-            "applications": applications,
-            "total": total,
-            "page": page,
-            "per_page": per_page,
-            "pages": (total + per_page - 1) // per_page
-        }
+        service = get_user_application_service()
+        applications = await service.get_user_applications(
+            user_id=current_user["_id"],
+            skip=skip,
+            limit=limit,
+            status_filter=status_filter
+        )
+        return applications
         
     except Exception as e:
         logger.error(f"Error fetching user applications: {str(e)}")
@@ -188,33 +118,43 @@ async def get_my_applications(
             detail="Failed to fetch applications"
         )
 
-@router.get("/check-applied/{job_id}", response_model=dict)
-async def check_if_applied(
-    job_id: str,
-    db=Depends(get_async_db),
+@router.get("/applied-jobs", response_model=List[str])
+async def get_applied_job_ids(
     current_user: dict = Depends(get_current_user_dependency)
 ):
-    """Check if user has applied to a specific job"""
+    """Get list of job IDs that current user has applied to"""
     try:
-        current_user_id = current_user["_id"]
+        service = get_user_application_service()
+        job_ids = await service.get_applied_job_ids(
+            user_id=current_user["_id"]
+        )
+        return job_ids
         
-        application = await db.job_applications.find_one({
-            "user_id": current_user_id,
-            "job_id": job_id
-        })
-        
-        application_data = None
-        if application:
-            application_data = {
-                "id": application["_id"],
-                "status": application["status"],
-                "applied_at": application["applied_at"].isoformat(),
-                "application_type": application["application_type"]
-            }
+    except Exception as e:
+        logger.error(f"Error fetching applied job IDs: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch applied jobs"
+        )
+
+@router.get("/check-applied/{job_id}")
+async def check_if_applied(
+    job_id: str,
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Check if user has already applied to a specific job"""
+    try:
+        service = get_user_application_service()
+        application = await service.get_user_application(
+            user_id=current_user["_id"],
+            job_id=job_id
+        )
         
         return {
-            "has_applied": application is not None,
-            "application": application_data
+            "applied": application is not None,
+            "application_id": str(application.id) if application else None,
+            "applied_at": application.applied_at if application else None,
+            "status": application.status if application else None
         }
         
     except Exception as e:
@@ -222,36 +162,6 @@ async def check_if_applied(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to check application status"
-        )
-
-@router.get("/applied-jobs", response_model=dict)
-async def get_applied_job_ids(
-    db=Depends(get_async_db),
-    current_user: dict = Depends(get_current_user_dependency)
-):
-    """Get list of job IDs user has applied to"""
-    try:
-        current_user_id = current_user["_id"]
-        
-        applications_cursor = db.job_applications.find(
-            {"user_id": current_user_id},
-            {"job_id": 1}
-        )
-        
-        job_ids = []
-        async for app in applications_cursor:
-            job_ids.append(app["job_id"])
-        
-        return {
-            "applied_job_ids": job_ids,
-            "count": len(job_ids)
-        }
-        
-    except Exception as e:
-        logger.error(f"Error fetching applied job IDs: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch applied jobs"
         )
 
 @router.get("/{application_id}", response_model=dict)
@@ -314,57 +224,27 @@ async def get_application(
             detail="Failed to fetch application"
         )
 
-@router.put("/{application_id}", response_model=dict)
+@router.put("/applications/{application_id}", response_model=UserApplicationResponse)
 async def update_application(
     application_id: str,
-    update_data: JobApplicationUpdate,
-    db=Depends(get_async_db),
+    update_data: UserApplicationUpdate,
     current_user: dict = Depends(get_current_user_dependency)
 ):
-    """Update application status or details"""
+    """Update a job application"""
     try:
-        current_user_id = current_user["_id"]
-        
-        application = await db.job_applications.find_one({
-            "_id": application_id,
-            "user_id": current_user_id
-        })
-        
-        if not application:
+        # Verify application belongs to user
+        service = get_user_application_service()
+        application = await service.get_application_by_id(application_id)
+        if not application or application.user_id != current_user["_id"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Application not found"
             )
         
-        # Build update document
-        update_doc = {"updated_at": datetime.utcnow()}
-        
-        if update_data.status is not None:
-            update_doc["status"] = update_data.status
-        if update_data.additional_notes is not None:
-            update_doc["additional_notes"] = update_data.additional_notes
-        if update_data.external_reference is not None:
-            update_doc["external_reference"] = update_data.external_reference
-        if update_data.company_response is not None:
-            update_doc["company_response"] = update_data.company_response
-            update_doc["company_response_date"] = datetime.utcnow()
-        
-        # Update the application
-        result = await db.job_applications.update_one(
-            {"_id": application_id, "user_id": current_user_id},
-            {"$set": update_doc}
+        updated_application = await service.update_application(
+            application_id, update_data
         )
-        
-        if result.modified_count == 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No changes made to application"
-            )
-        
-        return {
-            "message": "Application updated successfully",
-            "application_id": application_id
-        }
+        return updated_application
         
     except HTTPException:
         raise
@@ -375,42 +255,32 @@ async def update_application(
             detail="Failed to update application"
         )
 
-@router.delete("/{application_id}", response_model=dict)
-async def withdraw_application(
+@router.delete("/applications/{application_id}")
+async def delete_application(
     application_id: str,
-    db=Depends(get_async_db),
     current_user: dict = Depends(get_current_user_dependency)
 ):
-    """Withdraw/delete an application"""
+    """Delete a job application"""
     try:
-        current_user_id = current_user["_id"]
-        
-        application = await db.job_applications.find_one({
-            "_id": application_id,
-            "user_id": current_user_id
-        })
-        
-        if not application:
+        # Verify application belongs to user
+        service = get_user_application_service()
+        application = await service.get_application_by_id(application_id)
+        if not application or application.user_id != current_user["_id"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Application not found"
             )
         
-        # Mark as withdrawn instead of deleting
-        result = await db.job_applications.update_one(
-            {"_id": application_id, "user_id": current_user_id},
-            {"$set": {"status": "withdrawn", "updated_at": datetime.utcnow()}}
-        )
-        
-        return {"message": "Application withdrawn successfully"}
+        await service.delete_application(application_id)
+        return {"message": "Application deleted successfully"}
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error withdrawing application: {str(e)}")
+        logger.error(f"Error deleting application: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to withdraw application"
+            detail="Failed to delete application"
         )
 
 @router.get("/stats", response_model=dict)

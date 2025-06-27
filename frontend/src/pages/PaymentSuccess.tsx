@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle } from '../components/icons/EmojiIcons';
 
 const PaymentSuccess: React.FC = () => {
   const [searchParams] = useSearchParams();

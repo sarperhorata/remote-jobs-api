@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ExternalLink, Upload, User, Mail, Phone, FileText, Briefcase, Globe, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, ExternalLink, Upload, User, Mail, Phone, FileText, Briefcase, Globe, CheckCircle, AlertCircle } from '../icons/EmojiIcons';
 import { Job } from '../../types/job';
 import { jobService } from '../../services/jobService';
 

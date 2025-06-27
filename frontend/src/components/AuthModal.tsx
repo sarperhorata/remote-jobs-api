@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Bug, Check, X } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { getApiUrl } from '../utils/apiConfig';
+
+// Icons temporarily replaced with text
+const User = () => <span>👤</span>;
+const Eye = () => <span>👁️</span>;
+const EyeOff = () => <span>🙈</span>;
+const X = () => <span>✕</span>;
+const Check = () => <span>✅</span>;
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -16,7 +22,6 @@ interface PasswordRequirement {
 
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'login' }) => {
   const navigate = useNavigate();
-  const { signup } = useAuth();
   const [activeTab, setActiveTab] = useState<'login' | 'register'>(defaultTab);
   const [showPassword, setShowPassword] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
@@ -38,7 +43,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [registerSuccess, setRegisterSuccess] = useState<string | null>(null);
 
-  // Password validation
+  // Password validation - updated requirements
   const getPasswordRequirements = (password: string): PasswordRequirement[] => {
     return [
       {
@@ -63,19 +68,15 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
 
   const handleGoogleLogin = async () => {
     try {
-      // Get Google auth URL from backend
-      const response = await fetch("http://localhost:8000/api/google/auth-url");
+      const API_BASE_URL = await getApiUrl();
+      const response = await fetch(`${API_BASE_URL}/auth/google/auth-url`);
       const data = await response.json();
       
       if (data.auth_url) {
-        // Redirect to Google OAuth
         window.location.href = data.auth_url;
-      } else {
-        throw new Error("Failed to get Google auth URL");
       }
     } catch (error) {
-      console.error("Google login error:", error);
-      setLoginError("Failed to initialize Google login");
+      console.error('Google auth error:', error);
     }
   };
 
@@ -86,14 +87,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
     
     try {
       console.log('🔑 Attempting login with API...');
-      const API_BASE_URL = "http://localhost:8000/api";
+      const API_BASE_URL = await getApiUrl();
       
       // FormData kullanarak OAuth2PasswordRequestForm formatına uygun gönder
       const formData = new FormData();
       formData.append('username', loginEmail);
       formData.append('password', loginPassword);
       
-      const response = await fetch(`${API_BASE_URL}/login`, {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         body: formData
       });
@@ -144,9 +145,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
       }
       
       console.log('🔑 Attempting registration with API...');
-      const API_BASE_URL = "http://localhost:8000/api";
+      const API_BASE_URL = await getApiUrl();
       
-      const response = await fetch(`${API_BASE_URL}/register`, {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -171,12 +172,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
       const data = await response.json();
       console.log('✅ Registration successful:', data);
       
-      // Store token if provided (direct registration)
-      localStorage.setItem('token', data.access_token);
-      if (signup) {
-        signup(data.user, registerEmail, registerPassword || '');
-      }
-      
       setRegisterSuccess('Registration successful! Please check your email to login');
       setTimeout(() => {
         onClose();
@@ -193,8 +188,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
 
   const handleGoogleAuth = async () => {
     try {
-      const API_BASE_URL = "http://localhost:8000/api";
-      const response = await fetch(`${API_BASE_URL}/google/auth-url`);
+      const API_BASE_URL = await getApiUrl();
+      const response = await fetch(`${API_BASE_URL}/auth/google/auth-url`);
       const data = await response.json();
       
       if (data.auth_url) {
@@ -232,11 +227,23 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
           </button>
         </div>
         <div className="overflow-y-auto p-6 flex-1">
-          <iframe 
-            src="/terms-conditions" 
-            className="w-full h-full min-h-[500px] border-0"
-            title="Terms of Service"
-          />
+          <div className="prose max-w-none">
+            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+              Welcome to Buzz2Remote. By using our service, you agree to these terms.
+            </p>
+            <h3 className="text-lg font-semibold mt-4 mb-2">1. Service Description</h3>
+            <p className="text-gray-700 dark:text-gray-300">
+              Buzz2Remote is a job search platform that connects remote job seekers with employers.
+            </p>
+            <h3 className="text-lg font-semibold mt-4 mb-2">2. User Responsibilities</h3>
+            <p className="text-gray-700 dark:text-gray-300">
+              Users must provide accurate information and use the platform responsibly.
+            </p>
+            <h3 className="text-lg font-semibold mt-4 mb-2">3. Privacy</h3>
+            <p className="text-gray-700 dark:text-gray-300">
+              We respect your privacy and handle your data according to our Privacy Policy.
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -256,11 +263,23 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
           </button>
         </div>
         <div className="overflow-y-auto p-6 flex-1">
-          <iframe 
-            src="/privacy-policy" 
-            className="w-full h-full min-h-[500px] border-0"
-            title="Privacy Policy"
-          />
+          <div className="prose max-w-none">
+            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+              This Privacy Policy describes how we collect, use, and protect your information.
+            </p>
+            <h3 className="text-lg font-semibold mt-4 mb-2">Information We Collect</h3>
+            <p className="text-gray-700 dark:text-gray-300">
+              We collect information you provide directly to us, such as when you create an account.
+            </p>
+            <h3 className="text-lg font-semibold mt-4 mb-2">How We Use Information</h3>
+            <p className="text-gray-700 dark:text-gray-300">
+              We use your information to provide and improve our services.
+            </p>
+            <h3 className="text-lg font-semibold mt-4 mb-2">Data Security</h3>
+            <p className="text-gray-700 dark:text-gray-300">
+              We implement appropriate security measures to protect your personal information.
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -274,7 +293,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
           <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center">
-                <Bug className="w-5 h-5 text-white" />
+                <div className="w-5 h-5 text-white flex items-center justify-center">
+                  <User />
+                </div>
               </div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">Buzz2Remote</h2>
             </div>
@@ -368,7 +389,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none"
                     >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      <div className="w-4 h-4 flex items-center justify-center">
+                        {showPassword ? <EyeOff /> : <Eye />}
+                      </div>
                     </button>
                   </div>
                 </div>
@@ -463,53 +486,65 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
                   />
                 </div>
 
-                <div>
-                  <label htmlFor="registerPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="registerPassword"
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      value={registerPassword}
-                      onChange={(e) => setRegisterPassword(e.target.value)}
-                      className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                      placeholder="Create a strong password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  
-                  {/* Password Requirements */}
-                  {registerPassword && (
-                    <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Password Requirements:
-                      </div>
-                      <div className="space-y-1">
-                        {passwordRequirements.map((requirement, index) => (
-                          <div key={index} className="flex items-center space-x-2">
-                            {requirement.isValid ? (
-                              <Check className="w-4 h-4 text-green-500" />
-                            ) : (
-                              <X className="w-4 h-4 text-red-500" />
-                            )}
-                            <span className={`text-sm ${
-                              requirement.isValid ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'
-                            }`}>
-                              {requirement.text}
+                <div className="grid grid-cols-1 gap-4">
+                  {/* Password Field */}
+                  <div>
+                    <label htmlFor="registerPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Password
+                      {!isPasswordValid && registerPassword.length > 0 && (
+                        <div className="relative inline-block ml-2">
+                          <div className="group cursor-help">
+                            <span className="w-4 h-4 text-red-500 inline-flex items-center justify-center">
+                              <X />
                             </span>
+                            <div className="absolute z-50 left-0 mt-2 w-64 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                              <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Password Requirements:
+                              </div>
+                              <div className="space-y-1">
+                                {passwordRequirements.map((requirement, index) => (
+                                  <div key={index} className="flex items-center space-x-2">
+                                    <div className="w-3 h-3 flex items-center justify-center">
+                                      {requirement.isValid ? (
+                                        <span className="text-green-500"><Check /></span>
+                                      ) : (
+                                        <span className="text-red-500"><X /></span>
+                                      )}
+                                    </div>
+                                    <span className={`text-xs ${
+                                      requirement.isValid ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'
+                                    }`}>
+                                      {requirement.text}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      )}
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="registerPassword"
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        value={registerPassword}
+                        onChange={(e) => setRegisterPassword(e.target.value)}
+                        className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                        placeholder="Create a strong password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                      >
+                        <div className="w-4 h-4 flex items-center justify-center">
+                          {showPassword ? <EyeOff /> : <Eye />}
+                        </div>
+                      </button>
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 <div className="flex items-start">
@@ -543,7 +578,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
 
                 <button
                   type="submit"
-                  disabled={registerLoading || !isPasswordValid}
+                  disabled={registerLoading || !isPasswordValid || !agreedToTerms}
                   className="w-full bg-gradient-to-r from-orange-500 to-yellow-500 text-white py-3 px-4 rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {registerLoading ? 'Creating Account...' : 'Create Account'}

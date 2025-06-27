@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { 
-  Search, 
+import { Search, 
   MapPin, 
-  Building, 
+  Building2, 
   DollarSign, 
   Clock, 
   Filter,
@@ -13,8 +12,7 @@ import {
   ArrowRight,
   Briefcase,
   Calendar,
-  Users
-} from 'lucide-react';
+  Users } from '../components/icons/EmojiIcons';
 import { jobService } from '../services/jobService';
 import { Job } from '../types/job';
 

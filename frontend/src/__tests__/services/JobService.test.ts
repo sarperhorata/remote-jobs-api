@@ -1,25 +1,17 @@
 import { jobService } from '../../services/jobService';
 
-// Mock the getApiUrl function at module level
-jest.mock('../../utils/apiConfig', () => {
-  return {
-    getApiUrl: jest.fn().mockResolvedValue('http://localhost:8001/api'),
-    clearApiUrlCache: jest.fn(),
-  };
-});
+jest.mock('../../utils/apiConfig', () => ({
+  getApiUrl: jest.fn().mockResolvedValue('http://localhost:8001/api')
+}));
 
-// Get the mocked function for assertions
-const { getApiUrl } = require('../../utils/apiConfig');
-
-// Mock fetch globally
-global.fetch = jest.fn();
+let mockFetch = jest.fn();
+global.fetch = mockFetch;
 
 describe('jobService', () => {
   beforeEach(() => {
-    (fetch as jest.Mock).mockClear();
-    (getApiUrl as jest.Mock).mockClear();
+    (mockFetch as jest.Mock).mockClear();
     // Reset the mock to always return the correct URL
-    (getApiUrl as jest.Mock).mockResolvedValue('http://localhost:8001/api');
+    (mockFetch as jest.Mock).mockResolvedValue('http://localhost:8001/api');
   });
 
   describe('getJobs', () => {
@@ -31,14 +23,14 @@ describe('jobService', () => {
         pages: 1
       };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (mockFetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         json: async () => mockJobs
       });
 
       const result = await jobService.getJobs();
       
-      expect(fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:8001/api/jobs/?page=1&per_page=10',
         expect.any(Object)
       );
@@ -46,13 +38,13 @@ describe('jobService', () => {
     });
 
     it('should handle network errors', async () => {
-      (fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+      (mockFetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
 
       await expect(jobService.getJobs()).rejects.toThrow('Network error');
     });
 
     it('should handle API errors', async () => {
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (mockFetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
         status: 500,
         statusText: 'Internal Server Error'
@@ -68,14 +60,14 @@ describe('jobService', () => {
         search: 'developer'
       };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (mockFetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         json: async () => ({ jobs: [], total: 0, page: 1, pages: 0 })
       });
 
       await jobService.getJobs(1, 10, filters);
       
-      expect(fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:8001/api/jobs/?page=1&per_page=10&location=Remote&company=TechCorp&search=developer',
         expect.any(Object)
       );
@@ -86,14 +78,14 @@ describe('jobService', () => {
     it('should fetch a single job successfully', async () => {
       const mockJob = { id: '1', title: 'Software Engineer', company: 'TechCorp' };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (mockFetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         json: async () => mockJob
       });
 
       const result = await jobService.getJobById('1');
       
-      expect(fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:8001/api/jobs/1',
         expect.any(Object)
       );
@@ -101,7 +93,7 @@ describe('jobService', () => {
     });
 
     it('should handle job not found', async () => {
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (mockFetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
         status: 404,
         statusText: 'Not Found'
@@ -118,14 +110,14 @@ describe('jobService', () => {
         total: 1
       };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (mockFetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         json: async () => mockResults
       });
 
       const result = await jobService.searchJobs('react');
       
-      expect(fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:8001/api/jobs/search?q=react',
         expect.any(Object)
       );
@@ -142,14 +134,14 @@ describe('jobService', () => {
         categories: ['Engineering', 'Design']
       };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (mockFetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         json: async () => mockStats
       });
 
       const result = await jobService.getJobStatistics();
       
-      expect(fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:8001/api/jobs/statistics',
         expect.any(Object)
       );
@@ -165,14 +157,14 @@ describe('jobService', () => {
       ];
 
       // Mock getJobs function response
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (mockFetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         json: async () => ({ jobs: mockJobs })
       });
 
       const result = await jobService.getFeaturedJobs();
       
-      expect(fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:8001/api/jobs/?limit=3'
       );
       expect(result).toEqual(mockJobs);
@@ -187,14 +179,14 @@ describe('jobService', () => {
       };
       const mockResponse = { success: true, applicationId: '123' };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (mockFetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         json: async () => mockResponse
       });
 
       const result = await jobService.applyToJob('1', applicationData);
       
-      expect(fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:8001/api/jobs/1/apply',
         expect.objectContaining({
           method: 'POST',
@@ -212,14 +204,14 @@ describe('jobService', () => {
         { id: '2', jobId: '2', status: 'reviewed' }
       ];
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (mockFetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         json: async () => ({ applications: mockApplications })
       });
 
       const result = await jobService.getMyApplications();
       
-      expect(fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:8001/api/jobs/applications',
         expect.any(Object)
       );

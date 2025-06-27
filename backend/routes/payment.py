@@ -8,7 +8,7 @@ import os
 from fastapi import Request
 from bson.objectid import ObjectId
 from datetime import timedelta
-from backend.models.models import User
+from backend.schemas.user import User
 from backend.schemas.payment import PaymentCreate, PaymentResponse, PaymentListResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
 

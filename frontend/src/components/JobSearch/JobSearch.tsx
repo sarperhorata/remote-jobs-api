@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, MapPin, Clock, DollarSign, Building2, ExternalLink, BookmarkPlus, Bookmark } from 'lucide-react';
+import { Search, Filter, MapPin, Clock, DollarSign, Building2, ExternalLink, BookmarkPlus, Bookmark } from '../icons/EmojiIcons';
 import { Job } from '../../types/job';
 import { jobService } from '../../services/jobService';
 import JobApplicationModal from './JobApplicationModal';

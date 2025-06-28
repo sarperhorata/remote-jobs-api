@@ -35,7 +35,7 @@ const JobAutocomplete: React.FC<JobAutocompleteProps> = ({
     setIsLoading(true);
     try {
       // Use the job-titles/search endpoint for autocomplete
-      const response = await fetch(`${API_BASE_URL}/api/jobs/job-titles/search?q=${encodeURIComponent(value)}&limit=20`);
+      const response = await fetch(`${API_BASE_URL}/api/v1/jobs/job-titles/search?q=${encodeURIComponent(value)}&limit=20`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -47,7 +47,8 @@ const JobAutocomplete: React.FC<JobAutocompleteProps> = ({
       // Convert job titles to position format
       const formattedPositions = data.map((item: any) => ({
         title: item.title,
-        count: 1 // Default count since API doesn't provide this
+        count: item.count || 1, // Use API count or default to 1
+        category: item.category || 'Technology'
       }));
       
       setPositions(formattedPositions);

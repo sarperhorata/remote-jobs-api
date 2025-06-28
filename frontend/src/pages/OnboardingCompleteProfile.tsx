@@ -207,14 +207,20 @@ const OnboardingCompleteProfile: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:8001/api/v1/jobs/job-titles/search?q=${encodeURIComponent(query)}`);
+      const response = await fetch(`http://localhost:8001/api/v1/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=10`);
       
       if (!response.ok) {
         throw new Error('API not available');
       }
       
       const data = await response.json();
-      setJobTitleSuggestions(data.slice(0, 10));
+      // Ensure proper format for job title suggestions
+      const formattedSuggestions = data.map((item: any, index: number) => ({
+        id: item.id || `api-${index}`,
+        title: item.title,
+        category: item.category || 'Technology'
+      }));
+      setJobTitleSuggestions(formattedSuggestions.slice(0, 10));
     } catch (error) {
       console.error('Job titles search error:', error);
       // Fallback with common job titles

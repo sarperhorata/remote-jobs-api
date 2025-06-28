@@ -815,11 +815,12 @@ class RemoteJobsBot:
     
     async def send_deployment_notification(self, deployment_data: Dict[str, Any]) -> bool:
         """
-        Sends a deployment notification to all subscribed users
+        Sends RESTRICTED notifications - ONLY deployment and cronjob notifications
         
         Args:
             deployment_data: Dictionary containing deployment information
                 {
+                    'type': str,        # MUST be 'deployment' or 'cronjob' 
                     'environment': str,  # e.g. 'production', 'staging'
                     'status': str,      # e.g. 'success', 'failed'
                     'commit': str,      # commit hash
@@ -836,12 +837,18 @@ class RemoteJobsBot:
             return False
             
         try:
+            # RESTRICTION: Only allow deployment and cronjob notifications
+            notification_type = deployment_data.get('type', 'deployment')
+            if notification_type not in ['deployment', 'cronjob']:
+                logger.info(f"🔇 BLOCKED notification type: {notification_type} (only deployment/cronjob allowed)")
+                return False
+            
             # Format the deployment message based on type
             status_emoji = "✅" if deployment_data['status'] == 'success' else "❌"
             env_emoji = "🚀" if deployment_data['environment'] == 'production' else "🧪"
             
             # Base message
-            message = f"{status_emoji} <b>DEPLOYMENT UPDATE</b>\n\n"
+            message = f"{status_emoji} <b>{notification_type.upper()} UPDATE</b>\n\n"
             message += f"{env_emoji} <b>Environment:</b> {deployment_data['environment'].upper()}\n"
             message += f"📊 <b>Status:</b> {deployment_data['status'].upper()}\n"
             message += f"🔗 <b>Commit:</b> <code>{deployment_data['commit']}</code>\n"

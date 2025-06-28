@@ -46,7 +46,7 @@ const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ThemeProvider>
-          <Router>
+          <Router future={{ v7_relativeSplatPath: true }}>
             <Suspense fallback={<div className="flex justify-center items-center h-screen text-xl font-semibold">Loading Buzz2Remote...</div>}>
               <Routes>
                 {/* Public Routes */}

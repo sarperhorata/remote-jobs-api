@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import {
   MapPin,
   DollarSign,
@@ -10,12 +10,11 @@ import {
   BookmarkPlus,
   ExternalLink,
   ChevronDown,
-  Grid,
-  List,
   Calendar,
   Building,
   Globe
 } from 'lucide-react';
+import Header from '../components/Header';
 
 // Interface definitions
 interface JobTitle {
@@ -65,8 +64,6 @@ const JobSearchResults: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [totalJobs, setTotalJobs] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [showFilters, setShowFilters] = useState(true);
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   // Saved and applied jobs state
   const [savedJobs, setSavedJobs] = useState<Set<string>>(new Set());
@@ -110,7 +107,7 @@ const JobSearchResults: React.FC = () => {
 
       console.log('🔍 Fetching jobs with params:', queryParams.toString());
       
-      const response = await fetch(`/api/v1/jobs/search?${queryParams}`);
+      const response = await fetch(`http://localhost:8001/api/v1/jobs/search?${queryParams}`);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch jobs: ${response.status} ${response.statusText}`);
@@ -215,14 +212,17 @@ const JobSearchResults: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Add Homepage Header */}
+      <Header />
+
+      {/* Page Header */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
                 🐝 <span className="bg-gradient-to-r from-yellow-500 to-orange-500 bg-clip-text text-transparent">
-                  Remote Jobs
+                  Buzz2Remote
                 </span>
               </h1>
               <div className="flex items-center gap-6 mt-2 text-gray-600">
@@ -241,6 +241,13 @@ const JobSearchResults: React.FC = () => {
 
             {/* Action Controls */}
             <div className="flex items-center gap-4">
+              <button
+                onClick={clearAllFilters}
+                className="text-sm text-yellow-600 hover:text-yellow-700 font-medium"
+              >
+                Clear All
+              </button>
+              
               {/* Sort Dropdown */}
               <div className="relative">
                 <select
@@ -254,43 +261,6 @@ const JobSearchResults: React.FC = () => {
                 </select>
                 <ChevronDown className="absolute right-3 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" />
               </div>
-
-              {/* View Mode Toggle */}
-              <div className="flex bg-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 rounded-md transition-colors ${
-                    viewMode === 'list'
-                      ? 'bg-white text-yellow-600 shadow-sm'
-                      : 'text-gray-400 hover:text-gray-600'
-                  }`}
-                >
-                  <List className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded-md transition-colors ${
-                    viewMode === 'grid'
-                      ? 'bg-white text-yellow-600 shadow-sm'
-                      : 'text-gray-400 hover:text-gray-600'
-                  }`}
-                >
-                  <Grid className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Filter Toggle */}
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className={`lg:hidden flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
-                  showFilters 
-                    ? 'bg-yellow-50 border-yellow-300 text-yellow-700' 
-                    : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
-                }`}
-              >
-                <Filter className="w-4 h-4" />
-                Filters
-              </button>
             </div>
           </div>
         </div>
@@ -299,20 +269,14 @@ const JobSearchResults: React.FC = () => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex gap-8">
-          {/* Sidebar Filters */}
-          <div className={`${showFilters ? 'block' : 'hidden'} lg:block w-full lg:w-80 flex-shrink-0`}>
+          {/* Left Sidebar Filters */}
+          <div className="w-80 flex-shrink-0">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                   <Filter className="w-5 h-5 text-yellow-500" />
                   Filters
                 </h3>
-                <button
-                  onClick={clearAllFilters}
-                  className="text-sm text-yellow-600 hover:text-yellow-700 font-medium"
-                >
-                  Clear All
-                </button>
               </div>
 
               <div className="space-y-6">
@@ -395,7 +359,7 @@ const JobSearchResults: React.FC = () => {
             </div>
           </div>
 
-          {/* Main Job Results */}
+          {/* Right Side Job Results */}
           <div className="flex-1">
             {loading ? (
               <div className="flex items-center justify-center py-12">
@@ -433,11 +397,7 @@ const JobSearchResults: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <div className={`grid gap-6 ${
-                viewMode === 'grid' 
-                  ? 'grid-cols-1 lg:grid-cols-2' 
-                  : 'grid-cols-1'
-              }`}>
+              <div className="grid gap-6 grid-cols-1">
                 {jobs.map((job) => (
                   <div 
                     key={job.id || job._id} 
@@ -499,76 +459,60 @@ const JobSearchResults: React.FC = () => {
                               {job.work_type}
                             </span>
                           )}
-                          {job.seniority_level && (
-                            <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-medium border border-purple-200">
-                              {job.seniority_level}
+                          {job.required_skills?.slice(0, 3).map((skill, index) => (
+                            <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                              {skill}
                             </span>
-                          )}
+                          ))}
                         </div>
 
-                        {/* Skills */}
-                        {job.required_skills && job.required_skills.length > 0 && (
-                          <div className="mb-4">
-                            <div className="flex flex-wrap gap-2">
-                              {job.required_skills.slice(0, 3).map((skill, index) => (
-                                <span 
-                                  key={index}
-                                  className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
-                                >
-                                  {skill}
-                                </span>
-                              ))}
-                              {job.required_skills.length > 3 && (
-                                <span className="px-2 py-1 bg-gray-100 text-gray-500 rounded text-xs">
-                                  +{job.required_skills.length - 3} more
-                                </span>
-                              )}
-                            </div>
-                          </div>
+                        {/* Job Description Preview */}
+                        {job.description && (
+                          <p className="text-gray-600 text-sm line-clamp-2 mb-4">
+                            {job.description.length > 150 
+                              ? `${job.description.substring(0, 150)}...` 
+                              : job.description
+                            }
+                          </p>
                         )}
                       </div>
 
-                      {/* Action Buttons */}
+                      {/* Actions */}
                       <div className="flex flex-col gap-2 ml-4">
                         <button
-                          onClick={() => handleSaveJob(job.id || job._id)}
-                          className={`p-2 rounded-lg transition-colors ${
-                            savedJobs.has(job.id || job._id)
-                              ? 'bg-yellow-100 text-yellow-600'
-                              : 'bg-gray-100 text-gray-400 hover:bg-yellow-100 hover:text-yellow-600'
+                          onClick={() => handleSaveJob(job.id || job._id || '')}
+                          className={`p-2 rounded-lg border transition-colors ${
+                            savedJobs.has(job.id || job._id || '')
+                              ? 'bg-yellow-50 border-yellow-300 text-yellow-600'
+                              : 'bg-white border-gray-300 text-gray-400 hover:text-yellow-600 hover:border-yellow-300'
                           }`}
                         >
-                          {savedJobs.has(job.id || job._id) ? (
-                            <Bookmark className="w-5 h-5 fill-current" />
-                          ) : (
-                            <BookmarkPlus className="w-5 h-5" />
-                          )}
+                          {savedJobs.has(job.id || job._id || '') ? <Bookmark className="w-4 h-4" /> : <BookmarkPlus className="w-4 h-4" />}
                         </button>
-                      </div>
-                    </div>
-
-                    {/* Bottom Actions */}
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                      <button
-                        onClick={() => navigate(`/jobs/${job.id || job._id}`)}
-                        className="text-yellow-600 hover:text-yellow-700 font-medium text-sm transition-colors"
-                      >
-                        View Details →
-                      </button>
-                      <button
-                        onClick={() => handleApplyJob(job.id || job._id)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          appliedJobs.has(job.id || job._id)
-                            ? 'bg-green-100 text-green-700 border border-green-200'
-                            : 'bg-yellow-600 text-white hover:bg-yellow-700'
-                        }`}
-                      >
-                        {appliedJobs.has(job.id || job._id) ? (
-                          <>✓ Applied</>
-                        ) : (
-                          <>Apply Now</>
+                        
+                        <button
+                          onClick={() => handleApplyJob(job.id || job._id || '')}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            appliedJobs.has(job.id || job._id || '')
+                              ? 'bg-green-100 text-green-700 border border-green-200'
+                              : 'bg-yellow-600 text-white hover:bg-yellow-700'
+                          }`}
+                          disabled={appliedJobs.has(job.id || job._id || '')}
+                        >
+                          {appliedJobs.has(job.id || job._id || '') ? 'Applied' : 'Apply Now'}
+                        </button>
+                        
+                        {job.url && (
+                          <a
+                            href={job.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 rounded-lg border border-gray-300 text-gray-400 hover:text-gray-600 transition-colors"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
                         )}
-                      </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -576,23 +520,25 @@ const JobSearchResults: React.FC = () => {
             )}
 
             {/* Pagination */}
-            {!loading && jobs.length > 0 && (
-              <div className="flex items-center justify-center mt-8">
+            {jobs.length > 0 && totalJobs > 20 && (
+              <div className="mt-8 flex items-center justify-center">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => fetchJobs(currentPage - 1)}
-                    disabled={currentPage <= 1}
-                    className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Previous
                   </button>
-                  <span className="px-4 py-2 bg-yellow-600 text-white rounded-lg">
-                    {currentPage}
+                  
+                  <span className="px-4 py-2 text-sm text-gray-700">
+                    Page {currentPage} of {Math.ceil(totalJobs / 20)}
                   </span>
+                  
                   <button
                     onClick={() => fetchJobs(currentPage + 1)}
-                    disabled={jobs.length < 20}
-                    className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    disabled={currentPage >= Math.ceil(totalJobs / 20)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Next
                   </button>

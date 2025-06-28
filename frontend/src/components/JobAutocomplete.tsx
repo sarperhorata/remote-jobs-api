@@ -43,6 +43,7 @@ const JobAutocomplete: React.FC<JobAutocompleteProps> = ({
       
       const data = await response.json();
       console.log('🔍 Autocomplete API Response:', data);
+      console.log('🔍 API URL used:', `${API_BASE_URL}/api/v1/jobs/job-titles/search?q=${encodeURIComponent(value)}&limit=20`);
       
       // Convert job titles to position format
       const formattedPositions = data.map((item: any) => ({
@@ -54,6 +55,8 @@ const JobAutocomplete: React.FC<JobAutocompleteProps> = ({
       setPositions(formattedPositions);
     } catch (error) {
       console.error('❌ Error fetching positions:', error);
+      console.error('❌ API_BASE_URL:', API_BASE_URL);
+      console.error('❌ Full URL was:', `${API_BASE_URL}/api/v1/jobs/job-titles/search?q=${encodeURIComponent(value)}&limit=20`);
       setPositions([]);
     } finally {
       setIsLoading(false);

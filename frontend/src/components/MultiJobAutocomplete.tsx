@@ -47,9 +47,9 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
 
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/v1/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=20`
-      );
+      const apiUrl = `${API_BASE_URL}/api/v1/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=20`;
+      console.log('🔍 MultiAutocomplete API URL:', apiUrl);
+      const response = await fetch(apiUrl);
       
       if (response.ok) {
         const data = await response.json();
@@ -61,13 +61,15 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
           count: item.count || 1,
           category: item.category || 'Technology'
         }));
+        console.log('🔍 MultiAutocomplete formatted positions:', formattedPositions);
         setPositions(formattedPositions);
       } else {
-        console.error('Failed to fetch job titles');
+        console.error('❌ Failed to fetch job titles, status:', response.status);
         setPositions([]);
       }
     } catch (error) {
-      console.error('Error fetching job titles:', error);
+      console.error('❌ Error fetching job titles:', error);
+      console.error('❌ API_BASE_URL:', API_BASE_URL);
       setPositions([]);
     } finally {
       setIsLoading(false);

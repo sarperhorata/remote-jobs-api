@@ -47,7 +47,7 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
 
     setIsLoading(true);
     try {
-      const apiUrl = `${API_BASE_URL}/api/v1/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=20`;
+      const apiUrl = API_BASE_URL + '/jobs/job-titles/search';
       console.log('🔍 MultiAutocomplete API URL:', apiUrl);
       const response = await fetch(apiUrl);
       

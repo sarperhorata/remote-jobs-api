@@ -34,7 +34,7 @@ const JobAutocomplete: React.FC<JobAutocompleteProps> = ({
     
     setIsLoading(true);
     try {
-      // Use the job-titles/search endpoint for autocomplete
+      // Use the job-titles/search endpoint for autocomplete  
       const response = await fetch(`${API_BASE_URL}/api/v1/jobs/job-titles/search?q=${encodeURIComponent(value)}&limit=20`);
       
       if (!response.ok) {

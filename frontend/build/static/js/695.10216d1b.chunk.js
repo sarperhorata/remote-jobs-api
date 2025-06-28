@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunkremote_jobs_frontend=self.webpackChunkremote_jobs_frontend||[]).push([[695],{9695:(e,r,s)=>{s.r(r),s.d(r,{default:()=>o});s(5043);var n=s(579);const o=()=>(0,n.jsxs)("div",{children:[(0,n.jsx)("h1",{children:"User Profile"}),(0,n.jsx)("p",{children:"User dashboard and profile information will be here."})]})}}]);
+//# sourceMappingURL=695.10216d1b.chunk.js.map

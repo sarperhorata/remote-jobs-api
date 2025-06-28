@@ -1498,7 +1498,7 @@ async def get_job_application_analytics(
         logger.error(f"Error getting application analytics for job {job_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Move this route to the end of the file so it doesn't interfere with specific routes like /job-titles/search
+# This route must be last
 @router.get("/{job_id}")
 async def get_job(job_id: str, db: AsyncIOMotorDatabase = Depends(get_async_db)):
     """Get a specific job by ID."""
@@ -1508,15 +1508,15 @@ async def get_job(job_id: str, db: AsyncIOMotorDatabase = Depends(get_async_db))
             query = {"_id": ObjectId(job_id)}
         else:
             query = {"_id": job_id}
-            
+
         job = await db.jobs.find_one(query)
         if not job:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
-        
+
         # Convert ObjectId to string for JSON serialization
         if "_id" in job and isinstance(job["_id"], ObjectId):
             job["_id"] = str(job["_id"])
-        
+
         return job
     except HTTPException:
         # Re-raise HTTP exceptions (like 404) as they are

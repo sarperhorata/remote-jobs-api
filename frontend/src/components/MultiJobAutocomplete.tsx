@@ -47,7 +47,7 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
 
     setIsLoading(true);
     try {
-      const apiUrl = API_BASE_URL + '/jobs/job-titles/search';
+      const apiUrl = `${API_BASE_URL}/v1/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=20`;
       console.log('🔍 MultiAutocomplete API URL:', apiUrl);
       const response = await fetch(apiUrl);
       
@@ -69,7 +69,7 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
       }
     } catch (error) {
       console.error('❌ Error fetching job titles:', error);
-      console.error('❌ API_BASE_URL:', API_BASE_URL);
+      console.error('❌ API_BASE_URL was:', API_BASE_URL);
       setPositions([]);
     } finally {
       setIsLoading(false);

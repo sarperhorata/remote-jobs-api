@@ -75,7 +75,7 @@ describe("JobAutocomplete", () => {
     );
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith("http://localhost:8000/api/jobs/job-titles/search?q=soft&limit=20");
+      expect(global.fetch).toHaveBeenCalledWith("http://localhost:8000/api/v1/jobs/job-titles/search?q=soft&limit=20");
     });
   });
 

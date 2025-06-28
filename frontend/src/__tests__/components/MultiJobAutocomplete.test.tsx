@@ -60,7 +60,7 @@ describe('MultiJobAutocomplete', () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/jobs/job-titles/search?q=frontend')
+        expect.stringContaining('/v1/jobs/job-titles/search?q=frontend')
       );
     });
   });

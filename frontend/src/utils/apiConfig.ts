@@ -39,7 +39,7 @@ const detectBackendPort = async (): Promise<string> => {
   // Test environment check - force port 8000 for tests
   if (process.env.NODE_ENV === 'test') {
     console.log('🧪 Test mode - forcing port 8000');
-    return 'http://localhost:8000/api';
+    return 'http://localhost:8000';
   }
 
   // Backend portlarını sırayla test et
@@ -53,7 +53,7 @@ const detectBackendPort = async (): Promise<string> => {
       
       if (response.ok) {
         console.log(`✅ Backend detected on port ${port}`);
-        return `http://localhost:${port}/api`;
+        return `http://localhost:${port}`;
       }
     } catch (error: any) {
       // Port ulaşılabilir değil, bir sonrakini dene
@@ -63,7 +63,7 @@ const detectBackendPort = async (): Promise<string> => {
 
   // Hiçbir port çalışmıyorsa varsayılan port
   console.warn('⚠️ No backend found, using default port 8001');
-  return 'http://localhost:8001/api';
+  return 'http://localhost:8001';
 };
 
 export const getApiUrl = async (): Promise<string> => {
@@ -97,7 +97,7 @@ export const getApiUrl = async (): Promise<string> => {
     return cachedApiUrl;
   } catch (error) {
     console.error('❌ Backend detection failed:', error);
-    cachedApiUrl = 'http://localhost:8001/api'; // Fallback
+    cachedApiUrl = 'http://localhost:8001'; // Fallback
     console.log('🔄 Using fallback URL:', cachedApiUrl);
     return cachedApiUrl;
   } finally {

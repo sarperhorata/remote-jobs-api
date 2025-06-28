@@ -12,6 +12,7 @@ import { MapPin,
   Globe,
   Mail } from '../components/icons/EmojiIcons';
 import { notificationService } from '../services/notificationService';
+import { API_BASE_URL } from '../utils/apiConfig';
 
 interface LocationResult {
   display_name: string;
@@ -207,7 +208,7 @@ const OnboardingCompleteProfile: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:8001/api/v1/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=10`);
+      const response = await fetch(`${API_BASE_URL}/v1/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=10`);
       
       if (!response.ok) {
         throw new Error('API not available');
@@ -269,7 +270,7 @@ const OnboardingCompleteProfile: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:8001/api/v1/jobs/skills/search?q=${encodeURIComponent(query)}`);
+      const response = await fetch(`${API_BASE_URL}/v1/jobs/skills/search?q=${encodeURIComponent(query)}`);
       
       if (!response.ok) {
         throw new Error('API not available');
@@ -418,7 +419,7 @@ const OnboardingCompleteProfile: React.FC = () => {
       localStorage.setItem('userPreferences', JSON.stringify(profileData));
 
       // Save to backend
-      const response = await fetch(`http://localhost:8001/api/v1/onboarding/complete-profile`, {
+      const response = await fetch(`${API_BASE_URL}/v1/onboarding/complete-profile`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

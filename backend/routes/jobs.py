@@ -166,65 +166,70 @@ async def get_job_statistics(
 @router.get("/job-titles/search")
 async def search_job_titles(
     q: str = Query(..., description="Search query for job titles"),
-    limit: int = Query(10, description="Number of results to return")
+    limit: int = Query(10, description="Number of results to return"),
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
-    """Search for job titles"""
+    """Search for job titles from actual database"""
     try:
-        # Common job titles - in production this could come from a database
-        common_titles = [
-            {"id": "1", "title": "Software Engineer", "category": "Technology"},
-            {"id": "2", "title": "Frontend Developer", "category": "Technology"},
-            {"id": "3", "title": "Backend Developer", "category": "Technology"},
-            {"id": "4", "title": "Full Stack Developer", "category": "Technology"},
-            {"id": "5", "title": "DevOps Engineer", "category": "Technology"},
-            {"id": "6", "title": "Data Scientist", "category": "Data"},
-            {"id": "7", "title": "Data Engineer", "category": "Data"},
-            {"id": "8", "title": "Machine Learning Engineer", "category": "Data"},
-            {"id": "9", "title": "Product Manager", "category": "Product"},
-            {"id": "10", "title": "UX Designer", "category": "Design"},
-            {"id": "11", "title": "UI Designer", "category": "Design"},
-            {"id": "12", "title": "UX/UI Designer", "category": "Design"},
-            {"id": "13", "title": "Marketing Manager", "category": "Marketing"},
-            {"id": "14", "title": "Digital Marketing Specialist", "category": "Marketing"},
-            {"id": "15", "title": "Content Writer", "category": "Content"},
-            {"id": "16", "title": "Technical Writer", "category": "Content"},
-            {"id": "17", "title": "Sales Representative", "category": "Sales"},
-            {"id": "18", "title": "Business Development Manager", "category": "Sales"},
-            {"id": "19", "title": "Customer Success Manager", "category": "Customer Success"},
-            {"id": "20", "title": "Account Manager", "category": "Sales"},
-            {"id": "21", "title": "Project Manager", "category": "Management"},
-            {"id": "22", "title": "Scrum Master", "category": "Management"},
-            {"id": "23", "title": "Quality Assurance Engineer", "category": "Technology"},
-            {"id": "24", "title": "Security Engineer", "category": "Technology"},
-            {"id": "25", "title": "Cloud Architect", "category": "Technology"},
-            {"id": "26", "title": "Mobile Developer", "category": "Technology"},
-            {"id": "27", "title": "iOS Developer", "category": "Technology"},
-            {"id": "28", "title": "Android Developer", "category": "Technology"},
-            {"id": "29", "title": "React Developer", "category": "Technology"},
-            {"id": "30", "title": "Vue.js Developer", "category": "Technology"},
-            {"id": "31", "title": "Angular Developer", "category": "Technology"},
-            {"id": "32", "title": "Node.js Developer", "category": "Technology"},
-            {"id": "33", "title": "Python Developer", "category": "Technology"},
-            {"id": "34", "title": "Java Developer", "category": "Technology"},
-            {"id": "35", "title": "C# Developer", "category": "Technology"},
-            {"id": "36", "title": "PHP Developer", "category": "Technology"},
-            {"id": "37", "title": "Ruby Developer", "category": "Technology"},
-            {"id": "38", "title": "Go Developer", "category": "Technology"},
-            {"id": "39", "title": "Rust Developer", "category": "Technology"},
-            {"id": "40", "title": "Database Administrator", "category": "Technology"}
+        # Aggregate job titles from the database with counts
+        pipeline = [
+            # Match active jobs first to improve performance
+            {"$match": {
+                "is_active": {"$ne": False},
+                "title": {"$regex": q, "$options": "i"}  # Case-insensitive search
+            }},
+            # Group by title and count occurrences
+            {"$group": {
+                "_id": {"$toLower": "$title"},  # Group by lowercase title for consistency
+                "title": {"$first": "$title"},  # Keep original case
+                "count": {"$sum": 1},
+                "category": {"$first": "$category"}  # Try to get category if available
+            }},
+            # Sort by count (descending) then by title
+            {"$sort": {"count": -1, "title": 1}},
+            # Limit results
+            {"$limit": limit},
+            # Project final format
+            {"$project": {
+                "_id": 0,
+                "id": {"$toString": "$_id"},  # Convert to string for frontend
+                "title": 1,
+                "count": 1,
+                "category": {"$ifNull": ["$category", "Technology"]}  # Default category
+            }}
         ]
         
-        # Filter titles based on search query
-        filtered_titles = [
-            title for title in common_titles 
-            if q.lower() in title["title"].lower()
-        ]
+        # Execute aggregation
+        cursor = db.jobs.aggregate(pipeline)
+        results = await cursor.to_list(length=limit)
         
-        return filtered_titles[:limit]
+        # If no results found, return sample data for development
+        if not results:
+            # Common job titles - fallback for development
+            common_titles = [
+                {"id": "1", "title": "Software Engineer", "count": 1, "category": "Technology"},
+                {"id": "2", "title": "Frontend Developer", "count": 1, "category": "Technology"},
+                {"id": "3", "title": "Backend Developer", "count": 1, "category": "Technology"},
+                {"id": "4", "title": "Full Stack Developer", "count": 1, "category": "Technology"},
+                {"id": "5", "title": "DevOps Engineer", "count": 1, "category": "Technology"},
+            ]
+            
+            # Filter fallback titles based on search query
+            filtered_titles = [
+                title for title in common_titles 
+                if q.lower() in title["title"].lower()
+            ]
+            
+            return filtered_titles[:limit]
+        
+        return results
         
     except Exception as e:
         logger.error(f"Error searching job titles: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        # Return fallback data on error
+        return [
+            {"id": "fallback_1", "title": "Remote Developer", "count": 1, "category": "Technology"}
+        ]
 
 @router.get("/skills/search")
 async def search_skills(

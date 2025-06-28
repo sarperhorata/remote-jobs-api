@@ -148,7 +148,7 @@ describe('OnboardingCompleteProfile', () => {
       
       await waitFor(() => {
         expect(fetch).toHaveBeenCalledWith(
-          expect.stringContaining('/jobs/job-titles/search?q=Software')
+          expect.stringContaining('/v1/jobs/job-titles/search?q=Software')
         );
       });
     });

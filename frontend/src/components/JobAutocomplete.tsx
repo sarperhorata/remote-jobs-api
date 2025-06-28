@@ -7,6 +7,13 @@ interface Position {
   count: number;
 }
 
+interface JobTitle {
+  id: string;
+  title: string;
+  count?: number;
+  category?: string;
+}
+
 interface JobAutocompleteProps {
   value: string;
   onChange: (value: string) => void;
@@ -34,19 +41,19 @@ const JobAutocomplete: React.FC<JobAutocompleteProps> = ({
     
     setIsLoading(true);
     try {
-      // Use the job-titles/search endpoint for autocomplete  
-      const response = await fetch(`${API_BASE_URL}/api/v1/jobs/job-titles/search?q=${encodeURIComponent(value)}&limit=20`);
-      
+      const response = await fetch(`${API_BASE_URL}/v1/jobs/job-titles/search?q=${encodeURIComponent(value)}&limit=20`);
+      setIsLoading(false);
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        console.error('❌ Failed to fetch job titles, status:', response.status);
+        console.log('🔍 API URL used:', `${API_BASE_URL}/v1/jobs/job-titles/search?q=${encodeURIComponent(value)}&limit=20`);
+        setPositions([]);
+        return;
       }
-      
-      const data = await response.json();
-      console.log('🔍 Autocomplete API Response:', data);
-      console.log('🔍 API URL used:', `${API_BASE_URL}/api/v1/jobs/job-titles/search?q=${encodeURIComponent(value)}&limit=20`);
+      const data: JobTitle[] = await response.json();
+      console.log('✅ Suggestions fetched:', data);
       
       // Convert job titles to position format
-      const formattedPositions = data.map((item: any) => ({
+      const formattedPositions = data.map((item: JobTitle) => ({
         title: item.title,
         count: item.count || 1, // Use API count or default to 1
         category: item.category || 'Technology'
@@ -54,11 +61,9 @@ const JobAutocomplete: React.FC<JobAutocompleteProps> = ({
       
       setPositions(formattedPositions);
     } catch (error) {
-      console.error('❌ Error fetching positions:', error);
-      console.error('❌ API_BASE_URL:', API_BASE_URL);
-      console.error('❌ Full URL was:', `${API_BASE_URL}/api/v1/jobs/job-titles/search?q=${encodeURIComponent(value)}&limit=20`);
+      console.error("Error fetching job titles:", error);
+      console.error('❌ Full URL was:', `${API_BASE_URL}/v1/jobs/job-titles/search?q=${encodeURIComponent(value)}&limit=20`);
       setPositions([]);
-    } finally {
       setIsLoading(false);
     }
   }, [value, isLoading]);

@@ -20,22 +20,19 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 # Initialize Sentry for error monitoring
 sentry_sdk.init(
     dsn=os.getenv("SENTRY_DSN"),
+    traces_sample_rate=0.2,  # 20% of transactions for performance monitoring
+    profiles_sample_rate=0.2, # 20% of profiles for performance monitoring
+    environment=os.getenv("ENVIRONMENT", "development"), # 'development' or 'production'
+    release="buzz2remote@1.0.0", # App version
     integrations=[
-        FastApiIntegration(
-            failed_request_status_codes={400, 401, 403, 404, 422, 500, 501, 502, 503}
-        ),
+        FastApiIntegration(transaction_style="endpoint"),
         LoggingIntegration(
-            level=logging.INFO,
-            event_level=logging.ERROR
+            level=logging.INFO,        # Capture info and above as breadcrumbs
+            event_level=logging.ERROR  # Send errors as events
         ),
     ],
-    traces_sample_rate=0.1,
-    profiles_sample_rate=0.1,
-    environment=os.getenv("ENVIRONMENT", "development"),
-    release=os.getenv("RENDER_GIT_COMMIT", "unknown"),
-    send_default_pii=True,
-    max_breadcrumbs=50,
-    before_send=lambda event, hint: event if event.get('level') != 'debug' else None,
+    # Do not send 404 errors to Sentry
+    before_send=lambda event, hint: None if "Not Found" in event.get('logentry', {}).get('message', '') else event,
 )
 
 # Add project root to path

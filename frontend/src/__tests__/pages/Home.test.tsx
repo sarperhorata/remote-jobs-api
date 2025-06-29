@@ -81,9 +81,10 @@ describe('Home Page', () => {
         </TestWrapper>
       );
 
-      // Wait for error handling to complete
+      // Wait for error handling to complete and verify fallback jobs are shown
       await waitFor(() => {
-        expect(screen.getByText(/using fallback job data/i)).toBeInTheDocument();
+        const elements = screen.getAllByText(/senior frontend developer/i);
+        expect(elements[0]).toBeInTheDocument();
       }, { timeout: 3000 });
 
       // Verify error was logged

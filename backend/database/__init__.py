@@ -1,7 +1,7 @@
 """
 Database package initialization.
 """
-from sqlalchemy.orm import declarative_base
+# Removed sqlalchemy import as it's not needed for MongoDB
 from .db import (
     get_database_client,
     get_database,
@@ -20,7 +20,10 @@ from .db import (
     DATABASE_NAME
 )
 
-Base = declarative_base()
+# Define a dummy Base for compatibility with legacy code
+class Base:
+    """Dummy base class for compatibility"""
+    pass
 
 __all__ = [
     'get_database_client',

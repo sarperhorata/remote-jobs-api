@@ -19,7 +19,7 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 
 # Initialize Sentry for error monitoring
 sentry_sdk.init(
-    dsn=os.getenv("SENTRY_DSN"),
+    dsn=os.getenv("SENTRY_DSN", "https://e307d92640eb7e8b60a7ebabf76db882@o4509547047616512.ingest.us.sentry.io/4509547146575872"),
     traces_sample_rate=0.2,  # 20% of transactions for performance monitoring
     profiles_sample_rate=0.2, # 20% of profiles for performance monitoring
     environment=os.getenv("ENVIRONMENT", "development"), # 'development' or 'production'
@@ -163,14 +163,15 @@ for router, prefix, tags in routers_to_include:
     app.include_router(router, prefix=prefix, tags=tags)
     
 # Optional: Include admin panel router if available and enabled
-try:
-    #from backend.admin_panel.routes import admin_router
-    if os.getenv("ADMIN_PANEL_ENABLED", "true").lower() == "true":
-        pass  # Admin panel functionality temporarily disabled
-        #app.include_router(admin_router, prefix="/admin", tags=["admin"])
-        #logger.info("Admin panel successfully included.")
-except ImportError:
-    logger.warning("Admin panel not found, skipping.")
+# Admin panel temporarily disabled due to syntax issues
+# try:
+#     from backend.admin_panel.routes import admin_router
+#     if os.getenv("ADMIN_PANEL_ENABLED", "true").lower() == "true":
+#         app.include_router(admin_router, prefix="/admin", tags=["admin"])
+#         logger.info("Admin panel successfully included.")
+# except ImportError:
+#     logger.warning("Admin panel not found, skipping.")
+logger.info("Admin panel temporarily disabled for testing")
 
 @app.get("/", tags=["General"])
 async def root():

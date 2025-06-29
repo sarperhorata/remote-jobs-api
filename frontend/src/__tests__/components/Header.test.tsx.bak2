@@ -89,7 +89,7 @@ describe('Header', () => {
     });
 
     renderHeader();
-    // Sign Out is in a dropdown, need to open profile menu first
+    expect(screen.getByText('Sign Out')).toBeInTheDocument();
     expect(screen.queryByText('Sign In')).not.toBeInTheDocument();
     expect(screen.queryByText('Get Started')).not.toBeInTheDocument();
   });

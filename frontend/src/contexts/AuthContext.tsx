@@ -27,6 +27,7 @@ interface User {
   id: string;
   name: string;
   email: string;
+  picture?: string;
   profilePicture?: string;
   profile_picture?: string;
   created_at?: string;

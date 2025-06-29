@@ -106,12 +106,25 @@ app = FastAPI(
 )
 
 # Middleware setup
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:3001", 
+    "http://localhost:3002",
+    "https://buzz2remote.com",
+    "https://www.buzz2remote.com",
+    "https://buzz2remote-api.onrender.com"
+]
+
+if os.getenv("ENVIRONMENT") == "development":
+    allowed_origins.append("*")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, restrict this to your frontend URL
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
@@ -153,6 +166,7 @@ for router, prefix, tags in routers_to_include:
 try:
     #from backend.admin_panel.routes import admin_router
     if os.getenv("ADMIN_PANEL_ENABLED", "true").lower() == "true":
+        pass  # Admin panel functionality temporarily disabled
         #app.include_router(admin_router, prefix="/admin", tags=["admin"])
         #logger.info("Admin panel successfully included.")
 except ImportError:

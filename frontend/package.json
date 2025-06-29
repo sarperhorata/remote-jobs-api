@@ -24,6 +24,7 @@
     "lucide-react": "^0.525.0",
     "react": "^18.2.0",
     "react-dom": "^18.3.1",
+    "react-hot-toast": "^2.5.2",
     "react-icons": "^5.0.1",
     "react-query": "^3.39.3",
     "react-router-dom": "^6.30.0",
@@ -38,6 +39,11 @@
     "build": "react-scripts build",
     "test": "NODE_OPTIONS='--max-old-space-size=4096' react-scripts test",
     "test:quick": "NODE_OPTIONS='--max-old-space-size=4096' react-scripts test --watchAll=false",
+    "test:lint": "NODE_OPTIONS='--max-old-space-size=4096' react-scripts test --testPathPattern=lint-validation --watchAll=false",
+    "lint": "eslint src/ --ext .ts,.tsx",
+    "lint:fix": "eslint src/ --ext .ts,.tsx --fix",
+    "lint:pre-commit": "node scripts/pre-commit-lint.js",
+    "type-check": "tsc --noEmit",
     "eject": "react-scripts eject"
   },
   "jest": {

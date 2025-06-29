@@ -8,7 +8,7 @@ interface PortConfig {
 }
 
 const portConfig: PortConfig = {
-  backendPorts: [8001, 8000, 8002, 8003, 8004], // 8001'i ilk sıraya aldım - stable port
+  backendPorts: [8002, 8001, 8000, 8003, 8004], // 8002'yi ilk sıraya aldım - active port
   frontendPorts: [3001, 3000, 5000, 5001, 5173], // Frontend için öncelik sırası
 };
 
@@ -32,28 +32,44 @@ const detectBackendPort = async (): Promise<string> => {
   
   // Environment variable varsa onu kullan
   if (process.env.REACT_APP_API_URL) {
-    console.log('✅ Using environment variable:', process.env.REACT_APP_API_URL);
-    return process.env.REACT_APP_API_URL;
+    let apiUrl = process.env.REACT_APP_API_URL;
+    console.log('✅ Using environment variable:', apiUrl);
+    
+    // Trailing slash'i temizle
+    apiUrl = apiUrl.replace(/\/$/, '');
+    
+    // Eğer zaten /api/v1 ile bitiyorsa olduğu gibi döndür
+    if (apiUrl.endsWith('/api/v1')) {
+      return apiUrl;
+    }
+    // Eğer /api ile bitiyorsa sadece /v1 ekle
+    if (apiUrl.endsWith('/api')) {
+      return `${apiUrl}/v1`;
+    }
+    // Hiçbiri yoksa /api/v1 ekle
+    return `${apiUrl}/api/v1`;
   }
 
   // Test environment check - force port 8000 for tests
   if (process.env.NODE_ENV === 'test') {
     console.log('🧪 Test mode - forcing port 8000');
-    return 'http://localhost:8000';
+    return 'http://localhost:8000/api/v1';
   }
 
   // Backend portlarını sırayla test et
   for (const port of portConfig.backendPorts) {
     try {
       console.log(`🔍 Testing backend on port ${port}...`);
-      const response = await fetch(`http://localhost:${port}/health`, {
+      // /health endpoint'i /api/v1 dışında
+      const healthCheckUrl = `http://localhost:${port}/health`;
+      const response = await fetch(healthCheckUrl, {
         method: 'GET',
         signal: AbortSignal.timeout(2000), // 2 saniye timeout
       });
       
       if (response.ok) {
         console.log(`✅ Backend detected on port ${port}`);
-        return `http://localhost:${port}`;
+        return `http://localhost:${port}/api/v1`;
       }
     } catch (error: any) {
       // Port ulaşılabilir değil, bir sonrakini dene
@@ -62,8 +78,9 @@ const detectBackendPort = async (): Promise<string> => {
   }
 
   // Hiçbir port çalışmıyorsa varsayılan port
-  console.warn('⚠️ No backend found, using default port 8001');
-  return 'http://localhost:8001';
+  const fallbackUrl = 'http://localhost:8001/api/v1';
+  console.warn(`⚠️ No backend found, using default URL: ${fallbackUrl}`);
+  return fallbackUrl;
 };
 
 export const getApiUrl = async (): Promise<string> => {
@@ -97,7 +114,7 @@ export const getApiUrl = async (): Promise<string> => {
     return cachedApiUrl;
   } catch (error) {
     console.error('❌ Backend detection failed:', error);
-    cachedApiUrl = 'http://localhost:8001'; // Fallback
+    cachedApiUrl = 'http://localhost:8001/api/v1'; // Fallback
     console.log('🔄 Using fallback URL:', cachedApiUrl);
     return cachedApiUrl;
   } finally {
@@ -121,7 +138,9 @@ export const getCurrentPort = (): number => {
 export const checkBackendHealth = async (apiUrl?: string): Promise<boolean> => {
   try {
     const url = apiUrl || await getApiUrl();
-    const healthUrl = url.replace('/api', '/health');
+    // API URL'den base URL'i çıkar ve /health ekle
+    const baseUrl = url.replace(/\/api\/v1$/, '');
+    const healthUrl = `${baseUrl}/health`;
     
     const response = await fetch(healthUrl, {
       method: 'GET',

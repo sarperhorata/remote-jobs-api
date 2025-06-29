@@ -1,24 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth, AuthContextType } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
+import { Sun, Moon, User, LogOut, FileText, Heart } from 'lucide-react';
 
 const Header: React.FC = () => {
-  const { theme, toggleTheme, applyTheme } = useTheme();
-  const { isAuthenticated, logout }: AuthContextType = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const { user, isAuthenticated, logout }: AuthContextType = useAuth();
   const location = useLocation();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalTab, setAuthModalTab] = useState<'login' | 'register'>('login');
+  const [isProfileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   const isActive = (path: string) => location.pathname === path;
-  const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
 
+  // Auto-detect OS theme - commented out to allow manual control
+  // useEffect(() => {
+  //   const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  //   applyTheme(mediaQuery.matches ? 'dark' : 'light');
+  //   const handler = (e: MediaQueryListEvent) => applyTheme(e.matches ? 'dark' : 'light');
+  //   mediaQuery.addEventListener('change', handler);
+  //   return () => mediaQuery.removeEventListener('change', handler);
+  // }, [applyTheme]);
+  
+  // Close profile menu on outside click
   useEffect(() => {
-    const hour = new Date().getHours();
-    const shouldBeDark = hour >= 18 || hour < 6;
-    applyTheme(shouldBeDark ? 'dark' : 'light');
-  }, [applyTheme]);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleSignInClick = () => {
     setAuthModalTab('login');
@@ -30,70 +46,94 @@ const Header: React.FC = () => {
     setIsAuthModalOpen(true);
   };
 
+  const handleLogout = () => {
+    logout();
+    setProfileMenuOpen(false);
+  }
+
   return (
     <>
-      <header className="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-white py-4 shadow-md">
+      <header className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 py-3 shadow-sm border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50">
         <div className="container mx-auto px-4">
           <nav className="flex items-center justify-between">
             <div className="flex items-center space-x-8">
-              <Link to="/" className="text-2xl font-bold">
+              <Link to="/" className="text-2xl font-bold flex items-center gap-2 text-gray-900 dark:text-white">
+                <span className="text-3xl">🐝</span>
                 Buzz2Remote
               </Link>
               <div className="hidden md:flex space-x-6">
                 <Link
-                  to="/jobs"
-                  className={`hover:text-primary-500 dark:hover:text-primary-300 ${
-                    isActive('/jobs') ? 'font-semibold text-primary-600 dark:text-primary-400' : ''
+                  to="/jobs/search"
+                  className={`hover:text-yellow-500 dark:hover:text-yellow-400 ${
+                    isActive('/jobs/search') ? 'font-semibold text-yellow-600 dark:text-yellow-400' : 'text-gray-600 dark:text-gray-300'
                   }`}
                 >
-                  Jobs
+                  Find Jobs
                 </Link>
-                <Link
-                  to="/companies"
-                  className={`hover:text-primary-500 dark:hover:text-primary-300 ${
-                    isActive('/companies') ? 'font-semibold text-primary-600 dark:text-primary-400' : ''
-                  }`}
-                >
-                  Companies
-                </Link>
+                {/* Add other links here if needed */}
               </div>
             </div>
 
             <div className="flex items-center space-x-4">
               <button
                 onClick={toggleTheme}
-                className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors"
                 aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
               >
                 {theme === 'dark' ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0 1a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13zm8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5zM3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8zm10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0zm-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0zm9.193-.707a.5.5 0 0 1 .707 0l1.414 1.414a.5.5 0 0 1-.707.707l-1.414-1.414a.5.5 0 0 1 0-.707zM4.464 4.465a.5.5 0 0 1 .707 0L6.586 5.88a.5.5 0 1 1-.707.707L4.464 5.172a.5.5 0 0 1 0-.707z"/>
-                  </svg>
+                  <Sun className="h-5 w-5" />
                 ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278zM4.858 1.311A7.269 7.269 0 0 0 1.025 7.71c0 4.021 3.278 7.277 7.318 7.277a7.316 7.316 0 0 0 5.205-2.162c-.337.042-.68.063-1.029.063-4.61 0-8.343-3.714-8.343-8.29 0-1.167.242-2.278.681-3.286z"/>
-                  </svg>
+                  <Moon className="h-5 w-5" />
                 )}
               </button>
 
-              {isAuthenticated ? (
-                <button
-                  onClick={logout}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
-                >
-                  Sign Out
-                </button>
+              {isAuthenticated && user ? (
+                 <div className="relative" ref={profileMenuRef}>
+                  <button 
+                    onClick={() => setProfileMenuOpen(!isProfileMenuOpen)} 
+                    className="flex items-center space-x-2 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm shadow-md">
+                      {user.name?.charAt(0)?.toUpperCase() || 'U'}
+                    </div>
+                    <span className="hidden sm:inline text-sm font-medium text-gray-700 dark:text-gray-300">{user.name}</span>
+                  </button>
+
+                  {isProfileMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 border dark:border-gray-700">
+                      <div className="px-4 py-2 border-b dark:border-gray-700">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{user.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
+                      </div>
+                      <Link to="/profile" className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <User className="w-4 h-4 mr-2" /> My Profile
+                      </Link>
+                      <Link to="/favorites" className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <Heart className="w-4 h-4 mr-2" /> My Favorites
+                      </Link>
+                      <Link to="/applications" className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <FileText className="w-4 h-4 mr-2" /> My Applications
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      >
+                        <LogOut className="w-4 h-4 mr-2" /> Sign Out
+                      </button>
+                    </div>
+                  )}
+                 </div>
               ) : (
                 <div className="flex items-center space-x-3">
                   <button
                     onClick={handleSignInClick}
-                    className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                    className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors text-sm font-medium"
                   >
                     Sign In
                   </button>
                   <button
                     onClick={handleGetStartedClick}
-                    className="px-4 py-2 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-md hover:from-orange-600 hover:to-yellow-500 transition-colors font-medium"
+                    className="px-4 py-2 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-md hover:from-orange-600 hover:to-yellow-500 transition-colors font-medium text-sm"
                   >
                     Get Started
                   </button>

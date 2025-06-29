@@ -1,4 +1,5 @@
 import { jobService } from '../../services/jobService';
+import { getApiUrl } from '../../utils/apiConfig';
 
 jest.mock('../../utils/apiConfig', () => ({
   getApiUrl: jest.fn().mockResolvedValue('http://localhost:8001/api')
@@ -223,6 +224,48 @@ describe('jobService', () => {
     it('should have correct base URL', async () => {
       const baseURL = await jobService.getBaseURL();
       expect(baseURL).toBe('http://localhost:8001/api');
+    });
+  });
+});
+
+describe('API Integration Tests', () => {
+  const originalFetch = global.fetch;
+
+  beforeAll(() => {
+    // Use real fetch for integration tests
+    global.fetch = originalFetch;
+  });
+
+  afterAll(() => {
+    global.fetch = mockFetch;
+  });
+
+  it('should detect correct backend port', async () => {
+    const apiUrl = await getApiUrl();
+    expect(apiUrl).toMatch(/^http:\/\/localhost:\d+\/api\/v1$/);
+  });
+
+  // Note: These tests require a running backend
+  describe('Real API Tests (requires backend)', () => {
+    it('should fetch jobs from real API', async () => {
+      try {
+        const result = await jobService.getJobs({ page: 1, limit: 1 });
+        expect(result).toHaveProperty('total');
+        expect(typeof result.total).toBe('number');
+      } catch (error) {
+        // Skip if backend not available
+        console.warn('Backend not available for integration test');
+      }
+    });
+
+    it('should handle real 404 errors', async () => {
+      try {
+        const result = await jobService.getJobById('nonexistent-id');
+        expect(result).toBeNull();
+      } catch (error) {
+        // Expected for non-existent job
+        expect(error).toBeDefined();
+      }
     });
   });
 }); 

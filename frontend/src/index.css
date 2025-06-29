@@ -81,6 +81,40 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: white;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Enhanced Dark Mode Styles */
+.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  background-color: #0f172a; /* slate-900 */
+  color: #f1f5f9; /* slate-100 */
+}
+
+/* Custom dark mode variables */
+:root {
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f8fafc; /* slate-50 */
+  --color-bg-tertiary: #f1f5f9; /* slate-100 */
+  --color-text-primary: #0f172a; /* slate-900 */
+  --color-text-secondary: #475569; /* slate-600 */
+  --color-text-tertiary: #64748b; /* slate-500 */
+  --color-border: #e2e8f0; /* slate-200 */
+  --color-border-focus: #3b82f6; /* blue-500 */
+}
+
+.dark {
+  --color-bg-primary: #0f172a; /* slate-900 */
+  --color-bg-secondary: #1e293b; /* slate-800 */
+  --color-bg-tertiary: #334155; /* slate-700 */
+  --color-text-primary: #f1f5f9; /* slate-100 */
+  --color-text-secondary: #cbd5e1; /* slate-300 */
+  --color-text-tertiary: #94a3b8; /* slate-400 */
+  --color-border: #475569; /* slate-600 */
+  --color-border-focus: #60a5fa; /* blue-400 */
 }
 
 code {

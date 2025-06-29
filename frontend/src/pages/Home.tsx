@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import AuthModal from '../components/AuthModal';
 import Onboarding from '../components/Onboarding';
 import MultiJobAutocomplete from '../components/MultiJobAutocomplete';
+import Layout from '../components/Layout';
 import { jobService } from '../services/jobService';
 import { Job } from '../types/job';
 
@@ -14,7 +15,6 @@ const Globe = () => <span>🌍</span>;
 const ArrowRight = () => <span>→</span>;
 const Star = () => <span>⭐</span>;
 const CheckCircle = () => <span>✅</span>;
-const Bug = () => <span>🐛</span>;
 const DollarSign = () => <span>💲</span>;
 
 interface Position {
@@ -47,7 +47,7 @@ const Home: React.FC = () => {
     const loadFeaturedJobs = async () => {
       try {
         console.log('🔥 Loading Hot Remote Jobs from API...');
-        const response = await jobService.getJobs(1, 6); // İlk 6 job'u al
+        const response = await jobService.getJobs(1, 10); // Get 10 jobs instead of 6
         console.log('API Response:', response);
         
         // API'den gelen verileri kontrol et
@@ -69,7 +69,7 @@ const Home: React.FC = () => {
             is_active: job.is_active !== false
           }));
           
-          setFeaturedJobs(formattedJobs.slice(0, 3)); // İlk 3'ünü göster
+          setFeaturedJobs(formattedJobs); // Show all 10
           console.log('✅ Hot Remote Jobs loaded successfully:', formattedJobs.length);
         } else {
           console.warn('⚠️ No jobs returned from API, using fallback data');
@@ -77,7 +77,7 @@ const Home: React.FC = () => {
         }
       } catch (error) {
         console.error('❌ Error loading featured jobs from API:', error);
-        // Fallback to static data if API fails
+        // Fallback to static data if API fails - 10 jobs
         setFeaturedJobs([
           {
             _id: '1',
@@ -118,6 +118,104 @@ const Home: React.FC = () => {
             created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
             description: 'Architect and maintain cloud infrastructure for high-scale applications.',
             company_logo: '☁️',
+            url: '#',
+            is_active: true
+          },
+          {
+            _id: '4',
+            title: 'UX/UI Designer',
+            company: 'DesignBee Studio',
+            location: 'Remote (Europe)',
+            job_type: 'Full-time',
+            salary_range: '$70k - $100k',
+            skills: ['Figma', 'Design Systems', 'Remote'],
+            created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+            description: 'Create beautiful user experiences for our digital products.',
+            company_logo: '🎨',
+            url: '#',
+            is_active: true
+          },
+          {
+            _id: '5',
+            title: 'Backend Engineer',
+            company: 'DataFlow Systems',
+            location: 'Remote (Worldwide)',
+            job_type: 'Full-time',
+            salary_range: '$85k - $125k',
+            skills: ['Python', 'Django', 'PostgreSQL'],
+            created_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
+            description: 'Build scalable backend systems for data processing.',
+            company_logo: '🔧',
+            url: '#',
+            is_active: true
+          },
+          {
+            _id: '6',
+            title: 'Marketing Manager',
+            company: 'GrowthBuzz Inc.',
+            location: 'Remote (US/EU)',
+            job_type: 'Full-time',
+            salary_range: '$80k - $110k',
+            skills: ['SEO', 'Content', 'Analytics'],
+            created_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+            description: 'Lead our marketing efforts to drive growth.',
+            company_logo: '📈',
+            url: '#',
+            is_active: true
+          },
+          {
+            _id: '7',
+            title: 'Mobile Developer',
+            company: 'AppHive Ltd.',
+            location: 'Remote (Global)',
+            job_type: 'Contract',
+            salary_range: '$95k - $140k',
+            skills: ['React Native', 'iOS', 'Android'],
+            created_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+            description: 'Develop cross-platform mobile applications.',
+            company_logo: '📱',
+            url: '#',
+            is_active: true
+          },
+          {
+            _id: '8',
+            title: 'Data Scientist',
+            company: 'InsightBee Analytics',
+            location: 'Remote (US)',
+            job_type: 'Full-time',
+            salary_range: '$110k - $160k',
+            skills: ['Python', 'ML', 'Statistics'],
+            created_at: new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString(),
+            description: 'Turn data into actionable insights.',
+            company_logo: '📊',
+            url: '#',
+            is_active: true
+          },
+          {
+            _id: '9',
+            title: 'Customer Success Manager',
+            company: 'SupportHive',
+            location: 'Remote (EU)',
+            job_type: 'Full-time',
+            salary_range: '$65k - $85k',
+            skills: ['CRM', 'Communication', 'SaaS'],
+            created_at: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
+            description: 'Ensure customer satisfaction and retention.',
+            company_logo: '🤝',
+            url: '#',
+            is_active: true
+          },
+          {
+            _id: '10',
+            title: 'Blockchain Developer',
+            company: 'CryptoBee Tech',
+            location: 'Remote (Worldwide)',
+            job_type: 'Full-time',
+            salary_range: '$130k - $180k',
+            skills: ['Solidity', 'Web3', 'Smart Contracts'],
+            created_at: new Date(Date.now() - 16 * 60 * 60 * 1000).toISOString(),
+            description: 'Build the future of decentralized applications.',
+            company_logo: '⛓️',
             url: '#',
             is_active: true
           }
@@ -173,48 +271,36 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link to="/" className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center shadow-md">
-                <div className="w-6 h-6 text-white flex items-center justify-center">
-                  <Bug />
-                </div>
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Buzz2Remote</h1>
-                <p className="text-xs text-gray-500">Your Hive for Remote Opportunities</p>
-              </div>
-            </Link>
-            <nav className="hidden md:flex items-center space-x-8">
-            </nav>
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={handleGetStartedClick}
-                className="bg-gradient-to-r from-orange-500 to-yellow-400 text-white px-4 py-2 rounded-lg hover:from-orange-600 hover:to-yellow-500 transition-colors font-medium text-sm shadow-md"
-              >
-                Get Started
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+    <Layout>
 
-      <section className="py-16 md:py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-            Find Your Next <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-yellow-500">Remote Buzz</span>
+      <section className="py-16 md:py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+        {/* Video Background */}
+        <div className="absolute inset-0 z-0">
+          <video 
+            autoPlay 
+            loop 
+            muted 
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+            poster="/path/to/poster-image.jpg"
+          >
+            <source src="/Entry video.mp4" type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+          <div className="absolute inset-0 bg-black/60"></div>
+        </div>
+        
+        <div className="max-w-7xl mx-auto text-center relative z-10">
+          <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight drop-shadow-lg">
+            Find Your Next <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-yellow-400">Remote Buzz</span>
           </h1>
-          <p className="text-lg md:text-xl text-gray-600 mb-10 md:mb-12 max-w-3xl mx-auto">
+          <p className="text-lg md:text-xl text-gray-200 mb-10 md:mb-12 max-w-3xl mx-auto drop-shadow-md">
             AI-powered job matching to connect you with global remote opportunities. Select multiple job titles and let our smart search find the perfect matches.
           </p>
 
           {/* Updated Search Section with MultiJobAutocomplete */}
           <div className="max-w-3xl mx-auto">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+            <h2 className="text-2xl font-bold text-white mb-6 text-center drop-shadow-md">
               Find Your Perfect Remote Job
             </h2>
             
@@ -225,15 +311,11 @@ const Home: React.FC = () => {
               placeholder="Search job titles (e.g., Frontend Developer, Backend Engineer)"
               maxSelections={10}
             />
-            
-            <p className="text-center text-gray-600 text-sm mt-4">
-              Select up to 10 job positions to find the best matches for your skills
-            </p>
           </div>
         </div>
       </section>
       
-      {/* Featured Jobs */}
+      {/* Featured Jobs with Infinite Horizontal Scroll */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
@@ -241,89 +323,172 @@ const Home: React.FC = () => {
             <p className="text-gray-600">Fresh opportunities from leading remote companies</p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {featuredJobs.map((job) => (
-              <div key={job._id} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-xl transition-shadow cursor-pointer flex flex-col justify-between">
-                <div>
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-2xl shadow-sm">
-                        {job.company_logo || (typeof job.company === 'string' ? job.company[0] : job.company.name[0])}
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900 text-lg">{job.title}</h3>
-                        <p className="text-gray-600 text-sm">{typeof job.company === 'string' ? job.company : job.company.name}</p>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => {
-                        // Check if user is logged in for favoriting
-                        const userToken = localStorage.getItem('userToken');
-                        if (!userToken) {
-                          setAuthModalTab('login');
-                          setIsAuthModalOpen(true);
-                        } else {
-                          // Add to favorites logic here
-                          console.log('Adding job to favorites:', job._id);
-                        }
-                      }}
-                      className="p-1.5 rounded-full hover:bg-yellow-100 text-gray-400 hover:text-yellow-500 transition-colors"
-                    >
-                       <div className="w-5 h-5 flex items-center justify-center">
-                         <Star />
-                       </div>
-                    </button>
-                  </div>
-                      
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <div className="w-4 h-4 mr-2 text-gray-400 flex items-center justify-center">
-                        <MapPin />
-                      </div>
-                      {job.location}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <div className="w-4 h-4 mr-2 text-gray-400 flex items-center justify-center">
-                        <Building />
-                      </div>
-                      {job.job_type}
-                    </div>
-                    {job.salary_range && (
-                      <div className="flex items-center text-sm text-gray-600">
-                        <div className="w-4 h-4 mr-2 text-gray-400 flex items-center justify-center">
-                          <DollarSign />
+          {/* Infinite Horizontal Scrollable Container */}
+          <div className="relative">
+            <div className="overflow-x-auto pb-4 -mx-4 px-4">
+              <div className="flex gap-6 w-max animate-scroll-infinite">
+                {/* First set of jobs */}
+                {featuredJobs.map((job) => (
+                  <div key={job._id} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-xl transition-shadow cursor-pointer flex flex-col justify-between w-80 flex-shrink-0">
+                    <div>
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-2xl shadow-sm">
+                            {job.company_logo || (typeof job.company === 'string' ? job.company[0] : job.company.name[0])}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900 text-lg line-clamp-1">{job.title}</h3>
+                            <p className="text-gray-600 text-sm line-clamp-1">{typeof job.company === 'string' ? job.company : job.company.name}</p>
+                          </div>
                         </div>
-                        {job.salary_range}
+                        <button 
+                          onClick={() => {
+                            const userToken = localStorage.getItem('userToken');
+                            if (!userToken) {
+                              setAuthModalTab('login');
+                              setIsAuthModalOpen(true);
+                            } else {
+                              console.log('Adding job to favorites:', job._id);
+                            }
+                          }}
+                          className="p-1.5 rounded-full hover:bg-yellow-100 text-gray-400 hover:text-yellow-500 transition-colors"
+                        >
+                           <div className="w-5 h-5 flex items-center justify-center">
+                             <Star />
+                           </div>
+                        </button>
                       </div>
-                    )}
-                  </div>
+                          
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center text-sm text-gray-600">
+                          <div className="w-4 h-4 mr-2 text-gray-400 flex items-center justify-center">
+                            <MapPin />
+                          </div>
+                          <span className="line-clamp-1">{job.location}</span>
+                        </div>
+                        <div className="flex items-center text-sm text-gray-600">
+                          <div className="w-4 h-4 mr-2 text-gray-400 flex items-center justify-center">
+                            <Building />
+                          </div>
+                          {job.job_type}
+                        </div>
+                        {job.salary_range && (
+                          <div className="flex items-center text-sm text-gray-600">
+                            <div className="w-4 h-4 mr-2 text-gray-400 flex items-center justify-center">
+                              <DollarSign />
+                            </div>
+                            {job.salary_range}
+                          </div>
+                        )}
+                      </div>
 
-                  <div className="flex flex-wrap gap-2 mb-6">
-                    {(job.skills || []).slice(0, 3).map((tag, index) => (
-                      <span key={index} className="px-3 py-1 bg-orange-50 text-orange-600 text-xs font-medium rounded-full">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                  <span className="text-xs text-gray-500">Posted: {getTimeAgo(job.created_at)}</span>
-                  <Link 
-                    to={`/jobs/${job._id}`} 
-                    className="text-orange-600 hover:text-orange-700 font-semibold text-sm flex items-center space-x-1 group"
-                  >
-                    <span>View Details</span>
-                    <div className="w-4 h-4 transition-transform group-hover:translate-x-1 flex items-center justify-center">
-                      <ArrowRight />
+                      <div className="flex flex-wrap gap-2 mb-6">
+                        {(job.skills || []).slice(0, 3).map((tag, index) => (
+                          <span key={index} className="px-3 py-1 bg-orange-50 text-orange-600 text-xs font-medium rounded-full">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  </Link>
-                </div>
+
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                      <span className="text-xs text-gray-500">Posted: {getTimeAgo(job.created_at)}</span>
+                      <Link 
+                        to={`/jobs/${job._id}`} 
+                        className="text-orange-600 hover:text-orange-700 font-semibold text-sm flex items-center space-x-1 group"
+                      >
+                        <span>View Details</span>
+                        <div className="w-4 h-4 transition-transform group-hover:translate-x-1 flex items-center justify-center">
+                          <ArrowRight />
+                        </div>
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+                
+                {/* Duplicate set for infinite scroll effect */}
+                {featuredJobs.map((job) => (
+                  <div key={`duplicate-${job._id}`} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-xl transition-shadow cursor-pointer flex flex-col justify-between w-80 flex-shrink-0">
+                    <div>
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-2xl shadow-sm">
+                            {job.company_logo || (typeof job.company === 'string' ? job.company[0] : job.company.name[0])}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900 text-lg line-clamp-1">{job.title}</h3>
+                            <p className="text-gray-600 text-sm line-clamp-1">{typeof job.company === 'string' ? job.company : job.company.name}</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            const userToken = localStorage.getItem('userToken');
+                            if (!userToken) {
+                              setAuthModalTab('login');
+                              setIsAuthModalOpen(true);
+                            } else {
+                              console.log('Adding job to favorites:', job._id);
+                            }
+                          }}
+                          className="p-1.5 rounded-full hover:bg-yellow-100 text-gray-400 hover:text-yellow-500 transition-colors"
+                        >
+                           <div className="w-5 h-5 flex items-center justify-center">
+                             <Star />
+                           </div>
+                        </button>
+                      </div>
+                          
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center text-sm text-gray-600">
+                          <div className="w-4 h-4 mr-2 text-gray-400 flex items-center justify-center">
+                            <MapPin />
+                          </div>
+                          <span className="line-clamp-1">{job.location}</span>
+                        </div>
+                        <div className="flex items-center text-sm text-gray-600">
+                          <div className="w-4 h-4 mr-2 text-gray-400 flex items-center justify-center">
+                            <Building />
+                          </div>
+                          {job.job_type}
+                        </div>
+                        {job.salary_range && (
+                          <div className="flex items-center text-sm text-gray-600">
+                            <div className="w-4 h-4 mr-2 text-gray-400 flex items-center justify-center">
+                              <DollarSign />
+                            </div>
+                            {job.salary_range}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 mb-6">
+                        {(job.skills || []).slice(0, 3).map((tag, index) => (
+                          <span key={index} className="px-3 py-1 bg-orange-50 text-orange-600 text-xs font-medium rounded-full">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                      <span className="text-xs text-gray-500">Posted: {getTimeAgo(job.created_at)}</span>
+                      <Link 
+                        to={`/jobs/${job._id}`} 
+                        className="text-orange-600 hover:text-orange-700 font-semibold text-sm flex items-center space-x-1 group"
+                      >
+                        <span>View Details</span>
+                        <div className="w-4 h-4 transition-transform group-hover:translate-x-1 flex items-center justify-center">
+                          <ArrowRight />
+                        </div>
+                      </Link>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
 
-          <div className="text-center">
+          <div className="text-center mt-12">
             <Link
               to="/jobs"
               className="inline-flex items-center space-x-2 bg-gradient-to-r from-orange-500 to-yellow-500 text-white px-8 py-3 rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-colors font-semibold shadow-lg"
@@ -412,9 +577,7 @@ const Home: React.FC = () => {
             <div>
               <Link to="/" className="flex items-center space-x-3 mb-4">
                 <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center shadow-md">
-                  <div className="w-5 h-5 text-white flex items-center justify-center">
-                    <Bug />
-                  </div>
+                  <span className="text-xl">🐝</span>
                 </div>
                 <span className="text-xl font-bold">Buzz2Remote</span>
               </Link>
@@ -462,7 +625,7 @@ const Home: React.FC = () => {
         onClose={() => setIsOnboardingOpen(false)}
         onComplete={handleOnboardingComplete}
       />
-    </div>
+    </Layout>
   );
 };
 

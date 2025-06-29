@@ -41,16 +41,22 @@ export const getJobs = async (params: any = {}): Promise<{ items?: Job[]; jobs?:
     const API_BASE_URL = await getApiUrl();
     const searchParams = new URLSearchParams();
     
-    if (params.page) searchParams.append('skip', ((params.page - 1) * 10).toString());
+    // Use page instead of skip for consistency with backend
+    if (params.page) searchParams.append('page', params.page.toString());
     if (params.limit) searchParams.append('limit', params.limit.toString());
     if (params.company) searchParams.append('company', params.company);
     if (params.location) searchParams.append('location', params.location);
     if (params.sort_by) searchParams.append('sort_by', params.sort_by);
+    if (params.q) searchParams.append('q', params.q);
+    if (params.work_type) searchParams.append('work_type', params.work_type);
+    if (params.job_type) searchParams.append('job_type', params.job_type);
+    if (params.experience_level) searchParams.append('experience_level', params.experience_level);
+    if (params.posted_age) searchParams.append('posted_age', params.posted_age);
     
-    const response = await fetch(`${API_BASE_URL}/jobs/?${searchParams}`);
+    const response = await fetch(`${API_BASE_URL}/jobs/search?${searchParams}`);
     
     if (!response.ok) {
-      throw new Error('Failed to fetch jobs');
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
     
     const data = await response.json();
@@ -190,15 +196,15 @@ export class JobServiceClass {
       const API_BASE_URL = await getApiUrl();
       const searchParams = new URLSearchParams();
       searchParams.append('page', page.toString());
-      searchParams.append('per_page', perPage.toString());
+      searchParams.append('limit', perPage.toString());
       
       if (filters) {
         if (filters.location) searchParams.append('location', filters.location);
         if (filters.company) searchParams.append('company', filters.company);
-        if (filters.search) searchParams.append('search', filters.search);
+        if (filters.search) searchParams.append('q', filters.search);
       }
 
-      const response = await fetch(`${API_BASE_URL}/jobs/?${searchParams}`, {
+      const response = await fetch(`${API_BASE_URL}/jobs/search?${searchParams}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -216,7 +222,7 @@ export class JobServiceClass {
         return [];
       }
       
-      return data.items || data.jobs || data;
+      return data.jobs || data.items || data;
     } catch (error) {
       console.error('Error fetching jobs:', error);
       throw error;

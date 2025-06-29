@@ -1,13 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getApiUrl } from '../utils/apiConfig';
-
-// Icons temporarily replaced with text
-const User = () => <span>👤</span>;
-const Eye = () => <span>👁️</span>;
-const EyeOff = () => <span>🙈</span>;
-const X = () => <span>✕</span>;
-const Check = () => <span>✅</span>;
+import { X, Eye, EyeOff, Check } from 'lucide-react';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -89,7 +83,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
       console.log('🔑 Attempting login with API...');
       const API_BASE_URL = await getApiUrl();
       
-      // FormData kullanarak OAuth2PasswordRequestForm formatına uygun gönder
       const formData = new FormData();
       formData.append('username', loginEmail);
       formData.append('password', loginPassword);
@@ -292,10 +285,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
           {/* Header */}
           <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center">
-                <div className="w-5 h-5 text-white flex items-center justify-center">
-                  <User />
-                </div>
+              <div className="w-10 h-10 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center">
+                <span className="text-2xl">🐝</span>
               </div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">Buzz2Remote</h2>
             </div>

@@ -16,6 +16,7 @@ from backend.models.models import JobApplication
 from backend.schemas.job import JobSearchQuery, ApplicationCreate
 from backend.services.job_scraping_service import JobScrapingService
 from backend.services.auto_application_service import AutoApplicationService
+import re
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 logger = logging.getLogger(__name__)
@@ -55,6 +56,7 @@ async def search_jobs(
     work_type: Optional[str] = Query(None, description="Work type filter"),
     job_type: Optional[str] = Query(None, description="Job type filter"),
     location: Optional[str] = Query(None, description="Location filter"),
+    company: Optional[str] = Query(None, description="Company filter"),
     experience: Optional[str] = Query(None, description="Experience level filter"),
     posted_age: Optional[str] = Query(None, description="Posted age filter"),
     job_titles: Optional[str] = Query(None, description="Specific job titles filter"),
@@ -87,11 +89,50 @@ async def search_jobs(
         if location:
             query["location"] = {"$regex": location, "$options": "i"}
         
+        if company:
+            query["company"] = {"$regex": company, "$options": "i"}
+        
+        # Salary range filter
+        if salary_range:
+            try:
+                if salary_range.endswith('+'):
+                    # Handle "180000+" format
+                    min_salary = int(salary_range.replace('+', ''))
+                    query["$or"] = [
+                        {"salary_min": {"$gte": min_salary}},
+                        {"salary_max": {"$gte": min_salary}},
+                        {"salary_range": {"$regex": f"{min_salary//1000}k", "$options": "i"}}
+                    ]
+                elif '-' in salary_range:
+                    # Handle "36000-72000" format
+                    min_val, max_val = map(int, salary_range.split('-'))
+                    query["$or"] = [
+                        {"$and": [
+                            {"salary_min": {"$gte": min_val}},
+                            {"salary_max": {"$lte": max_val}}
+                        ]},
+                        {"salary_range": {"$regex": f"{min_val//1000}k.*{max_val//1000}k|{max_val//1000}k.*{min_val//1000}k", "$options": "i"}}
+                    ]
+            except ValueError:
+                logger.warning(f"Invalid salary range format: {salary_range}")
+        
         # Get total count for pagination
         total = await db.jobs.count_documents(query)
         
-        # Execute search query with simple sort
-        cursor = db.jobs.find(query).sort("created_at", -1).skip(skip).limit(limit)
+        # Build sort criteria based on sort_by parameter
+        if sort_by == "relevance":
+            # Most relevant: prioritize jobs with salary info and sort by creation date
+            cursor = db.jobs.find(query).sort([
+                ("salary_range", -1),  # Jobs with salary info first
+                ("created_at", -1)     # Then by newest
+            ]).skip(skip).limit(limit)
+        elif sort_by == "newest":
+            cursor = db.jobs.find(query).sort("created_at", -1).skip(skip).limit(limit)
+        elif sort_by == "oldest":
+            cursor = db.jobs.find(query).sort("created_at", 1).skip(skip).limit(limit)
+        else:
+            # Default to newest
+            cursor = db.jobs.find(query).sort("created_at", -1).skip(skip).limit(limit)
         jobs = await cursor.to_list(length=limit)
         
         # Convert ObjectIds to strings and format response
@@ -253,67 +294,119 @@ async def search_job_titles(
     limit: int = Query(10, description="Number of results to return"),
     db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
-    """Search for job titles from actual database"""
+    """
+    Searches for unique job titles in the database.
+    This endpoint is optimized for autocomplete functionality.
+    """
+    if not q:
+        return []
+
     try:
-        # Aggregate job titles from the database with counts
+        # Escape special characters in the query to prevent regex errors
+        safe_q = re.escape(q)
+        
+        # Aggregation pipeline to find distinct job titles matching the query
         pipeline = [
-            # Match active jobs first to improve performance
-            {"$match": {
-                "is_active": {"$ne": False},
-                "title": {"$regex": q, "$options": "i"}  # Case-insensitive search
-            }},
-            # Group by title and count occurrences
-            {"$group": {
-                "_id": {"$toLower": "$title"},  # Group by lowercase title for consistency
-                "title": {"$first": "$title"},  # Keep original case
-                "count": {"$sum": 1},
-                "category": {"$first": "$category"}  # Try to get category if available
-            }},
-            # Sort by count (descending) then by title
-            {"$sort": {"count": -1, "title": 1}},
-            # Limit results
+            {"$match": {"title": {"$regex": safe_q, "$options": "i"}}},
+            {"$group": {"_id": "$title"}},
             {"$limit": limit},
-            # Project final format
-            {"$project": {
-                "_id": 0,
-                "id": {"$toString": "$_id"},  # Convert to string for frontend
-                "title": 1,
-                "count": 1,
-                "category": {"$ifNull": ["$category", "Technology"]}  # Default category
-            }}
+            {"$project": {"title": "$_id", "_id": 0}}
         ]
         
-        # Execute aggregation
         cursor = db.jobs.aggregate(pipeline)
-        results = await cursor.to_list(length=limit)
+        job_titles = await cursor.to_list(length=limit)
         
-        # If no results found, return sample data for development
-        if not results:
-            # Common job titles - fallback for development
-            common_titles = [
-                {"id": "1", "title": "Software Engineer", "count": 1, "category": "Technology"},
-                {"id": "2", "title": "Frontend Developer", "count": 1, "category": "Technology"},
-                {"id": "3", "title": "Backend Developer", "count": 1, "category": "Technology"},
-                {"id": "4", "title": "Full Stack Developer", "count": 1, "category": "Technology"},
-                {"id": "5", "title": "DevOps Engineer", "count": 1, "category": "Technology"},
-            ]
-            
-            # Filter fallback titles based on search query
-            filtered_titles = [
-                title for title in common_titles 
-                if q.lower() in title["title"].lower()
-            ]
-            
-            return filtered_titles[:limit]
+        # Also search in categories for broader results
+        pipeline_category = [
+            {"$match": {"category": {"$regex": safe_q, "$options": "i"}}},
+            {"$group": {"_id": "$category"}},
+            {"$limit": limit},
+            {"$project": {"title": "$_id", "_id": 0}}
+        ]
+
+        cursor_category = db.jobs.aggregate(pipeline_category)
+        categories = await cursor_category.to_list(length=limit)
+
+        # Combine, remove duplicates, and limit results
+        combined_results = {item['title'].lower(): item for item in job_titles + categories}
+        unique_results = list(combined_results.values())
         
-        return results
+        # Sort results to prioritize titles starting with the query
+        unique_results.sort(key=lambda x: (
+            not x['title'].lower().startswith(q.lower()),
+            x['title'].lower()
+        ))
+        
+        return unique_results[:limit]
         
     except Exception as e:
-        logger.error(f"Error searching job titles: {str(e)}")
-        # Return fallback data on error
-        return [
-            {"id": "fallback_1", "title": "Remote Developer", "count": 1, "category": "Technology"}
+        logger.error(f"Error searching job titles: {e}, full error: {e.args}")
+        # Return empty list on error to keep autocomplete functional
+        return []
+
+@router.get("/companies/search")
+async def search_companies(
+    q: str = Query(..., description="Search query for companies"),
+    limit: int = Query(10, description="Number of results to return"),
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """Search for companies in job listings"""
+    if not q:
+        return []
+
+    try:
+        # Escape special characters in the query to prevent regex errors
+        safe_q = re.escape(q)
+        
+        # Aggregation pipeline to find distinct companies matching the query
+        pipeline = [
+            {"$match": {"company": {"$regex": safe_q, "$options": "i"}}},
+            {"$group": {"_id": "$company", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": limit},
+            {"$project": {"name": "$_id", "count": 1, "_id": 0}}
         ]
+        
+        cursor = db.jobs.aggregate(pipeline)
+        companies = await cursor.to_list(length=limit)
+        
+        return companies
+        
+    except Exception as e:
+        logger.error(f"Error searching companies: {e}")
+        return []
+
+@router.get("/locations/search")
+async def search_locations(
+    q: str = Query(..., description="Search query for locations"),
+    limit: int = Query(10, description="Number of results to return"),
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """Search for locations in job listings"""
+    if not q:
+        return []
+
+    try:
+        # Escape special characters in the query to prevent regex errors
+        safe_q = re.escape(q)
+        
+        # Aggregation pipeline to find distinct locations matching the query
+        pipeline = [
+            {"$match": {"location": {"$regex": safe_q, "$options": "i"}}},
+            {"$group": {"_id": "$location", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": limit},
+            {"$project": {"name": "$_id", "count": 1, "_id": 0}}
+        ]
+        
+        cursor = db.jobs.aggregate(pipeline)
+        locations = await cursor.to_list(length=limit)
+        
+        return locations
+        
+    except Exception as e:
+        logger.error(f"Error searching locations: {e}")
+        return []
 
 @router.get("/skills/search")
 async def search_skills(

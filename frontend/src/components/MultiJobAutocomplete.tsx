@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { API_BASE_URL } from '../utils/apiConfig';
+import { createPortal } from 'react-dom';
+import { getApiUrl } from '../utils/apiConfig';
 
 // Icons temporarily replaced with text
 const Search = () => <span>🔍</span>;
@@ -34,10 +35,23 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Calculate dropdown position
+  const updateDropdownPosition = () => {
+    if (inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width
+      });
+    }
+  };
 
   const fetchPositions = useCallback(async (query: string) => {
     if (!query.trim() || query.length < 2) {
@@ -47,20 +61,28 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
 
     setIsLoading(true);
     try {
-      const apiUrl = `${API_BASE_URL}/v1/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=20`;
+      const baseUrl = await getApiUrl();
+      const apiUrl = `${baseUrl}/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=5`;
       console.log('🔍 MultiAutocomplete API URL:', apiUrl);
       const response = await fetch(apiUrl);
       
       if (response.ok) {
         const data = await response.json();
+        console.log('🔍 Raw API response:', data);
+        
         // Backend returns array directly, not nested in job_titles
         const positions = Array.isArray(data) ? data : data.job_titles || [];
-        // Ensure each position has required fields
-        const formattedPositions = positions.map((item: any) => ({
-          title: item.title,
-          count: item.count || 1,
-          category: item.category || 'Technology'
-        }));
+        
+        // Ensure each position has required fields and clean the titles
+        const formattedPositions = positions
+          .map((item: any) => ({
+            title: typeof item === 'string' ? item : item.title || '',
+            count: item.count || 1,
+            category: item.category || 'Technology'
+          }))
+          .filter((item: any) => item.title && item.title.trim().length > 0)
+          .slice(0, 5); // Limit to 5 results
+          
         console.log('🔍 MultiAutocomplete formatted positions:', formattedPositions);
         setPositions(formattedPositions);
       } else {
@@ -69,7 +91,6 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
       }
     } catch (error) {
       console.error('❌ Error fetching job titles:', error);
-      console.error('❌ API_BASE_URL was:', API_BASE_URL);
       setPositions([]);
     } finally {
       setIsLoading(false);
@@ -203,9 +224,28 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
       }
     };
 
+    const handleScroll = () => {
+      if (isOpen) {
+        updateDropdownPosition();
+      }
+    };
+
+    const handleResize = () => {
+      if (isOpen) {
+        updateDropdownPosition();
+      }
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    window.addEventListener('scroll', handleScroll, true);
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [isOpen]);
 
   // Filter out already selected positions
   const availablePositions = positions.filter(
@@ -266,9 +306,12 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
               value={inputValue}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              onFocus={() => setIsOpen(true)}
+              onFocus={() => {
+                setIsOpen(true);
+                updateDropdownPosition();
+              }}
               placeholder={placeholder}
-              className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+              className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 dark:text-white dark:bg-gray-800 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400"
               disabled={selectedPositions.length >= maxSelections}
             />
             
@@ -296,39 +339,52 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
         </div>
 
         {/* Dropdown */}
-        {isOpen && (
-          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+        {isOpen && (isLoading || availablePositions.length > 0) && createPortal(
+          <div 
+            className="absolute bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl max-h-60 overflow-y-auto" 
+            style={{ 
+              zIndex: 9999999,
+              position: 'fixed',
+              top: `${dropdownPosition.top}px`,
+              left: `${dropdownPosition.left}px`,
+              width: `${dropdownPosition.width}px`,
+              backgroundColor: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)'
+            }}
+          >
             {isLoading ? (
-              <div className="p-4 text-center text-gray-500">
+              <div className="p-4 text-center text-gray-500 dark:text-gray-400">
                 <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
                 Searching positions...
               </div>
             ) : availablePositions.length > 0 ? (
               <>
-                <div className="px-3 py-2 text-xs text-gray-500 border-b border-gray-100">
+                <div className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
                   {availablePositions.length} position{availablePositions.length !== 1 ? 's' : ''} found
                 </div>
                 {availablePositions.map((position, index) => (
                   <button
                     key={index}
                     onClick={() => handlePositionSelect(position)}
-                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between group ${
-                      index === highlightedIndex ? 'bg-blue-50' : ''
+                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-between group ${
+                      index === highlightedIndex ? 'bg-blue-50 dark:bg-blue-900' : ''
                     }`}
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-gray-900 truncate">
+                      <div className="font-medium text-gray-900 dark:text-white truncate">
                         {position.title}
                       </div>
                       {position.category && (
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
                           {position.category}
                         </div>
                       )}
                     </div>
                     <div className="flex items-center gap-2 ml-3">
                       {position.count && (
-                        <span className="text-sm text-gray-500">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
                           {position.count} jobs
                         </span>
                       )}
@@ -337,19 +393,9 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
                   </button>
                 ))}
               </>
-            ) : inputValue.trim().length >= 2 && !isLoading ? (
-              <div className="p-4 text-center text-gray-500">
-                <div className="w-6 h-6 mx-auto mb-2 text-gray-300 flex items-center justify-center">
-                  <Search />
-                </div>
-                No positions found for "{inputValue}"
-              </div>
-            ) : inputValue.trim().length > 0 && inputValue.trim().length < 2 ? (
-              <div className="p-4 text-center text-gray-500">
-                Type at least 2 characters to search
-              </div>
             ) : null}
-          </div>
+          </div>,
+          document.body
         )}
       </div>
 

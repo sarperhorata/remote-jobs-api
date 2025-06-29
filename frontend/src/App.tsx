@@ -9,6 +9,7 @@ import { AuthCallback } from './pages/AuthCallback';
 import { AuthError } from './pages/AuthError';
 import { NotFound } from './pages/NotFound';
 import PaymentSuccess from './pages/PaymentSuccess';
+import { Toaster } from 'react-hot-toast';
 
 // Page Components (Lazy loading for better performance)
 const HomePage = lazy(() => import('./pages/Home'));
@@ -25,6 +26,7 @@ const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicy'));
 const PricingPage = lazy(() => import('./pages/Pricing'));
 const HelpPage = lazy(() => import('./pages/Help'));
 const ApplicationsPage = lazy(() => import('./pages/Applications'));
+const FavoritesPage = lazy(() => import('./pages/Favorites'));
 const ExternalAPIServicesPage = lazy(() => import('./pages/ExternalAPIServices'));
 const GoogleCallbackPage = lazy(() => import('./pages/GoogleCallback'));
 
@@ -46,7 +48,45 @@ const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ThemeProvider>
-          <Router future={{ v7_relativeSplatPath: true }}>
+          <Router future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+            <Toaster 
+              position="top-center" 
+              reverseOrder={false}
+              toastOptions={{
+                duration: 10000,
+                style: {
+                  background: '#1f2937',
+                  color: '#f3f4f6',
+                  border: '1px solid #374151',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  maxWidth: '500px',
+                },
+                success: {
+                  style: {
+                    background: '#065f46',
+                    color: '#d1fae5',
+                    border: '1px solid #10b981',
+                  },
+                  iconTheme: {
+                    primary: '#10b981',
+                    secondary: '#d1fae5',
+                  },
+                },
+                error: {
+                  style: {
+                    background: '#7f1d1d',
+                    color: '#fecaca',
+                    border: '1px solid #ef4444',
+                  },
+                  iconTheme: {
+                    primary: '#ef4444',
+                    secondary: '#fecaca',
+                  },
+                },
+              }}
+            />
             <Suspense fallback={<div className="flex justify-center items-center h-screen text-xl font-semibold">Loading Buzz2Remote...</div>}>
               <Routes>
                 {/* Public Routes */}
@@ -93,6 +133,14 @@ const App: React.FC = () => {
                   element={
                     <ProtectedRoute>
                       <ResumeUploadPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route 
+                  path="/favorites" 
+                  element={
+                    <ProtectedRoute>
+                      <FavoritesPage />
                     </ProtectedRoute>
                   }
                 />

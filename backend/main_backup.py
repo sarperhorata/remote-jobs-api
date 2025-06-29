@@ -151,10 +151,10 @@ for router, prefix, tags in routers_to_include:
     
 # Optional: Include admin panel router if available and enabled
 try:
-    #from backend.admin_panel.routes import admin_router
+    from backend.admin_panel.routes import admin_router
     if os.getenv("ADMIN_PANEL_ENABLED", "true").lower() == "true":
-        #app.include_router(admin_router, prefix="/admin", tags=["admin"])
-        #logger.info("Admin panel successfully included.")
+        app.include_router(admin_router, prefix="/admin", tags=["admin"])
+        logger.info("Admin panel successfully included.")
 except ImportError:
     logger.warning("Admin panel not found, skipping.")
 

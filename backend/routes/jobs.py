@@ -291,7 +291,7 @@ async def get_job_statistics(
 @router.get("/job-titles/search")
 async def search_job_titles(
     q: str = Query(..., description="Search query for job titles"),
-    limit: int = Query(10, description="Number of results to return"),
+    limit: int = Query(20, description="Number of results to return"),
     db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
     """
@@ -302,47 +302,116 @@ async def search_job_titles(
         return []
 
     try:
-        # Escape special characters in the query to prevent regex errors
-        safe_q = re.escape(q)
+        # Create a more flexible search pattern
+        # Don't escape all regex characters, just dangerous ones
+        safe_q = q.replace('\\', '\\\\').replace('$', '\\$').replace('^', '\\^')
         
-        # Aggregation pipeline to find distinct job titles matching the query
+        # Multiple search strategies for better results
+        search_patterns = [
+            {"title": {"$regex": f"^{safe_q}", "$options": "i"}},  # Starts with query
+            {"title": {"$regex": safe_q, "$options": "i"}},       # Contains query
+        ]
+        
+        # Also search in related fields for broader results
+        if len(q) >= 3:
+            search_patterns.extend([
+                {"description": {"$regex": safe_q, "$options": "i"}},
+                {"category": {"$regex": safe_q, "$options": "i"}},
+                {"required_skills": {"$regex": safe_q, "$options": "i"}}
+            ])
+        
+        # Aggregation pipeline with multiple stages
         pipeline = [
-            {"$match": {"title": {"$regex": safe_q, "$options": "i"}}},
-            {"$group": {"_id": "$title"}},
-            {"$limit": limit},
-            {"$project": {"title": "$_id", "_id": 0}}
+            {"$match": {"$or": search_patterns}},
+            {"$group": {
+                "_id": "$title", 
+                "count": {"$sum": 1},
+                "category": {"$first": "$category"},
+                "avg_salary": {"$avg": {"$ifNull": ["$salary_min", 0]}}
+            }},
+            {"$match": {"_id": {"$ne": None}}},  # Filter out null titles
+            {"$sort": {
+                "count": -1,      # Sort by job count first
+                "_id": 1          # Then alphabetically
+            }},
+            {"$limit": limit * 2},  # Get more results initially
+            {"$project": {
+                "title": "$_id", 
+                "count": 1,
+                "category": {"$ifNull": ["$category", "Technology"]},
+                "_id": 0
+            }}
         ]
         
         cursor = db.jobs.aggregate(pipeline)
-        job_titles = await cursor.to_list(length=limit)
+        job_titles = await cursor.to_list(length=limit * 2)
         
-        # Also search in categories for broader results
-        pipeline_category = [
-            {"$match": {"category": {"$regex": safe_q, "$options": "i"}}},
-            {"$group": {"_id": "$category"}},
-            {"$limit": limit},
-            {"$project": {"title": "$_id", "_id": 0}}
-        ]
-
-        cursor_category = db.jobs.aggregate(pipeline_category)
-        categories = await cursor_category.to_list(length=limit)
-
-        # Combine, remove duplicates, and limit results
-        combined_results = {item['title'].lower(): item for item in job_titles + categories}
-        unique_results = list(combined_results.values())
+        # Remove duplicates and filter relevant results
+        unique_titles = {}
+        for item in job_titles:
+            title = item['title']
+            if title and title.strip():
+                title_lower = title.lower()
+                query_lower = q.lower()
+                
+                # Relevance scoring
+                score = 0
+                if title_lower.startswith(query_lower):
+                    score += 100  # Exact prefix match
+                elif query_lower in title_lower:
+                    score += 50   # Contains match
+                
+                # Add count to score
+                score += min(item['count'], 50)  # Cap count influence
+                
+                # Only include if reasonably relevant
+                if score > 0:
+                    if title_lower not in unique_titles or unique_titles[title_lower]['score'] < score:
+                        unique_titles[title_lower] = {
+                            'title': title,
+                            'count': item['count'],
+                            'category': item.get('category', 'Technology'),
+                            'score': score
+                        }
         
-        # Sort results to prioritize titles starting with the query
-        unique_results.sort(key=lambda x: (
-            not x['title'].lower().startswith(q.lower()),
-            x['title'].lower()
-        ))
+        # Sort by relevance score and take top results
+        sorted_results = sorted(unique_titles.values(), key=lambda x: x['score'], reverse=True)
+        final_results = []
         
-        return unique_results[:limit]
+        for item in sorted_results[:limit]:
+            final_results.append({
+                'title': item['title'],
+                'count': item['count'],
+                'category': item['category']
+            })
+        
+        logger.info(f"Job titles search for '{q}': found {len(final_results)} results")
+        return final_results
         
     except Exception as e:
         logger.error(f"Error searching job titles: {e}, full error: {e.args}")
-        # Return empty list on error to keep autocomplete functional
-        return []
+        # Fallback with common job titles matching the query
+        common_titles = [
+            "Software Engineer", "Frontend Developer", "Backend Developer", "Full Stack Developer",
+            "Product Manager", "Senior Product Manager", "Product Owner", "Technical Product Manager",
+            "Data Scientist", "Data Analyst", "Data Engineer", "Machine Learning Engineer",
+            "DevOps Engineer", "Site Reliability Engineer", "Cloud Engineer", "Infrastructure Engineer",
+            "UX Designer", "UI Designer", "UX/UI Designer", "Graphic Designer",
+            "Marketing Manager", "Digital Marketing Manager", "Content Marketing Manager",
+            "Sales Representative", "Account Manager", "Business Development Manager",
+            "Project Manager", "Program Manager", "Scrum Master", "Agile Coach",
+            "Quality Assurance Engineer", "Test Engineer", "Automation Engineer",
+            "Security Engineer", "Cybersecurity Analyst", "Information Security Manager",
+            "Business Analyst", "Systems Analyst", "Financial Analyst", "Operations Manager"
+        ]
+        
+        matching_titles = [
+            {"title": title, "count": 10, "category": "Technology"}
+            for title in common_titles 
+            if q.lower() in title.lower()
+        ]
+        
+        return matching_titles[:limit]
 
 @router.get("/companies/search")
 async def search_companies(

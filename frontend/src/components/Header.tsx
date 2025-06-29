@@ -105,13 +105,13 @@ const Header: React.FC = () => {
                         <p className="text-sm font-semibold text-gray-900 dark:text-white">{user.name}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
                       </div>
-                      <Link to="/profile" className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                      <Link to="/my-profile" className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                         <User className="w-4 h-4 mr-2" /> My Profile
                       </Link>
                       <Link to="/favorites" className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                         <Heart className="w-4 h-4 mr-2" /> My Favorites
                       </Link>
-                      <Link to="/applications" className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                      <Link to="/my-applications" className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                         <FileText className="w-4 h-4 mr-2" /> My Applications
                       </Link>
                       <button

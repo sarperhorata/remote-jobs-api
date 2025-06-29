@@ -606,6 +606,12 @@ export const jobService = {
   deleteJob: async (id: string) => {
     return await JobServiceClass.deleteJob(id);
   },
+  saveJob: async (jobId: string) => {
+    await saveJob(jobId);
+  },
+  unsaveJob: async (userId: string, jobId: string) => {
+    await unsaveJob(jobId);
+  },
   getUserProfile: JobServiceClass.getUserProfile,
   scrapeJobApplicationForm: JobServiceClass.scrapeJobApplicationForm,
   submitScrapedFormApplication: JobServiceClass.submitScrapedFormApplication,

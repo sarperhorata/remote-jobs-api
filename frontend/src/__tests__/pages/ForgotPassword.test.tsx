@@ -10,7 +10,7 @@ jest.mock('../../services/onboardingService');
 // Mock react-router-dom
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', async () => {
-  const actual = await jest.importActual('react-router-dom');
+  const actual = jest.requireActual('react-router-dom');
   return {
     ...actual,
     useNavigate: () => mockNavigate

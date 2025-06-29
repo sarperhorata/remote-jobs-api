@@ -84,38 +84,249 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Enhanced Dark Mode Styles */
+/* Global dark mode styles */
+:root {
+  --color-primary: #f97316;
+  --color-primary-dark: #ea580c;
+  --color-secondary: #eab308;
+  --color-accent: #06b6d4;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  
+  /* Light theme colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --border-color: #e2e8f0;
+  --border-light: #f1f5f9;
+  
+  /* Dark theme colors */
+  --dark-bg-primary: #0f172a;
+  --dark-bg-secondary: #1e293b;
+  --dark-bg-tertiary: #334155;
+  --dark-bg-card: #1e293b;
+  --dark-bg-input: #334155;
+  --dark-text-primary: #f8fafc;
+  --dark-text-secondary: #cbd5e1;
+  --dark-text-muted: #94a3b8;
+  --dark-border-color: #475569;
+  --dark-border-light: #64748b;
+}
+
+/* Dark theme application */
 .dark {
   color-scheme: dark;
 }
 
 .dark body {
-  background-color: #0f172a; /* slate-900 */
-  color: #f1f5f9; /* slate-100 */
+  background-color: var(--dark-bg-primary);
+  color: var(--dark-text-primary);
 }
 
-/* Custom dark mode variables */
-:root {
-  --color-bg-primary: #ffffff;
-  --color-bg-secondary: #f8fafc; /* slate-50 */
-  --color-bg-tertiary: #f1f5f9; /* slate-100 */
-  --color-text-primary: #0f172a; /* slate-900 */
-  --color-text-secondary: #475569; /* slate-600 */
-  --color-text-tertiary: #64748b; /* slate-500 */
-  --color-border: #e2e8f0; /* slate-200 */
-  --color-border-focus: #3b82f6; /* blue-500 */
+/* Background utilities for dark mode */
+.dark .bg-white { background-color: var(--dark-bg-card) !important; }
+.dark .bg-gray-50 { background-color: var(--dark-bg-secondary) !important; }
+.dark .bg-gray-100 { background-color: var(--dark-bg-tertiary) !important; }
+.dark .bg-gray-200 { background-color: #475569 !important; }
+.dark .bg-gray-300 { background-color: #64748b !important; }
+.dark .bg-gray-800 { background-color: var(--dark-bg-secondary) !important; }
+.dark .bg-gray-900 { background-color: var(--dark-bg-primary) !important; }
+
+/* Text colors for dark mode */
+.dark .text-gray-600 { color: var(--dark-text-secondary) !important; }
+.dark .text-gray-700 { color: var(--dark-text-secondary) !important; }
+.dark .text-gray-800 { color: var(--dark-text-primary) !important; }
+.dark .text-gray-900 { color: var(--dark-text-primary) !important; }
+.dark .text-gray-500 { color: var(--dark-text-muted) !important; }
+.dark .text-gray-400 { color: var(--dark-text-muted) !important; }
+
+/* Border colors for dark mode */
+.dark .border-gray-200 { border-color: var(--dark-border-color) !important; }
+.dark .border-gray-300 { border-color: var(--dark-border-color) !important; }
+.dark .border-gray-400 { border-color: var(--dark-border-light) !important; }
+
+/* Form elements dark mode */
+.dark input[type="text"],
+.dark input[type="email"],
+.dark input[type="password"],
+.dark input[type="search"],
+.dark textarea,
+.dark select {
+  background-color: var(--dark-bg-input) !important;
+  border-color: var(--dark-border-color) !important;
+  color: var(--dark-text-primary) !important;
 }
 
-.dark {
-  --color-bg-primary: #0f172a; /* slate-900 */
-  --color-bg-secondary: #1e293b; /* slate-800 */
-  --color-bg-tertiary: #334155; /* slate-700 */
-  --color-text-primary: #f1f5f9; /* slate-100 */
-  --color-text-secondary: #cbd5e1; /* slate-300 */
-  --color-text-tertiary: #94a3b8; /* slate-400 */
-  --color-border: #475569; /* slate-600 */
-  --color-border-focus: #60a5fa; /* blue-400 */
+.dark input[type="text"]:focus,
+.dark input[type="email"]:focus,
+.dark input[type="password"]:focus,
+.dark input[type="search"]:focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1) !important;
 }
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: var(--dark-text-muted) !important;
+}
+
+/* Button dark mode enhancements */
+.dark .btn-secondary {
+  background-color: var(--dark-bg-tertiary) !important;
+  border-color: var(--dark-border-color) !important;
+  color: var(--dark-text-primary) !important;
+}
+
+.dark .btn-secondary:hover {
+  background-color: var(--dark-border-color) !important;
+}
+
+/* Card and container dark mode */
+.dark .card,
+.dark .bg-white {
+  background-color: var(--dark-bg-card) !important;
+  border-color: var(--dark-border-color) !important;
+}
+
+/* Dropdown and menu dark mode */
+.dark .dropdown-menu,
+.dark .menu {
+  background-color: var(--dark-bg-card) !important;
+  border-color: var(--dark-border-color) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2) !important;
+}
+
+.dark .dropdown-item:hover,
+.dark .menu-item:hover {
+  background-color: var(--dark-bg-tertiary) !important;
+}
+
+/* Table dark mode */
+.dark table {
+  background-color: var(--dark-bg-card) !important;
+}
+
+.dark th {
+  background-color: var(--dark-bg-secondary) !important;
+  color: var(--dark-text-primary) !important;
+  border-color: var(--dark-border-color) !important;
+}
+
+.dark td {
+  border-color: var(--dark-border-color) !important;
+  color: var(--dark-text-secondary) !important;
+}
+
+.dark tbody tr:hover {
+  background-color: var(--dark-bg-tertiary) !important;
+}
+
+/* Badge and tag dark mode */
+.dark .badge,
+.dark .tag {
+  background-color: var(--dark-bg-tertiary) !important;
+  color: var(--dark-text-primary) !important;
+  border-color: var(--dark-border-color) !important;
+}
+
+/* Status colors in dark mode */
+.dark .text-blue-600 { color: #60a5fa !important; }
+.dark .text-green-600 { color: #34d399 !important; }
+.dark .text-yellow-600 { color: #fbbf24 !important; }
+.dark .text-red-600 { color: #f87171 !important; }
+.dark .text-purple-600 { color: #c084fc !important; }
+
+.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.1) !important; }
+.dark .bg-green-50 { background-color: rgba(16, 185, 129, 0.1) !important; }
+.dark .bg-yellow-50 { background-color: rgba(245, 158, 11, 0.1) !important; }
+.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.1) !important; }
+.dark .bg-purple-50 { background-color: rgba(168, 85, 247, 0.1) !important; }
+
+/* Loading and skeleton dark mode */
+.dark .animate-pulse {
+  background-color: var(--dark-bg-tertiary) !important;
+}
+
+.dark .skeleton {
+  background: linear-gradient(90deg, var(--dark-bg-secondary) 25%, var(--dark-bg-tertiary) 50%, var(--dark-bg-secondary) 75%) !important;
+}
+
+/* Scrollbar dark mode */
+.dark ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: var(--dark-bg-secondary);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--dark-border-color);
+  border-radius: 3px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--dark-border-light);
+}
+
+/* Enhanced transitions */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Global focus styles */
+.focus-ring:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Glassmorphism effects for dark mode */
+.dark .glass {
+  background: rgba(30, 41, 59, 0.8) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(71, 85, 105, 0.3) !important;
+}
+
+.dark .glass-card {
+  background: rgba(30, 41, 59, 0.6) !important;
+  backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(71, 85, 105, 0.2) !important;
+}
+
+/* Footer dark mode */
+.dark footer {
+  background-color: var(--dark-bg-primary) !important;
+  border-color: var(--dark-border-color) !important;
+}
+
+/* Modal and overlay dark mode */
+.dark .modal-overlay {
+  background-color: rgba(15, 23, 42, 0.8) !important;
+}
+
+.dark .modal-content {
+  background-color: var(--dark-bg-card) !important;
+  border-color: var(--dark-border-color) !important;
+}
+
+/* Dark mode specific utilities */
+.bg-slate-900 { background-color: #0f172a !important; }
+.bg-slate-800 { background-color: #1e293b !important; }
+.bg-slate-700 { background-color: #334155 !important; }
+.bg-slate-600 { background-color: #475569 !important; }
+.text-slate-100 { color: #f1f5f9 !important; }
+.text-slate-200 { color: #e2e8f0 !important; }
+.text-slate-300 { color: #cbd5e1 !important; }
+.text-slate-400 { color: #94a3b8 !important; }
+.border-slate-600 { border-color: #475569 !important; }
+.border-slate-700 { border-color: #334155 !important; }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',

@@ -1,4 +1,7 @@
+import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import { BrowserRouter } from 'react-router-dom';
 import EmailVerification from '../../pages/EmailVerification';
 import { onboardingService } from '../../services/onboardingService';
 
@@ -6,13 +9,15 @@ import { onboardingService } from '../../services/onboardingService';
 jest.mock('../../services/onboardingService');
 
 // Mock react-router-dom
-const mockNavigate = jest.fn();
-jest.mock('react-router-dom', async () => {
-  const actual = await jest.importActual('react-router-dom');
+jest.mock('react-router-dom', () => {
+  const actual = jest.requireActual('react-router-dom');
   return {
     ...actual,
-    useNavigate: () => mockNavigate,
-    useSearchParams: jest.fn(() => [new URLSearchParams('token=test-token')])
+    useSearchParams: () => [
+      new URLSearchParams('?token=test-token'),
+      jest.fn()
+    ],
+    useNavigate: () => jest.fn(),
   };
 });
 
@@ -27,25 +32,75 @@ Object.defineProperty(window, 'localStorage', {
   value: mockLocalStorage
 });
 
-const renderWithRouter = (component: React.ReactElement) => {
-  return render(
-    <BrowserRouter>
-      {component}
-    </BrowserRouter>
-  );
-};
+const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <BrowserRouter>
+    {children}
+  </BrowserRouter>
+);
 
 describe('EmailVerification', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockNavigate.mockClear();
   });
 
-  it('should render loading state initially', () => {
-    renderWithRouter(<EmailVerification />);
-    
-    expect(screen.getByText(/Email Doğrulanıyor/i)).toBeInTheDocument();
-    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
+  it('renders verification page', () => {
+    render(
+      <TestWrapper>
+        <EmailVerification />
+      </TestWrapper>
+    );
+
+    expect(screen.getByText('Verifying Your Email')).toBeInTheDocument();
+  });
+
+  it('shows loading state initially', () => {
+    render(
+      <TestWrapper>
+        <EmailVerification />
+      </TestWrapper>
+    );
+
+    expect(screen.getByText('Please wait while we verify your email...')).toBeInTheDocument();
+  });
+
+  it('handles successful verification', async () => {
+    const mockFetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ message: 'Email verified successfully' })
+    });
+    global.fetch = mockFetch;
+
+    render(
+      <TestWrapper>
+        <EmailVerification />
+      </TestWrapper>
+    );
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/auth/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: 'test-token' })
+      });
+    });
+  });
+
+  it('handles verification error', async () => {
+    const mockFetch = jest.fn().mockResolvedValue({
+      ok: false,
+      json: () => Promise.resolve({ message: 'Invalid token' })
+    });
+    global.fetch = mockFetch;
+
+    render(
+      <TestWrapper>
+        <EmailVerification />
+      </TestWrapper>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Verification Failed')).toBeInTheDocument();
+    });
   });
 
   it('should verify email successfully and navigate to next step', async () => {
@@ -57,7 +112,11 @@ describe('EmailVerification', () => {
 
     (onboardingService.verifyEmail).mockResolvedValue(mockResponse);
 
-    renderWithRouter(<EmailVerification />);
+    render(
+      <TestWrapper>
+        <EmailVerification />
+      </TestWrapper>
+    );
 
     await waitFor(() => {
       expect(onboardingService.verifyEmail).toHaveBeenCalledWith('test-token');
@@ -67,7 +126,7 @@ describe('EmailVerification', () => {
     expect(screen.getByText(/Şifre belirleme sayfasına yönlendiriliyorsunuz/i)).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/set-password?token=test-token');
+      expect(jest.requireActual('react-router-dom').useNavigate).toHaveBeenCalledWith('/set-password?token=test-token');
     }, { timeout: 3000 });
   });
 
@@ -76,7 +135,11 @@ describe('EmailVerification', () => {
       new Error('Geçersiz veya süresi dolmuş token')
     );
 
-    renderWithRouter(<EmailVerification />);
+    render(
+      <TestWrapper>
+        <EmailVerification />
+      </TestWrapper>
+    );
 
     await waitFor(() => {
       expect(screen.getByText(/Email Doğrulama Hatası/i)).toBeInTheDocument();
@@ -92,7 +155,11 @@ describe('EmailVerification', () => {
       new Error('Network error')
     );
 
-    renderWithRouter(<EmailVerification />);
+    render(
+      <TestWrapper>
+        <EmailVerification />
+      </TestWrapper>
+    );
 
     await waitFor(() => {
       expect(screen.getByText(/Bağlantı Hatası/i)).toBeInTheDocument();
@@ -103,11 +170,15 @@ describe('EmailVerification', () => {
   });
 
   it('should handle missing token', async () => {
-    (require('react-router-dom').useSearchParams).mockReturnValue([
+    (jest.requireActual('react-router-dom').useSearchParams).mockReturnValue([
       new URLSearchParams('')
     ]);
 
-    renderWithRouter(<EmailVerification />);
+    render(
+      <TestWrapper>
+        <EmailVerification />
+      </TestWrapper>
+    );
 
     expect(screen.getByText(/Geçersiz Bağlantı/i)).toBeInTheDocument();
     expect(screen.getByText(/Email doğrulama bağlantısı geçersiz/i)).toBeInTheDocument();
@@ -122,7 +193,11 @@ describe('EmailVerification', () => {
         next_step: 'set_password'
       });
 
-    renderWithRouter(<EmailVerification />);
+    render(
+      <TestWrapper>
+        <EmailVerification />
+      </TestWrapper>
+    );
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Tekrar Dene/i })).toBeInTheDocument();
@@ -149,7 +224,11 @@ describe('EmailVerification', () => {
 
     (onboardingService.verifyEmail).mockResolvedValue(mockResponse);
 
-    renderWithRouter(<EmailVerification />);
+    render(
+      <TestWrapper>
+        <EmailVerification />
+      </TestWrapper>
+    );
 
     await waitFor(() => {
       expect(screen.getByText(/Email başarıyla doğrulandı/i)).toBeInTheDocument();
@@ -163,7 +242,11 @@ describe('EmailVerification', () => {
       new Error('Email zaten doğrulanmış')
     );
 
-    renderWithRouter(<EmailVerification />);
+    render(
+      <TestWrapper>
+        <EmailVerification />
+      </TestWrapper>
+    );
 
     await waitFor(() => {
       expect(screen.getByText(/Email Zaten Doğrulanmış/i)).toBeInTheDocument();

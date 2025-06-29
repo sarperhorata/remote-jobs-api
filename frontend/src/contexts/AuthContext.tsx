@@ -28,6 +28,8 @@ interface User {
   name: string;
   email: string;
   profilePicture?: string;
+  profile_picture?: string;
+  created_at?: string;
   profile?: UserProfile;
   role?: 'user' | 'admin';
 }

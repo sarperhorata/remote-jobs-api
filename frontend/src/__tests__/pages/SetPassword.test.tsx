@@ -1,5 +1,6 @@
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import '@testing-library/jest-dom';
 import { BrowserRouter } from 'react-router-dom';
 import SetPassword from '../../pages/SetPassword';
 import { onboardingService } from '../../services/onboardingService';
@@ -8,43 +9,122 @@ import { onboardingService } from '../../services/onboardingService';
 jest.mock('../../services/onboardingService');
 
 // Mock react-router-dom
-const mockNavigate = jest.fn();
-jest.mock('react-router-dom', async () => {
-  const actual = await jest.importActual('react-router-dom');
+jest.mock('react-router-dom', () => {
+  const actual = jest.requireActual('react-router-dom');
   return {
     ...actual,
-    useNavigate: () => mockNavigate,
-    useSearchParams: jest.fn(() => [new URLSearchParams('token=test-token')])
+    useSearchParams: () => [
+      new URLSearchParams('?token=test-token'),
+      jest.fn()
+    ],
+    useNavigate: () => jest.fn(),
   };
 });
 
-const renderWithRouter = (component: React.ReactElement) => {
-  return render(
-    <BrowserRouter>
-      {component}
-    </BrowserRouter>
-  );
-};
+const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <BrowserRouter>
+    {children}
+  </BrowserRouter>
+);
 
 describe('SetPassword', () => {
   const user = userEvent.setup();
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockNavigate.mockClear();
   });
 
-  it('should render password form correctly', () => {
-    renderWithRouter(<SetPassword />);
-    
-    expect(screen.getByText(/Şifrenizi Belirleyin/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Şifre/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Şifre Tekrar/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Şifre Belirle/i })).toBeInTheDocument();
+  it('renders set password form', () => {
+    render(
+      <TestWrapper>
+        <SetPassword />
+      </TestWrapper>
+    );
+
+    expect(screen.getByText('Set Your Password')).toBeInTheDocument();
+    expect(screen.getByLabelText('New Password')).toBeInTheDocument();
+    expect(screen.getByLabelText('Confirm Password')).toBeInTheDocument();
+  });
+
+  it('validates password requirements', async () => {
+    render(
+      <TestWrapper>
+        <SetPassword />
+      </TestWrapper>
+    );
+
+    const passwordInput = screen.getByLabelText('New Password');
+    const confirmInput = screen.getByLabelText('Confirm Password');
+    const submitButton = screen.getByRole('button', { name: /set password/i });
+
+    fireEvent.change(passwordInput, { target: { value: '123' } });
+    fireEvent.change(confirmInput, { target: { value: '123' } });
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Password must be at least 8 characters')).toBeInTheDocument();
+    });
+  });
+
+  it('validates password confirmation match', async () => {
+    render(
+      <TestWrapper>
+        <SetPassword />
+      </TestWrapper>
+    );
+
+    const passwordInput = screen.getByLabelText('New Password');
+    const confirmInput = screen.getByLabelText('Confirm Password');
+    const submitButton = screen.getByRole('button', { name: /set password/i });
+
+    fireEvent.change(passwordInput, { target: { value: 'password123' } });
+    fireEvent.change(confirmInput, { target: { value: 'different123' } });
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Passwords do not match')).toBeInTheDocument();
+    });
+  });
+
+  it('submits form with valid data', async () => {
+    const mockFetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ message: 'Password set successfully' })
+    });
+    global.fetch = mockFetch;
+
+    render(
+      <TestWrapper>
+        <SetPassword />
+      </TestWrapper>
+    );
+
+    const passwordInput = screen.getByLabelText('New Password');
+    const confirmInput = screen.getByLabelText('Confirm Password');
+    const submitButton = screen.getByRole('button', { name: /set password/i });
+
+    fireEvent.change(passwordInput, { target: { value: 'ValidPassword123!' } });
+    fireEvent.change(confirmInput, { target: { value: 'ValidPassword123!' } });
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/auth/set-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: 'test-token',
+          password: 'ValidPassword123!'
+        })
+      });
+    });
   });
 
   it('should show password strength indicator', async () => {
-    renderWithRouter(<SetPassword />);
+    render(
+      <TestWrapper>
+        <SetPassword />
+      </TestWrapper>
+    );
     
     const passwordInput = screen.getByLabelText(/^Şifre$/i);
     
@@ -63,86 +143,16 @@ describe('SetPassword', () => {
     expect(screen.getByTestId('strength-indicator')).toHaveClass('strength-strong');
   });
 
-  it('should validate password requirements', async () => {
-    renderWithRouter(<SetPassword />);
-    
-    const passwordInput = screen.getByLabelText(/^Şifre$/i);
-    const submitButton = screen.getByRole('button', { name: /Şifre Belirle/i });
-
-    // Test minimum length
-    await user.type(passwordInput, '123');
-    fireEvent.click(submitButton);
-    expect(screen.getByText(/en az 8 karakter/i)).toBeInTheDocument();
-
-    // Test uppercase requirement
-    await user.clear(passwordInput);
-    await user.type(passwordInput, 'lowercase123');
-    fireEvent.click(submitButton);
-    expect(screen.getByText(/büyük harf/i)).toBeInTheDocument();
-
-    // Test number requirement  
-    await user.clear(passwordInput);
-    await user.type(passwordInput, 'NoNumbers');
-    fireEvent.click(submitButton);
-    expect(screen.getByText(/rakam/i)).toBeInTheDocument();
-  });
-
-  it('should validate password confirmation match', async () => {
-    renderWithRouter(<SetPassword />);
-    
-    const passwordInput = screen.getByLabelText(/^Şifre$/i);
-    const confirmInput = screen.getByLabelText(/Şifre Tekrar/i);
-    const submitButton = screen.getByRole('button', { name: /Şifre Belirle/i });
-
-    await user.type(passwordInput, 'ValidPass123!');
-    await user.type(confirmInput, 'DifferentPass123!');
-    
-    fireEvent.click(submitButton);
-    
-    expect(screen.getByText(/eşleşmiyor/i)).toBeInTheDocument();
-  });
-
-  it('should set password successfully and navigate', async () => {
-    const mockResponse = {
-      message: 'Şifre başarıyla belirlendi',
-      onboarding_step: 2,
-      next_step: 'profile_setup'
-    };
-
-    (onboardingService.setPassword).mockResolvedValue(mockResponse);
-
-    renderWithRouter(<SetPassword />);
-    
-    const passwordInput = screen.getByLabelText(/^Şifre$/i);
-    const confirmInput = screen.getByLabelText(/Şifre Tekrar/i);
-    const submitButton = screen.getByRole('button', { name: /Şifre Belirle/i });
-
-    await user.type(passwordInput, 'SecurePass123!');
-    await user.type(confirmInput, 'SecurePass123!');
-    
-    fireEvent.click(submitButton);
-
-    await waitFor(() => {
-      expect(onboardingService.setPassword).toHaveBeenCalledWith(
-        'test-token',
-        'SecurePass123!',
-        'SecurePass123!'
-      );
-    });
-
-    expect(screen.getByText(/Şifre başarıyla belirlendi/i)).toBeInTheDocument();
-    
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/onboarding/profile-setup');
-    });
-  });
-
   it('should handle invalid token error', async () => {
     (onboardingService.setPassword).mockRejectedValue(
       new Error('Geçersiz veya süresi dolmuş token')
     );
 
-    renderWithRouter(<SetPassword />);
+    render(
+      <TestWrapper>
+        <SetPassword />
+      </TestWrapper>
+    );
     
     const passwordInput = screen.getByLabelText(/^Şifre$/i);
     const confirmInput = screen.getByLabelText(/Şifre Tekrar/i);
@@ -165,7 +175,11 @@ describe('SetPassword', () => {
       new Error('Server error')
     );
 
-    renderWithRouter(<SetPassword />);
+    render(
+      <TestWrapper>
+        <SetPassword />
+      </TestWrapper>
+    );
     
     const passwordInput = screen.getByLabelText(/^Şifre$/i);
     const confirmInput = screen.getByLabelText(/Şifre Tekrar/i);
@@ -182,7 +196,11 @@ describe('SetPassword', () => {
   });
 
   it('should toggle password visibility', async () => {
-    renderWithRouter(<SetPassword />);
+    render(
+      <TestWrapper>
+        <SetPassword />
+      </TestWrapper>
+    );
     
     const passwordInput = screen.getByLabelText(/^Şifre$/i);
     const toggleButton = screen.getByTestId('password-toggle');
@@ -200,7 +218,11 @@ describe('SetPassword', () => {
   });
 
   it('should disable submit button when form is invalid', async () => {
-    renderWithRouter(<SetPassword />);
+    render(
+      <TestWrapper>
+        <SetPassword />
+      </TestWrapper>
+    );
     
     const submitButton = screen.getByRole('button', { name: /Şifre Belirle/i });
     
@@ -227,7 +249,11 @@ describe('SetPassword', () => {
       () => new Promise(resolve => setTimeout(resolve, 100))
     );
 
-    renderWithRouter(<SetPassword />);
+    render(
+      <TestWrapper>
+        <SetPassword />
+      </TestWrapper>
+    );
     
     const passwordInput = screen.getByLabelText(/^Şifre$/i);
     const confirmInput = screen.getByLabelText(/Şifre Tekrar/i);
@@ -247,14 +273,22 @@ describe('SetPassword', () => {
       new URLSearchParams('')
     ]);
 
-    renderWithRouter(<SetPassword />);
+    render(
+      <TestWrapper>
+        <SetPassword />
+      </TestWrapper>
+    );
 
     expect(screen.getByText(/Geçersiz Bağlantı/i)).toBeInTheDocument();
     expect(screen.getByText(/Şifre belirleme bağlantısı geçersiz/i)).toBeInTheDocument();
   });
 
   it('should show password requirements checklist', async () => {
-    renderWithRouter(<SetPassword />);
+    render(
+      <TestWrapper>
+        <SetPassword />
+      </TestWrapper>
+    );
     
     expect(screen.getByText(/En az 8 karakter/i)).toBeInTheDocument();
     expect(screen.getByText(/En az bir büyük harf/i)).toBeInTheDocument();

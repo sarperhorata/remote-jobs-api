@@ -114,8 +114,14 @@ async def admin_dashboard(request: Request):
             
             # Jobs added in last 24 hours
             yesterday = datetime.now() - timedelta(days=1)
+            # Try multiple date fields to find recently added jobs
             new_jobs_24h = await db.jobs.count_documents({
-                "last_updated": {"$gte": yesterday.isoformat()}
+                "$or": [
+                    {"created_at": {"$gte": yesterday}},
+                    {"created_at": {"$gte": yesterday.isoformat()}},
+                    {"last_updated": {"$gte": yesterday.isoformat()}},
+                    {"posted_date": {"$gte": yesterday.isoformat()}}
+                ]
             })
         
         # Get scheduler status
@@ -377,6 +383,21 @@ async def admin_login_page(request: Request):
                 outline: none;
                 border-color: #667eea;
             }
+            .password-wrapper {
+                position: relative;
+            }
+            .password-toggle {
+                position: absolute;
+                right: 12px;
+                top: 50%;
+                transform: translateY(-50%);
+                cursor: pointer;
+                color: #666;
+                font-size: 18px;
+            }
+            .password-toggle:hover {
+                color: #667eea;
+            }
             .login-btn {
                 width: 100%;
                 padding: 12px;
@@ -431,7 +452,10 @@ async def admin_login_page(request: Request):
                 
                 <div class="form-group">
                     <label for="password">Password:</label>
-                    <input type="password" id="password" name="password" required autocomplete="current-password">
+                    <div class="password-wrapper">
+                        <input type="password" id="password" name="password" required autocomplete="current-password">
+                        <span class="password-toggle" onclick="togglePassword()">👁️</span>
+                    </div>
                 </div>
                 
                 <button type="submit" class="login-btn">🔑 Login to Admin Panel</button>
@@ -443,6 +467,21 @@ async def admin_login_page(request: Request):
                 <a href="/admin/test">🧪 Test Panel</a>
             </div>
         </div>
+        
+        <script>
+            function togglePassword() {
+                const passwordInput = document.getElementById('password');
+                const toggleBtn = document.querySelector('.password-toggle');
+                
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    toggleBtn.textContent = '🙈';
+                } else {
+                    passwordInput.type = 'password';
+                    toggleBtn.textContent = '👁️';
+                }
+            }
+        </script>
     </body>
     </html>
     """
@@ -576,7 +615,10 @@ async def admin_login(request: Request, username: str = Form(...), password: str
                     
                     <div class="form-group">
                         <label for="password">Password:</label>
-                        <input type="password" id="password" name="password" required autocomplete="current-password">
+                        <div class="password-wrapper">
+                            <input type="password" id="password" name="password" required autocomplete="current-password">
+                            <span class="password-toggle" onclick="togglePassword()">👁️</span>
+                        </div>
                     </div>
                     
                     <button type="submit" class="login-btn">🔑 Login to Admin Panel</button>
@@ -588,6 +630,21 @@ async def admin_login(request: Request, username: str = Form(...), password: str
                     <a href="/admin/test">🧪 Test Panel</a>
                 </div>
             </div>
+            
+            <script>
+                function togglePassword() {
+                    const passwordInput = document.getElementById('password');
+                    const toggleBtn = document.querySelector('.password-toggle');
+                    
+                    if (passwordInput.type === 'password') {
+                        passwordInput.type = 'text';
+                        toggleBtn.textContent = '🙈';
+                    } else {
+                        passwordInput.type = 'password';
+                        toggleBtn.textContent = '👁️';
+                    }
+                }
+            </script>
         </body>
         </html>
         """
@@ -605,6 +662,7 @@ async def admin_jobs(
     page: int = 1, 
     sort_by: str = "created_at", 
     sort_order: str = "desc", 
+    title_filter: Optional[str] = None,
     company_filter: Optional[str] = None,
     location_filter: Optional[str] = None
 ) -> HTMLResponse:
@@ -648,6 +706,8 @@ async def admin_jobs(
         
         # Build filter criteria
         filter_criteria = {}
+        if title_filter:
+            filter_criteria.update(build_safe_filter(title_filter, "title"))
         if company_filter:
             filter_criteria.update(build_safe_filter(company_filter, "company"))
         if location_filter:
@@ -669,6 +729,8 @@ async def admin_jobs(
     
     # Generate HTML content
     filter_parts = []
+    if title_filter:
+        filter_parts.append(f"title: {title_filter}")
     if company_filter:
         filter_parts.append(f"company: {company_filter}")
     if location_filter:
@@ -738,6 +800,7 @@ async def admin_jobs(
                 <h2>Job Listings ({total_jobs} total){filter_message} - Page {page} of {total_pages}</h2>
                 
                 <div class="filters">
+                    <input type="text" id="titleFilter" class="filter-input" placeholder="Filter by title..." value="{title_filter or ''}" onkeypress="if(event.key==='Enter') applyFilters()">
                     <input type="text" id="companyFilter" class="filter-input" placeholder="Filter by company..." value="{company_filter or ''}" onkeypress="if(event.key==='Enter') applyFilters()">
                     <input type="text" id="locationFilter" class="filter-input" placeholder="Filter by location..." value="{location_filter or ''}" onkeypress="if(event.key==='Enter') applyFilters()">
                     <button onclick="applyFilters()" style="padding: 8px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Apply Filter</button>
@@ -747,11 +810,11 @@ async def admin_jobs(
                 <table>
                     <thead>
                         <tr>
-                            <th onclick="sortBy('title')">Title <span class="sort-indicator">&updownarrow;</span></th>
-                            <th onclick="sortBy('company')">Company <span class="sort-indicator">&updownarrow;</span></th>
-                            <th onclick="sortBy('location')">Location <span class="sort-indicator">&updownarrow;</span></th>
-                            <th onclick="sortBy('source')">Source <span class="sort-indicator">&updownarrow;</span></th>
-                            <th onclick="sortBy('created_at')">Posted <span class="sort-indicator">&darr;</span></th>
+                            <th onclick="sortBy('title')">Title <span class="sort-indicator">{get_sort_indicator('title', sort_by, sort_order)}</span></th>
+                            <th onclick="sortBy('company')">Company <span class="sort-indicator">{get_sort_indicator('company', sort_by, sort_order)}</span></th>
+                            <th onclick="sortBy('location')">Location <span class="sort-indicator">{get_sort_indicator('location', sort_by, sort_order)}</span></th>
+                            <th onclick="sortBy('source')">Source <span class="sort-indicator">{get_sort_indicator('source', sort_by, sort_order)}</span></th>
+                            <th onclick="sortBy('created_at')">Posted <span class="sort-indicator">{get_sort_indicator('created_at', sort_by, sort_order)}</span></th>
                         </tr>
                     </thead>
                     <tbody>"""
@@ -805,6 +868,8 @@ async def admin_jobs(
         # Previous button
         if page > 1:
             prev_url = f"/admin/jobs?page={page-1}&sort_by={sort_by}&sort_order={sort_order}"
+            if title_filter:
+                prev_url += f"&title_filter={title_filter}"
             if company_filter:
                 prev_url += f"&company_filter={company_filter}"
             if location_filter:
@@ -817,6 +882,8 @@ async def admin_jobs(
         
         for p in range(start_page, end_page + 1):
             page_url = f"/admin/jobs?page={p}&sort_by={sort_by}&sort_order={sort_order}"
+            if title_filter:
+                page_url += f"&title_filter={title_filter}"
             if company_filter:
                 page_url += f"&company_filter={company_filter}"
             if location_filter:
@@ -830,6 +897,8 @@ async def admin_jobs(
         # Next button
         if page < total_pages:
             next_url = f"/admin/jobs?page={page+1}&sort_by={sort_by}&sort_order={sort_order}"
+            if title_filter:
+                next_url += f"&title_filter={title_filter}"
             if company_filter:
                 next_url += f"&company_filter={company_filter}"
             if location_filter:
@@ -940,8 +1009,12 @@ async def admin_jobs(
                 
                 let url = '/admin/jobs?sort_by=' + column + '&sort_order=' + newOrder;
                 const searchParams = new URLSearchParams(window.location.search);
+                const titleFilter = searchParams.get('title_filter');
                 const companyFilter = searchParams.get('company_filter');
                 const locationFilter = searchParams.get('location_filter');
+                if (titleFilter) {
+                    url += '&title_filter=' + encodeURIComponent(titleFilter);
+                }
                 if (companyFilter) {
                     url += '&company_filter=' + encodeURIComponent(companyFilter);
                 }
@@ -953,9 +1026,13 @@ async def admin_jobs(
             }
             
             function applyFilters() {
+                const titleFilter = document.getElementById('titleFilter').value;
                 const companyFilter = document.getElementById('companyFilter').value;
                 const locationFilter = document.getElementById('locationFilter').value;
                 let url = '/admin/jobs?page=1';
+                if (titleFilter) {
+                    url += '&title_filter=' + encodeURIComponent(titleFilter);
+                }
                 if (companyFilter) {
                     url += '&company_filter=' + encodeURIComponent(companyFilter);
                 }
@@ -991,8 +1068,32 @@ async def admin_jobs(
     </body>
     </html>
     """
-    
-    return HTMLResponse(content=html_content)
+        return HTMLResponse(content=html_content)
+
+    except Exception as e:
+        logger.error(f"Error in admin dashboard: {str(e)}")
+        error_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Dashboard Error - Buzz2Remote Admin</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }}
+                .container {{ background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+                .error {{ color: #dc3545; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1 class="error">❌ Dashboard Error</h1>
+                <p>Error: {str(e)}</p>
+                <a href="/admin/test">🧪 Test Admin Panel</a> |
+                <a href="/admin/login">🔑 Admin Login</a>
+            </div>
+        </body>
+        </html>
+        """
+        return HTMLResponse(content=error_html, status_code=500)
 
 @admin_router.get("/cronjobs", response_class=HTMLResponse)
 async def admin_cronjobs(request: Request, admin_auth: bool = Depends(get_admin_auth)):
@@ -2129,21 +2230,29 @@ async def admin_apis(request: Request, admin_auth: bool = Depends(get_admin_auth
                 }}
                 
                 function runService(serviceName) {{
-                    if (confirm(`Run ${{serviceName}} API service?`)) {{
-                        showLoader();
-                        fetch(`/admin/api-services/${{serviceName}}`, {{
-                            method: 'POST'
-                        }})
-                        .then(response => response.json())
-                        .then(data => {{
-                            hideLoader();
-                            alert(`${{serviceName}} started: ${{data.message}}`);
-                            location.reload();
-                        }})
-                        .catch(error => {{
-                            hideLoader();
-                            alert(`Error: ${{error.message}}`);
-                        }});
+                    if (serviceName === 'distill_crawler' || serviceName === 'distill') {{
+                        // Special handling for distill crawler with progress modal
+                        if (confirm(`Run BUZZ2REMOTE-COMPANIES crawler? This will crawl all company career pages.`)) {{
+                            showDistillCrawlerModal();
+                            startDistillCrawler();
+                        }}
+                    }} else {{
+                        if (confirm(`Run ${{serviceName}} API service?`)) {{
+                            showLoader();
+                            fetch(`/admin/api-services/${{serviceName}}`, {{
+                                method: 'POST'
+                            }})
+                            .then(response => response.json())
+                            .then(data => {{
+                                hideLoader();
+                                alert(`${{serviceName}} started: ${{data.message}}`);
+                                location.reload();
+                            }})
+                            .catch(error => {{
+                                hideLoader();
+                                alert(`Error: ${{error.message}}`);
+                            }});
+                        }}
                     }}
                 }}
                 
@@ -2178,6 +2287,164 @@ async def admin_apis(request: Request, admin_auth: bool = Depends(get_admin_auth
                         hideLoader();
                         location.reload();
                     }}, 1000);
+                }}
+                
+                function showDistillCrawlerModal() {{
+                    const modalHTML = `
+                        <div id="distillModal" style="display: block; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8);">
+                            <div style="position: relative; background-color: white; margin: 5% auto; padding: 20px; border-radius: 8px; width: 80%; max-width: 600px; max-height: 80vh; overflow-y: auto;">
+                                <h2 style="margin-top: 0;">🏢 BUZZ2REMOTE-COMPANIES Crawler Progress</h2>
+                                <div id="crawlerStats" style="background: #f0f0f0; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                                    <p><strong>Status:</strong> <span id="crawlerStatus">Initializing...</span></p>
+                                    <p><strong>Companies Processed:</strong> <span id="companiesProcessed">0</span> / <span id="totalCompanies">-</span></p>
+                                    <p><strong>Jobs Found:</strong> <span id="jobsFound">0</span></p>
+                                    <p><strong>Errors:</strong> <span id="errorCount">0</span></p>
+                                    <p><strong>Duration:</strong> <span id="duration">00:00</span></p>
+                                </div>
+                                <div style="width: 100%; background-color: #ddd; border-radius: 5px; margin-bottom: 20px;">
+                                    <div id="progressBar" style="width: 0%; background-color: #4CAF50; height: 30px; border-radius: 5px; text-align: center; line-height: 30px; color: white;">0%</div>
+                                </div>
+                                <div id="logContainer" style="background: #1e1e1e; color: #f8f8f2; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto;">
+                                    <div id="logContent"></div>
+                                </div>
+                                <div style="text-align: right; margin-top: 20px;">
+                                    <button onclick="closeDistillModal()" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    document.body.insertAdjacentHTML('beforeend', modalHTML);
+                }}
+                
+                function closeDistillModal() {{
+                    const modal = document.getElementById('distillModal');
+                    if (modal) {{
+                        modal.remove();
+                    }}
+                }}
+                
+                let crawlerInterval = null;
+                let startTime = null;
+                
+                async function startDistillCrawler() {{
+                    startTime = new Date();
+                    
+                    // Start the crawler
+                    try {{
+                        const response = await fetch('/admin/api-services/distill_crawler', {{
+                            method: 'POST'
+                        }});
+                        const data = await response.json();
+                        
+                        if (data.status === 'success' && data.process_id) {{
+                            // Start monitoring progress
+                            crawlerInterval = setInterval(() => {{
+                                updateCrawlerProgress(data.process_id);
+                            }}, 2000); // Update every 2 seconds
+                            
+                            // Send Telegram notification for start
+                            sendTelegramNotification('started', data.process_id);
+                        }} else {{
+                            addLogEntry('❌ Error starting crawler: ' + data.message, 'error');
+                        }}
+                    }} catch (error) {{
+                        addLogEntry('❌ Error: ' + error.message, 'error');
+                    }}
+                }}
+                
+                async function updateCrawlerProgress(processId) {{
+                    try {{
+                        const response = await fetch(`/admin/crawler-progress/${{processId}}`);
+                        const data = await response.json();
+                        
+                        // Update UI
+                        document.getElementById('crawlerStatus').textContent = data.status;
+                        document.getElementById('companiesProcessed').textContent = data.companies_processed;
+                        document.getElementById('totalCompanies').textContent = data.total_companies;
+                        document.getElementById('jobsFound').textContent = data.jobs_found;
+                        document.getElementById('errorCount').textContent = data.error_count;
+                        
+                        // Update progress bar
+                        const progress = (data.companies_processed / data.total_companies) * 100;
+                        document.getElementById('progressBar').style.width = progress + '%';
+                        document.getElementById('progressBar').textContent = Math.round(progress) + '%';
+                        
+                        // Update duration
+                        const duration = Math.floor((new Date() - startTime) / 1000);
+                        const minutes = Math.floor(duration / 60);
+                        const seconds = duration % 60;
+                        document.getElementById('duration').textContent = `${{String(minutes).padStart(2, '0')}}:${{String(seconds).padStart(2, '0')}}`;
+                        
+                        // Add log entries
+                        if (data.latest_logs) {{
+                            data.latest_logs.forEach(log => {{
+                                addLogEntry(log.message, log.level);
+                            }});
+                        }}
+                        
+                        // Check if completed
+                        if (data.status === 'completed' || data.status === 'failed') {{
+                            clearInterval(crawlerInterval);
+                            
+                            // Send Telegram notification for completion
+                            sendTelegramNotification('completed', processId, {{
+                                total_companies: data.total_companies,
+                                jobs_found: data.jobs_found,
+                                error_count: data.error_count,
+                                duration: document.getElementById('duration').textContent
+                            }});
+                            
+                            // Show completion message
+                            if (data.status === 'completed') {{
+                                addLogEntry('✅ Crawler completed successfully!', 'success');
+                                alert(`Crawler completed! Found ${{data.jobs_found}} jobs from ${{data.companies_processed}} companies.`);
+                            }} else {{
+                                addLogEntry('❌ Crawler failed!', 'error');
+                                alert('Crawler failed. Check logs for details.');
+                            }}
+                        }}
+                    }} catch (error) {{
+                        console.error('Error updating progress:', error);
+                    }}
+                }}
+                
+                function addLogEntry(message, level = 'info') {{
+                    const logContent = document.getElementById('logContent');
+                    const timestamp = new Date().toLocaleTimeString();
+                    const levelColors = {{
+                        'info': '#50fa7b',
+                        'warning': '#f1fa8c',
+                        'error': '#ff5555',
+                        'success': '#50fa7b'
+                    }};
+                    const color = levelColors[level] || '#f8f8f2';
+                    
+                    const logEntry = `<div style="margin-bottom: 5px;">
+                        <span style="color: #6272a4;">[${{timestamp}}]</span>
+                        <span style="color: ${{color}};">${{message}}</span>
+                    </div>`;
+                    
+                    logContent.insertAdjacentHTML('beforeend', logEntry);
+                    
+                    // Auto-scroll to bottom
+                    const logContainer = document.getElementById('logContainer');
+                    logContainer.scrollTop = logContainer.scrollHeight;
+                }}
+                
+                async function sendTelegramNotification(type, processId, stats = null) {{
+                    try {{
+                        const message = type === 'started' 
+                            ? `🚀 BUZZ2REMOTE-COMPANIES crawler started\\nProcess ID: ${{processId}}\\nTime: ${{new Date().toLocaleString()}}`
+                            : `✅ BUZZ2REMOTE-COMPANIES crawler completed\\n\\n📊 Results:\\n• Companies: ${{stats.total_companies}}\\n• Jobs found: ${{stats.jobs_found}}\\n• Errors: ${{stats.error_count}}\\n• Duration: ${{stats.duration}}\\n\\nTime: ${{new Date().toLocaleString()}}`;
+                        
+                        await fetch('/admin/send-telegram', {{
+                            method: 'POST',
+                            headers: {{ 'Content-Type': 'application/json' }},
+                            body: JSON.stringify({{ message }})
+                        }});
+                    }} catch (error) {{
+                        console.error('Error sending Telegram notification:', error);
+                    }}
                 }}
             </script>
         </body>
@@ -2569,7 +2836,7 @@ async def admin_test(request: Request):
     return HTMLResponse(content=html_content)
 
 @admin_router.get("/companies", response_class=HTMLResponse)
-async def admin_companies(request: Request, page: int = 1, sort_by: str = "name", sort_order: str = "asc"):
+async def admin_companies(request: Request, page: int = 1, sort_by: str = "name", sort_order: str = "asc", company_filter: Optional[str] = None):
     """Companies management page"""
     
     # Check authentication first
@@ -2592,8 +2859,14 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "name"
             total_companies = 2
             companies = demo_companies
         else:
+            # Build match criteria for filtering
+            match_criteria = {}
+            if company_filter:
+                match_criteria["company"] = {"$regex": company_filter, "$options": "i"}
+            
             # Get companies from database
             pipeline = [
+                {"$match": match_criteria} if match_criteria else {"$match": {}},
                 {"$group": {
                     "_id": "$company",
                     "jobs_count": {"$sum": 1},
@@ -2620,6 +2893,7 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "name"
         paginated_companies = companies[start_idx:end_idx]
         
         # Build HTML response
+        filter_message = f" (filtered by: {company_filter})" if company_filter else ""
         html_content = f"""
         <!DOCTYPE html>
         <html lang="en">
@@ -2648,6 +2922,9 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "name"
                 .pagination .current {{ background: #007bff; color: white; border-color: #007bff; }}
                 .pagination a:hover {{ background: #e9ecef; }}
                 .stats {{ background: #e3f2fd; padding: 15px; border-radius: 6px; margin-bottom: 20px; }}
+                .filters {{ margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; }}
+                .filter-input {{ padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-right: 10px; }}
+                .empty-company {{ color: #999; font-style: italic; }}
             </style>
         </head>
         <body>
@@ -2664,15 +2941,21 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "name"
             <div class="container">
                 <h1>🏢 Companies Management</h1>
                 
+                <div class="filters">
+                    <input type="text" id="companyFilter" class="filter-input" placeholder="Filter by company name..." value="{company_filter or ''}" onkeypress="if(event.key==='Enter') applyFilters()">
+                    <button onclick="applyFilters()" style="padding: 8px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Apply Filter</button>
+                    <button onclick="clearFilters()" style="padding: 8px 15px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 5px;">Clear Filter</button>
+                </div>
+                
                 <div class="stats">
-                    📊 <strong>{total_companies}</strong> total companies • Page {page} of {total_pages} • Showing {len(paginated_companies)} companies
+                    📊 <strong>{total_companies}</strong> total companies{filter_message} • Page {page} of {total_pages} • Showing {len(paginated_companies)} companies
                 </div>
                 
                 <table>
                     <thead>
                         <tr>
-                            <th onclick="sortBy('name')">Company Name <span class="sort-indicator">{'↓' if sort_by == 'name' and sort_order == 'desc' else '↑' if sort_by == 'name' else '↕'}</span></th>
-                            <th onclick="sortBy('jobs_count')">Job Count <span class="sort-indicator">{'↓' if sort_by == 'jobs_count' and sort_order == 'desc' else '↑' if sort_by == 'jobs_count' else '↕'}</span></th>
+                            <th onclick="sortBy('name')">Company Name <span class="sort-indicator">{get_sort_indicator('name', sort_by, sort_order)}</span></th>
+                            <th onclick="sortBy('jobs_count')">Job Count <span class="sort-indicator">{get_sort_indicator('jobs_count', sort_by, sort_order)}</span></th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -2681,13 +2964,22 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "name"
         for company in paginated_companies:
             company_name = company.get("name", "Unknown")
             jobs_count = company.get("jobs_count", 0)
+            
+            # Handle empty company names
+            if not company_name or company_name.strip() == "":
+                company_name_display = '<span class="empty-company">(Empty Company Name)</span>'
+                company_link_name = ""
+            else:
+                company_name_display = company_name
+                company_link_name = company_name
+            
             # Create URLs
-            jobs_url = f"/admin/jobs?company_filter={company_name}"
-            company_detail_url = f"/admin/jobs?company_filter={company_name}"
+            jobs_url = f"/admin/jobs?company_filter={company_link_name}"
+            company_detail_url = f"/admin/jobs?company_filter={company_link_name}"
             
             html_content += f"""
                         <tr>
-                            <td><a href="{company_detail_url}" class="company-link">{company_name}</a></td>
+                            <td><a href="{company_detail_url}" class="company-link">{company_name_display}</a></td>
                             <td><strong>{jobs_count}</strong></td>
                             <td>
                                 <a href="{jobs_url}" class="jobs-link">View Jobs</a>
@@ -2705,6 +2997,8 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "name"
             # Previous button
             if page > 1:
                 prev_url = f"/admin/companies?page={page-1}&sort_by={sort_by}&sort_order={sort_order}"
+                if company_filter:
+                    prev_url += f"&company_filter={company_filter}"
                 html_content += f'<a href="{prev_url}">‹ Prev</a>'
             
             # Page numbers (compact)
@@ -2712,12 +3006,17 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "name"
             end_page = min(total_pages, page + 2)
             
             if start_page > 1:
-                html_content += f'<a href="/admin/companies?page=1&sort_by={sort_by}&sort_order={sort_order}">1</a>'
+                page_url = f"/admin/companies?page=1&sort_by={sort_by}&sort_order={sort_order}"
+                if company_filter:
+                    page_url += f"&company_filter={company_filter}"
+                html_content += f'<a href="{page_url}">1</a>'
                 if start_page > 2:
                     html_content += '<span>...</span>'
             
             for p in range(start_page, end_page + 1):
                 page_url = f"/admin/companies?page={p}&sort_by={sort_by}&sort_order={sort_order}"
+                if company_filter:
+                    page_url += f"&company_filter={company_filter}"
                 if p == page:
                     html_content += f'<span class="current">{p}</span>'
                 else:
@@ -2726,11 +3025,16 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "name"
             if end_page < total_pages:
                 if end_page < total_pages - 1:
                     html_content += '<span>...</span>'
-                html_content += f'<a href="/admin/companies?page={total_pages}&sort_by={sort_by}&sort_order={sort_order}">{total_pages}</a>'
+                page_url = f"/admin/companies?page={total_pages}&sort_by={sort_by}&sort_order={sort_order}"
+                if company_filter:
+                    page_url += f"&company_filter={company_filter}"
+                html_content += f'<a href="{page_url}">{total_pages}</a>'
             
             # Next button
             if page < total_pages:
                 next_url = f"/admin/companies?page={page+1}&sort_by={sort_by}&sort_order={sort_order}"
+                if company_filter:
+                    next_url += f"&company_filter={company_filter}"
                 html_content += f'<a href="{next_url}">Next ›</a>'
             
             html_content += '</div>'
@@ -2741,14 +3045,32 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "name"
             <script>
                 function sortBy(column) {""" + f"""
                     const currentSort = '{sort_by}';
-                    const currentOrder = '{sort_order}';""" + """
+                    const currentOrder = '{sort_order}';
+                    const companyFilter = '{company_filter or ''}';""" + """
                     
                     let newOrder = 'asc';
                     if (column === currentSort && currentOrder === 'asc') {
                         newOrder = 'desc';
                     }
                     
-                    window.location.href = '/admin/companies?sort_by=' + column + '&sort_order=' + newOrder;
+                    let url = '/admin/companies?sort_by=' + column + '&sort_order=' + newOrder;
+                    if (companyFilter) {
+                        url += '&company_filter=' + encodeURIComponent(companyFilter);
+                    }
+                    window.location.href = url;
+                }
+                
+                function applyFilters() {
+                    const companyFilter = document.getElementById('companyFilter').value;
+                    let url = '/admin/companies?page=1';
+                    if (companyFilter) {
+                        url += '&company_filter=' + encodeURIComponent(companyFilter);
+                    }
+                    window.location.href = url;
+                }
+                
+                function clearFilters() {
+                    window.location.href = '/admin/companies';
                 }
             </script>
         </body>
@@ -2771,3 +3093,75 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "name"
         </html>
         """
         return HTMLResponse(content=error_html, status_code=500)
+
+@admin_router.get("/crawler-progress/{process_id}")
+async def get_crawler_progress(process_id: str, admin_auth: bool = Depends(get_admin_auth)):
+    """Get crawler progress status"""
+    try:
+        db = await get_db()
+        if not DATABASE_AVAILABLE or db is None:
+            return {
+                "status": "running",
+                "companies_processed": 25,
+                "total_companies": 100,
+                "jobs_found": 150,
+                "error_count": 2,
+                "latest_logs": [
+                    {"message": "Processing company career pages...", "level": "info"}
+                ]
+            }
+        
+        # Get process status from database
+        process = await db.processes.find_one({"process_id": process_id})
+        if not process:
+            return {
+                "status": "not_found",
+                "companies_processed": 0,
+                "total_companies": 0,
+                "jobs_found": 0,
+                "error_count": 0
+            }
+        
+        # Get latest logs
+        logs_cursor = db.crawler_logs.find({"process_id": process_id}).sort("timestamp", -1).limit(5)
+        latest_logs = await logs_cursor.to_list(5)
+        
+        return {
+            "status": process.get("status", "unknown"),
+            "companies_processed": process.get("companies_processed", 0),
+            "total_companies": process.get("total_companies", 0),
+            "jobs_found": process.get("jobs_found", 0),
+            "error_count": process.get("error_count", 0),
+            "latest_logs": [
+                {"message": log.get("message", ""), "level": log.get("level", "info")}
+                for log in latest_logs
+            ]
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting crawler progress: {e}")
+        return {
+            "status": "error",
+            "companies_processed": 0,
+            "total_companies": 0,
+            "jobs_found": 0,
+            "error_count": 0,
+            "error": str(e)
+        }
+
+@admin_router.post("/send-telegram")
+async def send_telegram_notification(request: Request, admin_auth: bool = Depends(get_admin_auth)):
+    """Send Telegram notification"""
+    try:
+        data = await request.json()
+        message = data.get("message", "")
+        
+        # Send to Telegram
+        from backend.services.telegram_service import send_telegram_message
+        await send_telegram_message(message)
+        
+        return {"status": "success", "message": "Telegram notification sent"}
+        
+    except Exception as e:
+        logger.error(f"Error sending Telegram notification: {e}")
+        return {"status": "error", "message": str(e)}

@@ -19,6 +19,7 @@ const RegisterPage = lazy(() => import('./pages/Register'));
 const JobDetailPage = lazy(() => import('./pages/JobDetailPage'));
 const JobSearchResultsPage = lazy(() => import('./pages/JobSearchResults'));
 const UserProfilePage = lazy(() => import('./pages/UserProfile'));
+const MyProfilePage = lazy(() => import('./pages/MyProfile'));
 const ResumeUploadPage = lazy(() => import('./pages/ResumeUpload'));
 const TermsConditionsPage = lazy(() => import('./pages/TermsConditions'));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicy'));
@@ -26,6 +27,7 @@ const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicy'));
 const PricingPage = lazy(() => import('./pages/Pricing'));
 const HelpPage = lazy(() => import('./pages/Help'));
 const ApplicationsPage = lazy(() => import('./pages/Applications'));
+const MyApplicationsPage = lazy(() => import('./pages/MyApplications'));
 const FavoritesPage = lazy(() => import('./pages/Favorites'));
 const ExternalAPIServicesPage = lazy(() => import('./pages/ExternalAPIServices'));
 const GoogleCallbackPage = lazy(() => import('./pages/GoogleCallback'));
@@ -129,6 +131,14 @@ const App: React.FC = () => {
                   }
                 />
                 <Route 
+                  path="/my-profile" 
+                  element={
+                    <ProtectedRoute>
+                      <MyProfilePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route 
                   path="/profile/resume-upload" 
                   element={
                     <ProtectedRoute>
@@ -149,6 +159,14 @@ const App: React.FC = () => {
                   element={
                     <ProtectedRoute>
                       <ApplicationsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route 
+                  path="/my-applications" 
+                  element={
+                    <ProtectedRoute>
+                      <MyApplicationsPage />
                     </ProtectedRoute>
                   }
                 />

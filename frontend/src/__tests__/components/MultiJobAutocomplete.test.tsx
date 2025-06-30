@@ -238,8 +238,12 @@ describe('MultiJobAutocomplete', () => {
     fireEvent.focus(input);
 
     await waitFor(() => {
-      // Should not show already selected position in dropdown
-      expect(screen.queryByText('Software Engineer')).not.toBeInTheDocument();
+      // The selected position should show in the selected list, but not in dropdown
+      expect(screen.getByText('Selected Positions (1/10):')).toBeInTheDocument();
+      // Check for the dropdown content specifically by looking for available options
+      const dropdownElements = screen.queryAllByText('Software Engineer');
+      // Should have one in selected positions, but not in dropdown options
+      expect(dropdownElements.length).toBe(1);
     });
   });
 

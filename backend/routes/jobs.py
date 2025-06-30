@@ -7,7 +7,6 @@ from backend.utils.auth import get_current_user, get_current_admin, get_current_
 import os
 import logging
 from backend.schemas.job import JobCreate, JobResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 from backend.crud import job as job_crud
 from backend.schemas.job import JobUpdate, JobListResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase

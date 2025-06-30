@@ -163,15 +163,14 @@ for router, prefix, tags in routers_to_include:
     app.include_router(router, prefix=prefix, tags=tags)
     
 # Optional: Include admin panel router if available and enabled
-# Admin panel temporarily disabled due to syntax issues
-# try:
-#     from backend.admin_panel.routes import admin_router
-#     if os.getenv("ADMIN_PANEL_ENABLED", "true").lower() == "true":
-#         app.include_router(admin_router, prefix="/admin", tags=["admin"])
-#         logger.info("Admin panel successfully included.")
-# except ImportError:
-#     logger.warning("Admin panel not found, skipping.")
-logger.info("Admin panel temporarily disabled for testing")
+try:
+    from backend.admin_panel.routes import admin_router
+    if os.getenv("ADMIN_PANEL_ENABLED", "true").lower() == "true":
+        app.include_router(admin_router, prefix="/admin", tags=["admin"])
+        logger.info("Admin panel successfully included.")
+except (ImportError, SyntaxError, IndentationError) as e:
+    logger.warning(f"Admin panel not available: {str(e)}")
+    logger.info("Admin panel temporarily disabled due to import issues")
 
 @app.get("/", tags=["General"])
 async def root():

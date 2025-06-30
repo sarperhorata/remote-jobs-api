@@ -2,14 +2,8 @@ from pydantic import BaseModel, HttpUrl, Field, EmailStr
 from typing import List, Optional, Dict, Any, Union
 from enum import Enum
 from datetime import datetime
-from sqlalchemy import Column, Integer, BigInteger, String, Boolean, DateTime, Text, JSON, ForeignKey, Index
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
-from datetime import datetime
+# Removed SQLAlchemy imports as we're using MongoDB
 import uuid
-
-# SQLAlchemy Base for database models
-Base = declarative_base()
 
 class WebsiteType(str, Enum):
     REMOTE_OK = "remote_ok"
@@ -68,6 +62,21 @@ class LanguageLevel(str, Enum):
     INTERMEDIATE = "intermediate"
     ADVANCED = "advanced"
     NATIVE = "native"
+
+# MongoDB Models (using Pydantic)
+class UserNotificationPreference(BaseModel):
+    """Model for storing user notification preferences in MongoDB"""
+    id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    telegram_chat_id: Optional[int] = None
+    email: Optional[str] = None
+    notify_on_deployment: bool = True
+    notify_on_error: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        from_attributes = True
 
 class SelectorBase(BaseModel):
     name: str
@@ -300,22 +309,6 @@ class JobApplicationCreate(BaseModel):
     resume_url: Optional[HttpUrl] = None
     notes: Optional[str] = None
 
-class UserNotificationPreference(Base):
-    """Model for storing user notification preferences"""
-    __tablename__ = 'user_notification_preferences'
-
-    id = Column(Integer, primary_key=True)
-    user_id = Column(BigInteger, nullable=False, unique=True)
-    telegram_chat_id = Column(BigInteger, nullable=True)
-    email = Column(String, nullable=True)
-    notify_on_deployment = Column(Boolean, default=True)
-    notify_on_error = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    def __repr__(self):
-        return f"<UserNotificationPreference(user_id={self.user_id})>"
-
 class User(BaseModel):
     id: Optional[str] = None
     email: EmailStr
@@ -428,47 +421,38 @@ class BatchTranslationResponse(BaseModel):
     results: List[JobTranslationResult]
     errors: List[str] = []
 
-class JobApplication(Base):
-    __tablename__ = 'job_applications'
+class JobApplicationMongo(BaseModel):
+    """MongoDB Job Application model using Pydantic"""
     
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey('users.id'), nullable=False)
-    job_id = Column(String(36), ForeignKey('jobs.id'), nullable=False)
+    id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    job_id: str
     
     # Application status
-    status = Column(String(50), default='applied')  # applied, viewed, rejected, hired, withdrawn
-    application_type = Column(String(20), nullable=False)  # external, scraped, automated
+    status: str = 'applied'  # applied, viewed, rejected, hired, withdrawn
+    application_type: str  # external, scraped, automated
     
     # Application data
-    cover_letter = Column(Text)
-    resume_url = Column(String(500))
-    additional_notes = Column(Text)
-    form_data = Column(JSON)  # Store scraped form responses
+    cover_letter: Optional[str] = None
+    resume_url: Optional[str] = None
+    additional_notes: Optional[str] = None
+    form_data: Optional[Dict[str, Any]] = None  # Store scraped form responses
     
     # External tracking
-    external_url = Column(String(1000))  # Company application URL
-    external_reference = Column(String(200))  # Company reference/confirmation number
+    external_url: Optional[str] = None  # Company application URL
+    external_reference: Optional[str] = None  # Company reference/confirmation number
     
     # Metadata
-    applied_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    applied_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
     
     # Response tracking
-    viewed_by_company = Column(Boolean, default=False)
-    company_response_date = Column(DateTime)
-    company_response = Column(Text)
+    viewed_by_company: bool = False
+    company_response_date: Optional[datetime] = None
+    company_response: Optional[str] = None
     
-    # Relationships
-    user = relationship('User', backref='job_applications')
-    job = relationship('Job', backref='applications')
-    
-    # Indexes for performance
-    __table_args__ = (
-        Index('idx_user_job', 'user_id', 'job_id'),
-        Index('idx_user_applied_at', 'user_id', 'applied_at'),
-        Index('idx_job_applied_at', 'job_id', 'applied_at'),
-        Index('idx_status', 'status'),
-    )
+    class Config:
+        from_attributes = True
     
     def to_dict(self):
         return {
@@ -487,6 +471,5 @@ class JobApplication(Base):
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'viewed_by_company': self.viewed_by_company,
             'company_response_date': self.company_response_date.isoformat() if self.company_response_date else None,
-            'company_response': self.company_response,
-            'job': self.job.to_dict() if self.job else None
+            'company_response': self.company_response
         } 

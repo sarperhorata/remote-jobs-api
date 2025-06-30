@@ -1,7 +1,7 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 import logging
 import os
-from sqlalchemy.ext.declarative import declarative_base
+# Removed SQLAlchemy import as we're using MongoDB only
 import asyncio
 
 # Import configuration
@@ -22,8 +22,7 @@ motor_client = None
 db = None
 DATABASE_NAME = os.getenv("MONGODB_DB_NAME", "buzz2remote")
 
-# Add Base for SQLAlchemy models
-Base = declarative_base()
+# Removed SQLAlchemy Base as we're using MongoDB with Pydantic models
 
 async def init_database():
     """Initialize database connection with improved error handling."""

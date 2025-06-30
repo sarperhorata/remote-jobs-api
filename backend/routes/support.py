@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 from backend.database import get_db
 from models.support import SupportTicket
@@ -14,8 +13,7 @@ router = APIRouter()
 async def chat_with_bot(
     message: str,
     chat_history: List[Dict[str, str]],
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user)
 ):
     """
     Chatbot ile sohbet etmek için endpoint.
@@ -24,7 +22,6 @@ async def chat_with_bot(
         message: Kullanıcı mesajı
         chat_history: Sohbet geçmişi
         current_user: Mevcut kullanıcı
-        db: Veritabanı oturumu
         
     Returns:
         Dict[str, str]: Chatbot yanıtı
@@ -36,8 +33,7 @@ async def chat_with_bot(
 async def contact_support(
     subject: str,
     message: str,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user)
 ):
     """
     Destek ekibiyle iletişime geçmek için endpoint.
@@ -46,7 +42,6 @@ async def contact_support(
         subject: Konu
         message: Mesaj
         current_user: Mevcut kullanıcı
-        db: Veritabanı oturumu
         
     Returns:
         Dict[str, str]: Başarı mesajı

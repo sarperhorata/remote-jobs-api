@@ -1,16 +1,23 @@
-from sqlalchemy import Column, Integer, String, ARRAY
-from backend.database import Base
+from pydantic import BaseModel, EmailStr, Field
+from typing import List, Optional
+from datetime import datetime
+import uuid
 
-class Profile(Base):
-    __tablename__ = "profiles"
+class Profile(BaseModel):
+    """MongoDB Profile model using Pydantic"""
+    
+    id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    email: EmailStr
+    phone: Optional[str] = None
+    location: Optional[str] = None
+    job_type: Optional[str] = None
+    skills: List[str] = Field(default_factory=list)
+    experience: Optional[str] = None
+    education: Optional[str] = None
+    languages: List[str] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    email = Column(String, unique=True, nullable=False)
-    phone = Column(String, nullable=True)
-    location = Column(String, nullable=True)
-    job_type = Column(String, nullable=True)
-    skills = Column(ARRAY(String), default=[])
-    experience = Column(String, nullable=True)
-    education = Column(String, nullable=True)
-    languages = Column(ARRAY(String), default=[]) 
+    class Config:
+        from_attributes = True 

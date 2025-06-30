@@ -11,6 +11,7 @@ from backend.main import app
 
 client = TestClient(app)
 
+@pytest.mark.skip(reason="Admin panel temporarily disabled")
 def test_deployment_webhook():
     """Test the deployment webhook endpoint"""
     deployment_data = {

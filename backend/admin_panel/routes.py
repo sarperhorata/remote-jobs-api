@@ -675,400 +675,399 @@ async def admin_jobs(
             return RedirectResponse(url="/admin/login", status_code=302)
     except:
         return RedirectResponse(url="/admin/login", status_code=302)
-    
-    # Get database instance
-    db = await get_db()
-    if not DATABASE_AVAILABLE or db is None:
-        logger.warning("Database not available, returning demo data")
-        # Return demo data when database is not available
-        demo_jobs = [
-            {
-                "_id": "demo1",
-                "title": "Senior Software Engineer",
-                "company": "Demo Company",
-                "location": "Remote",
-                "type": "Full-time",
-                "created_at": datetime.now(),
-                "url": "https://example.com/job",
-                "description": "This is a demo job listing"
-            }
-        ]
-        total_jobs = 1
-        total_pages = 1
-        jobs = demo_jobs
-    else:
-        page_size = 20
-        skip = (page - 1) * page_size
-        
-        # Build sort criteria
-        sort_direction = -1 if sort_order == "desc" else 1
-        sort_criteria = {sort_by: sort_direction}
-        
-        # Build filter criteria
-        filter_criteria = {}
-        if title_filter:
-            filter_criteria.update(build_safe_filter(title_filter, "title"))
-        if company_filter:
-            filter_criteria.update(build_safe_filter(company_filter, "company"))
-        if location_filter:
-            filter_criteria.update(build_safe_filter(location_filter, "location"))
-        
-        # Get jobs data with pagination using direct db connection
-        try:
-            total_jobs = await db.jobs.count_documents(filter_criteria)
-            jobs_cursor = db.jobs.find(filter_criteria).sort(list(sort_criteria.items())).skip(skip).limit(page_size)
-            jobs = await jobs_cursor.to_list(page_size)
-            
-            total_pages = (total_jobs + page_size - 1) // page_size
-            
-        except Exception as e:
-            logger.error(f"Error fetching jobs: {e}")
-            jobs = []
-            total_jobs = 0
+    try:    
+        # Get database instance
+        db = await get_db()
+        if not DATABASE_AVAILABLE or db is None:
+            logger.warning("Database not available, returning demo data")
+            # Return demo data when database is not available
+            demo_jobs = [
+                {
+                    "_id": "demo1",
+                    "title": "Senior Software Engineer",
+                    "company": "Demo Company",
+                    "location": "Remote",
+                    "type": "Full-time",
+                    "created_at": datetime.now(),
+                    "url": "https://example.com/job",
+                    "description": "This is a demo job listing"
+                }
+            ]
+            total_jobs = 1
             total_pages = 1
-    
-    # Generate HTML content
-    filter_parts = []
-    if title_filter:
-        filter_parts.append(f"title: {title_filter}")
-    if company_filter:
-        filter_parts.append(f"company: {company_filter}")
-    if location_filter:
-        filter_parts.append(f"location: {location_filter}")
-    filter_message = f" (filtered by {', '.join(filter_parts)})" if filter_parts else ""
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Jobs - Buzz2Remote Admin</title>
-        <style>
-            body {{ font-family: Arial, sans-serif; margin: 0; background: #f8f9fa; }}
-            .header {{ background: #343a40; color: white; padding: 1rem 2rem; }}
-            .nav {{ background: white; padding: 1rem 2rem; border-bottom: 1px solid #dee2e6; }}
-            .nav a {{ margin-right: 20px; text-decoration: none; color: #007bff; }}
-            .nav a:hover {{ text-decoration: underline; }}
-            .container {{ padding: 2rem; }}
-            .card {{ background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
-            table {{ width: 100%; border-collapse: collapse; }}
-            th, td {{ padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6; }}
-            th {{ background: #f8f9fa; font-weight: 600; cursor: pointer; }}
-            th:hover {{ background: #e9ecef; }}
-            .badge {{ padding: 4px 8px; border-radius: 4px; font-size: 0.875rem; }}
-            .badge-primary {{ background: #e3f2fd; color: #1976d2; }}
-            .badge-secondary {{ background: #e9ecef; color: #495057; }}
-            .company-link {{ color: #007bff; text-decoration: none; font-weight: 500; }}
-            .company-link:hover {{ text-decoration: underline; }}
-            .job-title {{ cursor: pointer; color: #333; font-weight: 500; }}
-            .job-title:hover {{ color: #007bff; text-decoration: underline; }}
-            .sort-indicator {{ font-size: 0.8em; margin-left: 5px; }}
-            .filters {{ margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; }}
-            .filter-input {{ padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-right: 10px; }}
-            
-            /* Modal styles */
-            .modal {{ display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }}
-            .modal-content {{ background-color: white; margin: 5% auto; padding: 20px; border-radius: 8px; width: 80%; max-width: 800px; max-height: 80vh; overflow-y: auto; }}
-            .modal-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }}
-            .modal-title {{ font-size: 1.5em; font-weight: bold; color: #333; }}
-            .close {{ font-size: 28px; font-weight: bold; cursor: pointer; color: #999; }}
-            .close:hover {{ color: #333; }}
-            .job-detail-section {{ margin-bottom: 20px; }}
-            .job-detail-label {{ font-weight: bold; color: #666; margin-bottom: 5px; }}
-            .job-detail-value {{ color: #333; line-height: 1.6; }}
-            .job-apply-btn {{ background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }}
-            .job-apply-btn:hover {{ background: #218838; color: white; text-decoration: none; }}
-            .job-view-btn {{ background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; margin-right: 10px; }}
-            .job-view-btn:hover {{ background: #0056b3; color: white; text-decoration: none; }}
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            <h1>🚀 Buzz2Remote Admin Panel</h1>
-        </div>
-        
-        <div class="nav">
-            <a href="http://localhost:3001">🏠 Ana Sayfa</a>
-            <a href="/admin/dashboard">Dashboard</a>
-            <a href="/admin/jobs">Jobs</a>
-            <a href="/admin/companies">Companies</a>
-            <a href="/admin/apis">API Services</a>
-            <a href="/admin/status">Status</a>
-            <a href="/docs">API Docs</a>
-        </div>
-        
-        <div class="container">
-            <div class="card">
-                <h2>Job Listings ({total_jobs} total){filter_message} - Page {page} of {total_pages}</h2>
-                
-                <div class="filters">
-                    <input type="text" id="titleFilter" class="filter-input" placeholder="Filter by title..." value="{title_filter or ''}" onkeypress="if(event.key==='Enter') applyFilters()">
-                    <input type="text" id="companyFilter" class="filter-input" placeholder="Filter by company..." value="{company_filter or ''}" onkeypress="if(event.key==='Enter') applyFilters()">
-                    <input type="text" id="locationFilter" class="filter-input" placeholder="Filter by location..." value="{location_filter or ''}" onkeypress="if(event.key==='Enter') applyFilters()">
-                    <button onclick="applyFilters()" style="padding: 8px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Apply Filter</button>
-                    <button onclick="clearFilters()" style="padding: 8px 15px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 5px;">Clear Filter</button>
-                </div>
-                
-                <table>
-                    <thead>
-                        <tr>
-                            <th onclick="sortBy('title')">Title <span class="sort-indicator">{get_sort_indicator('title', sort_by, sort_order)}</span></th>
-                            <th onclick="sortBy('company')">Company <span class="sort-indicator">{get_sort_indicator('company', sort_by, sort_order)}</span></th>
-                            <th onclick="sortBy('location')">Location <span class="sort-indicator">{get_sort_indicator('location', sort_by, sort_order)}</span></th>
-                            <th onclick="sortBy('source')">Source <span class="sort-indicator">{get_sort_indicator('source', sort_by, sort_order)}</span></th>
-                            <th onclick="sortBy('created_at')">Posted <span class="sort-indicator">{get_sort_indicator('created_at', sort_by, sort_order)}</span></th>
-                        </tr>
-                    </thead>
-                    <tbody>"""
-    
-    for job in jobs:
-        job_id = str(job.get("_id", ""))
-        title = job.get("title", "")
-        company = job.get("company", "")
-        location = job.get("location", "")
-        source = job.get("source", "")
-        created_at = job.get("created_at", None)
-        url = job.get("url", "")
-        
-        # Format created_at date
-        if created_at:
-            if isinstance(created_at, datetime):
-                date_str = created_at.strftime('%Y-%m-%d')
-            else:
-                date_str = str(created_at)
+            jobs = demo_jobs
         else:
-            date_str = "N/A"
-        
-        # Create filter links
-        company_link = f"/admin/jobs?company_filter={company}"
-        location_link = f"/admin/jobs?location_filter={location}"
-        
-        # Create job ad link
-        job_ad_link = url if url else '#'
-        job_ad_text = "View Job Ad" if url else "No Link"
-        job_ad_style = "" if url else "color: #999; cursor: not-allowed;"
-        
-        html_content += f"""
-                        <tr>
-                            <td>
-                                <div class="job-title" data-job-id="{job_id}">{title}</div>
-                            </td>
-                            <td><a href="{company_link}" class="company-link">{company}</a></td>
-                            <td><a href="{location_link}" class="company-link">{location or 'N/A'}</a></td>
-                            <td><a href="{job_ad_link}" target="_blank" style="{job_ad_style}">{job_ad_text}</a></td>
-                            <td>{date_str}</td>
-                        </tr>"""
-    
-    html_content += """
-                    </tbody>
-                </table>"""
-    
-    # Add pagination
-    if total_pages > 1:
-        html_content += '<div style="margin: 20px 0; text-align: center;">'
-        
-        # Previous button
-        if page > 1:
-            prev_url = f"/admin/jobs?page={page-1}&sort_by={sort_by}&sort_order={sort_order}"
-            if title_filter:
-                prev_url += f"&title_filter={title_filter}"
-            if company_filter:
-                prev_url += f"&company_filter={company_filter}"
-            if location_filter:
-                prev_url += f"&location_filter={location_filter}"
-            html_content += f'<a href="{prev_url}" style="margin: 0 5px; padding: 8px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">&larr; Previous</a>'
-        
-        # Page numbers
-        start_page = max(1, page - 2)
-        end_page = min(total_pages, page + 2)
-        
-        for p in range(start_page, end_page + 1):
-            page_url = f"/admin/jobs?page={p}&sort_by={sort_by}&sort_order={sort_order}"
-            if title_filter:
-                page_url += f"&title_filter={title_filter}"
-            if company_filter:
-                page_url += f"&company_filter={company_filter}"
-            if location_filter:
-                page_url += f"&location_filter={location_filter}"
+            page_size = 20
+            skip = (page - 1) * page_size
             
-            if p == page:
-                html_content += f'<span style="margin: 0 5px; padding: 8px 12px; background: #6c757d; color: white; border-radius: 4px;">{p}</span>'
+            # Build sort criteria
+            sort_direction = -1 if sort_order == "desc" else 1
+            sort_criteria = {sort_by: sort_direction}
+            
+            # Build filter criteria
+            filter_criteria = {}
+            if title_filter:
+                filter_criteria.update(build_safe_filter(title_filter, "title"))
+            if company_filter:
+                filter_criteria.update(build_safe_filter(company_filter, "company"))
+            if location_filter:
+                filter_criteria.update(build_safe_filter(location_filter, "location"))
+            
+            # Get jobs data with pagination using direct db connection
+            try:
+                total_jobs = await db.jobs.count_documents(filter_criteria)
+                jobs_cursor = db.jobs.find(filter_criteria).sort(list(sort_criteria.items())).skip(skip).limit(page_size)
+                jobs = await jobs_cursor.to_list(page_size)
+                
+                total_pages = (total_jobs + page_size - 1) // page_size
+                
+            except Exception as e:
+                logger.error(f"Error fetching jobs: {e}")
+                jobs = []
+                total_jobs = 0
+                total_pages = 1
+        
+        # Generate HTML content
+        filter_parts = []
+        if title_filter:
+            filter_parts.append(f"title: {title_filter}")
+        if company_filter:
+            filter_parts.append(f"company: {company_filter}")
+        if location_filter:
+            filter_parts.append(f"location: {location_filter}")
+        filter_message = f" (filtered by {', '.join(filter_parts)})" if filter_parts else ""
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Jobs - Buzz2Remote Admin</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 0; background: #f8f9fa; }}
+                .header {{ background: #343a40; color: white; padding: 1rem 2rem; }}
+                .nav {{ background: white; padding: 1rem 2rem; border-bottom: 1px solid #dee2e6; }}
+                .nav a {{ margin-right: 20px; text-decoration: none; color: #007bff; }}
+                .nav a:hover {{ text-decoration: underline; }}
+                .container {{ padding: 2rem; }}
+                .card {{ background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+                table {{ width: 100%; border-collapse: collapse; }}
+                th, td {{ padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6; }}
+                th {{ background: #f8f9fa; font-weight: 600; cursor: pointer; }}
+                th:hover {{ background: #e9ecef; }}
+                .badge {{ padding: 4px 8px; border-radius: 4px; font-size: 0.875rem; }}
+                .badge-primary {{ background: #e3f2fd; color: #1976d2; }}
+                .badge-secondary {{ background: #e9ecef; color: #495057; }}
+                .company-link {{ color: #007bff; text-decoration: none; font-weight: 500; }}
+                .company-link:hover {{ text-decoration: underline; }}
+                .job-title {{ cursor: pointer; color: #333; font-weight: 500; }}
+                .job-title:hover {{ color: #007bff; text-decoration: underline; }}
+                .sort-indicator {{ font-size: 0.8em; margin-left: 5px; }}
+                .filters {{ margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; }}
+                .filter-input {{ padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-right: 10px; }}
+                
+                /* Modal styles */
+                .modal {{ display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }}
+                .modal-content {{ background-color: white; margin: 5% auto; padding: 20px; border-radius: 8px; width: 80%; max-width: 800px; max-height: 80vh; overflow-y: auto; }}
+                .modal-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }}
+                .modal-title {{ font-size: 1.5em; font-weight: bold; color: #333; }}
+                .close {{ font-size: 28px; font-weight: bold; cursor: pointer; color: #999; }}
+                .close:hover {{ color: #333; }}
+                .job-detail-section {{ margin-bottom: 20px; }}
+                .job-detail-label {{ font-weight: bold; color: #666; margin-bottom: 5px; }}
+                .job-detail-value {{ color: #333; line-height: 1.6; }}
+                .job-apply-btn {{ background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }}
+                .job-apply-btn:hover {{ background: #218838; color: white; text-decoration: none; }}
+                .job-view-btn {{ background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; margin-right: 10px; }}
+                .job-view-btn:hover {{ background: #0056b3; color: white; text-decoration: none; }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>🚀 Buzz2Remote Admin Panel</h1>
+            </div>
+            
+            <div class="nav">
+                <a href="http://localhost:3001">🏠 Ana Sayfa</a>
+                <a href="/admin/dashboard">Dashboard</a>
+                <a href="/admin/jobs">Jobs</a>
+                <a href="/admin/companies">Companies</a>
+                <a href="/admin/apis">API Services</a>
+                <a href="/admin/status">Status</a>
+                <a href="/docs">API Docs</a>
+            </div>
+            
+            <div class="container">
+                <div class="card">
+                    <h2>Job Listings ({total_jobs} total){filter_message} - Page {page} of {total_pages}</h2>
+                    
+                    <div class="filters">
+                        <input type="text" id="titleFilter" class="filter-input" placeholder="Filter by title..." value="{title_filter or ''}" onkeypress="if(event.key==='Enter') applyFilters()">
+                        <input type="text" id="companyFilter" class="filter-input" placeholder="Filter by company..." value="{company_filter or ''}" onkeypress="if(event.key==='Enter') applyFilters()">
+                        <input type="text" id="locationFilter" class="filter-input" placeholder="Filter by location..." value="{location_filter or ''}" onkeypress="if(event.key==='Enter') applyFilters()">
+                        <button onclick="applyFilters()" style="padding: 8px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Apply Filter</button>
+                        <button onclick="clearFilters()" style="padding: 8px 15px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 5px;">Clear Filter</button>
+                    </div>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th onclick="sortBy('title')">Title <span class="sort-indicator">{get_sort_indicator('title', sort_by, sort_order)}</span></th>
+                                <th onclick="sortBy('company')">Company <span class="sort-indicator">{get_sort_indicator('company', sort_by, sort_order)}</span></th>
+                                <th onclick="sortBy('location')">Location <span class="sort-indicator">{get_sort_indicator('location', sort_by, sort_order)}</span></th>
+                                <th onclick="sortBy('source')">Source <span class="sort-indicator">{get_sort_indicator('source', sort_by, sort_order)}</span></th>
+                                <th onclick="sortBy('created_at')">Posted <span class="sort-indicator">{get_sort_indicator('created_at', sort_by, sort_order)}</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>"""
+        
+        for job in jobs:
+            job_id = str(job.get("_id", ""))
+            title = job.get("title", "")
+            company = job.get("company", "")
+            location = job.get("location", "")
+            source = job.get("source", "")
+            created_at = job.get("created_at", None)
+            url = job.get("url", "")
+            
+            # Format created_at date
+            if created_at:
+                if isinstance(created_at, datetime):
+                    date_str = created_at.strftime('%Y-%m-%d')
+                else:
+                    date_str = str(created_at)
             else:
-                html_content += f'<a href="{page_url}" style="margin: 0 5px; padding: 8px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">{p}</a>'
-        
-        # Next button
-        if page < total_pages:
-            next_url = f"/admin/jobs?page={page+1}&sort_by={sort_by}&sort_order={sort_order}"
-            if title_filter:
-                next_url += f"&title_filter={title_filter}"
-            if company_filter:
-                next_url += f"&company_filter={company_filter}"
-            if location_filter:
-                next_url += f"&location_filter={location_filter}"
-            html_content += f'<a href="{next_url}" style="margin: 0 5px; padding: 8px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Next &rarr;</a>'
-        
-        html_content += '</div>'
-    
-    html_content += """
-            </div>
-        </div>
-        
-        <!-- Job Detail Modal -->
-        <div id="jobModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <div class="modal-title" id="modalJobTitle">Job Details</div>
-                    <span class="close" onclick="closeJobModal()">&times;</span>
-                </div>
-                <div id="modalJobContent">
-                    <div class="job-detail-section">
-                        <div class="job-detail-label">Company:</div>
-                        <div class="job-detail-value" id="modalJobCompany"></div>
-                    </div>
-                    <div class="job-detail-section">
-                        <div class="job-detail-label">Location:</div>
-                        <div class="job-detail-value" id="modalJobLocation"></div>
-                    </div>
-                    <div class="job-detail-section">
-                        <div class="job-detail-label">Type:</div>
-                        <div class="job-detail-value" id="modalJobType"></div>
-                    </div>
-                    <div class="job-detail-section">
-                        <div class="job-detail-label">Source:</div>
-                        <div class="job-detail-value" id="modalJobSource"></div>
-                    </div>
-                    <div class="job-detail-section">
-                        <div class="job-detail-label">Posted Date:</div>
-                        <div class="job-detail-value" id="modalJobDate"></div>
-                    </div>
-                    <div class="job-detail-section">
-                        <div class="job-detail-label">Description:</div>
-                        <div class="job-detail-value" id="modalJobDescription"></div>
-                    </div>
-                    <div class="job-detail-section">
-                        <a id="modalJobView" class="job-view-btn" href="#" target="_blank">View Job Ad</a>
-                        <a id="modalJobApply" class="job-apply-btn" href="#" target="_blank">Apply for this Job</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <script>
-            // Job modal functions
-            function openJobModal(jobId) {
-                fetchJobDetails(jobId);
-                document.getElementById('jobModal').style.display = 'block';
-            }
+                date_str = "N/A"
             
-            function closeJobModal() {
-                document.getElementById('jobModal').style.display = 'none';
-            }
+            # Create filter links
+            company_link = f"/admin/jobs?company_filter={company}"
+            location_link = f"/admin/jobs?location_filter={location}"
             
-            async function fetchJobDetails(jobId) {
-                try {
-                    const response = await fetch('/admin/job-details/' + jobId);
-                    const job = await response.json();
+            # Create job ad link
+            job_ad_link = url if url else '#'
+            job_ad_text = "View Job Ad" if url else "No Link"
+            job_ad_style = "" if url else "color: #999; cursor: not-allowed;"
+            
+            html_content += f"""
+                            <tr>
+                                <td>
+                                    <div class="job-title" data-job-id="{job_id}">{title}</div>
+                                </td>
+                                <td><a href="{company_link}" class="company-link">{company}</a></td>
+                                <td><a href="{location_link}" class="company-link">{location or 'N/A'}</a></td>
+                                <td><a href="{job_ad_link}" target="_blank" style="{job_ad_style}">{job_ad_text}</a></td>
+                                <td>{date_str}</td>
+                            </tr>"""
+        
+        html_content += """
+                        </tbody>
+                    </table>"""
+        
+        # Add pagination
+        if total_pages > 1:
+            html_content += '<div style="margin: 20px 0; text-align: center;">'
+            
+            # Previous button
+            if page > 1:
+                prev_url = f"/admin/jobs?page={page-1}&sort_by={sort_by}&sort_order={sort_order}"
+                if title_filter:
+                    prev_url += f"&title_filter={title_filter}"
+                if company_filter:
+                    prev_url += f"&company_filter={company_filter}"
+                if location_filter:
+                    prev_url += f"&location_filter={location_filter}"
+                html_content += f'<a href="{prev_url}" style="margin: 0 5px; padding: 8px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">&larr; Previous</a>'
+            
+            # Page numbers
+            start_page = max(1, page - 2)
+            end_page = min(total_pages, page + 2)
+            
+            for p in range(start_page, end_page + 1):
+                page_url = f"/admin/jobs?page={p}&sort_by={sort_by}&sort_order={sort_order}"
+                if title_filter:
+                    page_url += f"&title_filter={title_filter}"
+                if company_filter:
+                    page_url += f"&company_filter={company_filter}"
+                if location_filter:
+                    page_url += f"&location_filter={location_filter}"
+                
+                if p == page:
+                    html_content += f'<span style="margin: 0 5px; padding: 8px 12px; background: #6c757d; color: white; border-radius: 4px;">{p}</span>'
+                else:
+                    html_content += f'<a href="{page_url}" style="margin: 0 5px; padding: 8px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">{p}</a>'
+            
+            # Next button
+            if page < total_pages:
+                next_url = f"/admin/jobs?page={page+1}&sort_by={sort_by}&sort_order={sort_order}"
+                if title_filter:
+                    next_url += f"&title_filter={title_filter}"
+                if company_filter:
+                    next_url += f"&company_filter={company_filter}"
+                if location_filter:
+                    next_url += f"&location_filter={location_filter}"
+                html_content += f'<a href="{next_url}" style="margin: 0 5px; padding: 8px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Next &rarr;</a>'
+            
+            html_content += '</div>'
+        
+        html_content += """
+                </div>
+            </div>
+            
+            <!-- Job Detail Modal -->
+            <div id="jobModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <div class="modal-title" id="modalJobTitle">Job Details</div>
+                        <span class="close" onclick="closeJobModal()">&times;</span>
+                    </div>
+                    <div id="modalJobContent">
+                        <div class="job-detail-section">
+                            <div class="job-detail-label">Company:</div>
+                            <div class="job-detail-value" id="modalJobCompany"></div>
+                        </div>
+                        <div class="job-detail-section">
+                            <div class="job-detail-label">Location:</div>
+                            <div class="job-detail-value" id="modalJobLocation"></div>
+                        </div>
+                        <div class="job-detail-section">
+                            <div class="job-detail-label">Type:</div>
+                            <div class="job-detail-value" id="modalJobType"></div>
+                        </div>
+                        <div class="job-detail-section">
+                            <div class="job-detail-label">Source:</div>
+                            <div class="job-detail-value" id="modalJobSource"></div>
+                        </div>
+                        <div class="job-detail-section">
+                            <div class="job-detail-label">Posted Date:</div>
+                            <div class="job-detail-value" id="modalJobDate"></div>
+                        </div>
+                        <div class="job-detail-section">
+                            <div class="job-detail-label">Description:</div>
+                            <div class="job-detail-value" id="modalJobDescription"></div>
+                        </div>
+                        <div class="job-detail-section">
+                            <a id="modalJobView" class="job-view-btn" href="#" target="_blank">View Job Ad</a>
+                            <a id="modalJobApply" class="job-apply-btn" href="#" target="_blank">Apply for this Job</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <script>
+                // Job modal functions
+                function openJobModal(jobId) {
+                    fetchJobDetails(jobId);
+                    document.getElementById('jobModal').style.display = 'block';
+                }
+                
+                function closeJobModal() {
+                    document.getElementById('jobModal').style.display = 'none';
+                }
+                
+                async function fetchJobDetails(jobId) {
+                    try {
+                        const response = await fetch('/admin/job-details/' + jobId);
+                        const job = await response.json();
+                        
+                        document.getElementById('modalJobTitle').textContent = job.title;
+                        document.getElementById('modalJobCompany').textContent = job.company;
+                        document.getElementById('modalJobLocation').textContent = job.location;
+                        document.getElementById('modalJobType').textContent = job.type;
+                        document.getElementById('modalJobSource').textContent = job.source;
+                        document.getElementById('modalJobDate').textContent = new Date(job.created_at).toLocaleDateString();
+                        document.getElementById('modalJobDescription').innerHTML = job.description || 'No description available';
+                        
+                        const viewBtn = document.getElementById('modalJobView');
+                        const applyBtn = document.getElementById('modalJobApply');
+                        
+                        if (job.url) {
+                            viewBtn.href = job.url;
+                            viewBtn.style.display = 'inline-block';
+                        } else {
+                            viewBtn.style.display = 'none';
+                        }
+                        
+                        if (job.apply_url) {
+                            applyBtn.href = job.apply_url;
+                            applyBtn.style.display = 'inline-block';
+                        } else {
+                            applyBtn.style.display = 'none';
+                        }
+                    } catch (error) {
+                        console.error('Error fetching job details:', error);
+                        document.getElementById('modalJobTitle').textContent = 'Error loading job details';
+                    }
+                }
+                
+                // Sorting and filtering functions
+                function sortBy(column) {""" + f"""
+                    const currentSort = '{sort_by}';
+                    const currentOrder = '{sort_order}';""" + """
                     
-                    document.getElementById('modalJobTitle').textContent = job.title;
-                    document.getElementById('modalJobCompany').textContent = job.company;
-                    document.getElementById('modalJobLocation').textContent = job.location;
-                    document.getElementById('modalJobType').textContent = job.type;
-                    document.getElementById('modalJobSource').textContent = job.source;
-                    document.getElementById('modalJobDate').textContent = new Date(job.created_at).toLocaleDateString();
-                    document.getElementById('modalJobDescription').innerHTML = job.description || 'No description available';
-                    
-                    const viewBtn = document.getElementById('modalJobView');
-                    const applyBtn = document.getElementById('modalJobApply');
-                    
-                    if (job.url) {
-                        viewBtn.href = job.url;
-                        viewBtn.style.display = 'inline-block';
-                    } else {
-                        viewBtn.style.display = 'none';
+                    let newOrder = 'asc';
+                    if (column === currentSort && currentOrder === 'asc') {
+                        newOrder = 'desc';
                     }
                     
-                    if (job.apply_url) {
-                        applyBtn.href = job.apply_url;
-                        applyBtn.style.display = 'inline-block';
-                    } else {
-                        applyBtn.style.display = 'none';
+                    let url = '/admin/jobs?sort_by=' + column + '&sort_order=' + newOrder;
+                    const searchParams = new URLSearchParams(window.location.search);
+                    const titleFilter = searchParams.get('title_filter');
+                    const companyFilter = searchParams.get('company_filter');
+                    const locationFilter = searchParams.get('location_filter');
+                    if (titleFilter) {
+                        url += '&title_filter=' + encodeURIComponent(titleFilter);
                     }
-                } catch (error) {
-                    console.error('Error fetching job details:', error);
-                    document.getElementById('modalJobTitle').textContent = 'Error loading job details';
-                }
-            }
-            
-            // Sorting and filtering functions
-            function sortBy(column) {""" + f"""
-                const currentSort = '{sort_by}';
-                const currentOrder = '{sort_order}';""" + """
-                
-                let newOrder = 'asc';
-                if (column === currentSort && currentOrder === 'asc') {
-                    newOrder = 'desc';
+                    if (companyFilter) {
+                        url += '&company_filter=' + encodeURIComponent(companyFilter);
+                    }
+                    if (locationFilter) {
+                        url += '&location_filter=' + encodeURIComponent(locationFilter);
+                    }
+                    
+                    window.location.href = url;
                 }
                 
-                let url = '/admin/jobs?sort_by=' + column + '&sort_order=' + newOrder;
-                const searchParams = new URLSearchParams(window.location.search);
-                const titleFilter = searchParams.get('title_filter');
-                const companyFilter = searchParams.get('company_filter');
-                const locationFilter = searchParams.get('location_filter');
-                if (titleFilter) {
-                    url += '&title_filter=' + encodeURIComponent(titleFilter);
-                }
-                if (companyFilter) {
-                    url += '&company_filter=' + encodeURIComponent(companyFilter);
-                }
-                if (locationFilter) {
-                    url += '&location_filter=' + encodeURIComponent(locationFilter);
+                function applyFilters() {
+                    const titleFilter = document.getElementById('titleFilter').value;
+                    const companyFilter = document.getElementById('companyFilter').value;
+                    const locationFilter = document.getElementById('locationFilter').value;
+                    let url = '/admin/jobs?page=1';
+                    if (titleFilter) {
+                        url += '&title_filter=' + encodeURIComponent(titleFilter);
+                    }
+                    if (companyFilter) {
+                        url += '&company_filter=' + encodeURIComponent(companyFilter);
+                    }
+                    if (locationFilter) {
+                        url += '&location_filter=' + encodeURIComponent(locationFilter);
+                    }
+                    window.location.href = url;
                 }
                 
-                window.location.href = url;
-            }
-            
-            function applyFilters() {
-                const titleFilter = document.getElementById('titleFilter').value;
-                const companyFilter = document.getElementById('companyFilter').value;
-                const locationFilter = document.getElementById('locationFilter').value;
-                let url = '/admin/jobs?page=1';
-                if (titleFilter) {
-                    url += '&title_filter=' + encodeURIComponent(titleFilter);
+                function clearFilters() {
+                    window.location.href = '/admin/jobs';
                 }
-                if (companyFilter) {
-                    url += '&company_filter=' + encodeURIComponent(companyFilter);
-                }
-                if (locationFilter) {
-                    url += '&location_filter=' + encodeURIComponent(locationFilter);
-                }
-                window.location.href = url;
-            }
-            
-            function clearFilters() {
-                window.location.href = '/admin/jobs';
-            }
-            
-            // Add click event listeners
-            document.addEventListener('DOMContentLoaded', function() {
-                const jobTitles = document.querySelectorAll('.job-title[data-job-id]');
-                jobTitles.forEach(title => {
-                    title.addEventListener('click', function() {
-                        const jobId = this.getAttribute('data-job-id');
-                        openJobModal(jobId);
+                
+                // Add click event listeners
+                document.addEventListener('DOMContentLoaded', function() {
+                    const jobTitles = document.querySelectorAll('.job-title[data-job-id]');
+                    jobTitles.forEach(title => {
+                        title.addEventListener('click', function() {
+                            const jobId = this.getAttribute('data-job-id');
+                            openJobModal(jobId);
+                        });
+                    });
+                    
+                    // Close modal when clicking outside
+                    window.addEventListener('click', function(event) {
+                        const modal = document.getElementById('jobModal');
+                        if (event.target === modal) {
+                            closeJobModal();
+                        }
                     });
                 });
-                
-                // Close modal when clicking outside
-                window.addEventListener('click', function(event) {
-                    const modal = document.getElementById('jobModal');
-                    if (event.target === modal) {
-                        closeJobModal();
-                    }
-                });
-            });
-        </script>
-    </body>
-    </html>
-    """
-        return HTMLResponse(content=html_content)
+            </script>
+        </body>
+        </html>
+        """
 
     except Exception as e:
         logger.error(f"Error in admin dashboard: {str(e)}")

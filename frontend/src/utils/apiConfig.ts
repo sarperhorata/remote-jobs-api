@@ -8,7 +8,7 @@ interface PortConfig {
 }
 
 const portConfig: PortConfig = {
-  backendPorts: [8002, 8001, 8000, 8003, 8004], // 8002'yi ilk sıraya aldım - active port
+  backendPorts: [8001, 8002, 8000, 8003, 8004], // 8001'i ilk sıraya aldım - active port
   frontendPorts: [3001, 3000, 5000, 5001, 5173], // Frontend için öncelik sırası
 };
 
@@ -17,7 +17,7 @@ let cachedApiUrl: string | null = null;
 let apiUrlPromise: Promise<string> | null = null;
 
 // Sync API Base URL - fallback for components that need immediate access
-export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8002';
+export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001';
 
 // Cache temizleme fonksiyonu
 export const clearApiUrlCache = () => {
@@ -35,10 +35,16 @@ const logApiDetection = (message: string, data?: any) => {
 const detectBackendPort = async (): Promise<string> => {
   logApiDetection('Starting backend port detection...');
   
-  // Environment variable varsa onu kullan
+  // Environment variable varsa ama yanlış port gösteriyorsa düzelt
   if (process.env.REACT_APP_API_URL) {
     let apiUrl = process.env.REACT_APP_API_URL;
-    logApiDetection('Using environment variable:', apiUrl);
+    logApiDetection('Found environment variable:', apiUrl);
+    
+    // Eğer 8002 portunu gösteriyorsa 8001'e çevir (çünkü backend 8001'de çalışıyor)
+    if (apiUrl.includes('localhost:8002')) {
+      apiUrl = apiUrl.replace('localhost:8002', 'localhost:8001');
+      logApiDetection('Corrected environment variable from 8002 to 8001:', apiUrl);
+    }
     
     // Trailing slash'i temizle
     apiUrl = apiUrl.replace(/\/$/, '');
@@ -85,7 +91,7 @@ const detectBackendPort = async (): Promise<string> => {
   }
 
   // Hiçbir port çalışmıyorsa varsayılan port
-  const fallbackUrl = 'http://localhost:8002/api/v1';
+  const fallbackUrl = 'http://localhost:8001/api/v1';
   logApiDetection(`⚠️ No backend found, using default URL: ${fallbackUrl}`);
   return fallbackUrl;
 };
@@ -121,7 +127,7 @@ export const getApiUrl = async (): Promise<string> => {
     return cachedApiUrl;
   } catch (error) {
     console.error('❌ Backend detection failed:', error);
-    cachedApiUrl = 'http://localhost:8002/api/v1'; // Fallback
+    cachedApiUrl = 'http://localhost:8001/api/v1'; // Fallback
     console.log('🔄 Using fallback URL:', cachedApiUrl);
     return cachedApiUrl;
   } finally {

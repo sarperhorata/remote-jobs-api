@@ -11,6 +11,7 @@ import { NotFound } from './pages/NotFound';
 import PaymentSuccess from './pages/PaymentSuccess';
 import { Toaster } from 'react-hot-toast';
 import AutocompleteTest from './pages/AutocompleteTest';
+import TestAutocomplete from './components/TestAutocomplete';
 
 // Page Components (Lazy loading for better performance)
 const HomePage = lazy(() => import('./pages/Home'));
@@ -182,6 +183,7 @@ const App: React.FC = () => {
 
                 {/* Testing Routes */}
                 <Route path="/autocomplete-test" element={<AutocompleteTest />} />
+                <Route path="/test-autocomplete" element={<TestAutocomplete />} />
 
                 {/* Fallback for unmatched routes */}
                 <Route path="*" element={<NotFound />} />

@@ -589,44 +589,47 @@ export default function JobSearchResults() {
           {loading ? (
             <div className="grid gap-4">
               {[...Array(8)].map((_, i) => (
-                <div key={i} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 animate-pulse">
-                  <div className="flex justify-between items-start mb-4">
+                <div key={i} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 animate-pulse">
+                  <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
-                      <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-3"></div>
-                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
-                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
                     </div>
                     <div className="flex gap-2">
-                      <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-                      <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+                      <div className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+                      <div className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
                     </div>
                   </div>
-                  <div className="flex gap-2 mb-3">
-                    <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-full w-16"></div>
-                    <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-full w-20"></div>
-                    <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-full w-14"></div>
+                  <div className="flex gap-2 mb-2">
+                    <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded-full w-16"></div>
+                    <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded-full w-20"></div>
+                    <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded-full w-14"></div>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="grid gap-4">
+            <div className="grid gap-3">
               {filteredJobs.map((job) => (
                 <div
                   key={job._id || job.id}
-                  className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-700 transition-all duration-200 cursor-pointer"
+                  className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md hover:border-blue-200 dark:hover:border-blue-700 transition-all duration-200"
                 >
+                  {/* Main Content Row */}
                   <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1 truncate">
+                    <div className="flex-1 min-w-0 pr-4">
+                      {/* Job Title - Ensure proper display */}
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1 leading-tight">
                         {job.url && isAuthenticated ? (
                           <a 
                             href={job.url} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+                            className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                            title={job.title}
                           >
-                            {job.title}
+                            {job.title || 'Untitled Position'}
                           </a>
                         ) : (
                           <span 
@@ -637,130 +640,124 @@ export default function JobSearchResults() {
                                 toast.error("Please login to apply for jobs", { duration: 5000 });
                               }
                             }}
+                            title={job.title}
                           >
-                            {job.title}
+                            {job.title || 'Untitled Position'}
                           </span>
                         )}
                       </h3>
+                      
+                      {/* Company & Location */}
                       <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        <span className="font-medium">{typeof job.company === 'object' ? job.company.name : job.company}</span>
+                        <span className="font-medium">
+                          {typeof job.company === 'object' ? job.company?.name || 'Unknown Company' : job.company || 'Unknown Company'}
+                        </span>
                         {job.location && (
                           <>
                             <span className="mx-2">•</span>
                             <span>{job.location}</span>
                           </>
                         )}
+                        {job.salary_range && (
+                          <>
+                            <span className="mx-2">•</span>
+                            <span className="text-green-600 font-medium">{job.salary_range}</span>
+                          </>
+                        )}
                       </div>
+
+                      {/* Quick Tags - Compact Row */}
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {job.job_type && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                            {job.job_type}
+                          </span>
+                        )}
+                        {job.isRemote && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                            Remote
+                          </span>
+                        )}
+                        {job.experienceLevel && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                            {job.experienceLevel}
+                          </span>
+                        )}
+                        {job.created_at && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                            {new Date(job.created_at).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Skills - Compact Display */}
+                      {job.skills && job.skills.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {job.skills.slice(0, 4).map((skill, index) => (
+                            <span
+                              key={index}
+                              className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                          {job.skills.length > 4 && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                              +{job.skills.length - 4}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-3 ml-4">
+                    
+                    {/* Action Buttons - Compact */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <button
                         onClick={() => markAsApplied(job._id || job.id)}
-                        className={`p-3 rounded-full transition-colors ${
+                        className={`p-2 rounded-full transition-colors ${
                           appliedJobs.has(job._id || job.id)
                             ? 'text-green-500 hover:text-green-600 bg-green-50 dark:bg-green-900/20'
                             : 'text-gray-400 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20'
                         }`}
                         title={appliedJobs.has(job._id || job.id) ? 'Applied' : 'Mark as applied'}
                       >
-                        <Check className="w-8 h-8" />
+                        <Check className="w-5 h-5" />
                       </button>
                       <button
                         onClick={() => toggleFavorite(job._id || job.id)}
-                        className={`p-3 rounded-full transition-colors ${
+                        className={`p-2 rounded-full transition-colors ${
                           favoriteJobs.has(job._id || job.id)
                             ? 'text-red-500 hover:text-red-600 bg-red-50 dark:bg-red-900/20'
                             : 'text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
                         }`}
                         title={favoriteJobs.has(job._id || job.id) ? 'Remove from favorites' : 'Add to favorites'}
                       >
-                        <Heart className="w-8 h-8" fill={favoriteJobs.has(job._id || job.id) ? 'currentColor' : 'none'} />
+                        <Heart className="w-5 h-5" fill={favoriteJobs.has(job._id || job.id) ? 'currentColor' : 'none'} />
                       </button>
                       <button
                         onClick={() => hideJob(job._id || job.id)}
-                        className={`p-3 rounded-full transition-colors ${
-                          hiddenJobs.has(job._id || job.id)
-                            ? 'text-gray-600 hover:text-gray-700 bg-gray-100 dark:bg-gray-700'
-                            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
-                        }`}
+                        className="p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                         title="Hide this job"
                       >
-                        <EyeOff className="w-8 h-8" />
+                        <EyeOff className="w-5 h-5" />
                       </button>
                     </div>
                   </div>
 
-                  {/* Job Tags */}
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {job.location && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {job.location}
-                      </span>
-                    )}
-                    {job.job_type && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        {job.job_type}
-                      </span>
-                    )}
-                    {job.isRemote && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                        Remote
-                      </span>
-                    )}
-                    {job.salary_range && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                        {job.salary_range}
-                      </span>
-                    )}
-                    {job.experienceLevel && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                        {job.experienceLevel}
-                      </span>
-                    )}
-                    {job.source && user?.email === 'admin@buzz2remote.com' && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                        {job.source}
-                      </span>
-                    )}
-                    {job.created_at && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                        {new Date(job.created_at).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Skills */}
-                  {job.skills && job.skills.length > 0 && (
-                    <div className="mb-3">
-                      <div className="flex flex-wrap gap-1">
-                        {job.skills.slice(0, 6).map((skill, index) => (
-                          <span
-                            key={index}
-                            className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                        {job.skills.length > 6 && (
-                          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
-                            +{job.skills.length - 6} more
-                          </span>
-                        )}
-                      </div>
+                  {/* Description - Collapsed by default */}
+                  {job.description && (
+                    <div className="border-t border-gray-100 dark:border-gray-700 pt-2">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-1">
+                        {job.description.replace(/<[^>]*>/g, '').substring(0, 120)}...
+                      </p>
                     </div>
                   )}
 
-                  {/* Description */}
-                  {job.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
-                      {job.description.replace(/<[^>]*>/g, '').substring(0, 150)}...
-                    </p>
-                  )}
-
-                  {/* Source info for admin only */}
+                  {/* Admin Info - Only for admin */}
                   {job.source && user?.email === 'admin@buzz2remote.com' && (
-                    <div className="flex justify-end">
+                    <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                        via {job.source}
+                        Source: {job.source}
                       </div>
                     </div>
                   )}

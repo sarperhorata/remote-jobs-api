@@ -19,6 +19,9 @@ import re
 import json
 from collections import defaultdict, Counter
 
+# Configuration
+TELEGRAM_ENABLED = os.getenv("TELEGRAM_ENABLED", "false").lower() == "true"
+
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 logger = logging.getLogger(__name__)
 
@@ -859,15 +862,15 @@ async def get_jobs(
 async def get_similar_jobs(
     job_id: str,
     limit: int = Query(5, ge=1, le=20),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
     """
     Get similar jobs based on skills.
     """
     try:
-        db = await get_async_db()
         jobs_col = db["jobs"]
-        job = jobs_col.find_one({"_id": ObjectId(job_id), "is_archived": {"$ne": True}})
+        job = await jobs_col.find_one({"_id": ObjectId(job_id), "is_archived": {"$ne": True}})
         if not job:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
         
@@ -875,11 +878,11 @@ async def get_similar_jobs(
         if not skills:
             return []
         
-        similar_jobs = list(jobs_col.find({
+        similar_jobs = await jobs_col.find({
             "_id": {"$ne": ObjectId(job_id)},
             "is_archived": {"$ne": True},
             "skills": {"$in": skills}
-        }).limit(limit))
+        }).limit(limit).to_list(length=limit)
         
         for similar_job in similar_jobs:
             similar_job["_id"] = str(similar_job["_id"])
@@ -891,14 +894,17 @@ async def get_similar_jobs(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 @router.post("/{job_id}/apply", status_code=status.HTTP_201_CREATED)
-async def apply_for_job(job_id: str, current_user: dict = Depends(get_current_user)):
+async def apply_for_job(
+    job_id: str, 
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
     """
     Apply for a job.
     """
     try:
-        db = await get_async_db()
         jobs_col = db["jobs"]
-        job = jobs_col.find_one({"_id": ObjectId(job_id), "is_archived": {"$ne": True}})
+        job = await jobs_col.find_one({"_id": ObjectId(job_id), "is_archived": {"$ne": True}})
         if not job:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
         
@@ -913,14 +919,17 @@ async def apply_for_job(job_id: str, current_user: dict = Depends(get_current_us
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 @router.post("/{job_id}/save", status_code=status.HTTP_201_CREATED)
-async def save_job(job_id: str, current_user: dict = Depends(get_current_user)):
+async def save_job(
+    job_id: str, 
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
     """
     Save a job for later.
     """
     try:
-        db = await get_async_db()
         jobs_col = db["jobs"]
-        job = jobs_col.find_one({"_id": ObjectId(job_id), "is_archived": {"$ne": True}})
+        job = await jobs_col.find_one({"_id": ObjectId(job_id), "is_archived": {"$ne": True}})
         if not job:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
         
@@ -967,15 +976,15 @@ async def get_saved_jobs(
 async def get_archived_jobs_admin(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
-    current_user: dict = Depends(get_current_admin)
+    current_user: dict = Depends(get_current_admin),
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
     """
     Get archived jobs (admin only).
     """
     try:
-        db = await get_async_db()
         jobs_col = db["jobs"]
-        archived_jobs = list(jobs_col.find({"is_archived": True}).skip(skip).limit(limit))
+        archived_jobs = await jobs_col.find({"is_archived": True}).skip(skip).limit(limit).to_list(length=limit)
         for job in archived_jobs:
             job["_id"] = str(job["_id"])
         return archived_jobs
@@ -983,18 +992,21 @@ async def get_archived_jobs_admin(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 @router.post("/{job_id}/restore", response_model=dict)
-async def restore_job_admin(job_id: str, current_user: dict = Depends(get_current_admin)):
+async def restore_job_admin(
+    job_id: str, 
+    current_user: dict = Depends(get_current_admin),
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
     """
     Restore an archived job (admin only).
     """
     try:
-        db = await get_async_db()
         jobs_col = db["jobs"]
-        success = jobs_col.update_one({"_id": ObjectId(job_id)}, {"$set": {"is_archived": False}})
+        success = await jobs_col.update_one({"_id": ObjectId(job_id)}, {"$set": {"is_archived": False}})
         if not success.modified_count:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found or already restored")
         
-        restored_job = jobs_col.find_one({"_id": ObjectId(job_id)})
+        restored_job = await jobs_col.find_one({"_id": ObjectId(job_id)})
         restored_job["_id"] = str(restored_job["_id"])
         
         return restored_job
@@ -1004,15 +1016,17 @@ async def restore_job_admin(job_id: str, current_user: dict = Depends(get_curren
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 @router.post("/archive-old", status_code=status.HTTP_200_OK)
-async def archive_old_jobs_endpoint(current_user: dict = Depends(get_current_admin)):
+async def archive_old_jobs_endpoint(
+    current_user: dict = Depends(get_current_admin),
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
     """
     Manually trigger the archiving of old jobs (admin only).
     """
     try:
-        db = await get_async_db()
         jobs_col = db["jobs"]
-        archived_count = jobs_col.count_documents({"is_archived": True})
-        jobs_col.update_many({"is_archived": True}, {"$set": {"is_archived": False}})
+        archived_count = await jobs_col.count_documents({"is_archived": True})
+        await jobs_col.update_many({"is_archived": True}, {"$set": {"is_archived": False}})
         return {"message": f"Archived {archived_count} old jobs"}
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
@@ -1061,6 +1075,7 @@ async def trigger_api_job_fetching(
         jobs = await api_integration.fetch_jobs_from_all_apis(query, location)
         
         # Save to database
+        from backend.database import get_async_db
         db = await get_async_db()
         jobs_collection = db["jobs"]
         
@@ -1068,7 +1083,7 @@ async def trigger_api_job_fetching(
         updated_jobs = 0
         
         for job in jobs:
-            existing_job = jobs_collection.find_one({
+            existing_job = await jobs_collection.find_one({
                 "external_id": job.external_id,
                 "source_url": job.source_url
             })
@@ -1093,14 +1108,14 @@ async def trigger_api_job_fetching(
             }
             
             if existing_job:
-                jobs_collection.update_one(
+                await jobs_collection.update_one(
                     {"_id": existing_job["_id"]},
                     {"$set": job_data}
                 )
                 updated_jobs += 1
             else:
                 job_data["created_at"] = datetime.now()
-                jobs_collection.insert_one(job_data)
+                await jobs_collection.insert_one(job_data)
                 new_jobs += 1
         
         return {
@@ -1143,12 +1158,14 @@ async def trigger_full_job_aggregation(current_user: dict = Depends(get_current_
         )
 
 @router.get("/admin/data-sources-status")
-async def get_data_sources_status(current_user: dict = Depends(get_current_admin)):
+async def get_data_sources_status(
+    current_user: dict = Depends(get_current_admin),
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
     """
     Get status of all job data sources (admin only).
     """
     try:
-        db = await get_async_db()
         jobs_col = db["jobs"]
         
         # Get statistics by source
@@ -1163,27 +1180,27 @@ async def get_data_sources_status(current_user: dict = Depends(get_current_admin
             {"$sort": {"count": -1}}
         ]
         
-        source_stats = list(jobs_col.aggregate(pipeline))
+        source_stats = await jobs_col.aggregate(pipeline).to_list(length=None)
         
         # Get overall statistics
-        total_active = jobs_col.count_documents({"is_active": True})
-        total_inactive = jobs_col.count_documents({"is_active": False})
+        total_active = await jobs_col.count_documents({"is_active": True})
+        total_inactive = await jobs_col.count_documents({"is_active": False})
         
         # Recent job additions (last 24 hours)
         from datetime import datetime, timedelta
         yesterday = datetime.now() - timedelta(days=1)
-        recent_jobs = jobs_col.count_documents({
+        recent_jobs = await jobs_col.count_documents({
             "created_at": {"$gte": yesterday},
             "is_active": True
         })
         
         # Remote job statistics
-        remote_jobs = jobs_col.count_documents({
+        remote_jobs = await jobs_col.count_documents({
             "is_active": True,
             "remote_type": "remote"
         })
         
-        hybrid_jobs = jobs_col.count_documents({
+        hybrid_jobs = await jobs_col.count_documents({
             "is_active": True,
             "remote_type": "hybrid"
         })
@@ -1221,12 +1238,14 @@ async def get_data_sources_status(current_user: dict = Depends(get_current_admin
         )
 
 @router.get("/admin/job-quality-metrics")
-async def get_job_quality_metrics(current_user: dict = Depends(get_current_admin)):
+async def get_job_quality_metrics(
+    current_user: dict = Depends(get_current_admin),
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
     """
     Get job data quality metrics (admin only).
     """
     try:
-        db = await get_async_db()
         jobs_col = db["jobs"]
         
         # Quality metrics
@@ -1252,7 +1271,7 @@ async def get_job_quality_metrics(current_user: dict = Depends(get_current_admin
             }}
         ]
         
-        quality_stats = list(jobs_col.aggregate(pipeline))
+        quality_stats = await jobs_col.aggregate(pipeline).to_list(length=None)
         
         if quality_stats:
             stats = quality_stats[0]
@@ -1294,7 +1313,8 @@ async def get_job_quality_metrics(current_user: dict = Depends(get_current_admin
 @router.delete("/admin/cleanup-inactive-jobs")
 async def cleanup_inactive_jobs(
     days_old: int = 60,
-    current_user: dict = Depends(get_current_admin)
+    current_user: dict = Depends(get_current_admin),
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
     """
     Delete inactive jobs older than specified days (admin only).
@@ -1302,13 +1322,12 @@ async def cleanup_inactive_jobs(
     try:
         from datetime import datetime, timedelta
         
-        db = await get_async_db()
         jobs_col = db["jobs"]
         
         cutoff_date = datetime.now() - timedelta(days=days_old)
         
         # Delete old inactive jobs
-        result = jobs_col.delete_many({
+        result = await jobs_col.delete_many({
             "is_active": False,
             "last_updated": {"$lt": cutoff_date}
         })
@@ -1328,14 +1347,16 @@ async def cleanup_inactive_jobs(
         )
 
 @router.post("/admin/update-job-skills")
-async def update_job_skills(current_user: dict = Depends(get_current_admin)):
+async def update_job_skills(
+    current_user: dict = Depends(get_current_admin),
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
     """
     Re-process all jobs to update extracted skills (admin only).
     """
     try:
         from utils.job_crawler import JobCrawler
         
-        db = await get_async_db()
         jobs_col = db["jobs"]
         
         crawler = JobCrawler()
@@ -1346,7 +1367,7 @@ async def update_job_skills(current_user: dict = Depends(get_current_admin)):
         skip = 0
         
         while True:
-            jobs = list(jobs_col.find({"is_active": True}).skip(skip).limit(batch_size))
+            jobs = await jobs_col.find({"is_active": True}).skip(skip).limit(batch_size).to_list(length=batch_size)
             
             if not jobs:
                 break
@@ -1356,7 +1377,7 @@ async def update_job_skills(current_user: dict = Depends(get_current_admin)):
                 new_skills = crawler._extract_skills(job.get("description", ""))
                 
                 # Update job with new skills
-                jobs_col.update_one(
+                await jobs_col.update_one(
                     {"_id": job["_id"]},
                     {"$set": {"skills": new_skills}}
                 )
@@ -1377,12 +1398,14 @@ async def update_job_skills(current_user: dict = Depends(get_current_admin)):
         )
 
 @router.get("/admin/deployment-status")
-async def get_deployment_status(current_user: dict = Depends(get_current_admin)):
+async def get_deployment_status(
+    current_user: dict = Depends(get_current_admin),
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
     """
     Get deployment status and system health information (admin only).
     """
     try:
-        db = get_async_db()
         jobs_col = db["jobs"]
         
         # Get system status
@@ -1390,8 +1413,8 @@ async def get_deployment_status(current_user: dict = Depends(get_current_admin))
             "database": {
                 "status": "operational",
                 "latency": "85ms",
-                "total_jobs": jobs_col.count_documents({}),
-                "active_jobs": jobs_col.count_documents({"is_active": True})
+                "total_jobs": await jobs_col.count_documents({}),
+                "active_jobs": await jobs_col.count_documents({"is_active": True})
             },
             "api_services": {
                 "status": "operational",

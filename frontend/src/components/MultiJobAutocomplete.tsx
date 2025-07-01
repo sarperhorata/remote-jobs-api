@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { createPortal } from 'react-dom';
 import { getApiUrl } from '../utils/apiConfig';
 
 // Icons temporarily replaced with text
@@ -24,279 +23,239 @@ interface MultiJobAutocompleteProps {
 }
 
 const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
-  selectedPositions,
+  selectedPositions = [],
   onPositionsChange,
   onSearch,
   placeholder = "Search and select job titles (up to 10)",
   maxSelections = 10
 }) => {
   const [inputValue, setInputValue] = useState('');
-  const [positions, setPositions] = useState<Position[]>([]);
+  const [suggestions, setSuggestions] = useState<Position[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
-  const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [showDropdown, setShowDropdown] = useState(false);
   
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout>();
 
-  // Calculate dropdown position
-  const updateDropdownPosition = () => {
-    if (inputRef.current) {
-      const rect = inputRef.current.getBoundingClientRect();
-      setDropdownPosition({
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
-        width: rect.width
-      });
-    }
-  };
+  // Debug logging
+  useEffect(() => {
+    console.log('🔄 MultiJobAutocomplete State:', {
+      inputValue,
+      suggestionsCount: suggestions.length,
+      showDropdown,
+      isLoading,
+      selectedPositions: selectedPositions.map(p => p.title)
+    });
+  }, [inputValue, suggestions, showDropdown, isLoading, selectedPositions]);
 
-  const fetchPositions = useCallback(async (query: string) => {
-    if (!query.trim() || query.length < 2) {
-      setPositions([]);
+  // Fetch suggestions from API
+  const fetchSuggestions = useCallback(async (query: string) => {
+    console.log('🔍 Fetching suggestions for:', query);
+    
+    if (!query || query.length < 2) {
+      console.log('❌ Query too short, clearing suggestions');
+      setSuggestions([]);
+      setShowDropdown(false);
       return;
     }
 
     setIsLoading(true);
     try {
-      // Önce dinamik detection dene, başarısız olursa fallback kullan
-      let baseUrl;
-      try {
-        baseUrl = await getApiUrl();
-        console.log('🔍 MultiJobAutocomplete using dynamic API URL:', baseUrl);
-      } catch (error) {
-        baseUrl = 'http://localhost:8001/api/v1';
-        console.log('🔄 MultiJobAutocomplete using fallback URL:', baseUrl);
+      const apiUrl = await getApiUrl();
+      
+      // Safety check: force 8001 if we detect wrong port
+      const finalApiUrl = apiUrl.includes('localhost:8002') 
+        ? apiUrl.replace('localhost:8002', 'localhost:8001')
+        : apiUrl;
+      
+      console.log('📡 API URL:', finalApiUrl);
+      
+      const response = await fetch(
+        `${finalApiUrl}/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=20`
+      );
+      
+      console.log('📨 API Response Status:', response.status);
+      
+      if (!response.ok) {
+        console.error(`API request failed with status: ${response.status}`);
+        setSuggestions([]);
+        setShowDropdown(false);
+        return;
       }
       
-      const apiUrl = `${baseUrl}/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=50`;
-      console.log('📡 MultiJobAutocomplete API Request:', apiUrl);
+      const data = await response.json();
+      console.log('📦 API Response:', data);
       
-      const response = await fetch(apiUrl);
-      console.log('📊 MultiJobAutocomplete Response status:', response.status, response.ok);
+      if (!Array.isArray(data)) {
+        console.error('API returned non-array data:', data);
+        setSuggestions([]);
+        setShowDropdown(false);
+        return;
+      }
       
-      if (response.ok) {
-        const data = await response.json();
-        console.log('🔍 MultiJobAutocomplete Raw API response:', data);
-        
-        // Backend returns array directly, not nested in job_titles
-        const positions = Array.isArray(data) ? data : data.job_titles || [];
-        
-        // Ensure each position has required fields and clean the titles
-        const formattedPositions = positions
-          .map((item: any) => ({
-            title: typeof item === 'string' ? item : item.title || '',
-            count: item.count || 1,
-            category: item.category || 'Technology'
-          }))
-          .filter((item: any) => item.title && item.title.trim().length > 0)
-          .slice(0, 50); // Increased limit to 50 results
-          
-        console.log('✅ MultiJobAutocomplete formatted positions:', formattedPositions);
-        setPositions(formattedPositions);
-      } else {
-        console.error('❌ Failed to fetch job titles, status:', response.status, 'response text:', await response.text());
-        setPositions([]);
+      const positions = data.map((item: any) => ({
+        title: item.title || item,
+        count: item.count || 0,
+        category: item.category || 'Unknown'
+      }));
+      
+      // Filter out already selected positions
+      const filtered = positions.filter((pos: Position) => 
+        !selectedPositions.some(selected => 
+          selected.title.toLowerCase() === pos.title.toLowerCase()
+        )
+      );
+      
+      console.log('✅ Filtered positions:', filtered);
+      
+      setSuggestions(filtered);
+      if (filtered.length > 0) {
+        setShowDropdown(true);
       }
     } catch (error) {
-      console.error('❌ MultiJobAutocomplete error fetching job titles:', error);
-      setPositions([]);
+      console.error('Error fetching job title suggestions:', error);
+      setSuggestions([]);
+      setShowDropdown(false);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [selectedPositions]);
 
-  // Debounced search effect
-  useEffect(() => {
+  // Handle input change with debounce
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    console.log('⌨️ Input changed:', value);
+    setInputValue(value);
+
+    // Clear previous timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
 
-    if (inputValue.trim()) {
+    // Set new timeout for search
+    if (value.trim()) {
+      console.log('⏱️ Setting debounce timer for search');
       searchTimeoutRef.current = setTimeout(() => {
-        fetchPositions(inputValue);
+        console.log('⏰ Debounce timer fired, fetching suggestions');
+        fetchSuggestions(value.trim());
       }, 300);
     } else {
-      setPositions([]);
+      console.log('🧹 Input empty, clearing suggestions');
+      setSuggestions([]);
+      setShowDropdown(false);
+    }
+  };
+
+  // Select a position
+  const selectPosition = (position: Position) => {
+    console.log('🎯 selectPosition called with:', position);
+    
+    if (selectedPositions.length >= maxSelections) {
+      console.log('⚠️ Max selections reached');
+      alert(`Maximum ${maxSelections} positions can be selected.`);
+      return;
     }
 
+    console.log('➕ Adding position to selected');
+    const newPositions = [...selectedPositions, position];
+    onPositionsChange(newPositions);
+    
+    // Clear and reset
+    console.log('🧹 Clearing input and closing dropdown');
+    setInputValue('');
+    setSuggestions([]);
+    setShowDropdown(false);
+    
+    // Focus back to input
+    setTimeout(() => {
+      console.log('🎯 Focusing back to input');
+      inputRef.current?.focus();
+    }, 50);
+  };
+
+  // Remove a selected position
+  const removePosition = (index: number) => {
+    console.log('➖ Removing position at index:', index);
+    const newPositions = selectedPositions.filter((_, i) => i !== index);
+    onPositionsChange(newPositions);
+  };
+
+  // Clear all selections
+  const clearAll = () => {
+    console.log('🗑️ Clearing all selections');
+    onPositionsChange([]);
+    setInputValue('');
+    setSuggestions([]);
+    setShowDropdown(false);
+  };
+
+  // Handle search button click
+  const handleSearchClick = () => {
+    console.log('🔍 Search button clicked with positions:', selectedPositions.map(p => p.title));
+    
+    if (selectedPositions.length === 0) {
+      alert('Please select at least one job position to search.');
+      return;
+    }
+    onSearch?.(selectedPositions);
+  };
+
+  // Handle click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        console.log('👆 Click outside detected, closing dropdown');
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [inputValue, fetchPositions]);
-
-  // Handle input changes
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setInputValue(value);
-    setIsOpen(true);
-    setHighlightedIndex(-1);
-  };
-
-  // Handle position selection
-  const handlePositionSelect = (position: Position) => {
-    // Check if position is already selected
-    if (selectedPositions.find(p => p.title.toLowerCase() === position.title.toLowerCase())) {
-      return; // Already selected
-    }
-
-    // Check max selections
-    if (selectedPositions.length >= maxSelections) {
-      alert(`Maximum ${maxSelections} positions can be selected.`);
-      return;
-    }
-
-    // Add position to selected list
-    const newSelectedPositions = [...selectedPositions, position];
-    onPositionsChange(newSelectedPositions);
-    
-    // Clear input and close dropdown
-    setInputValue('');
-    setIsOpen(false);
-    setPositions([]);
-    
-    // Focus back to input
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 100);
-  };
-
-  // Remove selected position
-  const removePosition = (positionToRemove: Position) => {
-    const newSelectedPositions = selectedPositions.filter(
-      p => p.title.toLowerCase() !== positionToRemove.title.toLowerCase()
-    );
-    onPositionsChange(newSelectedPositions);
-  };
-
-  // Clear all selections
-  const clearAllSelections = () => {
-    onPositionsChange([]);
-    setInputValue('');
-    setIsOpen(false);
-    setPositions([]);
-  };
-
-  // Handle keyboard navigation
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!isOpen) return;
-
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setHighlightedIndex(prev => 
-          prev < positions.length - 1 ? prev + 1 : 0
-        );
-        break;
-      
-      case 'ArrowUp':
-        e.preventDefault();
-        setHighlightedIndex(prev => 
-          prev > 0 ? prev - 1 : positions.length - 1
-        );
-        break;
-      
-      case 'Enter':
-        e.preventDefault();
-        if (highlightedIndex >= 0 && highlightedIndex < positions.length) {
-          handlePositionSelect(positions[highlightedIndex]);
-        }
-        break;
-      
-      case 'Escape':
-        setIsOpen(false);
-        setHighlightedIndex(-1);
-        break;
-    }
-  };
-
-  // Handle search button click
-  const handleSearch = () => {
-    if (selectedPositions.length === 0) {
-      alert('Please select at least one job position to search.');
-      return;
-    }
-    
-    if (onSearch) {
-      onSearch(selectedPositions);
-    }
-  };
-
-  // Click outside to close dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-        setHighlightedIndex(-1);
-      }
-    };
-
-    const handleScroll = () => {
-      if (isOpen) {
-        updateDropdownPosition();
-      }
-    };
-
-    const handleResize = () => {
-      if (isOpen) {
-        updateDropdownPosition();
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    window.addEventListener('scroll', handleScroll, true);
-    window.addEventListener('resize', handleResize);
-    
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('scroll', handleScroll, true);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [isOpen]);
-
-  // Filter out already selected positions
-  const availablePositions = positions.filter(
-    pos => !selectedPositions.find(selected => 
-      selected.title.toLowerCase() === pos.title.toLowerCase()
-    )
-  );
+  }, []);
 
   return (
-    <div className="w-full" ref={dropdownRef}>
+    <div className="w-full" ref={containerRef}>
       {/* Selected positions display */}
       {selectedPositions.length > 0 && (
-        <div className="mb-3">
+        <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Selected Positions ({selectedPositions.length}/{maxSelections}):
             </span>
             <button
-              onClick={clearAllSelections}
-              className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1"
+              type="button"
+              onClick={clearAll}
+              className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
             >
-              <Trash2 />
               Clear All
             </button>
           </div>
           <div className="flex flex-wrap gap-2">
             {selectedPositions.map((position, index) => (
               <div
-                key={index}
-                className="flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm"
+                key={`${position.title}-${index}`}
+                className="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm"
               >
-                <span className="truncate max-w-40">{position.title}</span>
-                {position.count && (
-                  <span className="text-blue-600 text-xs">({position.count})</span>
-                )}
+                <span>{position.title}</span>
                 <button
-                  onClick={() => removePosition(position)}
-                  className="text-blue-600 hover:text-blue-800 flex-shrink-0"
+                  type="button"
+                  onClick={() => removePosition(index)}
+                  className="text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100 font-bold"
+                  aria-label={`Remove ${position.title}`}
                 >
-                  <X />
+                  ×
                 </button>
               </div>
             ))}
@@ -304,122 +263,86 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
         </div>
       )}
 
-      {/* Search input */}
-      <div className="relative">
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 flex items-center justify-center">
-              <Search />
-            </div>
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputValue}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
-              onFocus={() => {
-                setIsOpen(true);
-                updateDropdownPosition();
-              }}
-              placeholder={placeholder}
-              className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 dark:text-white dark:bg-gray-800 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400"
-              disabled={selectedPositions.length >= maxSelections}
-            />
-            
-            {isLoading && (
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-              </div>
-            )}
-            
-            {!isLoading && positions.length > 0 && (
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 flex items-center justify-center">
-                <ChevronDown />
-              </div>
-            )}
-          </div>
+      {/* Search input and button */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <input
+            ref={inputRef}
+            type="text"
+            value={inputValue}
+            onChange={handleInputChange}
+            placeholder={selectedPositions.length >= maxSelections ? "Maximum selections reached" : placeholder}
+            disabled={selectedPositions.length >= maxSelections}
+            className="w-full px-4 py-3 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
+          />
           
-          <button
-            onClick={handleSearch}
-            disabled={selectedPositions.length === 0}
-            className="px-6 py-3 bg-gradient-to-r from-orange-500 to-yellow-500 text-white rounded-lg hover:from-orange-600 hover:to-yellow-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium flex items-center gap-2"
-          >
-            <Search />
-            Search
-          </button>
+          {/* Loading spinner */}
+          {isLoading && (
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <div className="w-5 h-5 border-2 border-blue-500 dark:border-blue-400 border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+
+          {/* Dropdown suggestions */}
+          {showDropdown && suggestions.length > 0 && (
+            <div 
+              className="absolute z-[9999] w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl max-h-60 overflow-y-auto"
+              onMouseDown={(e) => {
+                console.log('🖱️ Mouse down on dropdown container');
+                e.preventDefault(); // Prevent blur on input
+              }}
+            >
+              <div className="sticky top-0 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-xs text-gray-600 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600">
+                {suggestions.length} result{suggestions.length !== 1 ? 's' : ''} found
+              </div>
+              {suggestions.map((suggestion, index) => (
+                <div
+                  key={`${suggestion.title}-${index}`}
+                  onMouseDown={(e) => {
+                    console.log('🖱️ Mouse down on suggestion:', suggestion.title);
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onClick={(e) => {
+                    console.log('👆 Click on suggestion:', suggestion.title);
+                    e.preventDefault();
+                    e.stopPropagation();
+                    selectPosition(suggestion);
+                  }}
+                  className="px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900 cursor-pointer transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                >
+                  <div className="font-medium text-gray-900 dark:text-white">{suggestion.title}</div>
+                  {suggestion.count > 0 && (
+                    <div className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                      {suggestion.count} job{suggestion.count !== 1 ? 's' : ''} available
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Dropdown */}
-        {isOpen && (isLoading || availablePositions.length > 0) && createPortal(
-          <div 
-            className="absolute bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl max-h-60 overflow-y-auto" 
-            style={{ 
-              zIndex: 9999999,
-              position: 'fixed',
-              top: `${dropdownPosition.top}px`,
-              left: `${dropdownPosition.left}px`,
-              width: `${dropdownPosition.width}px`,
-              backgroundColor: 'white',
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)'
-            }}
-          >
-            {isLoading ? (
-              <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-                <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                Searching positions...
-              </div>
-            ) : availablePositions.length > 0 ? (
-              <>
-                <div className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
-                  {availablePositions.length} position{availablePositions.length !== 1 ? 's' : ''} found
-                </div>
-                {availablePositions.map((position, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handlePositionSelect(position)}
-                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-between group ${
-                      index === highlightedIndex ? 'bg-blue-50 dark:bg-blue-900' : ''
-                    }`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-gray-900 dark:text-white truncate">
-                        {position.title}
-                      </div>
-                      {position.category && (
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {position.category}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 ml-3">
-                      {position.count && (
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                          {position.count} jobs
-                        </span>
-                      )}
-                      <Plus />
-                    </div>
-                  </button>
-                ))}
-              </>
-            ) : null}
-          </div>,
-          document.body
-        )}
+        <button
+          type="button"
+          onClick={handleSearchClick}
+          disabled={selectedPositions.length === 0}
+          className="px-6 py-3 bg-gradient-to-r from-orange-500 to-yellow-500 text-white rounded-lg hover:from-orange-600 hover:to-yellow-600 disabled:from-gray-300 disabled:to-gray-300 disabled:cursor-not-allowed transition-all font-semibold shadow-md disabled:shadow-none"
+        >
+          Search Jobs
+        </button>
       </div>
 
       {/* Help text */}
-      <div className="mt-2 text-xs text-gray-500">
-        {selectedPositions.length === 0 ? (
-          "Start typing to search job positions. You can select up to " + maxSelections + " positions."
-        ) : (
-          `${selectedPositions.length}/${maxSelections} positions selected. ${selectedPositions.length === maxSelections ? 'Maximum reached.' : 'Add more or search now.'}`
-        )}
+      <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        {selectedPositions.length === 0
+          ? "Start typing to search job positions. You can select up to " + maxSelections + " positions."
+          : selectedPositions.length === maxSelections
+          ? "Maximum selections reached."
+          : `${maxSelections - selectedPositions.length} more selection${maxSelections - selectedPositions.length !== 1 ? 's' : ''} available.`}
       </div>
     </div>
   );
 };
 
-export default MultiJobAutocomplete; 
+export default MultiJobAutocomplete;

@@ -1,8 +1,8 @@
 import pytest
 from datetime import datetime, timedelta
 from unittest.mock import patch
-from jose import jwt
-from jose.exceptions import JWTError
+import jwt
+from jwt.exceptions import InvalidTokenError as JWTError
 
 # Import from the same module being tested
 from core.security import (

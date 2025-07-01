@@ -315,7 +315,9 @@ def test_job_data():
         "salary_range": "$50,000 - $70,000",
         "job_type": "Full-time",
         "experience_level": "Mid-level",
-        "apply_url": "https://example.com/apply"
+        "apply_url": "https://example.com/apply",
+        "url": "https://example.com/job",
+        "source": "test"
     }
 
 @pytest.fixture

@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { getApiUrl } from '../utils/apiConfig';
 
 const GoogleCallback: React.FC = () => {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleGoogleCallback = async () => {
@@ -16,17 +15,17 @@ const GoogleCallback: React.FC = () => {
         const error = searchParams.get('error');
 
         if (error) {
-          throw new Error(`Google OAuth error: ${error}`);
+          throw new Error('Google authentication cancelled or failed');
         }
 
         if (!code) {
           throw new Error('No authorization code received from Google');
         }
 
-        console.log('🔑 Processing Google OAuth callback...');
+        console.log('🔑 Processing Google callback...');
+        const API_BASE_URL = await getApiUrl();
 
-        // Send code to backend
-        const response = await fetch('http://localhost:8000/api/google/callback', {
+        const response = await fetch(`${API_BASE_URL}/auth/google/callback`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -40,33 +39,49 @@ const GoogleCallback: React.FC = () => {
         }
 
         const data = await response.json();
-        
-        // Store token and user data
-        localStorage.setItem('token', data.access_token);
-        localStorage.setItem('user', JSON.stringify(data.user));
+        console.log('✅ Google authentication successful:', data);
 
-        console.log('✅ Google login successful!', data.user);
+        // Store authentication data
+        if (data.access_token) {
+          localStorage.setItem('auth_token', data.access_token);
+          localStorage.setItem('token_type', data.token_type || 'bearer');
+          localStorage.setItem('userToken', data.access_token);
+        }
 
-        // Navigate to home or dashboard
+        if (data.user) {
+          localStorage.setItem('user_data', JSON.stringify(data.user));
+        }
+
+        // Redirect to home page
         navigate('/', { replace: true });
+        window.location.reload();
 
-      } catch (err) {
-        console.error('❌ Google callback error:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error occurred');
-      } finally {
+      } catch (error: any) {
+        console.error('❌ Google callback error:', error);
+        setError(error.message || 'Authentication failed');
         setLoading(false);
       }
     };
 
     handleGoogleCallback();
-  }, [searchParams, navigate, login]);
+  }, [searchParams, navigate]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Completing Google sign-in...</p>
+          <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <span className="text-2xl">🐝</span>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            Completing Google Sign In...
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Please wait while we authenticate your account
+          </p>
+          <div className="mt-4 flex justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+          </div>
         </div>
       </div>
     );
@@ -74,20 +89,22 @@ const GoogleCallback: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center max-w-md">
-          <div className="text-red-500 mb-4">
-            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl text-red-500">❌</span>
           </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Authentication Failed</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            Authentication Failed
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            {error}
+          </p>
           <button
-            onClick={() => navigate('/', { replace: true })}
-            className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 transition-colors"
+            onClick={() => navigate('/login')}
+            className="bg-gradient-to-r from-orange-500 to-yellow-500 text-white px-6 py-3 rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-colors font-medium"
           >
-            Back to Home
+            Try Again
           </button>
         </div>
       </div>

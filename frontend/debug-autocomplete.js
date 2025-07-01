@@ -75,4 +75,47 @@ req.setTimeout(5000);
 
 req.end();
 
-console.log('🌐 Making request to http://localhost:8001/api/jobs/statistics...'); 
+console.log('🌐 Making request to http://localhost:8001/api/jobs/statistics...');
+
+// Autocomplete Debug Test Script
+// Browser console'da çalıştırın: copy(debugScript) sonra paste edin
+
+const debugAutocomplete = async () => {
+  console.log('🔍 Starting Autocomplete Debug Test...');
+  
+  // Test API URL detection
+  try {
+    console.log('📡 Testing API URL detection...');
+    const response = await fetch('http://localhost:8001/health');
+    const health = await response.json();
+    console.log('✅ Backend Health:', health);
+    
+    // Test job titles API
+    console.log('📡 Testing job titles API...');
+    const jobTitlesResponse = await fetch('http://localhost:8001/api/v1/jobs/job-titles/search?q=developer&limit=5');
+    const jobTitles = await jobTitlesResponse.json();
+    console.log('✅ Job Titles API Response:', jobTitles);
+    
+    // Test if autocomplete component exists
+    const autocompleteInputs = document.querySelectorAll('input[placeholder*="job title"]');
+    console.log('🔍 Found autocomplete inputs:', autocompleteInputs.length);
+    
+    if (autocompleteInputs.length > 0) {
+      const input = autocompleteInputs[0];
+      console.log('⌨️ Testing autocomplete input...');
+      
+      // Simulate typing
+      input.focus();
+      input.value = 'developer';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      
+      console.log('✅ Simulated typing "developer" - check for dropdown');
+    }
+    
+  } catch (error) {
+    console.error('❌ Debug test failed:', error);
+  }
+};
+
+// Run debug
+debugAutocomplete(); 

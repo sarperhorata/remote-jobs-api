@@ -62,15 +62,22 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
 
   const handleGoogleLogin = async () => {
     try {
-      const API_BASE_URL = await getApiUrl();
-      const response = await fetch(`${API_BASE_URL}/auth/google/auth-url`);
-      const data = await response.json();
+      // Create Google OAuth URL directly
+      const googleClientId = '655034019922-pq66mk4ah4tou451gauikvvgeflv6ual.apps.googleusercontent.com';
+      const redirectUri = window.location.origin + '/auth/google/callback';
       
-      if (data.auth_url) {
-        window.location.href = data.auth_url;
-      }
+      const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${googleClientId}&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+        `response_type=code&` +
+        `scope=email%20profile&` +
+        `access_type=offline&` +
+        `prompt=consent`;
+      
+      window.location.href = googleAuthUrl;
     } catch (error) {
       console.error('Google auth error:', error);
+      setLoginError('Google authentication failed. Please try again.');
     }
   };
 
@@ -80,38 +87,67 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
     setLoginError(null);
     
     try {
+      // Basic validations
+      if (!loginEmail || !loginPassword) {
+        throw new Error('Please fill in all fields');
+      }
+      
       console.log('🔑 Attempting login with API...');
       const API_BASE_URL = await getApiUrl();
       
-      const formData = new FormData();
-      formData.append('username', loginEmail);
-      formData.append('password', loginPassword);
-      
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
-        body: formData
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          username: loginEmail,
+          password: loginPassword
+        })
       });
       
       if (!response.ok) {
         const errorData = await response.json();
+        if (response.status === 401) {
+          throw new Error('Invalid email or password');
+        } else if (response.status === 403) {
+          throw new Error('Email not verified. Please check your email and verify your account.');
+        }
         throw new Error(errorData.detail || 'Login failed');
       }
       
       const data = await response.json();
+      console.log('✅ Login successful:', data);
       
-      // Token'ı localStorage'a kaydet
-      localStorage.setItem('auth_token', data.access_token);
-      localStorage.setItem('userToken', data.access_token); // Compatibility
+      // Store authentication data
+      if (data.access_token) {
+        localStorage.setItem('auth_token', data.access_token);
+        localStorage.setItem('token_type', data.token_type || 'bearer');
+        localStorage.setItem('userToken', data.access_token); // Compatibility
+        
+        // Fetch user data
+        try {
+          const userResponse = await fetch(`${API_BASE_URL}/auth/me`, {
+            headers: {
+              'Authorization': `Bearer ${data.access_token}`,
+            },
+          });
+          
+          if (userResponse.ok) {
+            const userData = await userResponse.json();
+            localStorage.setItem('user_data', JSON.stringify(userData));
+          }
+        } catch (userError) {
+          console.error('Failed to fetch user data:', userError);
+        }
+      }
       
-      console.log('✅ Login successful!');
       onClose();
-      
-      // Sayfayı yenile veya state'i güncelle
       window.location.reload();
       
-    } catch (err: any) {
-      console.error('❌ Login error:', err);
-      setLoginError(err.message || 'Login failed. Please check your credentials.');
+    } catch (error: any) {
+      console.error('❌ Login failed:', error);
+      setLoginError(error.message || 'Login failed. Please try again.');
     } finally {
       setLoginLoading(false);
     }
@@ -176,20 +212,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
       setRegisterError(error.message || 'Registration failed. Please try again.');
     } finally {
       setRegisterLoading(false);
-    }
-  };
-
-  const handleGoogleAuth = async () => {
-    try {
-      const API_BASE_URL = await getApiUrl();
-      const response = await fetch(`${API_BASE_URL}/auth/google/auth-url`);
-      const data = await response.json();
-      
-      if (data.auth_url) {
-        window.location.href = data.auth_url;
-      }
-    } catch (error) {
-      console.error('Google auth error:', error);
     }
   };
 
@@ -586,7 +608,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
 
                 <button
                   type="button"
-                  onClick={handleGoogleAuth}
+                  onClick={handleGoogleLogin}
                   className="w-full flex items-center justify-center space-x-2 bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">

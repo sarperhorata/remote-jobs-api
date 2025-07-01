@@ -1,5 +1,5 @@
 import pytest
-from jose import jwt as python_jwt
+import jwt
 from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
 import sys
@@ -217,11 +217,11 @@ class TestUtilsAuthExtended:
                     "type": "refresh",
                     "exp": datetime.utcnow() + timedelta(days=30)
                 }
-                return python_jwt.encode(payload, "secret", algorithm="HS256")
+                return jwt.encode(payload, "secret", algorithm="HS256")
             
             def is_token_expired(token):
                 try:
-                    payload = python_jwt.decode(token, "secret", algorithms=["HS256"])
+                    payload = jwt.decode(token, "secret", algorithms=["HS256"])
                     exp = datetime.fromtimestamp(payload["exp"])
                     return datetime.utcnow() > exp
                 except:
@@ -229,13 +229,13 @@ class TestUtilsAuthExtended:
             
             def refresh_token(refresh_token_str):
                 try:
-                    payload = python_jwt.decode(refresh_token_str, "secret", algorithms=["HS256"])
+                    payload = jwt.decode(refresh_token_str, "secret", algorithms=["HS256"])
                     if payload.get("type") == "refresh":
                         new_payload = {
                             "user_id": payload["user_id"],
                             "exp": datetime.utcnow() + timedelta(hours=1)
                         }
-                        return python_jwt.encode(new_payload, "secret", algorithm="HS256")
+                        return jwt.encode(new_payload, "secret", algorithm="HS256")
                 except:
                     return None
             
@@ -506,4 +506,4 @@ class TestUtilsAuthExtended:
             reset_token = generate_reset_token("test@example.com")
             assert verify_reset_token(reset_token) is True
             assert reset_password(reset_token, "NewPassword123!") is True
-            assert verify_reset_token(reset_token) is False  # Should be consumed 
+            assert verify_reset_token(reset_token) is False 

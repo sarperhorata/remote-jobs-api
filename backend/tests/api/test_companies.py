@@ -44,7 +44,7 @@ class TestCompaniesAPI:
         # Mock jobs.count_documents for jobs_count field
         mock_database.jobs.count_documents = AsyncMock(return_value=5)
         
-        response = await async_client.get("/api/companies/")
+        response = await async_client.get("/api/v1/companies/")
         assert response.status_code == 200
         data = response.json()
         assert "items" in data or "companies" in data or isinstance(data, list)
@@ -65,7 +65,7 @@ class TestCompaniesAPI:
         mock_cursor.to_list = AsyncMock(return_value=companies_data[:2])  # First page
         mock_database.jobs.aggregate = MagicMock(return_value=mock_cursor)
         
-        response = await async_client.get("/api/companies/?page=1&per_page=2")
+        response = await async_client.get("/api/v1/companies/?page=1&per_page=2")
         assert response.status_code == 200
         data = response.json()
         # Flexible assertion for pagination
@@ -85,7 +85,7 @@ class TestCompaniesAPI:
         mock_cursor.to_list = AsyncMock(return_value=[company_data])
         mock_database.jobs.aggregate = MagicMock(return_value=mock_cursor)
         
-        response = await async_client.get("/api/companies/tech-corp")
+        response = await async_client.get("/api/v1/companies/tech-corp")
         assert response.status_code in [200, 404]  # Endpoint may not exist
         if response.status_code == 200:
             data = response.json()
@@ -97,7 +97,7 @@ class TestCompaniesAPI:
         mock_cursor.to_list = AsyncMock(return_value=[])
         mock_database.jobs.aggregate = MagicMock(return_value=mock_cursor)
         
-        response = await async_client.get("/api/companies/non-existent")
+        response = await async_client.get("/api/v1/companies/non-existent")
         assert response.status_code == 404
 
     async def test_get_company_jobs_success(self, async_client: AsyncClient, mock_database):
@@ -124,7 +124,7 @@ class TestCompaniesAPI:
             job_id = str(job["_id"])
             mock_database.jobs._storage[job_id] = job
         
-        response = await async_client.get("/api/companies/TechCorp/jobs")
+        response = await async_client.get("/api/v1/companies/TechCorp/jobs")
         assert response.status_code in [200, 404]  # Endpoint may not exist
         if response.status_code == 200:
             data = response.json()
@@ -144,7 +144,7 @@ class TestCompaniesAPI:
         mock_cursor.to_list = AsyncMock(return_value=search_results)
         mock_database.jobs.aggregate = MagicMock(return_value=mock_cursor)
         
-        response = await async_client.get("/api/companies/search?q=tech")
+        response = await async_client.get("/api/v1/companies/search?q=tech")
         assert response.status_code in [200, 404]  # Endpoint may not exist
         if response.status_code == 200:
             data = response.json()
@@ -157,15 +157,15 @@ class TestCompaniesAPI:
         mock_database.jobs.aggregate = MagicMock(return_value=mock_cursor)
         
         # Test filtering by industry
-        response = await async_client.get("/api/companies/?industry=technology")
+        response = await async_client.get("/api/v1/companies/?industry=technology")
         assert response.status_code == 200
         
         # Test filtering by size
-        response = await async_client.get("/api/companies/?size=startup")
+        response = await async_client.get("/api/v1/companies/?size=startup")
         assert response.status_code == 200
         
         # Test filtering by location
-        response = await async_client.get("/api/companies/?location=remote")
+        response = await async_client.get("/api/v1/companies/?location=remote")
         assert response.status_code == 200
 
     async def test_get_companies_sorting(self, async_client: AsyncClient, mock_database):
@@ -175,11 +175,11 @@ class TestCompaniesAPI:
         mock_database.jobs.aggregate = MagicMock(return_value=mock_cursor)
         
         # Test sorting by job count
-        response = await async_client.get("/api/companies/?sort_by=job_count&sort_order=desc")
+        response = await async_client.get("/api/v1/companies/?sort_by=job_count&sort_order=desc")
         assert response.status_code == 200
         
         # Test sorting by name
-        response = await async_client.get("/api/companies/?sort_by=name&sort_order=asc")
+        response = await async_client.get("/api/v1/companies/?sort_by=name&sort_order=asc")
         assert response.status_code == 200
 
     async def test_get_company_statistics(self, async_client: AsyncClient, mock_database):
@@ -197,7 +197,7 @@ class TestCompaniesAPI:
         mock_cursor.to_list = AsyncMock(return_value=stats_data)
         mock_database.jobs.aggregate = MagicMock(return_value=mock_cursor)
         
-        response = await async_client.get("/api/companies/statistics")
+        response = await async_client.get("/api/v1/companies/statistics")
         assert response.status_code in [200, 404]  # Endpoint may not exist
         if response.status_code == 200:
             data = response.json()
@@ -210,19 +210,19 @@ class TestCompaniesAPI:
         mock_database.jobs.aggregate = MagicMock(return_value=mock_cursor)
         
         # Test invalid page numbers
-        response = await async_client.get("/api/companies/?page=0")
+        response = await async_client.get("/api/v1/companies/?page=0")
         assert response.status_code in [200, 422]  # Should handle gracefully
         
-        response = await async_client.get("/api/companies/?page=-1")
+        response = await async_client.get("/api/v1/companies/?page=-1")
         assert response.status_code in [200, 422]
         
-        response = await async_client.get("/api/companies/?per_page=0")
+        response = await async_client.get("/api/v1/companies/?per_page=0")
         assert response.status_code in [200, 422]
 
     async def test_companies_error_handling(self, async_client: AsyncClient, mock_database):
         """Test error handling in companies endpoints."""
         # Test error handling without simulation
-        response = await async_client.get("/api/companies/")
+        response = await async_client.get("/api/v1/companies/")
         assert response.status_code in [200, 500, 503]  # Should handle gracefully
 
     async def test_company_detailed_info(self, async_client: AsyncClient, mock_database):
@@ -244,5 +244,5 @@ class TestCompaniesAPI:
         mock_cursor.to_list = AsyncMock(return_value=[company_detail])
         mock_database.jobs.aggregate = MagicMock(return_value=mock_cursor)
         
-        response = await async_client.get("/api/companies/tech-corp/details")
+        response = await async_client.get("/api/v1/companies/tech-corp/details")
         assert response.status_code in [200, 404]  # Endpoint may not exist yet 

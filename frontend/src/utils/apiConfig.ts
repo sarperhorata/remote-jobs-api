@@ -17,7 +17,7 @@ let cachedApiUrl: string | null = null;
 let apiUrlPromise: Promise<string> | null = null;
 
 // Sync API Base URL - fallback for components that need immediate access
-export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001';
+export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8002';
 
 // Cache temizleme fonksiyonu
 export const clearApiUrlCache = () => {
@@ -26,14 +26,19 @@ export const clearApiUrlCache = () => {
   apiUrlPromise = null;
 };
 
+// Debug bilgilerini göstermek için
+const logApiDetection = (message: string, data?: any) => {
+  console.log(`🔗 [API Config] ${message}`, data || '');
+};
+
 // Backend port detection
 const detectBackendPort = async (): Promise<string> => {
-  console.log('🔍 Starting backend port detection...');
+  logApiDetection('Starting backend port detection...');
   
   // Environment variable varsa onu kullan
   if (process.env.REACT_APP_API_URL) {
     let apiUrl = process.env.REACT_APP_API_URL;
-    console.log('✅ Using environment variable:', apiUrl);
+    logApiDetection('Using environment variable:', apiUrl);
     
     // Trailing slash'i temizle
     apiUrl = apiUrl.replace(/\/$/, '');
@@ -52,34 +57,36 @@ const detectBackendPort = async (): Promise<string> => {
 
   // Test environment check - force port 8000 for tests
   if (process.env.NODE_ENV === 'test') {
-    console.log('🧪 Test mode - forcing port 8000');
+    logApiDetection('Test mode - forcing port 8000');
     return 'http://localhost:8000/api/v1';
   }
 
   // Backend portlarını sırayla test et
   for (const port of portConfig.backendPorts) {
     try {
-      console.log(`🔍 Testing backend on port ${port}...`);
+      logApiDetection(`Testing backend on port ${port}...`);
       // /health endpoint'i /api/v1 dışında
       const healthCheckUrl = `http://localhost:${port}/health`;
       const response = await fetch(healthCheckUrl, {
         method: 'GET',
-        signal: AbortSignal.timeout(2000), // 2 saniye timeout
+        signal: AbortSignal.timeout(3000), // 3 saniye timeout
       });
       
       if (response.ok) {
-        console.log(`✅ Backend detected on port ${port}`);
+        const healthData = await response.json();
+        logApiDetection(`✅ Backend detected on port ${port}`, healthData);
         return `http://localhost:${port}/api/v1`;
       }
+      logApiDetection(`❌ Port ${port} returned status ${response.status}`);
     } catch (error: any) {
       // Port ulaşılabilir değil, bir sonrakini dene
-      console.log(`❌ Backend not found on port ${port}:`, error.message);
+      logApiDetection(`❌ Backend not found on port ${port}:`, error.message);
     }
   }
 
   // Hiçbir port çalışmıyorsa varsayılan port
-  const fallbackUrl = 'http://localhost:8001/api/v1';
-  console.warn(`⚠️ No backend found, using default URL: ${fallbackUrl}`);
+  const fallbackUrl = 'http://localhost:8002/api/v1';
+  logApiDetection(`⚠️ No backend found, using default URL: ${fallbackUrl}`);
   return fallbackUrl;
 };
 
@@ -114,7 +121,7 @@ export const getApiUrl = async (): Promise<string> => {
     return cachedApiUrl;
   } catch (error) {
     console.error('❌ Backend detection failed:', error);
-    cachedApiUrl = 'http://localhost:8001/api/v1'; // Fallback
+    cachedApiUrl = 'http://localhost:8002/api/v1'; // Fallback
     console.log('🔄 Using fallback URL:', cachedApiUrl);
     return cachedApiUrl;
   } finally {
@@ -154,10 +161,30 @@ export const checkBackendHealth = async (apiUrl?: string): Promise<boolean> => {
   }
 };
 
-// Force cache temizleme - sadece gerekli durumlarda
-if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'test') {
-  console.log('🔄 Initial page load - clearing API URL cache');
+// Force cache temizleme - development'ta her sayfa yüklemesinde
+if (typeof window !== 'undefined') {
+  console.log('🔄 Page load - forcing cache clear for fresh API detection');
   clearApiUrlCache();
+  
+  // Development'ta immediate test yapıp sonucu logla
+  if (process.env.NODE_ENV === 'development') {
+    setTimeout(async () => {
+      try {
+        const detectedUrl = await getApiUrl();
+        console.log('🎯 API URL detected successfully:', detectedUrl);
+        
+        // Test API endpoint
+        const testResponse = await fetch(`${detectedUrl}/jobs/job-titles/search?q=test&limit=1`);
+        if (testResponse.ok) {
+          console.log('✅ Autocomplete API endpoint working!');
+        } else {
+          console.error('❌ Autocomplete API endpoint failed, status:', testResponse.status);
+        }
+      } catch (error) {
+        console.error('❌ API detection failed:', error);
+      }
+    }, 1000);
+  }
 }
 
 // Test ortamında export edilen konfigürasyon objesi

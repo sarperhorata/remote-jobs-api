@@ -71,33 +71,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       name: 'Sarper Horata',
       phone: '+90 555 123 4567',
       location: 'Istanbul, Turkey',
-      skills: ['React', 'TypeScript', 'Node.js', 'Python', 'Docker'],
+      skills: ['Product Management', 'Product Strategy', 'Data Analytics', 'Agile/Scrum', 'Market Research', 'User Experience', 'A/B Testing', 'Roadmap Planning', 'Stakeholder Management', 'Growth Hacking'],
       experience: [
         {
-          title: 'Senior Frontend Developer',
-          company: 'Tech Corp',
-          startDate: '2020-01',
+          title: 'Co-Founder & Chief Product Officer',
+          company: 'Buzz2Remote',
+          startDate: '2024-01',
           endDate: null,
-          description: 'Leading frontend development for multiple projects'
+          description: 'Founded and leading the product strategy for a remote job platform. Building features for job matching, user onboarding, and analytics. Managing product roadmap and user experience optimization.'
         },
         {
-          title: 'Frontend Developer',
-          company: 'Startup Inc',
-          startDate: '2018-03',
-          endDate: '2019-12',
-          description: 'Developed and maintained web applications'
+          title: 'Senior Product Manager',
+          company: 'Remote-First Tech Company',
+          startDate: '2022-03',
+          endDate: '2023-12',
+          description: 'Led product development for B2B SaaS platform. Increased user engagement by 40% through data-driven product decisions. Managed cross-functional teams of 15+ members.'
+        },
+        {
+          title: 'Product Manager',
+          company: 'Growth-Stage Startup',
+          startDate: '2020-06',
+          endDate: '2022-02',
+          description: 'Drove product vision and strategy for consumer mobile app. Launched 3 major features that resulted in 60% increase in user retention. Collaborated with engineering, design, and marketing teams.'
+        },
+        {
+          title: 'Product Analyst',
+          company: 'Digital Agency',
+          startDate: '2019-01',
+          endDate: '2020-05',
+          description: 'Analyzed user behavior and market trends to inform product decisions. Created dashboards and reports for C-level executives. Conducted user interviews and usability testing.'
         }
       ],
       education: [
         {
+          school: 'Bogazici University',
+          degree: 'Master of Business Administration',
+          field: 'Technology Management',
+          startDate: '2017-09',
+          endDate: '2019-06'
+        },
+        {
           school: 'Istanbul Technical University',
           degree: 'Bachelor of Science',
-          field: 'Computer Engineering',
-          startDate: '2014-09',
-          endDate: '2018-05'
+          field: 'Industrial Engineering',
+          startDate: '2013-09',
+          endDate: '2017-06'
         }
       ],
-      cvUrl: 'https://example.com/cv.pdf'
+      cvUrl: 'https://buzz2remote.com/cv/sarper-horata-product-manager.pdf'
     }
   }), []);
 

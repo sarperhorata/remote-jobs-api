@@ -8,7 +8,8 @@ from backend.schemas.user import UserCreate, Token
 from backend.utils.email import create_password_reset_token, verify_token, send_password_reset_email
 import logging
 from bson import ObjectId
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import InvalidTokenError as JWTError
 from passlib.context import CryptContext
 from datetime import datetime
 from pydantic import BaseModel, Field

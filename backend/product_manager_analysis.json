@@ -1,0 +1,41 @@
+{
+  "query": "Product Manager",
+  "total_jobs": 35,
+  "analyzed_jobs": 35,
+  "unique_titles": 3,
+  "groups": {
+    "product manager": {
+      "count": 20,
+      "variations": {
+        "Product Manager": 10,
+        "Current Open JobsProduct Manager": 5,
+        "Current Open JobsProduct ManagerOpen ApplicationsCustomer Support": 5
+      },
+      "most_common": "Product Manager",
+      "companies": [
+        "Work at MailerLite - Open Job Positions - MailerLite"
+      ]
+    },
+    "growth product manager": {
+      "count": 10,
+      "variations": {
+        "Senior Growth Product Manager": 5,
+        "Jakub TutajSenior Growth Product ManagerMixmax": 5
+      },
+      "most_common": "Senior Growth Product Manager",
+      "companies": [
+        "Grow your career with Mixmax | Mixmax"
+      ]
+    },
+    "product manager, vpn": {
+      "count": 5,
+      "variations": {
+        "Senior Product Manager, VPN": 5
+      },
+      "most_common": "Senior Product Manager, VPN",
+      "companies": [
+        "Mozilla Careers \u2014 All open positions at Mozilla"
+      ]
+    }
+  }
+}

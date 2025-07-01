@@ -2,7 +2,7 @@ import os
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
-from jose import jwt
+import jwt
 from backend.services.mailgun_service import mailgun_service
 
 logger = logging.getLogger(__name__)
@@ -101,7 +101,7 @@ def verify_token(token: str) -> Optional[Dict[str, Any]]:
         return payload
     except jwt.ExpiredSignatureError:
         return None
-    except jwt.JWTError:
+    except jwt.InvalidTokenError:
         return None
 
 def send_verification_email(email: str, token: str) -> bool:

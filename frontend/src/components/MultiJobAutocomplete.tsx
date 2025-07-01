@@ -61,14 +61,25 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
 
     setIsLoading(true);
     try {
-      const baseUrl = await getApiUrl();
-      const apiUrl = `${baseUrl}/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=5`;
-      console.log('🔍 MultiAutocomplete API URL:', apiUrl);
+      // Önce dinamik detection dene, başarısız olursa fallback kullan
+      let baseUrl;
+      try {
+        baseUrl = await getApiUrl();
+        console.log('🔍 MultiJobAutocomplete using dynamic API URL:', baseUrl);
+      } catch (error) {
+        baseUrl = 'http://localhost:8001/api/v1';
+        console.log('🔄 MultiJobAutocomplete using fallback URL:', baseUrl);
+      }
+      
+      const apiUrl = `${baseUrl}/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=50`;
+      console.log('📡 MultiJobAutocomplete API Request:', apiUrl);
+      
       const response = await fetch(apiUrl);
+      console.log('📊 MultiJobAutocomplete Response status:', response.status, response.ok);
       
       if (response.ok) {
         const data = await response.json();
-        console.log('🔍 Raw API response:', data);
+        console.log('🔍 MultiJobAutocomplete Raw API response:', data);
         
         // Backend returns array directly, not nested in job_titles
         const positions = Array.isArray(data) ? data : data.job_titles || [];
@@ -81,16 +92,16 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
             category: item.category || 'Technology'
           }))
           .filter((item: any) => item.title && item.title.trim().length > 0)
-          .slice(0, 5); // Limit to 5 results
+          .slice(0, 50); // Increased limit to 50 results
           
-        console.log('🔍 MultiAutocomplete formatted positions:', formattedPositions);
+        console.log('✅ MultiJobAutocomplete formatted positions:', formattedPositions);
         setPositions(formattedPositions);
       } else {
-        console.error('❌ Failed to fetch job titles, status:', response.status);
+        console.error('❌ Failed to fetch job titles, status:', response.status, 'response text:', await response.text());
         setPositions([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching job titles:', error);
+      console.error('❌ MultiJobAutocomplete error fetching job titles:', error);
       setPositions([]);
     } finally {
       setIsLoading(false);

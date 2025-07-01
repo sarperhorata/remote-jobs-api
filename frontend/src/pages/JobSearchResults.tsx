@@ -243,7 +243,7 @@ export default function JobSearchResults() {
       const queryParams = new URLSearchParams({
         q: searchQuery,
         page: page.toString(),
-        limit: '20',
+        limit: '5000',
         sort_by: filters.sortBy,
         posted_age: filters.postedAge,
         ...(filters.workTypes.length > 0 && { work_type: filters.workTypes.join(',') }),
@@ -268,7 +268,7 @@ export default function JobSearchResults() {
       }
       
       setTotalJobs(data.total || 0);
-      setHasMore(newJobs.length === 20); // Assume no more if less than limit
+      setHasMore(newJobs.length === 5000); // Assume no more if less than limit
     } catch (e: any) {
       console.error(e.message);
       if (!append) {

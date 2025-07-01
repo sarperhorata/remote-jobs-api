@@ -10,6 +10,7 @@ import { AuthError } from './pages/AuthError';
 import { NotFound } from './pages/NotFound';
 import PaymentSuccess from './pages/PaymentSuccess';
 import { Toaster } from 'react-hot-toast';
+import AutocompleteTest from './pages/AutocompleteTest';
 
 // Page Components (Lazy loading for better performance)
 const HomePage = lazy(() => import('./pages/Home'));
@@ -178,6 +179,9 @@ const App: React.FC = () => {
                     </ProtectedRoute>
                   }
                 />
+
+                {/* Testing Routes */}
+                <Route path="/autocomplete-test" element={<AutocompleteTest />} />
 
                 {/* Fallback for unmatched routes */}
                 <Route path="*" element={<NotFound />} />

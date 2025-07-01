@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   X, EyeOff, Heart, ChevronDown, Check
 } from 'lucide-react';
@@ -8,6 +8,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { Job } from '../types/job';
 import Layout from '../components/Layout';
 import AuthModal from '../components/AuthModal';
+import JobCard from '../components/JobCard/JobCard';
+import SearchFilters from '../components/JobSearch/SearchFilters';
 
 interface Filters {
   workTypes: string[];
@@ -18,6 +20,8 @@ interface Filters {
   salaryRange: string;
   location: string;
   company: string;
+  page: number;
+  limit: number;
 }
 
 // Custom Multi-Select Dropdown Component
@@ -233,6 +237,8 @@ export default function JobSearchResults() {
     salaryRange: '',
     location: '',
     company: '',
+    page: 1,
+    limit: 5,
   });
   
   const [showHiddenJobs, setShowHiddenJobs] = useState(false);
@@ -306,9 +312,9 @@ export default function JobSearchResults() {
     fetchJobs();
   }, [location.search, filters]); // eslint-disable-line react-hooks/exhaustive-deps
   
-  const handleFilterChange = (newFilters: Partial<Filters>) => {
-    setFilters(prev => ({ ...prev, ...newFilters }));
-  };
+  const handleFiltersChange = useCallback((newFilters: Partial<Filters>) => {
+    setFilters(prev => ({ ...prev, ...newFilters, page: newFilters.page || 1 }));
+  }, []);
 
   // Remove filter helper (commented as not currently used in UI)
   // const removeFilter = (filterKey: keyof Filters) => {
@@ -358,430 +364,202 @@ export default function JobSearchResults() {
     });
   };
 
-  const hideJob = (jobId: string) => {
-    setHiddenJobs(prev => new Set(prev).add(jobId));
-    toast.success("Job hidden");
+  // Hide/reveal job functions
+  const handleJobHide = (jobId: string) => {
+    setHiddenJobs(prev => {
+      const newHidden = new Set(prev);
+      newHidden.add(jobId);
+      return newHidden;
+    });
+    
+    // Update total count for display
+    setTotalJobs(prev => prev - 1);
+    toast.success('Job hidden successfully');
   };
-  
-  const filteredJobs = useMemo(() => {
-    if (showHiddenJobs) return jobs;
-    return jobs.filter(job => !hiddenJobs.has(job._id || job.id));
-  }, [jobs, hiddenJobs, showHiddenJobs]);
+
+  const handleJobReveal = (jobId: string) => {
+    setHiddenJobs(prev => {
+      const newHidden = new Set(prev);
+      newHidden.delete(jobId);
+      return newHidden;
+    });
+    
+    // Update total count for display
+    setTotalJobs(prev => prev + 1);
+    toast.success('Job revealed successfully');
+  };
+
+  // Calculate visible jobs count
+  const visibleJobsCount = useMemo(() => {
+    return jobs.filter(job => !hiddenJobs.has(job._id || job.id || '')).length;
+  }, [jobs, hiddenJobs]);
+
+  // Calculate actual displayed total (excluding hidden jobs)
+  const displayedTotal = useMemo(() => {
+    return totalJobs - hiddenJobs.size;
+  }, [totalJobs, hiddenJobs]);
 
   return (
     <Layout>
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Compact Filter Bar */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-600 p-4 mb-6 transition-colors duration-200">
-          {/* First Row - Main Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
-            {/* Work Type Multi-Select */}
-            <MultiSelectDropdown
-              label="Work Type"
-              options={[
-                { value: "remote", label: "Remote" },
-                { value: "hybrid", label: "Hybrid" },
-                { value: "on-site", label: "On-site" }
-              ]}
-              selectedValues={filters.workTypes}
-              onChange={(values) => handleFilterChange({ workTypes: values })}
-              placeholder="All Types"
-            />
-
-            {/* Job Type Multi-Select */}
-            <MultiSelectDropdown
-              label="Job Type"
-              options={[
-                { value: "full-time", label: "Full-time" },
-                { value: "part-time", label: "Part-time" },
-                { value: "contract", label: "Contract" },
-                { value: "freelance", label: "Freelance" }
-              ]}
-              selectedValues={filters.jobTypes}
-              onChange={(values) => handleFilterChange({ jobTypes: values })}
-              placeholder="All Types"
-            />
-
-            {/* Experience Multi-Select */}
-            <MultiSelectDropdown
-              label="Experience"
-              options={[
-                { value: "entry", label: "Entry (0-2y)" },
-                { value: "mid", label: "Mid (3-5y)" },
-                { value: "senior", label: "Senior (6y+)" },
-                { value: "lead", label: "Lead/Manager" }
-              ]}
-              selectedValues={filters.experiences}
-              onChange={(values) => handleFilterChange({ experiences: values })}
-              placeholder="All Levels"
-            />
-
-            {/* Post Time Dropdown */}
-            <div className="relative">
-              <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">Post Time</label>
-              <div className="relative">
-                <select
-                  value={filters.postedAge}
-                  onChange={(e) => handleFilterChange({ postedAge: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 appearance-none transition-colors duration-200"
-                >
-                  <option value="1DAY">24 hours</option>
-                  <option value="3DAYS">3 days</option>
-                  <option value="7DAYS">1 week</option>
-                  <option value="30DAYS">1 month</option>
-                </select>
-                <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-400 pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Salary Dropdown */}
-            <div className="relative">
-              <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">Salary</label>
-              <div className="relative">
-                <select
-                  value={filters.salaryRange}
-                  onChange={(e) => handleFilterChange({ salaryRange: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 appearance-none transition-colors duration-200"
-                >
-                  <option value="">Any</option>
-                  <option value="0-36000">$0-36K</option>
-                  <option value="36000-72000">$36K-72K</option>
-                  <option value="72000-108000">$72K-108K</option>
-                  <option value="108000-144000">$108K-144K</option>
-                  <option value="144000-180000">$144K-180K</option>
-                  <option value="180000+">$180K+</option>
-                </select>
-                <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-400 pointer-events-none" />
-              </div>
-            </div>
-          </div>
-
-          {/* Second Row - Location, Company, Clear All */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-            {/* Location Autocomplete */}
-            <AutocompleteInput
-              label="Location"
-              value={filters.location}
-              onChange={(value) => handleFilterChange({ location: value })}
-              placeholder="City, Country..."
-              type="location"
-            />
-
-            {/* Company Autocomplete */}
-            <AutocompleteInput
-              label="Company"
-              value={filters.company}
-              onChange={(value) => handleFilterChange({ company: value })}
-              placeholder="Company name..."
-              type="company"
-            />
-
-            {/* Clear All + Show Hidden */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setFilters({
-                  workTypes: [],
-                  jobTypes: [],
-                  experiences: [],
-                  postedAge: '30DAYS',
-                  sortBy: 'relevance',
-                  salaryRange: '',
-                  location: '',
-                  company: '',
-                })}
-                className="flex-1 px-4 py-2 text-sm text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-lg transition-colors duration-200"
-              >
-                Clear All
-              </button>
-              <label className="flex items-center text-sm">
-                <input
-                  type="checkbox"
-                  checked={showHiddenJobs}
-                  onChange={(e) => setShowHiddenJobs(e.target.checked)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-slate-600 rounded dark:bg-slate-700 mr-2"
+      {/* Main Content */}
+      <div className="flex-1 relative">
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
+          <div className="flex flex-col xl:flex-row gap-8 min-h-[600px]">
+            {/* Filters Sidebar */}
+            <div className="xl:w-80 flex-shrink-0">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-6 sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto">
+                <SearchFilters 
+                  filters={filters}
+                  onFiltersChange={handleFiltersChange}
+                  availableCompanies={availableCompanies}
+                  availableLocations={availableLocations}
                 />
-                <span className="text-gray-700 dark:text-slate-300 whitespace-nowrap">Show Hidden</span>
-              </label>
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Results Header and Sort */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {loading ? 'Searching...' : `${totalJobs.toLocaleString()} jobs found${searchQuery ? ` for "${searchQuery}"` : ''}`}
-            </h1>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Sort by:</span>
-              <select
-                value={filters.sortBy}
-                onChange={(e) => handleFilterChange({ sortBy: e.target.value })}
-                className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="relevance">Most Relevant</option>
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Active Filters Tags */}
-        {(filters.workTypes.length > 0 || filters.jobTypes.length > 0 || filters.experiences.length > 0 || filters.location || filters.company || filters.salaryRange) && (
-          <div className="flex flex-wrap gap-2 items-center mb-4">
-            <span className="text-sm text-gray-600 dark:text-gray-400">Active filters:</span>
-            {filters.workTypes.map(type => (
-              <span key={`work-${type}`} className="flex items-center gap-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-medium px-2.5 py-1 rounded-full">
-                {type}
-                <button onClick={() => handleFilterChange({ workTypes: filters.workTypes.filter(t => t !== type) })} className="ml-1 hover:text-blue-900 dark:hover:text-blue-100">
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            ))}
-            {filters.jobTypes.map(type => (
-              <span key={`job-${type}`} className="flex items-center gap-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-medium px-2.5 py-1 rounded-full">
-                {type}
-                <button onClick={() => handleFilterChange({ jobTypes: filters.jobTypes.filter(t => t !== type) })} className="ml-1 hover:text-green-900 dark:hover:text-green-100">
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            ))}
-            {filters.experiences.map(exp => (
-              <span key={`exp-${exp}`} className="flex items-center gap-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-xs font-medium px-2.5 py-1 rounded-full">
-                {exp}
-                <button onClick={() => handleFilterChange({ experiences: filters.experiences.filter(e => e !== exp) })} className="ml-1 hover:text-purple-900 dark:hover:text-purple-100">
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            ))}
-            {filters.location && (
-              <span className="flex items-center gap-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 text-xs font-medium px-2.5 py-1 rounded-full">
-                📍 {filters.location}
-                <button onClick={() => handleFilterChange({ location: '' })} className="ml-1 hover:text-orange-900 dark:hover:text-orange-100">
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            )}
-            {filters.company && (
-              <span className="flex items-center gap-1 bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 text-xs font-medium px-2.5 py-1 rounded-full">
-                🏢 {filters.company}
-                <button onClick={() => handleFilterChange({ company: '' })} className="ml-1 hover:text-indigo-900 dark:hover:text-indigo-100">
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            )}
-            {filters.salaryRange && (
-              <span className="flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 text-xs font-medium px-2.5 py-1 rounded-full">
-                💰 {filters.salaryRange}
-                <button onClick={() => handleFilterChange({ salaryRange: '' })} className="ml-1 hover:text-yellow-900 dark:hover:text-yellow-100">
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Job Listings - Full Width */}
-        <div className="w-full">
-          {loading ? (
-            <div className="grid gap-4">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 animate-pulse">
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1">
-                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
-                      <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
-                      <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
-                    </div>
-                    <div className="flex gap-2">
-                      <div className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-                      <div className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 mb-2">
-                    <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded-full w-16"></div>
-                    <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded-full w-20"></div>
-                    <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded-full w-14"></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid gap-3">
-              {filteredJobs.map((job) => (
-                <div
-                  key={job._id || job.id}
-                  className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md hover:border-blue-200 dark:hover:border-blue-700 transition-all duration-200"
-                >
-                  {/* Main Content Row */}
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1 min-w-0 pr-4">
-                      {/* Job Title - Ensure proper display */}
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1 leading-tight">
-                        {job.url && isAuthenticated ? (
-                          <a 
-                            href={job.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                            title={job.title}
-                          >
-                            {job.title || 'Untitled Position'}
-                          </a>
-                        ) : (
-                          <span 
-                            className={`${job.url && !isAuthenticated ? 'cursor-pointer hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
-                            onClick={() => {
-                              if (job.url && !isAuthenticated) {
-                                setIsAuthModalOpen(true);
-                                toast.error("Please login to apply for jobs", { duration: 5000 });
-                              }
-                            }}
-                            title={job.title}
-                          >
-                            {job.title || 'Untitled Position'}
+            {/* Job Listings - Equal width and height */}
+            <div className="xl:flex-1 min-w-0">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 min-h-[600px] flex flex-col">
+                {/* Header */}
+                <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                        Job Search Results
+                      </h1>
+                      <p className="text-gray-600 dark:text-gray-400 mt-1">
+                        Found {displayedTotal} jobs matching your criteria
+                        {hiddenJobs.size > 0 && (
+                          <span className="text-sm text-gray-500 ml-2">
+                            ({hiddenJobs.size} hidden)
                           </span>
                         )}
-                      </h3>
-                      
-                      {/* Company & Location */}
-                      <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        <span className="font-medium">
-                          {typeof job.company === 'object' ? job.company?.name || 'Unknown Company' : job.company || 'Unknown Company'}
-                        </span>
-                        {job.location && (
-                          <>
-                            <span className="mx-2">•</span>
-                            <span>{job.location}</span>
-                          </>
-                        )}
-                        {job.salary_range && (
-                          <>
-                            <span className="mx-2">•</span>
-                            <span className="text-green-600 font-medium">{job.salary_range}</span>
-                          </>
-                        )}
-                      </div>
-
-                      {/* Quick Tags - Compact Row */}
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        {job.job_type && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                            {job.job_type}
-                          </span>
-                        )}
-                        {job.isRemote && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                            Remote
-                          </span>
-                        )}
-                        {job.experienceLevel && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                            {job.experienceLevel}
-                          </span>
-                        )}
-                        {job.created_at && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
-                            {new Date(job.created_at).toLocaleDateString()}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Skills - Compact Display */}
-                      {job.skills && job.skills.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {job.skills.slice(0, 4).map((skill, index) => (
-                            <span
-                              key={index}
-                              className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600"
-                            >
-                              {skill}
-                            </span>
-                          ))}
-                          {job.skills.length > 4 && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
-                              +{job.skills.length - 4}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Action Buttons - Compact */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <button
-                        onClick={() => markAsApplied(job._id || job.id)}
-                        className={`p-2 rounded-full transition-colors ${
-                          appliedJobs.has(job._id || job.id)
-                            ? 'text-green-500 hover:text-green-600 bg-green-50 dark:bg-green-900/20'
-                            : 'text-gray-400 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20'
-                        }`}
-                        title={appliedJobs.has(job._id || job.id) ? 'Applied' : 'Mark as applied'}
-                      >
-                        <Check className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => toggleFavorite(job._id || job.id)}
-                        className={`p-2 rounded-full transition-colors ${
-                          favoriteJobs.has(job._id || job.id)
-                            ? 'text-red-500 hover:text-red-600 bg-red-50 dark:bg-red-900/20'
-                            : 'text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
-                        }`}
-                        title={favoriteJobs.has(job._id || job.id) ? 'Remove from favorites' : 'Add to favorites'}
-                      >
-                        <Heart className="w-5 h-5" fill={favoriteJobs.has(job._id || job.id) ? 'currentColor' : 'none'} />
-                      </button>
-                      <button
-                        onClick={() => hideJob(job._id || job.id)}
-                        className="p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                        title="Hide this job"
-                      >
-                        <EyeOff className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Description - Collapsed by default */}
-                  {job.description && (
-                    <div className="border-t border-gray-100 dark:border-gray-700 pt-2">
-                      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-1">
-                        {job.description.replace(/<[^>]*>/g, '').substring(0, 120)}...
                       </p>
                     </div>
-                  )}
+                    
+                    {/* Sort Options */}
+                    <div className="flex items-center gap-3">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Sort by:
+                      </label>
+                      <select 
+                        value={filters.sortBy}
+                        onChange={(e) => handleFiltersChange({ sortBy: e.target.value })}
+                        className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="newest">Newest First</option>
+                        <option value="relevance">Most Relevant</option>
+                        <option value="oldest">Oldest First</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
 
-                  {/* Admin Info - Only for admin */}
-                  {job.source && user?.email === 'admin@buzz2remote.com' && (
-                    <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        Source: {job.source}
+                {/* Job Cards Container */}
+                <div className="flex-1 p-6">
+                  {loading ? (
+                    <div className="grid gap-4">
+                      {[...Array(8)].map((_, i) => (
+                        <div key={i} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 animate-pulse">
+                          <div className="flex justify-between items-start mb-3">
+                            <div className="flex-1">
+                              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
+                              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+                            </div>
+                            <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                          </div>
+                          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full mb-2"></div>
+                          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : jobs.length > 0 ? (
+                    <div className="space-y-4">
+                      {jobs
+                        .filter(job => !hiddenJobs.has(job._id || job.id || ''))
+                        .map((job, index) => (
+                          <JobCard
+                            key={job._id || job.id || index}
+                            job={job}
+                            isHidden={false}
+                            onHide={() => handleJobHide(job._id || job.id || `job-${index}`)}
+                            onReveal={() => handleJobReveal(job._id || job.id || `job-${index}`)}
+                          />
+                        ))}
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="text-gray-400 dark:text-gray-500 mb-4">
+                          <svg className="mx-auto h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                        </div>
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No jobs found</h3>
+                        <p className="text-gray-500 dark:text-gray-400">
+                          Try adjusting your search criteria or filters.
+                        </p>
                       </div>
                     </div>
                   )}
                 </div>
-              ))}
-            </div>
-          )}
-          
-          {/* Infinite Scroll Loading Indicator */}
-          {loadingMore && (
-            <div className="flex justify-center py-8">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                <span className="text-gray-600 dark:text-gray-400">Loading more jobs...</span>
+
+                {/* Pagination */}
+                {totalJobs > 0 && (
+                  <div className="border-t border-gray-200 dark:border-gray-700 p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-gray-700 dark:text-gray-300">
+                        Showing {Math.max(1, ((filters.page - 1) * filters.limit) + 1)} to {Math.min(filters.page * filters.limit, displayedTotal)} of {displayedTotal} results
+                        {hiddenJobs.size > 0 && (
+                          <span className="text-gray-500 ml-2">({hiddenJobs.size} jobs hidden)</span>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleFiltersChange({...filters, page: Math.max(1, filters.page - 1)})}
+                          disabled={filters.page <= 1}
+                          className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                        >
+                          Previous
+                        </button>
+                        
+                        <div className="flex items-center space-x-1">
+                          {Array.from({ length: Math.min(5, Math.ceil(totalJobs / filters.limit)) }, (_, i) => {
+                            const pageNum = i + 1;
+                            return (
+                              <button
+                                key={pageNum}
+                                onClick={() => handleFiltersChange({...filters, page: pageNum})}
+                                className={`px-3 py-2 text-sm rounded-lg ${
+                                  filters.page === pageNum
+                                    ? 'bg-blue-600 text-white'
+                                    : 'border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
+                                }`}
+                              >
+                                {pageNum}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        
+                        <button
+                          onClick={() => handleFiltersChange({...filters, page: Math.min(Math.ceil(totalJobs / filters.limit), filters.page + 1)})}
+                          disabled={filters.page >= Math.ceil(totalJobs / filters.limit)}
+                          className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-          )}
-          
-          {/* End of results message */}
-          {!loading && !loadingMore && !hasMore && jobs.length > 0 && (
-            <div className="text-center py-8">
-              <p className="text-gray-600 dark:text-gray-400">You've seen all available jobs!</p>
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </Layout>

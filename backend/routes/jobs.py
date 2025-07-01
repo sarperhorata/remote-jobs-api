@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 from bson import ObjectId
 from backend.database import get_async_db
 from backend.utils.auth import get_current_user, get_current_admin, get_current_active_user
@@ -84,45 +84,160 @@ async def search_jobs(
                 {"company": {"$regex": q, "$options": "i"}}
             ]
         
-        # Simple filters
-        if work_type and work_type.lower() == "remote":
-            query["isRemote"] = True
+        # Work Type Filter - Enhanced
+        if work_type:
+            work_type_lower = work_type.lower()
+            if work_type_lower == "remote":
+                query["$or"] = query.get("$or", []) + [
+                    {"isRemote": True},
+                    {"remote_type": {"$regex": "remote", "$options": "i"}},
+                    {"work_type": {"$regex": "remote", "$options": "i"}},
+                    {"location": {"$regex": "remote", "$options": "i"}}
+                ]
+            elif work_type_lower == "hybrid":
+                query["$or"] = query.get("$or", []) + [
+                    {"remote_type": {"$regex": "hybrid", "$options": "i"}},
+                    {"work_type": {"$regex": "hybrid", "$options": "i"}},
+                    {"location": {"$regex": "hybrid", "$options": "i"}}
+                ]
+            elif work_type_lower == "on-site" or work_type_lower == "onsite":
+                query["$and"] = query.get("$and", []) + [
+                    {"isRemote": {"$ne": True}},
+                    {"remote_type": {"$not": {"$regex": "remote|hybrid", "$options": "i"}}},
+                    {"work_type": {"$not": {"$regex": "remote|hybrid", "$options": "i"}}}
+                ]
         
+        # Job Type Filter
         if job_type:
-            query["job_type"] = {"$regex": job_type, "$options": "i"}
+            job_type_patterns = []
+            if job_type.lower() == "full-time":
+                job_type_patterns = ["full.time", "full time", "fulltime", "permanent"]
+            elif job_type.lower() == "part-time":
+                job_type_patterns = ["part.time", "part time", "parttime"]
+            elif job_type.lower() == "contract":
+                job_type_patterns = ["contract", "contractor", "freelance"]
+            elif job_type.lower() == "freelance":
+                job_type_patterns = ["freelance", "freelancer", "contract"]
+            else:
+                job_type_patterns = [job_type]
+            
+            query["$or"] = query.get("$or", []) + [
+                {"job_type": {"$regex": pattern, "$options": "i"}} for pattern in job_type_patterns
+            ]
         
+        # Experience Level Filter - NEW
+        if experience:
+            experience_lower = experience.lower()
+            experience_patterns = []
+            
+            if experience_lower == "entry" or experience_lower == "junior":
+                experience_patterns = [
+                    "entry", "junior", "jr", "graduate", "intern", "trainee", 
+                    "0-2", "0 to 2", "1-2", "fresher", "beginner"
+                ]
+            elif experience_lower == "mid" or experience_lower == "middle":
+                experience_patterns = [
+                    "mid", "middle", "intermediate", "2-5", "3-5", "2 to 5", 
+                    "3 to 5", "experienced"
+                ]
+            elif experience_lower == "senior":
+                experience_patterns = [
+                    "senior", "sr", "5+", "5-10", "6+", "expert", "specialist",
+                    "lead", "principal"
+                ]
+            elif experience_lower == "lead" or experience_lower == "manager":
+                experience_patterns = [
+                    "lead", "manager", "head", "director", "principal", "chief",
+                    "team lead", "tech lead", "senior"
+                ]
+            else:
+                experience_patterns = [experience]
+            
+            # Search in multiple fields for experience level
+            experience_or = []
+            for pattern in experience_patterns:
+                experience_or.extend([
+                    {"experience_level": {"$regex": pattern, "$options": "i"}},
+                    {"seniority_level": {"$regex": pattern, "$options": "i"}},
+                    {"title": {"$regex": pattern, "$options": "i"}},
+                    {"description": {"$regex": pattern, "$options": "i"}}
+                ])
+            
+            if experience_or:
+                query["$or"] = query.get("$or", []) + experience_or
+        
+        # Location Filter
         if location:
             query["location"] = {"$regex": location, "$options": "i"}
         
+        # Company Filter
         if company:
             query["company"] = {"$regex": company, "$options": "i"}
         
-        # Salary range filter
+        # Salary Range Filter - Enhanced
         if salary_range:
             try:
+                salary_or = []
+                
                 if salary_range.endswith('+'):
                     # Handle "180000+" format
                     min_salary = int(salary_range.replace('+', ''))
-                    query["$or"] = [
+                    salary_or = [
                         {"salary_min": {"$gte": min_salary}},
                         {"salary_max": {"$gte": min_salary}},
-                        {"salary_range": {"$regex": f"{min_salary//1000}k", "$options": "i"}}
+                        {"salary": {"$gte": min_salary}},
+                        {"salary_range": {"$regex": f"{min_salary//1000}k", "$options": "i"}},
+                        {"description": {"$regex": f"\\${min_salary//1000}k", "$options": "i"}}
                     ]
                 elif '-' in salary_range:
                     # Handle "36000-72000" format
                     min_val, max_val = map(int, salary_range.split('-'))
-                    query["$or"] = [
+                    salary_or = [
                         {"$and": [
                             {"salary_min": {"$gte": min_val}},
                             {"salary_max": {"$lte": max_val}}
                         ]},
-                        {"salary_range": {"$regex": f"{min_val//1000}k.*{max_val//1000}k|{max_val//1000}k.*{min_val//1000}k", "$options": "i"}}
+                        {"$and": [
+                            {"salary": {"$gte": min_val}},
+                            {"salary": {"$lte": max_val}}
+                        ]},
+                        {"salary_range": {"$regex": f"{min_val//1000}k.*{max_val//1000}k|{max_val//1000}k.*{min_val//1000}k", "$options": "i"}},
+                        {"description": {"$regex": f"\\${min_val//1000}k.*\\${max_val//1000}k|\\${max_val//1000}k.*\\${min_val//1000}k", "$options": "i"}}
                     ]
+                
+                if salary_or:
+                    query["$or"] = query.get("$or", []) + salary_or
+                    
             except ValueError:
                 logger.warning(f"Invalid salary range format: {salary_range}")
         
+        # Posted Age Filter - Enhanced
+        if posted_age:
+            now = datetime.utcnow()
+            
+            if posted_age == "1DAY":
+                cutoff_date = now - timedelta(days=1)
+            elif posted_age == "3DAYS":
+                cutoff_date = now - timedelta(days=3)
+            elif posted_age == "7DAYS":
+                cutoff_date = now - timedelta(days=7)
+            elif posted_age == "30DAYS":
+                cutoff_date = now - timedelta(days=30)
+            else:
+                cutoff_date = now - timedelta(days=30)  # Default to 30 days
+            
+            query["$or"] = query.get("$or", []) + [
+                {"created_at": {"$gte": cutoff_date}},
+                {"posted_date": {"$gte": cutoff_date.isoformat()}},
+                {"date_posted": {"$gte": cutoff_date.isoformat()}}
+            ]
+        
+        # Debug: Log the final query
+        logger.info(f"Search query: {query}")
+        
         # Get total count for pagination
         total = await db.jobs.count_documents(query)
+        logger.info(f"Total jobs found with filters: {total}")
         
         # Build sort criteria based on sort_by parameter
         if sort_by == "relevance":

@@ -23,7 +23,15 @@ interface ThemeProviderProps {
 // Helper function to get system theme preference
 const getSystemTheme = (): 'light' | 'dark' => {
   if (typeof window !== 'undefined' && window.matchMedia) {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    // Check if system prefers dark mode
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    // Also check time of day for auto dark mode (20:00 - 07:00)
+    const now = new Date();
+    const hour = now.getHours();
+    const isNightTime = hour >= 20 || hour < 7;
+    
+    return systemPrefersDark || isNightTime ? 'dark' : 'light';
   }
   return 'light';
 };
@@ -36,7 +44,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       if (savedTheme === 'light' || savedTheme === 'dark') {
         return savedTheme;
       }
-      // If no saved theme, use system preference
+      // If no saved theme, use system preference + time-based logic
       return getSystemTheme();
     } catch (error) {
       return getSystemTheme();
@@ -68,6 +76,32 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     }
   };
 
+  // Auto theme check based on time
+  useEffect(() => {
+    const checkAutoTheme = () => {
+      try {
+        const savedTheme = localStorage.getItem('theme');
+        // Only auto-switch if user hasn't manually set a preference
+        if (!savedTheme) {
+          const autoTheme = getSystemTheme();
+          if (autoTheme !== theme) {
+            setTheme(autoTheme);
+          }
+        }
+      } catch (error) {
+        console.warn('Could not check auto theme:', error);
+      }
+    };
+
+    // Check immediately
+    checkAutoTheme();
+
+    // Check every hour for time-based theme changes
+    const interval = setInterval(checkAutoTheme, 60 * 60 * 1000); // 1 hour
+
+    return () => clearInterval(interval);
+  }, [theme]);
+
   // Listen for system theme changes
   useEffect(() => {
     if (typeof window !== 'undefined' && window.matchMedia) {
@@ -78,12 +112,12 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
         try {
           const savedTheme = localStorage.getItem('theme');
           if (!savedTheme) {
-            const systemTheme = e.matches ? 'dark' : 'light';
+            const systemTheme = getSystemTheme(); // This now includes time-based logic
             setTheme(systemTheme);
           }
         } catch (error) {
           // If localStorage is not available, just update based on system preference
-          const systemTheme = e.matches ? 'dark' : 'light';
+          const systemTheme = getSystemTheme();
           setTheme(systemTheme);
         }
       };

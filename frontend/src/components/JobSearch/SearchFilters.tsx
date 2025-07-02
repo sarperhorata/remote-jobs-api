@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { getApiUrl } from '../../utils/apiConfig';
 
 interface SearchFiltersProps {
@@ -310,7 +310,7 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
           />
           {locationLoading && (
             <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              <div role="status" className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
             </div>
           )}
         </div>

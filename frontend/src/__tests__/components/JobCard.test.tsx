@@ -1,15 +1,13 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, MemoryRouter } from "react-router-dom";
 import "@testing-library/jest-dom";
 import JobCard from "../../components/JobCard/JobCard";
+import { useAuth } from '../../contexts/AuthContext';
 
 // Mock AuthContext
-jest.mock('../../contexts/AuthContext', () => ({
-  useAuth: () => ({
-    user: null
-  })
-}));
+jest.mock('../../contexts/AuthContext');
+const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 
 const MockWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <BrowserRouter>{children}</BrowserRouter>
@@ -32,6 +30,16 @@ const mockJob = {
 };
 
 describe("JobCard", () => {
+  beforeEach(() => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      login: jest.fn(),
+      logout: jest.fn(),
+      token: null
+    });
+  });
+
   test("renders job card with basic information", () => {
     render(
       <MockWrapper>
@@ -92,5 +100,100 @@ describe("JobCard", () => {
     );
 
     expect(screen.getByText("Object Company")).toBeInTheDocument();
+  });
+
+  it('shows hide button when onHide prop is provided', () => {
+    const mockOnHide = jest.fn();
+    
+    render(
+      <MockWrapper>
+        <JobCard job={mockJob} onHide={mockOnHide} />
+      </MockWrapper>
+    );
+
+    expect(screen.getByTitle('Hide job')).toBeInTheDocument();
+  });
+
+  it('calls onHide when hide button is clicked', () => {
+    const mockOnHide = jest.fn();
+    
+    render(
+      <MockWrapper>
+        <JobCard job={mockJob} onHide={mockOnHide} />
+      </MockWrapper>
+    );
+
+    fireEvent.click(screen.getByTitle('Hide job'));
+    expect(mockOnHide).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows reveal button when job is hidden', () => {
+    const mockOnReveal = jest.fn();
+    
+    render(
+      <MockWrapper>
+        <JobCard job={mockJob} isHidden={true} onReveal={mockOnReveal} />
+      </MockWrapper>
+    );
+
+    expect(screen.getByTitle('Show job')).toBeInTheDocument();
+  });
+
+  it('calls onReveal when reveal button is clicked', () => {
+    const mockOnReveal = jest.fn();
+    
+    render(
+      <MockWrapper>
+        <JobCard job={mockJob} isHidden={true} onReveal={mockOnReveal} />
+      </MockWrapper>
+    );
+
+    fireEvent.click(screen.getByTitle('Show job'));
+    expect(mockOnReveal).toHaveBeenCalledTimes(1);
+  });
+
+  it('applies opacity style when job is hidden', () => {
+    render(
+      <MockWrapper>
+        <JobCard job={mockJob} isHidden={true} />
+      </MockWrapper>
+    );
+
+    // The opacity class should be on the main card container
+    const cardContainer = screen.getByText('Frontend Developer').closest('div[class*="bg-white"]');
+    expect(cardContainer).toHaveClass('opacity-50');
+  });
+
+  it('shows auth modal when unauthenticated user clicks favorite', () => {
+    const mockOnAuthRequired = jest.fn();
+    
+    render(
+      <MockWrapper>
+        <JobCard job={mockJob} onAuthRequired={mockOnAuthRequired} />
+      </MockWrapper>
+    );
+
+    fireEvent.click(screen.getByTitle('Add to favorites'));
+    expect(mockOnAuthRequired).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles authenticated user favorite click', () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'user1', email: 'test@test.com' },
+      isAuthenticated: true,
+      login: jest.fn(),
+      logout: jest.fn(),
+      token: 'test-token'
+    });
+
+    render(
+      <MockWrapper>
+        <JobCard job={mockJob} />
+      </MockWrapper>
+    );
+
+    fireEvent.click(screen.getByTitle('Add to favorites'));
+    // Should not call onAuthRequired since user is authenticated
+    expect(screen.queryByText('You have to be signed in')).not.toBeInTheDocument();
   });
 });

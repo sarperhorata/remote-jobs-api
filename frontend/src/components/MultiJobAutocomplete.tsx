@@ -1,13 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { getApiUrl } from '../utils/apiConfig';
 
-// Icons temporarily replaced with text
-const Search = () => <span>🔍</span>;
-const ChevronDown = () => <span>▼</span>;
-const X = () => <span>✕</span>;
-const Plus = () => <span>+</span>;
-const Trash2 = () => <span>🗑️</span>;
-
 interface Position {
   title: string;
   count: number;

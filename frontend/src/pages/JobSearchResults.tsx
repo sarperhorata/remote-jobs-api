@@ -1,15 +1,13 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { 
-  X, EyeOff, Heart, ChevronDown, Check
-} from 'lucide-react';
-import toast from 'react-hot-toast';
-import { useAuth } from '../contexts/AuthContext';
-import { Job } from '../types/job';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import Layout from '../components/Layout';
 import AuthModal from '../components/AuthModal';
 import JobCard from '../components/JobCard/JobCard';
 import SearchFilters from '../components/JobSearch/SearchFilters';
+import { useAuth } from '../contexts/AuthContext';
+import { Job } from '../types/job';
+import { ChevronDown } from '../components/icons/EmojiIcons';
 
 interface Filters {
   workTypes: string[];
@@ -210,22 +208,17 @@ const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
 
 export default function JobSearchResults() {
   const location = useLocation();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   
   // State management
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [totalJobs, setTotalJobs] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   
   // Job status tracking
-  const [favoriteJobs, setFavoriteJobs] = useState(new Set<string>());
-  const [hiddenJobs, setHiddenJobs] = useState(new Set<string>());
-  const [appliedJobs, setAppliedJobs] = useState(new Set<string>());
+  const [hiddenJobs, setHiddenJobs] = useState<Set<string>>(new Set());
   
   // Filters
   const [filters, setFilters] = useState<Filters>({
@@ -241,15 +234,17 @@ export default function JobSearchResults() {
     limit: 5,
   });
   
-  const [showHiddenJobs, setShowHiddenJobs] = useState(false);
+  // Add missing state variables
+  const [availableCompanies, setAvailableCompanies] = useState<string[]>([]);
+  const [availableLocations, setAvailableLocations] = useState<string[]>([]);
 
-  const fetchJobs = async (page = 1, append = false) => {
-    append ? setLoadingMore(true) : setLoading(true);
+  const fetchJobs = async () => {
+    setLoading(true);
     try {
       const queryParams = new URLSearchParams({
         q: searchQuery,
-        page: page.toString(),
-        limit: '5000',
+        page: filters.page.toString(),
+        limit: filters.limit.toString(),
         sort_by: filters.sortBy,
         posted_age: filters.postedAge,
         ...(filters.workTypes.length > 0 && { work_type: filters.workTypes.join(',') }),
@@ -263,48 +258,16 @@ export default function JobSearchResults() {
       const response = await fetch(`${await import('../utils/apiConfig').then(m => m.getApiUrl())}/jobs/search?${queryParams}`);
       const data = await response.json();
       
-      const newJobs = data.jobs || [];
-      
-      if (append) {
-        setJobs(prev => [...prev, ...newJobs]);
-        setCurrentPage(page);
-      } else {
-        setJobs(newJobs);
-        setCurrentPage(1);
-      }
-      
+      setJobs(data.jobs || []);
       setTotalJobs(data.total || 0);
-      setHasMore(newJobs.length === 5000); // Assume no more if less than limit
     } catch (e: any) {
       console.error(e.message);
-      if (!append) {
-        setJobs([]);
-        setTotalJobs(0);
-      }
+      setJobs([]);
+      setTotalJobs(0);
     } finally {
       setLoading(false);
-      setLoadingMore(false);
     }
   };
-
-  // Infinite scroll handler
-  const loadMore = () => {
-    if (!loadingMore && hasMore) {
-      fetchJobs(currentPage + 1, true);
-    }
-  };
-
-  // Scroll event listener for infinite scroll
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 1000) {
-        loadMore();
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [loadingMore, hasMore, currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -315,54 +278,6 @@ export default function JobSearchResults() {
   const handleFiltersChange = useCallback((newFilters: Partial<Filters>) => {
     setFilters(prev => ({ ...prev, ...newFilters, page: newFilters.page || 1 }));
   }, []);
-
-  // Remove filter helper (commented as not currently used in UI)
-  // const removeFilter = (filterKey: keyof Filters) => {
-  //   if (filterKey === 'workTypes' || filterKey === 'jobTypes' || filterKey === 'experiences') {
-  //     setFilters(prev => ({ ...prev, [filterKey]: [] }));
-  //   } else {
-  //     setFilters(prev => ({ ...prev, [filterKey]: '' }));
-  //   }
-  // };
-  
-  // Job action handlers
-  const toggleFavorite = (jobId: string) => {
-    if (!isAuthenticated) {
-      setIsAuthModalOpen(true);
-      toast.error("Please login to save favorites");
-      return;
-    }
-    setFavoriteJobs(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(jobId)) {
-        newSet.delete(jobId);
-        toast.success("Removed from favorites");
-      } else {
-        newSet.add(jobId);
-        toast.success("Added to favorites");
-      }
-      return newSet;
-    });
-  };
-  
-  const markAsApplied = (jobId: string) => {
-    if (!isAuthenticated) {
-      setIsAuthModalOpen(true);
-      toast.error("Please login to track applications");
-      return;
-    }
-    setAppliedJobs(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(jobId)) {
-        newSet.delete(jobId);
-        toast.success("Removed from applied");
-      } else {
-        newSet.add(jobId);
-        toast.success("Marked as applied");
-      }
-      return newSet;
-    });
-  };
 
   // Hide/reveal job functions
   const handleJobHide = (jobId: string) => {
@@ -388,11 +303,6 @@ export default function JobSearchResults() {
     setTotalJobs(prev => prev + 1);
     toast.success('Job revealed successfully');
   };
-
-  // Calculate visible jobs count
-  const visibleJobsCount = useMemo(() => {
-    return jobs.filter(job => !hiddenJobs.has(job._id || job.id || '')).length;
-  }, [jobs, hiddenJobs]);
 
   // Calculate actual displayed total (excluding hidden jobs)
   const displayedTotal = useMemo(() => {
@@ -528,7 +438,7 @@ export default function JobSearchResults() {
                         </button>
                         
                         <div className="flex items-center space-x-1">
-                          {Array.from({ length: Math.min(5, Math.ceil(totalJobs / filters.limit)) }, (_, i) => {
+                          {Array.from({ length: Math.min(5, Math.ceil(displayedTotal / filters.limit)) }, (_, i) => {
                             const pageNum = i + 1;
                             return (
                               <button
@@ -547,8 +457,8 @@ export default function JobSearchResults() {
                         </div>
                         
                         <button
-                          onClick={() => handleFiltersChange({...filters, page: Math.min(Math.ceil(totalJobs / filters.limit), filters.page + 1)})}
-                          disabled={filters.page >= Math.ceil(totalJobs / filters.limit)}
+                          onClick={() => handleFiltersChange({...filters, page: Math.min(Math.ceil(displayedTotal / filters.limit), filters.page + 1)})}
+                          disabled={filters.page >= Math.ceil(displayedTotal / filters.limit)}
                           className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                         >
                           Next

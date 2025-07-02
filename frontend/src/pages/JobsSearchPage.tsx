@@ -8,13 +8,14 @@ import JobApplicationModal from '../components/JobSearch/JobApplicationModal';
 interface SearchFilters {
   query: string;
   location: string;
-  workTypes: string[];
-  postedAge: string;
-  salaryRange: string;
-  experienceLevel: string;
-  companySize: string;
-  industry: string;
-  negativeKeywords: string;
+  jobType: string;
+  workType: string[];
+  experience_level: string;
+  salaryMin: string;
+  salaryMax: string;
+  company: string;
+  postedWithin: string;
+  negativeKeywords?: string;
 }
 
 const JobsSearchPage: React.FC = () => {
@@ -32,14 +33,15 @@ const JobsSearchPage: React.FC = () => {
   const [savedJobs, setSavedJobs] = useState<Set<string>>(new Set());
 
   const [filters, setFilters] = useState<SearchFilters>({
-    query: searchParams.get('query') || '',
-    location: searchParams.get('location') || 'anywhere',
-    workTypes: searchParams.get('workTypes')?.split(',') || ['remote'],
-    postedAge: searchParams.get('postedAge') || '30DAYS',
-    salaryRange: searchParams.get('salaryRange') || '',
-    experienceLevel: searchParams.get('experienceLevel') || '',
-    companySize: searchParams.get('companySize') || '',
-    industry: searchParams.get('industry') || '',
+    query: searchParams.get('q') || '',
+    location: searchParams.get('location') || '',
+    jobType: searchParams.get('jobType') || '',
+    workType: searchParams.get('workType') ? searchParams.get('workType').split(',') : [],
+    experience_level: searchParams.get('experience_level') || '',
+    salaryMin: searchParams.get('salaryMin') || '',
+    salaryMax: searchParams.get('salaryMax') || '',
+    company: searchParams.get('company') || '',
+    postedWithin: searchParams.get('postedWithin') || '',
     negativeKeywords: searchParams.get('negativeKeywords') || ''
   });
 
@@ -138,20 +140,17 @@ const JobsSearchPage: React.FC = () => {
   const applyFilters = () => {
     let filtered = jobs.filter(job => {
       // Work type filter
-      if (filters.workTypes.length > 0) {
-        const jobWorkType = job.isRemote ? 'remote' : 'onsite';
-        if (!filters.workTypes.includes(jobWorkType)) {
-          return false;
-        }
+      if (filters.workType && filters.workType.length > 0 && !filters.workType.includes(job.isRemote ? 'remote' : 'onsite')) {
+        return false;
       }
 
       // Posted age filter
-      if (filters.postedAge && filters.postedAge !== 'ALL') {
+      if (filters.postedWithin && filters.postedWithin !== 'ALL') {
         const jobDate = new Date(job.createdAt);
         const now = new Date();
         const daysDiff = Math.floor((now.getTime() - jobDate.getTime()) / (1000 * 60 * 60 * 24));
 
-        switch (filters.postedAge) {
+        switch (filters.postedWithin) {
           case '1DAY':
             if (daysDiff > 1) return false;
             break;
@@ -168,8 +167,8 @@ const JobsSearchPage: React.FC = () => {
       }
 
       // Salary range filter
-      if (filters.salaryRange) {
-        const [minSalary, maxSalary] = filters.salaryRange.split('-').map(s => 
+      if (filters.salaryMin && filters.salaryMax) {
+        const [minSalary, maxSalary] = [filters.salaryMin, filters.salaryMax].map(s => 
           s.includes('k') ? parseInt(s) * 1000 : s === '+' ? Infinity : parseInt(s)
         );
         
@@ -183,19 +182,19 @@ const JobsSearchPage: React.FC = () => {
         }
       }
 
-      // Experience level filter
-      if (filters.experienceLevel) {
-        const experienceMap: Record<string, string[]> = {
-          'internship': ['intern', 'internship'],
-          'entry': ['entry', 'junior', 'graduate'],
-          'mid': ['mid', 'intermediate', 'experienced'],
-          'senior': ['senior', 'principal', 'staff'],
-          'lead': ['lead', 'manager', 'head'],
-          'executive': ['director', 'vp', 'cto', 'ceo']
+      // Experience level filtering with intelligent matching
+      if (filters.experience_level) {
+        // Map selected experience level to keywords
+        const experienceMap: { [key: string]: string[] } = {
+          'Entry Level': ['entry', 'junior', 'jr', 'intern', 'graduate', 'trainee', '0-2', 'beginner'],
+          'Mid Level': ['mid', 'intermediate', '2-5', '3-5', 'experienced'],
+          'Senior Level': ['senior', 'sr', '5+', '6+', 'expert', 'specialist', 'lead'],
+          'Lead': ['lead', 'principal', 'manager', 'head', 'director', 'team lead'],
+          'Executive': ['executive', 'chief', 'ceo', 'cto', 'vp', 'vice president']
         };
         
-        const levelKeywords = experienceMap[filters.experienceLevel] || [];
-        const jobLevel = job.experienceLevel?.toLowerCase() || '';
+        const levelKeywords = experienceMap[filters.experience_level] || [];
+        const jobLevel = job.experience_level?.toLowerCase() || '';
         const jobTitle = job.title.toLowerCase();
         
         if (!levelKeywords.some(keyword => 
@@ -351,13 +350,13 @@ const JobsSearchPage: React.FC = () => {
                   <button
                     key={option.value}
                     onClick={() => {
-                      const newWorkTypes = filters.workTypes.includes(option.value)
-                        ? filters.workTypes.filter(t => t !== option.value)
-                        : [...filters.workTypes, option.value];
-                      setFilters(prev => ({ ...prev, workTypes: newWorkTypes }));
+                      const newWorkTypes = filters.workType.includes(option.value)
+                        ? filters.workType.filter(t => t !== option.value)
+                        : [...filters.workType, option.value];
+                      setFilters(prev => ({ ...prev, workType: newWorkTypes }));
                     }}
                     className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                      filters.workTypes.includes(option.value)
+                      filters.workType.includes(option.value)
                         ? 'bg-blue-100 text-blue-800 border-2 border-blue-300'
                         : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-gray-300'
                     }`}
@@ -370,8 +369,8 @@ const JobsSearchPage: React.FC = () => {
 
               {/* Posted Age */}
               <select
-                value={filters.postedAge}
-                onChange={(e) => setFilters(prev => ({ ...prev, postedAge: e.target.value }))}
+                value={filters.postedWithin}
+                onChange={(e) => setFilters(prev => ({ ...prev, postedWithin: e.target.value }))}
                 className="px-4 py-2 border-2 border-gray-200 rounded-full text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-300"
               >
                 {postedAgeOptions.map(option => (
@@ -397,8 +396,8 @@ const JobsSearchPage: React.FC = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Salary Range</label>
                     <select
-                      value={filters.salaryRange}
-                      onChange={(e) => setFilters(prev => ({ ...prev, salaryRange: e.target.value }))}
+                      value={filters.salaryMin}
+                      onChange={(e) => setFilters(prev => ({ ...prev, salaryMin: e.target.value }))}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Any Salary</option>
@@ -412,11 +411,11 @@ const JobsSearchPage: React.FC = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Experience Level</label>
                     <select
-                      value={filters.experienceLevel}
-                      onChange={(e) => setFilters(prev => ({ ...prev, experienceLevel: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                      value={filters.experience_level}
+                      onChange={(e) => setFilters(prev => ({ ...prev, experience_level: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                      <option value="">Any Experience</option>
+                      <option value="">All Experience Levels</option>
                       {experienceLevels.map(level => (
                         <option key={level.value} value={level.value}>{level.label}</option>
                       ))}
@@ -427,8 +426,8 @@ const JobsSearchPage: React.FC = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Company Size</label>
                     <select
-                      value={filters.companySize}
-                      onChange={(e) => setFilters(prev => ({ ...prev, companySize: e.target.value }))}
+                      value={filters.company}
+                      onChange={(e) => setFilters(prev => ({ ...prev, company: e.target.value }))}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Any Size</option>
@@ -485,13 +484,14 @@ const JobsSearchPage: React.FC = () => {
               onClick={() => {
                 setFilters({
                   query: '',
-                  location: 'anywhere',
-                  workTypes: ['remote'],
-                  postedAge: '30DAYS',
-                  salaryRange: '',
-                  experienceLevel: '',
-                  companySize: '',
-                  industry: '',
+                  location: '',
+                  jobType: '',
+                  workType: [],
+                  experience_level: '',
+                  salaryMin: '',
+                  salaryMax: '',
+                  company: '',
+                  postedWithin: '',
                   negativeKeywords: ''
                 });
               }}
@@ -568,9 +568,9 @@ const JobsSearchPage: React.FC = () => {
                           {job.jobType}
                         </span>
                       )}
-                      {job.experienceLevel && (
+                      {job.experience_level && (
                         <span className="px-3 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">
-                          {job.experienceLevel}
+                          {job.experience_level}
                         </span>
                       )}
                       {job.isRemote && (

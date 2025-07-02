@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = "test_google_client_secret"
     GOOGLE_REDIRECT_URI: str = "http://localhost:3000/auth/callback"
     
+    # LinkedIn OAuth
+    LINKEDIN_CLIENT_ID: str = "77h3x8xn95e5rg"
+    LINKEDIN_CLIENT_SECRET: str = "WPL_AP1.wL2fdcuI4DxM8lL8.R5LwwA=="
+    LINKEDIN_REDIRECT_URI: str = "http://localhost:3000/auth/linkedin/callback"
+    
     # Stripe
     STRIPE_SECRET_KEY: str = "sk_test_fake"
     STRIPE_WEBHOOK_SECRET: str = "whsec_test_secret"

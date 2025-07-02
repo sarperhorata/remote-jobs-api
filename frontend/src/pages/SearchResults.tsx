@@ -2,30 +2,47 @@ import React, { useState } from 'react';
 import SearchFilters from '../components/JobSearch/SearchFilters';
 import SearchResultsList from '../components/JobSearch/SearchResultsList';
 import Header from '../components/Header';
+import { Job } from '../types/job';
 
-const SearchResults = () => {
-  // State for filters
-  const [filters, setFilters] = useState({
-    workTypes: [],
-    jobTypes: [],
+interface Filters {
+  query: string;
+  location: string;
+  jobType: string;
+  workType: string;
+  experience_level: string;
+  salaryMin: string;
+  salaryMax: string;
+  company: string;
+  postedWithin: string;
+  experiences?: string[];
+  postedAge?: string;
+  salaryRange?: string;
+  page?: number;
+}
+
+const SearchResults: React.FC = () => {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [totalResults, setTotalResults] = useState(0);
+  const [filters, setFilters] = useState<Filters>({
+    query: '',
+    location: '',
+    jobType: '',
+    workType: '',
+    experience_level: '',
+    salaryMin: '',
+    salaryMax: '',
+    company: '',
+    postedWithin: '',
     experiences: [],
     postedAge: '30DAYS',
-    sortBy: 'relevance',
-    salaryRange: '',
-    location: '',
-    company: '',
-    page: 1,
-    limit: 10
+    salaryRange: ''
   });
 
   // Filter change handler
   const handleFiltersChange = (newFilters: any) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
   };
-
-  // Mock data for now
-  const jobs = []; 
-  const totalResults = 0;
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -36,6 +53,8 @@ const SearchResults = () => {
             <SearchFilters 
               filters={filters}
               onFiltersChange={handleFiltersChange}
+              availableCompanies={[]}
+              availableLocations={[]}
             />
           </aside>
           <section className="lg:col-span-3">

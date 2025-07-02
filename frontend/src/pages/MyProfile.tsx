@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, Mail, MapPin, Briefcase, Settings, Edit3, Save, X, Camera } from 'lucide-react';
+import { 
+  User, Edit3, Save, X, MapPin, Mail, Briefcase, Settings, 
+  Download, Camera, Plus, Calendar, GraduationCap,
+  Linkedin, Github, Twitter, Globe
+} from 'lucide-react';
 import Header from '../components/Header';
 import { useAuth } from '../contexts/AuthContext';
+import { toast } from 'react-hot-toast';
 
 interface UserProfile {
   id: string;
@@ -16,6 +21,48 @@ interface UserProfile {
   salary_expectations?: string;
   created_at?: string;
   profile_picture?: string;
+  
+  // Social Media Links
+  linkedin_url?: string;
+  github_url?: string;
+  twitter_url?: string;
+  instagram_url?: string;
+  facebook_url?: string;
+  youtube_url?: string;
+  personal_website?: string;
+  
+  // Professional Info (for LinkedIn import)
+  work_experience?: WorkExperience[];
+  education?: Education[];
+  certificates?: Certificate[];
+}
+
+interface WorkExperience {
+  title: string;
+  company: string;
+  location?: string;
+  start_date: string;
+  end_date?: string;
+  current: boolean;
+  description?: string;
+}
+
+interface Education {
+  degree: string;
+  institution: string;
+  field_of_study?: string;
+  start_date: string;
+  end_date?: string;
+  current: boolean;
+  gpa?: string;
+}
+
+interface Certificate {
+  name: string;
+  issuer: string;
+  issue_date: string;
+  expiry_date?: string;
+  credential_url?: string;
 }
 
 interface UserStats {
@@ -32,6 +79,7 @@ const MyProfile: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<UserProfile>>({});
+  const [importingLinkedIn, setImportingLinkedIn] = useState(false);
 
   const loadUserProfile = useCallback(async () => {
     try {
@@ -50,7 +98,21 @@ const MyProfile: React.FC = () => {
         work_preferences: preferences.work_types || ['Remote'],
         salary_expectations: preferences.salary_ranges?.[0] || '$60,000 - $80,000',
         created_at: user?.created_at || new Date().toISOString(),
-        profile_picture: user?.profile_picture || user?.profilePicture || null
+        profile_picture: user?.profile_picture || user?.profilePicture || null,
+        
+        // Social Media Links
+        linkedin_url: preferences.linkedin_url || '',
+        github_url: preferences.github_url || '',
+        twitter_url: preferences.twitter_url || '',
+        instagram_url: preferences.instagram_url || '',
+        facebook_url: preferences.facebook_url || '',
+        youtube_url: preferences.youtube_url || '',
+        personal_website: preferences.personal_website || '',
+        
+        // Professional Info (for LinkedIn import)
+        work_experience: preferences.work_experience || [],
+        education: preferences.education || [],
+        certificates: preferences.certificates || []
       };
       
       setProfile(profileData);
@@ -98,7 +160,17 @@ const MyProfile: React.FC = () => {
         skills: editForm.skills,
         experience_levels: editForm.experience_level ? [editForm.experience_level] : [],
         work_types: editForm.work_preferences,
-        salary_ranges: editForm.salary_expectations ? [editForm.salary_expectations] : []
+        salary_ranges: editForm.salary_expectations ? [editForm.salary_expectations] : [],
+        linkedin_url: editForm.linkedin_url,
+        github_url: editForm.github_url,
+        twitter_url: editForm.twitter_url,
+        instagram_url: editForm.instagram_url,
+        facebook_url: editForm.facebook_url,
+        youtube_url: editForm.youtube_url,
+        personal_website: editForm.personal_website,
+        work_experience: editForm.work_experience,
+        education: editForm.education,
+        certificates: editForm.certificates
       };
       
       localStorage.setItem('userPreferences', JSON.stringify(preferences));
@@ -117,6 +189,172 @@ const MyProfile: React.FC = () => {
   const handleCancelEdit = () => {
     setEditForm(profile || {});
     setEditing(false);
+  };
+
+  // LinkedIn Import Handler with OAuth
+  const handleLinkedInImport = async () => {
+    try {
+      setImportingLinkedIn(true);
+      
+      // LinkedIn OAuth URL
+      const linkedInAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?` +
+        `response_type=code&` +
+        `client_id=${process.env.REACT_APP_LINKEDIN_CLIENT_ID}&` +
+        `redirect_uri=${encodeURIComponent(window.location.origin + '/auth/linkedin/callback')}&` +
+        `scope=r_liteprofile%20r_emailaddress&` +
+        `state=${Math.random().toString(36).substring(7)}`;
+      
+      // Store current user email for verification
+      localStorage.setItem('linkedin_auth_email', user?.email || '');
+      
+      // Open LinkedIn OAuth in popup
+      const popup = window.open(
+        linkedInAuthUrl,
+        'linkedinAuth',
+        'width=600,height=600,scrollbars=yes,resizable=yes'
+      );
+      
+      // Listen for popup to close and handle the result
+      const checkClosed = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(checkClosed);
+          setImportingLinkedIn(false);
+          
+          // Check if we received LinkedIn data
+          const linkedInData = localStorage.getItem('linkedin_profile_data');
+          if (linkedInData) {
+            const profileData = JSON.parse(linkedInData);
+            
+            // Verify email matches
+            if (profileData.email === user?.email) {
+              // Update profile with LinkedIn data
+              const updatedProfile = {
+                ...profile,
+                name: profileData.name || profile.name,
+                profile_picture: profileData.picture || profile.profile_picture,
+                linkedin_url: profileData.profileUrl || profile.linkedin_url,
+                bio: profileData.summary || profile.bio,
+                location: profileData.location || profile.location,
+                work_experience: [
+                  ...profile.work_experience,
+                  ...profileData.experience.map((exp: any) => ({
+                    title: exp.title,
+                    company: exp.company,
+                    location: exp.location || '',
+                    start_date: exp.startDate,
+                    end_date: exp.endDate,
+                    current: exp.isCurrent || false,
+                    description: exp.description || ''
+                  }))
+                ],
+                education: [
+                  ...profile.education,
+                  ...profileData.education.map((edu: any) => ({
+                    institution: edu.schoolName,
+                    degree: edu.degreeName,
+                    field_of_study: edu.fieldOfStudy || '',
+                    start_date: edu.startDate,
+                    end_date: edu.endDate,
+                    current: edu.isCurrent || false,
+                    gpa: ''
+                  }))
+                ]
+              };
+              
+              setProfile(updatedProfile);
+              setEditForm(updatedProfile);
+              
+              // Clean up
+              localStorage.removeItem('linkedin_profile_data');
+              localStorage.removeItem('linkedin_auth_email');
+              
+              toast.success('LinkedIn profile imported successfully!');
+            } else {
+              toast.error('LinkedIn email does not match your account email.');
+            }
+          }
+        }
+      }, 1000);
+      
+    } catch (error) {
+      console.error('LinkedIn import error:', error);
+      setImportingLinkedIn(false);
+      toast.error('Failed to import LinkedIn profile. Please try again.');
+    }
+  };
+
+  // Add work experience
+  const addWorkExperience = () => {
+    const newExperience: WorkExperience = {
+      title: '',
+      company: '',
+      location: '',
+      start_date: '',
+      end_date: '',
+      current: false,
+      description: ''
+    };
+    const currentExperiences = profile?.work_experience || [];
+    setEditForm({
+      ...editForm,
+      work_experience: [...currentExperiences, newExperience]
+    });
+  };
+
+  // Update work experience
+  const updateWorkExperience = (index: number, field: keyof WorkExperience, value: any) => {
+    const experiences = editForm.work_experience || [];
+    const updatedExperiences = [...experiences];
+    updatedExperiences[index] = { ...updatedExperiences[index], [field]: value };
+    setEditForm({ ...editForm, work_experience: updatedExperiences });
+  };
+
+  // Remove work experience
+  const removeWorkExperience = (index: number) => {
+    const experiences = editForm.work_experience || [];
+    const updatedExperiences = experiences.filter((_, i) => i !== index);
+    setEditForm({ ...editForm, work_experience: updatedExperiences });
+  };
+
+  // Add education
+  const addEducation = () => {
+    const newEducation: Education = {
+      degree: '',
+      institution: '',
+      field_of_study: '',
+      start_date: '',
+      end_date: '',
+      current: false,
+      gpa: ''
+    };
+    const currentEducation = profile?.education || [];
+    setEditForm({
+      ...editForm,
+      education: [...currentEducation, newEducation]
+    });
+  };
+
+  // Update education
+  const updateEducation = (index: number, field: keyof Education, value: any) => {
+    const education = editForm.education || [];
+    const updatedEducation = [...education];
+    updatedEducation[index] = { ...updatedEducation[index], [field]: value };
+    setEditForm({ ...editForm, education: updatedEducation });
+  };
+
+  // Remove education
+  const removeEducation = (index: number) => {
+    const education = editForm.education || [];
+    const updatedEducation = education.filter((_, i) => i !== index);
+    setEditForm({ ...editForm, education: updatedEducation });
+  };
+
+  // Handle profile image change
+  const handleProfileImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setEditForm({...editForm, profile_picture: URL.createObjectURL(file)});
+    }
   };
 
   if (!isAuthenticated) {
@@ -156,12 +394,32 @@ const MyProfile: React.FC = () => {
             <div className="flex items-center gap-6">
               {/* Profile Picture */}
               <div className="relative">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-                  {profile?.name?.charAt(0)?.toUpperCase() || 'U'}
+                <div className="w-20 h-20 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg overflow-hidden">
+                  {editForm.profile_picture ? (
+                    <img src={editForm.profile_picture} alt="Profile" className="w-full h-full object-cover" />
+                  ) : profile?.profile_picture ? (
+                    <img src={profile.profile_picture} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    profile?.name?.charAt(0)?.toUpperCase() || 'U'
+                  )}
                 </div>
-                <button className="absolute bottom-0 right-0 p-1 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors">
-                  <Camera className="w-3 h-3" />
-                </button>
+                {editing && (
+                  <>
+                    <input
+                      type="file"
+                      id="profile-picture-upload"
+                      accept="image/*"
+                      onChange={handleProfileImageChange}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="profile-picture-upload"
+                      className="absolute bottom-0 right-0 p-1 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors cursor-pointer"
+                    >
+                      <Camera className="w-3 h-3" />
+                    </label>
+                  </>
+                )}
               </div>
               
               {/* Basic Info */}
@@ -383,6 +641,353 @@ const MyProfile: React.FC = () => {
                       {skill}
                     </span>
                   )) || <span className="text-gray-500 dark:text-gray-400">No skills added</span>}
+                </div>
+              )}
+            </div>
+
+            {/* Social Media Links */}
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-600 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Social Links</h2>
+                {!editing && profile?.linkedin_url && (
+                  <button
+                    onClick={handleLinkedInImport}
+                    disabled={importingLinkedIn}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md flex items-center gap-2 transition-colors disabled:opacity-50"
+                  >
+                    {importingLinkedIn ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Importing...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        Import from LinkedIn
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* LinkedIn */}
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <Linkedin className="w-4 h-4" />
+                    LinkedIn
+                  </label>
+                  {editing ? (
+                    <input
+                      type="url"
+                      value={editForm.linkedin_url || ''}
+                      onChange={(e) => setEditForm({...editForm, linkedin_url: e.target.value})}
+                      className="w-full p-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="https://linkedin.com/in/yourprofile"
+                    />
+                  ) : (
+                    profile?.linkedin_url ? (
+                      <a href={profile.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
+                        {profile.linkedin_url}
+                      </a>
+                    ) : <span className="text-gray-500 dark:text-gray-400">Not connected</span>
+                  )}
+                </div>
+                
+                {/* GitHub */}
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <Github className="w-4 h-4" />
+                    GitHub
+                  </label>
+                  {editing ? (
+                    <input
+                      type="url"
+                      value={editForm.github_url || ''}
+                      onChange={(e) => setEditForm({...editForm, github_url: e.target.value})}
+                      className="w-full p-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="https://github.com/yourusername"
+                    />
+                  ) : (
+                    profile?.github_url ? (
+                      <a href={profile.github_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
+                        {profile.github_url}
+                      </a>
+                    ) : <span className="text-gray-500 dark:text-gray-400">Not connected</span>
+                  )}
+                </div>
+                
+                {/* Twitter */}
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <Twitter className="w-4 h-4" />
+                    Twitter/X
+                  </label>
+                  {editing ? (
+                    <input
+                      type="url"
+                      value={editForm.twitter_url || ''}
+                      onChange={(e) => setEditForm({...editForm, twitter_url: e.target.value})}
+                      className="w-full p-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="https://twitter.com/yourhandle"
+                    />
+                  ) : (
+                    profile?.twitter_url ? (
+                      <a href={profile.twitter_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
+                        {profile.twitter_url}
+                      </a>
+                    ) : <span className="text-gray-500 dark:text-gray-400">Not connected</span>
+                  )}
+                </div>
+                
+                {/* Personal Website */}
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <Globe className="w-4 h-4" />
+                    Personal Website
+                  </label>
+                  {editing ? (
+                    <input
+                      type="url"
+                      value={editForm.personal_website || ''}
+                      onChange={(e) => setEditForm({...editForm, personal_website: e.target.value})}
+                      className="w-full p-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="https://yourwebsite.com"
+                    />
+                  ) : (
+                    profile?.personal_website ? (
+                      <a href={profile.personal_website} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
+                        {profile.personal_website}
+                      </a>
+                    ) : <span className="text-gray-500 dark:text-gray-400">Not added</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Work Experience */}
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-600 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Briefcase className="w-5 h-5" />
+                  Work Experience
+                </h2>
+                {editing && (
+                  <button
+                    type="button"
+                    onClick={addWorkExperience}
+                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1 text-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Experience
+                  </button>
+                )}
+              </div>
+              
+              {editing ? (
+                <div className="space-y-4">
+                  {editForm.work_experience?.map((exp, index) => (
+                    <div key={index} className="border border-gray-200 dark:border-slate-600 rounded-lg p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input
+                          type="text"
+                          value={exp.title}
+                          onChange={(e) => updateWorkExperience(index, 'title', e.target.value)}
+                          placeholder="Job Title"
+                          className="w-full p-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg"
+                        />
+                        <input
+                          type="text"
+                          value={exp.company}
+                          onChange={(e) => updateWorkExperience(index, 'company', e.target.value)}
+                          placeholder="Company"
+                          className="w-full p-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg"
+                        />
+                        <input
+                          type="text"
+                          value={exp.location}
+                          onChange={(e) => updateWorkExperience(index, 'location', e.target.value)}
+                          placeholder="Location"
+                          className="w-full p-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg"
+                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="month"
+                            value={exp.start_date}
+                            onChange={(e) => updateWorkExperience(index, 'start_date', e.target.value)}
+                            placeholder="Start Date"
+                            className="flex-1 p-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg"
+                          />
+                          {!exp.current && (
+                            <input
+                              type="month"
+                              value={exp.end_date || ''}
+                              onChange={(e) => updateWorkExperience(index, 'end_date', e.target.value)}
+                              placeholder="End Date"
+                              className="flex-1 p-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg"
+                            />
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between">
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={exp.current}
+                            onChange={(e) => updateWorkExperience(index, 'current', e.target.checked)}
+                            className="rounded"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">Currently working here</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => removeWorkExperience(index)}
+                          className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <textarea
+                        value={exp.description || ''}
+                        onChange={(e) => updateWorkExperience(index, 'description', e.target.value)}
+                        placeholder="Description (optional)"
+                        className="w-full mt-2 p-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg"
+                        rows={2}
+                      />
+                    </div>
+                  ))}
+                  {(!editForm.work_experience || editForm.work_experience.length === 0) && (
+                    <p className="text-gray-500 dark:text-gray-400 text-center py-4">
+                      No work experience added yet. Click "Add Experience" to start.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {profile?.work_experience?.map((exp, index) => (
+                    <div key={index} className="border-l-2 border-blue-500 pl-4">
+                      <h4 className="font-medium text-gray-900 dark:text-white">{exp.title}</h4>
+                      <p className="text-gray-600 dark:text-gray-300 flex items-center gap-2">
+                        <Briefcase className="w-4 h-4" />
+                        {exp.company} {exp.location && `• ${exp.location}`}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                        <Calendar className="w-4 h-4" />
+                        {exp.start_date} - {exp.current ? 'Present' : exp.end_date}
+                      </p>
+                      {exp.description && (
+                        <p className="mt-2 text-gray-600 dark:text-gray-300">{exp.description}</p>
+                      )}
+                    </div>
+                  )) || <p className="text-gray-500 dark:text-gray-400">No work experience added</p>}
+                </div>
+              )}
+            </div>
+
+            {/* Education */}
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-600 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <GraduationCap className="w-5 h-5" />
+                  Education
+                </h2>
+                {editing && (
+                  <button
+                    type="button"
+                    onClick={addEducation}
+                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1 text-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Education
+                  </button>
+                )}
+              </div>
+              
+              {editing ? (
+                <div className="space-y-4">
+                  {editForm.education?.map((edu, index) => (
+                    <div key={index} className="border border-gray-200 dark:border-slate-600 rounded-lg p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input
+                          type="text"
+                          value={edu.institution}
+                          onChange={(e) => updateEducation(index, 'institution', e.target.value)}
+                          placeholder="Institution"
+                          className="w-full p-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg"
+                        />
+                        <input
+                          type="text"
+                          value={edu.degree}
+                          onChange={(e) => updateEducation(index, 'degree', e.target.value)}
+                          placeholder="Degree"
+                          className="w-full p-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg"
+                        />
+                        <input
+                          type="text"
+                          value={edu.field_of_study}
+                          onChange={(e) => updateEducation(index, 'field_of_study', e.target.value)}
+                          placeholder="Field of Study"
+                          className="w-full p-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg"
+                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="month"
+                            value={edu.start_date}
+                            onChange={(e) => updateEducation(index, 'start_date', e.target.value)}
+                            placeholder="Start Date"
+                            className="flex-1 p-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg"
+                          />
+                          {!edu.current && (
+                            <input
+                              type="month"
+                              value={edu.end_date || ''}
+                              onChange={(e) => updateEducation(index, 'end_date', e.target.value)}
+                              placeholder="End Date"
+                              className="flex-1 p-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg"
+                            />
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between">
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={edu.current}
+                            onChange={(e) => updateEducation(index, 'current', e.target.checked)}
+                            className="rounded"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">Currently studying here</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => removeEducation(index)}
+                          className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {(!editForm.education || editForm.education.length === 0) && (
+                    <p className="text-gray-500 dark:text-gray-400 text-center py-4">
+                      No education added yet. Click "Add Education" to start.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {profile?.education?.map((edu, index) => (
+                    <div key={index} className="border-l-2 border-green-500 pl-4">
+                      <h4 className="font-medium text-gray-900 dark:text-white">{edu.degree}</h4>
+                      <p className="text-gray-600 dark:text-gray-300">
+                        {edu.field_of_study && `${edu.field_of_study} • `}{edu.institution}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                        <Calendar className="w-4 h-4" />
+                        {edu.start_date} - {edu.current ? 'Present' : edu.end_date}
+                      </p>
+                    </div>
+                  )) || <p className="text-gray-500 dark:text-gray-400">No education added</p>}
                 </div>
               )}
             </div>

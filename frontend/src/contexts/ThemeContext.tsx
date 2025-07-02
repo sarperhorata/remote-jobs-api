@@ -108,38 +108,47 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       
       const handleSystemThemeChange = (e: MediaQueryListEvent) => {
-        // Only apply system theme if user hasn't manually set a preference
+        // Always apply system theme changes - remove localStorage override logic
+        const systemTheme = e.matches ? 'dark' : 'light';
+        setTheme(systemTheme);
+        
+        // Update localStorage to reflect system change
         try {
-          const savedTheme = localStorage.getItem('theme');
-          if (!savedTheme) {
-            const systemTheme = getSystemTheme(); // This now includes time-based logic
-            setTheme(systemTheme);
-          }
+          localStorage.setItem('theme', systemTheme);
         } catch (error) {
-          // If localStorage is not available, just update based on system preference
-          const systemTheme = getSystemTheme();
-          setTheme(systemTheme);
+          console.warn('Could not save theme to localStorage:', error);
         }
       };
 
       // Add listener for system theme changes
       if (mediaQuery.addEventListener) {
         mediaQuery.addEventListener('change', handleSystemThemeChange);
+        
+        // Also check initial system preference
+        const initialSystemTheme = mediaQuery.matches ? 'dark' : 'light';
+        if (theme !== initialSystemTheme) {
+          setTheme(initialSystemTheme);
+          try {
+            localStorage.setItem('theme', initialSystemTheme);
+          } catch (error) {
+            console.warn('Could not save initial theme to localStorage:', error);
+          }
+        }
       } else {
         // Fallback for older browsers
         mediaQuery.addListener(handleSystemThemeChange);
       }
 
-      // Cleanup listener
       return () => {
         if (mediaQuery.removeEventListener) {
           mediaQuery.removeEventListener('change', handleSystemThemeChange);
         } else {
+          // Fallback for older browsers
           mediaQuery.removeListener(handleSystemThemeChange);
         }
       };
     }
-  }, []);
+  }, [theme]);
 
   // Apply theme on mount and theme changes
   useEffect(() => {

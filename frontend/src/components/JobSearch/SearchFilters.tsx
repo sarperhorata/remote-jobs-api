@@ -1,381 +1,326 @@
-import React, { useState, useRef } from 'react';
-import { getApiUrl } from '../../utils/apiConfig';
+import React, { useState, useEffect } from 'react';
+import { Search, MapPin, Briefcase } from 'lucide-react';
+
+interface Filters {
+  query: string;
+  location: string;
+  jobType: string;
+  workType: string;
+  experience_level: string;
+  salaryMin: string;
+  salaryMax: string;
+  company: string;
+  postedWithin: string;
+  experiences?: string[];
+  postedAge?: string;
+  salaryRange?: string;
+  page?: number;
+}
 
 interface SearchFiltersProps {
-  filters: {
-    workTypes: string[];
-    jobTypes: string[];
-    experiences: string[];
-    postedAge: string;
-    sortBy: string;
-    salaryRange: string;
-    location: string;
-    company: string;
-    page: number;
-    limit: number;
-  };
-  onFiltersChange: (filters: any) => void;
-  availableCompanies?: string[];
-  availableLocations?: string[];
+  filters: Filters;
+  onFiltersChange: (filters: Partial<Filters>) => void;
+  availableCompanies?: Array<{name: string; count: number}>;
+  availableLocations?: Array<{name: string; count: number}>;
 }
 
-interface AutocompleteItem {
-  name: string;
-  count: number;
-}
-
-const SearchFilters: React.FC<SearchFiltersProps> = ({
-  filters,
+const SearchFilters: React.FC<SearchFiltersProps> = ({ 
+  filters, 
   onFiltersChange,
   availableCompanies = [],
   availableLocations = []
 }) => {
-  const [locationSuggestions, setLocationSuggestions] = useState<AutocompleteItem[]>([]);
-  const [companySuggestions, setCompanySuggestions] = useState<AutocompleteItem[]>([]);
-  const [locationLoading, setLocationLoading] = useState(false);
-  const [companyLoading, setCompanyLoading] = useState(false);
+  const [localSearchQuery, setLocalSearchQuery] = useState(filters.query);
+  const [showWorkTypeDropdown, setShowWorkTypeDropdown] = useState(false);
+  const [showJobTypeDropdown, setShowJobTypeDropdown] = useState(false);
+  const [showExperienceDropdown, setShowExperienceDropdown] = useState(false);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
   
-  const locationTimeoutRef = useRef<NodeJS.Timeout>();
-  const companyTimeoutRef = useRef<NodeJS.Timeout>();
+  // Update local search query when prop changes
+  useEffect(() => {
+    setLocalSearchQuery(filters.query);
+  }, [filters.query]);
 
-  // Handle work type change
-  const handleWorkTypeChange = (workType: string, checked: boolean) => {
-    const newWorkTypes = checked
-      ? [...filters.workTypes, workType]
-      : filters.workTypes.filter(type => type !== workType);
-    onFiltersChange({ ...filters, workTypes: newWorkTypes, page: 1 });
+  const handleSearchSubmit = () => {
+    onFiltersChange({ query: localSearchQuery });
   };
 
-  // Handle job type change
-  const handleJobTypeChange = (jobType: string, checked: boolean) => {
-    const newJobTypes = checked
-      ? [...filters.jobTypes, jobType]
-      : filters.jobTypes.filter(type => type !== jobType);
-    onFiltersChange({ ...filters, jobTypes: newJobTypes, page: 1 });
+  // Handle enter key for search
+  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearchSubmit();
+    }
   };
 
-  // Handle experience change
-  const handleExperienceChange = (experience: string, checked: boolean) => {
-    const newExperiences = checked
-      ? [...filters.experiences, experience]
-      : filters.experiences.filter(exp => exp !== experience);
-    onFiltersChange({ ...filters, experiences: newExperiences, page: 1 });
-  };
-
-  // Fetch location suggestions
-  const fetchLocationSuggestions = async (query: string) => {
-    if (!query || query.length < 2) {
-      setLocationSuggestions([]);
+  // Click outside to close dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      setShowWorkTypeDropdown(false);
+      setShowJobTypeDropdown(false);
+      setShowExperienceDropdown(false);
       setShowLocationDropdown(false);
-      return;
-    }
-
-    setLocationLoading(true);
-    try {
-      const apiUrl = await getApiUrl();
-      const finalApiUrl = apiUrl.includes('localhost:8002') 
-        ? apiUrl.replace('localhost:8002', 'localhost:8001')
-        : apiUrl;
-      
-      const response = await fetch(`${finalApiUrl}/jobs/locations/search?q=${encodeURIComponent(query)}&limit=5`);
-      if (response.ok) {
-        const data = await response.json();
-        setLocationSuggestions(data);
-        setShowLocationDropdown(data.length > 0);
-      }
-    } catch (error) {
-      console.error('Error fetching location suggestions:', error);
-    } finally {
-      setLocationLoading(false);
-    }
-  };
-
-  // Fetch company suggestions
-  const fetchCompanySuggestions = async (query: string) => {
-    if (!query || query.length < 2) {
-      setCompanySuggestions([]);
       setShowCompanyDropdown(false);
-      return;
+    };
+
+    if (showWorkTypeDropdown || showJobTypeDropdown || showExperienceDropdown || showLocationDropdown || showCompanyDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
     }
+  }, [showWorkTypeDropdown, showJobTypeDropdown, showExperienceDropdown, showLocationDropdown, showCompanyDropdown]);
 
-    setCompanyLoading(true);
-    try {
-      const apiUrl = await getApiUrl();
-      const finalApiUrl = apiUrl.includes('localhost:8002') 
-        ? apiUrl.replace('localhost:8002', 'localhost:8001')
-        : apiUrl;
-      
-      const response = await fetch(`${finalApiUrl}/jobs/companies/search?q=${encodeURIComponent(query)}&limit=5`);
-      if (response.ok) {
-        const data = await response.json();
-        setCompanySuggestions(data);
-        setShowCompanyDropdown(data.length > 0);
-      }
-    } catch (error) {
-      console.error('Error fetching company suggestions:', error);
-    } finally {
-      setCompanyLoading(false);
-    }
-  };
+  // Initialize experiences array if not exists
+  const experiences = filters.experiences || [];
 
-  // Handle location input change with debounce
-  const handleLocationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    onFiltersChange({ ...filters, location: value, page: 1 });
+  // Work type options
+  const workTypeOptions = [
+    { value: 'remote', label: 'Remote' },
+    { value: 'hybrid', label: 'Hybrid' },
+    { value: 'on-site', label: 'On-site' }
+  ];
 
-    // Clear previous timeout
-    if (locationTimeoutRef.current) {
-      clearTimeout(locationTimeoutRef.current);
-    }
+  // Job type options
+  const jobTypeOptions = [
+    { value: 'full-time', label: 'Full-time' },
+    { value: 'part-time', label: 'Part-time' },
+    { value: 'contract', label: 'Contract' },
+    { value: 'freelance', label: 'Freelance' }
+  ];
 
-    // Set new timeout for search
-    if (value.trim()) {
-      locationTimeoutRef.current = setTimeout(() => {
-        fetchLocationSuggestions(value.trim());
-      }, 1000); // 1 second delay
-    } else {
-      setLocationSuggestions([]);
-      setShowLocationDropdown(false);
-    }
-  };
-
-  // Handle company input change with debounce
-  const handleCompanyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    onFiltersChange({ ...filters, company: value, page: 1 });
-
-    // Clear previous timeout
-    if (companyTimeoutRef.current) {
-      clearTimeout(companyTimeoutRef.current);
-    }
-
-    // Set new timeout for search
-    if (value.trim()) {
-      companyTimeoutRef.current = setTimeout(() => {
-        fetchCompanySuggestions(value.trim());
-      }, 1000); // 1 second delay
-    } else {
-      setCompanySuggestions([]);
-      setShowCompanyDropdown(false);
-    }
-  };
-
-  // Clear all filters
-  const clearAllFilters = () => {
-    onFiltersChange({
-      workTypes: [],
-      jobTypes: [],
-      experiences: [],
-      postedAge: '30DAYS',
-      sortBy: 'relevance',
-      salaryRange: '',
-      location: '',
-      company: '',
-      page: 1,
-      limit: filters.limit
-    });
-  };
+  // Experience level options
+  const experienceOptions = [
+    { value: 'entry', label: 'Entry Level' },
+    { value: 'mid', label: 'Mid Level' },
+    { value: 'senior', label: 'Senior' },
+    { value: 'lead', label: 'Lead/Manager' }
+  ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Filters</h3>
-        <button
-          onClick={clearAllFilters}
-          className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
-        >
-          Clear All
-        </button>
+    <div className="space-y-6 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Filters</h3>
+
+      {/* Search Query */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Search
+        </label>
+        <div className="relative">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            value={localSearchQuery}
+            onChange={(e) => setLocalSearchQuery(e.target.value)}
+            placeholder="Job title, keywords..."
+            className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded text-sm focus:ring-blue-500 focus:border-blue-500"
+            onKeyDown={handleSearchKeyPress}
+          />
+        </div>
       </div>
 
-      {/* Work Type */}
-      <div>
-        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Work Type</h4>
-        <div className="space-y-2">
-          {[
-            { value: 'remote', label: 'Remote' },
-            { value: 'hybrid', label: 'Hybrid' },
-            { value: 'on-site', label: 'On-site' }
-          ].map(({ value, label }) => (
-            <label key={value} className="flex items-center">
-              <input
-                type="checkbox"
-                checked={filters.workTypes.includes(value)}
-                onChange={(e) => handleWorkTypeChange(value, e.target.checked)}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded"
-              />
-              <span className="ml-3 text-sm text-gray-600 dark:text-gray-400">{label}</span>
-            </label>
-          ))}
+      {/* Work Type Multi-Select */}
+      <div className="relative">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Work Type</label>
+        <div 
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded text-sm cursor-pointer flex justify-between items-center"
+          onClick={() => setShowWorkTypeDropdown(!showWorkTypeDropdown)}
+        >
+          <span>{filters.workType || "Select work type..."}</span>
+          <svg className={`w-4 h-4 text-gray-400 transition-transform ${showWorkTypeDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
         </div>
+        
+        {showWorkTypeDropdown && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded shadow-lg z-50 max-h-60 overflow-y-auto">
+            {workTypeOptions.map(({ value, label }) => (
+              <div
+                key={value}
+                className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer flex items-center"
+              >
+                <input
+                  type="radio"
+                  name="workType"
+                  value={value}
+                  checked={filters.workType === value}
+                  onChange={(e) => {
+                    onFiltersChange({ ...filters, workType: e.target.value });
+                    setShowWorkTypeDropdown(false);
+                  }}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 mr-2"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Job Type */}
-      <div>
-        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Job Type</h4>
-        <div className="space-y-2">
-          {[
-            { value: 'full-time', label: 'Full-time' },
-            { value: 'part-time', label: 'Part-time' },
-            { value: 'contract', label: 'Contract' },
-            { value: 'freelance', label: 'Freelance' }
-          ].map(({ value, label }) => (
-            <label key={value} className="flex items-center">
-              <input
-                type="checkbox"
-                checked={filters.jobTypes.includes(value)}
-                onChange={(e) => handleJobTypeChange(value, e.target.checked)}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded"
-              />
-              <span className="ml-3 text-sm text-gray-600 dark:text-gray-400">{label}</span>
-            </label>
-          ))}
+      <div className="relative">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Job Type</label>
+        <div 
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded text-sm cursor-pointer flex justify-between items-center"
+          onClick={() => setShowJobTypeDropdown(!showJobTypeDropdown)}
+        >
+          <span>{filters.jobType || "Select job type..."}</span>
+          <svg className={`w-4 h-4 text-gray-400 transition-transform ${showJobTypeDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
         </div>
+        
+        {showJobTypeDropdown && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded shadow-lg z-50 max-h-60 overflow-y-auto">
+            {jobTypeOptions.map(({ value, label }) => (
+              <div
+                key={value}
+                className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer flex items-center"
+              >
+                <input
+                  type="radio"
+                  name="jobType"
+                  value={value}
+                  checked={filters.jobType === value}
+                  onChange={(e) => {
+                    onFiltersChange({ ...filters, jobType: e.target.value });
+                    setShowJobTypeDropdown(false);
+                  }}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 mr-2"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Experience Level */}
-      <div>
-        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Experience Level</h4>
-        <div className="space-y-2">
-          {[
-            { value: 'entry', label: 'Entry (0-2y)' },
-            { value: 'mid', label: 'Mid (3-5y)' },
-            { value: 'senior', label: 'Senior (6y+)' },
-            { value: 'lead', label: 'Lead/Manager' }
-          ].map(({ value, label }) => (
-            <label key={value} className="flex items-center">
-              <input
-                type="checkbox"
-                checked={filters.experiences.includes(value)}
-                onChange={(e) => handleExperienceChange(value, e.target.checked)}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded"
-              />
-              <span className="ml-3 text-sm text-gray-600 dark:text-gray-400">{label}</span>
-            </label>
-          ))}
+      <div className="relative">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Experience Level</label>
+        <div 
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded text-sm cursor-pointer flex justify-between items-center"
+          onClick={() => setShowExperienceDropdown(!showExperienceDropdown)}
+        >
+          <span>
+            {experiences.length === 0 
+              ? "Select experience..." 
+              : `${experiences.length} selected`}
+          </span>
+          <svg className={`w-4 h-4 text-gray-400 transition-transform ${showExperienceDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
         </div>
+        
+        {showExperienceDropdown && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded shadow-lg z-50 max-h-60 overflow-y-auto">
+            {experienceOptions.map(({ value, label }) => (
+              <div
+                key={value}
+                className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer flex items-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <input
+                  type="checkbox"
+                  checked={experiences.includes(value)}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    const newExperiences = e.target.checked 
+                      ? [...experiences, value]
+                      : experiences.filter(t => t !== value);
+                    onFiltersChange({ ...filters, experiences: newExperiences });
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded mr-2"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Posted Within */}
+      {/* Posted */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Posted Within
-        </label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Posted</label>
         <select
-          value={filters.postedAge}
-          onChange={(e) => onFiltersChange({ ...filters, postedAge: e.target.value, page: 1 })}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+          value={filters.postedAge || filters.postedWithin || ''}
+          onChange={(e) => onFiltersChange({ ...filters, postedWithin: e.target.value, postedAge: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded text-sm focus:ring-blue-500 focus:border-blue-500"
         >
-          <option value="1DAY">24 hours</option>
+          <option value="">Any time</option>
+          <option value="1DAY">24h</option>
           <option value="3DAYS">3 days</option>
           <option value="7DAYS">1 week</option>
           <option value="30DAYS">1 month</option>
         </select>
       </div>
 
-      {/* Salary Range */}
+      {/* Salary */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Salary Range
-        </label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Salary</label>
         <select
-          value={filters.salaryRange}
-          onChange={(e) => onFiltersChange({ ...filters, salaryRange: e.target.value, page: 1 })}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+          value={filters.salaryRange || ''}
+          onChange={(e) => onFiltersChange({ ...filters, salaryRange: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded text-sm focus:ring-blue-500 focus:border-blue-500"
         >
           <option value="">Any</option>
-          <option value="0-36000">$0-36K</option>
-          <option value="36000-72000">$36K-72K</option>
-          <option value="72000-108000">$72K-108K</option>
-          <option value="108000-144000">$108K-144K</option>
-          <option value="144000-180000">$144K-180K</option>
-          <option value="180000+">$180K+</option>
+          <option value="36000-72000">$36k - $72k</option>
+          <option value="72000-108000">$72k - $108k</option>
+          <option value="108000-144000">$108k - $144k</option>
+          <option value="144000-180000">$144k - $180k</option>
+          <option value="180000+">$180k+</option>
         </select>
       </div>
 
-      {/* Location with Autocomplete */}
-      <div className="relative">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Location
-        </label>
+      {/* Location */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Location</label>
         <div className="relative">
+          <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
           <input
             type="text"
             value={filters.location}
-            onChange={handleLocationChange}
+            onChange={(e) => onFiltersChange({ ...filters, location: e.target.value })}
             placeholder="City, country..."
-            className="w-full px-3 py-2 pr-8 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+            className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded text-sm focus:ring-blue-500 focus:border-blue-500"
           />
-          {locationLoading && (
-            <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-              <div role="status" className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-          )}
         </div>
-        
-        {showLocationDropdown && locationSuggestions.length > 0 && (
-          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-            {locationSuggestions.map((suggestion, index) => (
-              <div
-                key={index}
-                className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer text-sm"
-                onClick={() => {
-                  onFiltersChange({ ...filters, location: suggestion.name, page: 1 });
-                  setShowLocationDropdown(false);
-                }}
-              >
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-900 dark:text-gray-100">{suggestion.name}</span>
-                  <span className="text-gray-500 dark:text-gray-400 text-xs">{suggestion.count}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
-      {/* Company with Autocomplete */}
-      <div className="relative">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Company
-        </label>
+      {/* Company */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Company</label>
         <div className="relative">
+          <Briefcase className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
           <input
             type="text"
             value={filters.company}
-            onChange={handleCompanyChange}
+            onChange={(e) => onFiltersChange({ ...filters, company: e.target.value })}
             placeholder="Company name..."
-            className="w-full px-3 py-2 pr-8 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+            className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded text-sm focus:ring-blue-500 focus:border-blue-500"
           />
-          {companyLoading && (
-            <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-          )}
         </div>
-        
-        {showCompanyDropdown && companySuggestions.length > 0 && (
-          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-            {companySuggestions.map((suggestion, index) => (
-              <div
-                key={index}
-                className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer text-sm"
-                onClick={() => {
-                  onFiltersChange({ ...filters, company: suggestion.name, page: 1 });
-                  setShowCompanyDropdown(false);
-                }}
-              >
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-900 dark:text-gray-100">{suggestion.name}</span>
-                  <span className="text-gray-500 dark:text-gray-400 text-xs">{suggestion.count}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
+
+      {/* Clear Filters */}
+      <button
+        onClick={() => onFiltersChange({
+          query: '',
+          location: '',
+          jobType: '',
+          workType: '',
+          experience_level: '',
+          salaryMin: '',
+          salaryMax: '',
+          company: '',
+          postedWithin: '',
+          experiences: [],
+          postedAge: '',
+          salaryRange: ''
+        })}
+        className="w-full px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+      >
+        Clear All Filters
+      </button>
     </div>
   );
 };

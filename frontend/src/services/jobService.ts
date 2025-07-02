@@ -568,6 +568,30 @@ export class JobServiceClass {
       console.error('Failed to track job interaction:', error);
     }
   }
+
+  // Autocomplete helper for home page
+  static async getJobTitleSuggestions(query: string, limit: number = 10): Promise<{ title: string; count: number; category: string }[]> {
+    try {
+      const API_BASE_URL = await getApiUrl();
+      const response = await fetch(`${API_BASE_URL}/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch job title suggestions: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching job title suggestions:', error);
+      // Fallback data
+      return [
+        { title: 'Software Engineer', count: 1250, category: 'Technology' },
+        { title: 'Product Manager', count: 890, category: 'Management' },
+        { title: 'Frontend Developer', count: 670, category: 'Technology' },
+        { title: 'Data Scientist', count: 540, category: 'Technology' },
+        { title: 'UX Designer', count: 320, category: 'Design' }
+      ];
+    }
+  }
 }
 
 // Export individual functions for compatibility
@@ -617,7 +641,8 @@ export const jobService = {
   submitScrapedFormApplication: JobServiceClass.submitScrapedFormApplication,
   submitAutomatedApplication: JobServiceClass.submitAutomatedApplication,
   getMyApplications: JobServiceClass.getMyApplications,
-  trackJobInteraction: JobServiceClass.trackJobInteraction
+  trackJobInteraction: JobServiceClass.trackJobInteraction,
+  getJobTitleSuggestions: JobServiceClass.getJobTitleSuggestions
 };
 
 export default JobServiceClass; 

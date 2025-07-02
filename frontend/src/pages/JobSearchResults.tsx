@@ -1,255 +1,116 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import Layout from '../components/Layout';
 import AuthModal from '../components/AuthModal';
-import JobCard from '../components/JobCard/JobCard';
 import SearchFilters from '../components/JobSearch/SearchFilters';
+import JobCard from '../components/JobCard/JobCard';
 import { useAuth } from '../contexts/AuthContext';
 import { Job } from '../types/job';
-import { ChevronDown } from '../components/icons/EmojiIcons';
+import { Filter, X, Save } from 'lucide-react';
+import jobService from '../services/jobService';
 
 interface Filters {
-  workTypes: string[];
-  jobTypes: string[];
-  experiences: string[];
-  postedAge: string;
-  sortBy: string;
-  salaryRange: string;
+  query: string;
   location: string;
+  jobType: string;
+  workType: string;
+  experience_level: string;
+  salaryMin: string;
+  salaryMax: string;
   company: string;
-  page: number;
-  limit: number;
+  postedWithin: string;
+  experiences?: string[];
+  postedAge?: string;
+  salaryRange?: string;
+  page?: number;
 }
 
-// Custom Multi-Select Dropdown Component
-interface MultiSelectProps {
-  label: string;
-  options: { value: string; label: string }[];
-  selectedValues: string[];
-  onChange: (values: string[]) => void;
-  placeholder?: string;
+interface SavedSearch {
+  id: string;
+  name: string;
+  filters: Omit<Filters, "page">;
+  createdAt: string;
 }
-
-const MultiSelectDropdown: React.FC<MultiSelectProps> = ({
-  label,
-  options,
-  selectedValues,
-  onChange,
-  placeholder = "Select options"
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const toggleOption = (value: string) => {
-    if (selectedValues.includes(value)) {
-      onChange(selectedValues.filter(v => v !== value));
-    } else {
-      onChange([...selectedValues, value]);
-    }
-  };
-
-  const displayText = selectedValues.length === 0 
-    ? placeholder 
-    : selectedValues.length === options.length 
-      ? "All Selected" 
-      : `${selectedValues.length} selected`;
-
-  return (
-    <div className="relative">
-      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
-      <div className="relative">
-        <button
-          type="button"
-          onClick={() => setIsOpen(!isOpen)}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 appearance-none text-left flex items-center justify-between transition-colors duration-200"
-        >
-          <span className={selectedValues.length === 0 ? "text-gray-500" : ""}>{displayText}</span>
-          <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-        </button>
-        
-        {isOpen && (
-          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-xl max-h-60 overflow-y-auto">
-            {options.map((option) => (
-              <label key={option.value} className="flex items-center px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selectedValues.includes(option.value)}
-                  onChange={() => toggleOption(option.value)}
-                  className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded mr-2"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">{option.label}</span>
-              </label>
-            ))}
-          </div>
-        )}
-      </div>
-      
-      {/* Click outside to close */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
-    </div>
-  );
-};
-
-// Company/Location Autocomplete Input Component
-interface AutocompleteInputProps {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  type: 'company' | 'location';
-}
-
-const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
-  label,
-  value,
-  onChange,
-  placeholder,
-  type
-}) => {
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-
-  const fetchSuggestions = useCallback(async (query: string) => {
-    if (!query.trim() || query.length < 2) {
-      setSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const baseUrl = await import('../utils/apiConfig').then(m => m.getApiUrl());
-      const endpoint = type === 'company' ? 'companies/search' : 'locations/search';
-      const response = await fetch(`${baseUrl}/${endpoint}?q=${encodeURIComponent(query)}&limit=5`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        setSuggestions(data.map((item: any) => item.name || item));
-        setShowSuggestions(true);
-      } else {
-        setSuggestions([]);
-        setShowSuggestions(false);
-      }
-    } catch (error) {
-      console.error(`Error fetching ${type} suggestions:`, error);
-      setSuggestions([]);
-      setShowSuggestions(false);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [type]);
-
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      fetchSuggestions(value);
-    }, 300);
-
-    return () => clearTimeout(timeoutId);
-  }, [value, fetchSuggestions]);
-
-  return (
-    <div className="relative">
-      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
-      <div className="relative">
-        <input
-          type="text"
-          placeholder={placeholder}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onFocus={() => setShowSuggestions(suggestions.length > 0)}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 pr-8"
-        />
-        {isLoading && (
-          <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          </div>
-        )}
-      </div>
-      
-      {showSuggestions && (
-        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl max-h-60 overflow-y-auto">
-          {suggestions.length > 0 ? (
-            suggestions.map((suggestion, index) => (
-              <button
-                key={index}
-                onClick={() => {
-                  onChange(suggestion);
-                  setShowSuggestions(false);
-                }}
-                className="w-full px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300"
-              >
-                {suggestion}
-              </button>
-            ))
-          ) : value.length > 2 && !isLoading && (
-            <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 text-center">
-              No results found for "{value}"
-            </div>
-          )}
-        </div>
-      )}
-      
-      {/* Click outside to close */}
-      {showSuggestions && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setShowSuggestions(false)}
-        />
-      )}
-    </div>
-  );
-};
 
 export default function JobSearchResults() {
   const location = useLocation();
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
   
-  // State management
+  // States
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
   const [totalJobs, setTotalJobs] = useState(0);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => 
+    window.innerWidth >= 1024 ? 'grid' : 'list'
+  );
+  const [hiddenJobs, setHiddenJobs] = useState<Set<string>>(new Set());
+  
+  // Job status tracking
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   
-  // Job status tracking
-  const [hiddenJobs, setHiddenJobs] = useState<Set<string>>(new Set());
+  // Save Search States
+  const [searchName, setSearchName] = useState('');
+  
+  // Saved searches
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [showSavedSearches, setShowSavedSearches] = useState(false);
+  
+  // Filter Modal States
+  const [showFiltersModal, setShowFiltersModal] = useState(false);
   
   // Filters
   const [filters, setFilters] = useState<Filters>({
-    workTypes: [],
-    jobTypes: [],
-    experiences: [],
-    postedAge: '30DAYS',
-    sortBy: 'relevance',
-    salaryRange: '',
+    query: '',
     location: '',
+    jobType: '',
+    workType: '',
+    experience_level: '',
+    salaryMin: '',
+    salaryMax: '',
     company: '',
+    postedWithin: '',
     page: 1,
-    limit: 5,
   });
   
+  // View layout state - Mobile: list, Desktop: grid
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check for mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768; // md breakpoint
+      setIsMobile(mobile);
+      if (mobile) {
+        setViewMode('list'); // Force list view on mobile
+      } else {
+        setViewMode('grid'); // Default grid on desktop
+      }
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+  
   // Add missing state variables
-  const [availableCompanies, setAvailableCompanies] = useState<string[]>([]);
-  const [availableLocations, setAvailableLocations] = useState<string[]>([]);
+  const [availableCompanies] = useState<string[]>([]);
+  const [availableLocations] = useState<string[]>([]);
 
   const fetchJobs = async () => {
     setLoading(true);
     try {
       const queryParams = new URLSearchParams({
         q: searchQuery,
-        page: filters.page.toString(),
-        limit: filters.limit.toString(),
-        sort_by: filters.sortBy,
-        posted_age: filters.postedAge,
-        ...(filters.workTypes.length > 0 && { work_type: filters.workTypes.join(',') }),
-        ...(filters.jobTypes.length > 0 && { job_type: filters.jobTypes.join(',') }),
-        ...(filters.experiences.length > 0 && { experience: filters.experiences.join(',') }),
+        page: filters.page?.toString() || "1",
+        limit: "25",
+        sort_by: 'relevance',
+        posted_age: filters.postedAge || filters.postedWithin,
+        ...(filters.workType && { work_type: filters.workType }),
+        ...(filters.jobType && { job_type: filters.jobType }),
+        ...(filters.experience_level && { experience: filters.experience_level }),
         ...(filters.salaryRange && { salary_range: filters.salaryRange }),
         ...(filters.location && { location: filters.location }),
         ...(filters.company && { company: filters.company }),
@@ -272,6 +133,14 @@ export default function JobSearchResults() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     setSearchQuery(params.get('q') || '');
+    
+    // Check if company parameter exists in URL
+    const companyParam = params.get('company');
+    if (companyParam && companyParam !== filters.company) {
+      // Update filters with company from URL
+      setFilters(prev => ({ ...prev, company: companyParam, page: 1 }));
+    }
+    
     fetchJobs();
   }, [location.search, filters]); // eslint-disable-line react-hooks/exhaustive-deps
   
@@ -279,199 +148,305 @@ export default function JobSearchResults() {
     setFilters(prev => ({ ...prev, ...newFilters, page: newFilters.page || 1 }));
   }, []);
 
-  // Hide/reveal job functions
-  const handleJobHide = (jobId: string) => {
-    setHiddenJobs(prev => {
-      const newHidden = new Set(prev);
-      newHidden.add(jobId);
-      return newHidden;
-    });
-    
-    // Update total count for display
-    setTotalJobs(prev => prev - 1);
-    toast.success('Job hidden successfully');
-  };
-
-  const handleJobReveal = (jobId: string) => {
-    setHiddenJobs(prev => {
-      const newHidden = new Set(prev);
-      newHidden.delete(jobId);
-      return newHidden;
-    });
-    
-    // Update total count for display
-    setTotalJobs(prev => prev + 1);
-    toast.success('Job revealed successfully');
-  };
-
-  // Calculate actual displayed total (excluding hidden jobs)
-  const displayedTotal = useMemo(() => {
-    return totalJobs - hiddenJobs.size;
-  }, [totalJobs, hiddenJobs]);
+  // Check if any filters are active
+  const hasActiveFilters = useMemo(() => {
+    return filters.location || filters.jobType || filters.workType || 
+           filters.experience_level || filters.company || filters.salaryMin || 
+           filters.salaryMax || filters.postedWithin;
+  }, [filters]);
 
   return (
     <Layout>
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
 
-      {/* Main Content */}
-      <div className="flex-1 relative">
-        <div className="container mx-auto px-4 py-8 max-w-7xl">
-          <div className="flex flex-col xl:flex-row gap-8 min-h-[600px]">
-            {/* Filters Sidebar */}
-            <div className="xl:w-80 flex-shrink-0">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-6 sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto">
+      {/* Filter Modal */}
+      {showFiltersModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-11/12 max-w-md lg:max-w-4xl max-h-[90vh] overflow-y-auto">
+            {/* Mobile Modal Layout */}
+            <div className="lg:hidden">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Filters</h2>
+                <button
+                  onClick={() => setShowFiltersModal(false)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="p-6">
                 <SearchFilters 
                   filters={filters}
                   onFiltersChange={handleFiltersChange}
-                  availableCompanies={availableCompanies}
-                  availableLocations={availableLocations}
                 />
+              </div>
+              <div className="flex gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => setShowFiltersModal(false)}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Apply Filters
+                </button>
+                <button
+                  onClick={() => {
+                    handleFiltersChange({
+                      query: '',
+                      location: '',
+                      jobType: '',
+                      workType: '',
+                      experience_level: '',
+                      salaryMin: '',
+                      salaryMax: '',
+                      company: '',
+                      postedWithin: ''
+                    });
+                    setShowFiltersModal(false);
+                  }}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Clear All
+                </button>
               </div>
             </div>
 
-            {/* Job Listings - Equal width and height */}
-            <div className="xl:flex-1 min-w-0">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 min-h-[600px] flex flex-col">
-                {/* Header */}
-                <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div>
-                      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        Job Search Results
-                      </h1>
-                      <p className="text-gray-600 dark:text-gray-400 mt-1">
-                        Found {displayedTotal} jobs matching your criteria
-                        {hiddenJobs.size > 0 && (
-                          <span className="text-sm text-gray-500 ml-2">
-                            ({hiddenJobs.size} hidden)
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    
-                    {/* Sort Options */}
-                    <div className="flex items-center gap-3">
-                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Sort by:
-                      </label>
-                      <select 
-                        value={filters.sortBy}
-                        onChange={(e) => handleFiltersChange({ sortBy: e.target.value })}
-                        className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="newest">Newest First</option>
-                        <option value="relevance">Most Relevant</option>
-                        <option value="oldest">Oldest First</option>
-                      </select>
-                    </div>
-                  </div>
+            {/* Desktop Modal Layout */}
+            <div className="hidden lg:block">
+              <div className="flex items-center justify-between p-8 border-b border-gray-200 dark:border-gray-700">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Search Filters</h2>
+                <button
+                  onClick={() => setShowFiltersModal(false)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="p-8 grid grid-cols-2 gap-8">
+                <SearchFilters 
+                  filters={filters}
+                  onFiltersChange={handleFiltersChange}
+                />
+              </div>
+              <div className="flex justify-between gap-4 p-8 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => {
+                    handleFiltersChange({
+                      query: '',
+                      location: '',
+                      jobType: '',
+                      workType: '',
+                      experience_level: '',
+                      salaryMin: '',
+                      salaryMax: '',
+                      company: '',
+                      postedWithin: ''
+                    });
+                  }}
+                  className="px-6 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Clear All Filters
+                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowFiltersModal(false)}
+                    className="px-6 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => setShowFiltersModal(false)}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Apply Filters
+                  </button>
                 </div>
-
-                {/* Job Cards Container */}
-                <div className="flex-1 p-6">
-                  {loading ? (
-                    <div className="grid gap-4">
-                      {[...Array(8)].map((_, i) => (
-                        <div key={i} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 animate-pulse">
-                          <div className="flex justify-between items-start mb-3">
-                            <div className="flex-1">
-                              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
-                              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
-                              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
-                            </div>
-                            <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                          </div>
-                          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full mb-2"></div>
-                          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : jobs.length > 0 ? (
-                    <div className="space-y-4">
-                      {jobs
-                        .filter(job => !hiddenJobs.has(job._id || job.id || ''))
-                        .map((job, index) => (
-                          <JobCard
-                            key={job._id || job.id || index}
-                            job={job}
-                            isHidden={false}
-                            onHide={() => handleJobHide(job._id || job.id || `job-${index}`)}
-                            onReveal={() => handleJobReveal(job._id || job.id || `job-${index}`)}
-                          />
-                        ))}
-                    </div>
-                  ) : (
-                    <div className="flex-1 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="text-gray-400 dark:text-gray-500 mb-4">
-                          <svg className="mx-auto h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
-                        </div>
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No jobs found</h3>
-                        <p className="text-gray-500 dark:text-gray-400">
-                          Try adjusting your search criteria or filters.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Pagination */}
-                {totalJobs > 0 && (
-                  <div className="border-t border-gray-200 dark:border-gray-700 p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm text-gray-700 dark:text-gray-300">
-                        Showing {Math.max(1, ((filters.page - 1) * filters.limit) + 1)} to {Math.min(filters.page * filters.limit, displayedTotal)} of {displayedTotal} results
-                        {hiddenJobs.size > 0 && (
-                          <span className="text-gray-500 ml-2">({hiddenJobs.size} jobs hidden)</span>
-                        )}
-                      </div>
-                      
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleFiltersChange({...filters, page: Math.max(1, filters.page - 1)})}
-                          disabled={filters.page <= 1}
-                          className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                        >
-                          Previous
-                        </button>
-                        
-                        <div className="flex items-center space-x-1">
-                          {Array.from({ length: Math.min(5, Math.ceil(displayedTotal / filters.limit)) }, (_, i) => {
-                            const pageNum = i + 1;
-                            return (
-                              <button
-                                key={pageNum}
-                                onClick={() => handleFiltersChange({...filters, page: pageNum})}
-                                className={`px-3 py-2 text-sm rounded-lg ${
-                                  filters.page === pageNum
-                                    ? 'bg-blue-600 text-white'
-                                    : 'border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
-                                }`}
-                              >
-                                {pageNum}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        
-                        <button
-                          onClick={() => handleFiltersChange({...filters, page: Math.min(Math.ceil(displayedTotal / filters.limit), filters.page + 1)})}
-                          disabled={filters.page >= Math.ceil(displayedTotal / filters.limit)}
-                          className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                        >
-                          Next
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Save Search Modal */}
+      {showSaveDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-11/12 max-w-md">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Save Search</h2>
+              <button
+                onClick={() => setShowSaveDialog(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Search Name
+              </label>
+              <input
+                type="text"
+                value={searchName}
+                onChange={(e) => setSearchName(e.target.value)}
+                placeholder="Enter a name for this search..."
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                maxLength={50}
+              />
+            </div>
+            <div className="flex gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => setShowSaveDialog(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (searchName.trim()) {
+                    // Save search logic here
+                    const savedSearches = JSON.parse(localStorage.getItem('savedSearches') || '[]');
+                    const newSearch = {
+                      id: Date.now().toString(),
+                      name: searchName.trim(),
+                      filters,
+                      createdAt: new Date().toISOString()
+                    };
+                    savedSearches.push(newSearch);
+                    localStorage.setItem('savedSearches', JSON.stringify(savedSearches));
+                    setSearchName('');
+                    setShowSaveDialog(false);
+                    toast.success('Search saved successfully!');
+                  }
+                }}
+                disabled={!searchName.trim()}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                Save Search
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content - Dark Background */}
+      <div className="flex-1 relative bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
+          
+          {/* Search Header with Filter Button */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 mb-8">
+            <div className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    Job Search Results
+                  </h1>
+                  <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm rounded-full">
+                    {totalJobs} jobs found
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  {/* Save Search Button */}
+                  <button
+                    onClick={() => setShowSaveDialog(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>Save Search</span>
+                  </button>
+
+                  {/* Filter Button */}
+                  <button
+                    onClick={() => setShowFiltersModal(true)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
+                      hasActiveFilters 
+                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300' 
+                        : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    <Filter className="w-4 h-4" />
+                    <span>Filters</span>
+                    {hasActiveFilters && (
+                      <span className="ml-1 px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
+                        Active
+                      </span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Job Results - Dark Background */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+            {loading ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="text-gray-500 dark:text-gray-400">Loading jobs...</div>
+              </div>
+            ) : jobs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16">
+                <div className="text-gray-500 dark:text-gray-400 text-lg mb-2">No jobs found</div>
+                <div className="text-gray-400 dark:text-gray-500 text-sm">Try adjusting your search criteria</div>
+              </div>
+            ) : (
+              <div className="p-6">
+                {/* View Toggle */}
+                <div className="flex items-center justify-between mb-6">
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    Showing {jobs.length} of {totalJobs} jobs
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setViewMode('grid')}
+                      className={`p-2 rounded ${viewMode === 'grid' 
+                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300' 
+                        : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                    >
+                      <div className="w-4 h-4 grid grid-cols-2 gap-0.5">
+                        <div className="bg-current rounded-sm"></div>
+                        <div className="bg-current rounded-sm"></div>
+                        <div className="bg-current rounded-sm"></div>
+                        <div className="bg-current rounded-sm"></div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setViewMode('list')}
+                      className={`p-2 rounded ${viewMode === 'list' 
+                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300' 
+                        : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                    >
+                      <div className="w-4 h-4 space-y-1">
+                        <div className="h-0.5 bg-current rounded"></div>
+                        <div className="h-0.5 bg-current rounded"></div>
+                        <div className="h-0.5 bg-current rounded"></div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Jobs Grid/List */}
+                <div className={viewMode === 'grid' 
+                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' 
+                  : 'space-y-4'
+                }>
+                  {jobs.map((job, index) => (
+                    <JobCard
+                      key={job._id || job.id || index}
+                      job={job}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
+      
+      {/* Click outside to close saved searches dropdown */}
+      {showSavedSearches && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setShowSavedSearches(false)}
+        />
+      )}
     </Layout>
   );
 } 

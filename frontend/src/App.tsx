@@ -33,6 +33,7 @@ const MyApplicationsPage = lazy(() => import('./pages/MyApplications'));
 const FavoritesPage = lazy(() => import('./pages/Favorites'));
 const ExternalAPIServicesPage = lazy(() => import('./pages/ExternalAPIServices'));
 const GoogleCallbackPage = lazy(() => import('./pages/GoogleCallback'));
+const LinkedInCallbackPage = lazy(() => import('./pages/LinkedInCallback'));
 
 // Onboarding Pages
 const CheckEmailPage = lazy(() => import('./pages/CheckEmail'));
@@ -108,6 +109,7 @@ const App: React.FC = () => {
                 <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                 <Route path="/help" element={<HelpPage />} />
                 <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
+                <Route path="/auth/linkedin/callback" element={<LinkedInCallbackPage />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
                 <Route path="/auth/error" element={<AuthError />} />
                 <Route path="/payment/success" element={<PaymentSuccess />} />

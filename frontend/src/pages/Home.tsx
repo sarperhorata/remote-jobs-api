@@ -6,6 +6,7 @@ import MultiJobAutocomplete from '../components/MultiJobAutocomplete';
 import Layout from '../components/Layout';
 import { jobService } from '../services/jobService';
 import { Job } from '../types/job';
+import QuickSearchButton from '../components/QuickSearchButton';
 
 // Icons temporarily replaced with text
 const Search = () => <span>🔍</span>;
@@ -30,6 +31,7 @@ const Home: React.FC = () => {
   const [authModalTab, setAuthModalTab] = useState<'login' | 'register'>('login');
   const [featuredJobs, setFeaturedJobs] = useState<Job[]>([]);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [popularPositions, setPopularPositions] = useState<string[]>([]);
 
   // Check if user needs onboarding
   useEffect(() => {
@@ -227,6 +229,31 @@ const Home: React.FC = () => {
     loadFeaturedJobs();
   }, []);
 
+  const handleQuickSearch = (term: string) => {
+    navigate(`/search?q=${encodeURIComponent(term)}`);
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Popular search terms - fallback if API fails
+        const fallbackPositions = ['Software Engineer', 'Product Manager', 'Data Scientist', 'DevOps Engineer', 'UX Designer'];
+        
+        // Get popular job titles for quick search
+        const positionsResult = await jobService.getJobTitleSuggestions('', 5); // 5 popular positions
+        const positions = positionsResult.filter(pos => pos.title).map(pos => pos.title);
+        setPopularPositions(positions.length > 0 ? positions : fallbackPositions);
+      } catch (error) {
+        console.error('Error loading popular positions:', error);
+        // Use fallback positions if API fails
+        const fallbackPositions = ['Software Engineer', 'Product Manager', 'Data Scientist', 'DevOps Engineer', 'UX Designer'];
+        setPopularPositions(fallbackPositions);
+      }
+    };
+
+    loadData();
+  }, []); // Remove fallbackPositions dependency since it's defined inside useEffect
+
   // Handle search with multiple positions
   const handleMultiPositionSearch = (positions: Position[]) => {
     if (positions.length === 0) {
@@ -273,9 +300,9 @@ const Home: React.FC = () => {
   return (
     <Layout>
 
-      <section className="py-16 md:py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      <section className="py-16 md:py-20 px-4 sm:px-6 lg:px-8 relative">
         {/* Video Background */}
-        <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 z-0 overflow-hidden">
           <video 
             autoPlay 
             loop 
@@ -290,7 +317,7 @@ const Home: React.FC = () => {
           <div className="absolute inset-0 bg-black/60"></div>
         </div>
         
-        <div className="max-w-7xl mx-auto text-center relative z-10">
+        <div className="max-w-7xl mx-auto text-center relative z-20">
           <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight drop-shadow-lg">
             Find Your Next <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-yellow-400">Remote Buzz</span>
           </h1>
@@ -299,18 +326,20 @@ const Home: React.FC = () => {
           </p>
 
           {/* Updated Search Section with MultiJobAutocomplete */}
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-3xl mx-auto relative">
             <h2 className="text-2xl font-bold text-white mb-6 text-center drop-shadow-md">
               Find Your Perfect Remote Job
             </h2>
             
-            <MultiJobAutocomplete
-              selectedPositions={selectedPositions}
-              onPositionsChange={setSelectedPositions}
-              onSearch={handleMultiPositionSearch}
-              placeholder="Search job titles (e.g., Frontend Developer, Backend Engineer)"
-              maxSelections={10}
-            />
+            <div className="relative">
+              <MultiJobAutocomplete
+                selectedPositions={selectedPositions}
+                onPositionsChange={setSelectedPositions}
+                onSearch={handleMultiPositionSearch}
+                placeholder="Search job titles (e.g., Frontend Developer, Backend Engineer)"
+                maxSelections={10}
+              />
+            </div>
           </div>
         </div>
       </section>
@@ -625,6 +654,25 @@ const Home: React.FC = () => {
         onClose={() => setIsOnboardingOpen(false)}
         onComplete={handleOnboardingComplete}
       />
+
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h3 className="text-base font-medium text-gray-700 dark:text-gray-300 mb-3">
+              Most Searched Jobs
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+              {popularPositions.map((position, index) => (
+                <QuickSearchButton 
+                  key={`popular-${index}`}
+                  title={position}
+                  onClick={() => handleQuickSearch(position)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
     </Layout>
   );
 };

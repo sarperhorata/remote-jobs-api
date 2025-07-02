@@ -1,6 +1,6 @@
 from datetime import timedelta
-from fastapi import APIRouter, HTTPException, status, Depends
-from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from fastapi import APIRouter, HTTPException, status, Depends, Request
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer, HTTPBearer
 from typing import Optional
 import os
 from backend.database import get_async_db
@@ -14,6 +14,7 @@ from passlib.context import CryptContext
 from datetime import datetime
 from pydantic import BaseModel, Field
 from motor.motor_asyncio import AsyncIOMotorDatabase
+import requests
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
@@ -381,4 +382,91 @@ async def reset_password(
         }
     )
     
-    return {"message": "Password successfully reset"} 
+    return {"message": "Password successfully reset"}
+
+# LinkedIn OAuth endpoints
+@router.post("/linkedin/token")
+async def linkedin_token_exchange(request: dict):
+    """Exchange LinkedIn authorization code for access token"""
+    try:
+        code = request.get('code')
+        state = request.get('state')
+        
+        if not code:
+            raise HTTPException(status_code=400, detail="Authorization code is required")
+        
+        # Exchange code for access token
+        token_url = "https://www.linkedin.com/oauth/v2/accessToken"
+        token_data = {
+            'grant_type': 'authorization_code',
+            'code': code,
+            'redirect_uri': f"{os.getenv('FRONTEND_URL', 'http://localhost:3000')}/auth/linkedin/callback",
+            'client_id': os.getenv('LINKEDIN_CLIENT_ID'),
+            'client_secret': os.getenv('LINKEDIN_CLIENT_SECRET')
+        }
+        
+        token_response = requests.post(token_url, data=token_data)
+        
+        if token_response.status_code != 200:
+            raise HTTPException(status_code=400, detail="Failed to exchange code for token")
+        
+        return token_response.json()
+        
+    except Exception as e:
+        logging.error(f"LinkedIn token exchange error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.get("/linkedin/profile")
+async def linkedin_profile(request: Request):
+    """Fetch LinkedIn profile data using access token"""
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            raise HTTPException(status_code=401, detail="Access token is required")
+        
+        access_token = auth_header.split(' ')[1]
+        
+        # Fetch basic profile info
+        profile_url = "https://api.linkedin.com/v2/people/~?projection=(id,firstName,lastName,emailAddress,profilePicture(displayImage~:playableStreams))"
+        profile_headers = {'Authorization': f'Bearer {access_token}'}
+        
+        profile_response = requests.get(profile_url, headers=profile_headers)
+        
+        if profile_response.status_code != 200:
+            raise HTTPException(status_code=400, detail="Failed to fetch LinkedIn profile")
+        
+        profile_data = profile_response.json()
+        
+        # Fetch email address
+        email_url = "https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))"
+        email_response = requests.get(email_url, headers=profile_headers)
+        
+        email_data = {}
+        if email_response.status_code == 200:
+            email_data = email_response.json()
+        
+        # Format profile data
+        formatted_profile = {
+            'id': profile_data.get('id'),
+            'name': f"{profile_data.get('firstName', {}).get('localized', {}).get('en_US', '')} {profile_data.get('lastName', {}).get('localized', {}).get('en_US', '')}".strip(),
+            'email': email_data.get('elements', [{}])[0].get('handle~', {}).get('emailAddress', '') if email_data.get('elements') else '',
+            'picture': '',
+            'profileUrl': f"https://www.linkedin.com/in/{profile_data.get('id', '')}",
+            'experience': [],  # Would need additional API calls for full experience data
+            'education': []    # Would need additional API calls for full education data
+        }
+        
+        # Extract profile picture if available
+        profile_pic = profile_data.get('profilePicture', {}).get('displayImage~', {})
+        if profile_pic and 'elements' in profile_pic:
+            elements = profile_pic['elements']
+            if elements and len(elements) > 0:
+                identifiers = elements[0].get('identifiers', [])
+                if identifiers:
+                    formatted_profile['picture'] = identifiers[0].get('identifier', '')
+        
+        return formatted_profile
+        
+    except Exception as e:
+        logging.error(f"LinkedIn profile fetch error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error") 

@@ -40,11 +40,11 @@ const detectBackendPort = async (): Promise<string> => {
     let apiUrl = process.env.REACT_APP_API_URL;
     logApiDetection('Found environment variable:', apiUrl);
     
-    // Eğer 8002 portunu gösteriyorsa 8001'e çevir (çünkü backend 8001'de çalışıyor)
-    if (apiUrl.includes('localhost:8002')) {
-      apiUrl = apiUrl.replace('localhost:8002', 'localhost:8001');
-      logApiDetection('Corrected environment variable from 8002 to 8001:', apiUrl);
-    }
+    // Port override mantığını kaldırdım - environment variable'da ne varsa onu kullan
+    // if (apiUrl.includes('localhost:8002')) {
+    //   apiUrl = apiUrl.replace('localhost:8002', 'localhost:8001');
+    //   logApiDetection('Corrected environment variable from 8002 to 8001:', apiUrl);
+    // }
     
     // Trailing slash'i temizle
     apiUrl = apiUrl.replace(/\/$/, '');

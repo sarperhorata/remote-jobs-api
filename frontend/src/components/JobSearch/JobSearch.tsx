@@ -7,7 +7,7 @@ import JobApplicationModal from './JobApplicationModal';
 interface JobSearchFilters {
   location: string;
   jobType: string;
-  experienceLevel: string;
+  experience_level: string;
   salaryRange: string;
   company: string;
   remote: boolean;
@@ -31,7 +31,7 @@ const JobSearch: React.FC<JobSearchProps> = ({ onJobSelect }) => {
   const [filters, setFilters] = useState<JobSearchFilters>({
     location: '',
     jobType: '',
-    experienceLevel: '',
+    experience_level: '',
     salaryRange: '',
     company: '',
     remote: false,
@@ -88,7 +88,7 @@ const JobSearch: React.FC<JobSearchProps> = ({ onJobSelect }) => {
       }
 
       // Experience level filter
-      if (filters.experienceLevel && job.experienceLevel !== filters.experienceLevel) {
+      if (filters.experience_level && job.experience_level !== filters.experience_level) {
         return false;
       }
 
@@ -176,7 +176,7 @@ const JobSearch: React.FC<JobSearchProps> = ({ onJobSelect }) => {
     setFilters({
       location: '',
       jobType: '',
-      experienceLevel: '',
+      experience_level: '',
       salaryRange: '',
       company: '',
       remote: false,
@@ -272,11 +272,11 @@ const JobSearch: React.FC<JobSearchProps> = ({ onJobSelect }) => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Experience</label>
                 <select
-                  value={filters.experienceLevel}
-                  onChange={(e) => setFilters(prev => ({ ...prev, experienceLevel: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                  value={filters.experience_level}
+                  onChange={(e) => setFilters(prev => ({ ...prev, experience_level: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="">All Levels</option>
+                  <option value="">All Experience Levels</option>
                   {experienceLevels.map(level => (
                     <option key={level} value={level}>{level}</option>
                   ))}
@@ -402,9 +402,9 @@ const JobSearch: React.FC<JobSearchProps> = ({ onJobSelect }) => {
                           {job.jobType}
                         </span>
                       )}
-                      {job.experienceLevel && (
+                      {job.experience_level && (
                         <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                          {job.experienceLevel}
+                          {job.experience_level}
                         </span>
                       )}
                       {job.skills?.slice(0, 3).map((skill, index) => (

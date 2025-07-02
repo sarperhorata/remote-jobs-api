@@ -323,6 +323,22 @@ class User(BaseModel):
     linkedin_profile: Optional[dict] = None  # LinkedIn profil bilgileri
     profile_picture_url: Optional[str] = None
     resume_url: Optional[str] = None  # CV dosya URL'i
+    
+    # Social Media Links
+    linkedin_url: Optional[str] = None
+    github_url: Optional[str] = None
+    twitter_url: Optional[str] = None
+    instagram_url: Optional[str] = None
+    facebook_url: Optional[str] = None
+    youtube_url: Optional[str] = None
+    personal_website: Optional[str] = None
+    
+    # Work Experience and Education (for LinkedIn import)
+    work_experience: Optional[List[WorkExperience]] = None
+    education: Optional[List[Education]] = None
+    skills: Optional[List[Skill]] = None
+    certificates: Optional[List[Certificate]] = None
+    
     created_at: datetime = datetime.now()
     updated_at: datetime = datetime.now()
     stripe_customer_id: Optional[str] = None

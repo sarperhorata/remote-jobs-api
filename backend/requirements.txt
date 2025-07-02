@@ -21,6 +21,7 @@ passlib[bcrypt]>=1.7.4
 # python-jose[cryptography]==3.3.0  # REMOVED - VULNERABLE CVE-2024-33663
 PyJWT>=2.10.1  # Replacing python-jose
 cryptography>=45.0.2  # Multiple CVE fixes
+# ecdsa>=0.19.3  # TODO: Update when 0.19.3+ is available (CVE-2024-23342)
 
 # Templating - security updates
 jinja2>=3.1.6  # Multiple CVE fixes

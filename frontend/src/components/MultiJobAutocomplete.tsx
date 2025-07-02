@@ -1,16 +1,18 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { ChevronDown, X, Search } from 'lucide-react';
 import { getApiUrl } from '../utils/apiConfig';
 
-interface Position {
+interface AutocompleteItem {
   title: string;
   count: number;
   category?: string;
 }
 
 interface MultiJobAutocompleteProps {
-  selectedPositions: Position[];
-  onPositionsChange: (positions: Position[]) => void;
-  onSearch?: (positions: Position[]) => void;
+  selectedPositions: AutocompleteItem[];
+  onPositionsChange: (positions: AutocompleteItem[]) => void;
+  onSearch?: (positions: AutocompleteItem[]) => void;
   placeholder?: string;
   maxSelections?: number;
 }
@@ -23,183 +25,145 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
   maxSelections = 10
 }) => {
   const [inputValue, setInputValue] = useState('');
-  const [suggestions, setSuggestions] = useState<Position[]>([]);
+  const [allSuggestions, setAllSuggestions] = useState<AutocompleteItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Debug logging
   useEffect(() => {
-    console.log('🔄 MultiJobAutocomplete State:', {
-      inputValue,
-      suggestionsCount: suggestions.length,
-      showDropdown,
-      isLoading,
-      selectedPositions: selectedPositions.map(p => p.title)
-    });
-  }, [inputValue, suggestions, showDropdown, isLoading, selectedPositions]);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔄 MultiJobAutocomplete State:', {
+        inputValue,
+        suggestionsCount: allSuggestions.length,
+        showDropdown,
+        isLoading,
+        selectedPositions: selectedPositions.length
+      });
+    }
+  }, [inputValue, allSuggestions.length, showDropdown, isLoading, selectedPositions.length]);
 
-  // Fetch suggestions from API
+  // Fetch suggestions when user types
   const fetchSuggestions = useCallback(async (query: string) => {
-    console.log('🔍 Fetching suggestions for:', query);
-    
-    if (!query || query.length < 2) {
-      console.log('❌ Query too short, clearing suggestions');
-      setSuggestions([]);
+    if (!query.trim() || query.length < 2) {
+      setAllSuggestions([]);
       setShowDropdown(false);
       return;
     }
 
     setIsLoading(true);
     try {
-      const apiUrl = await getApiUrl();
+      const finalApiUrl = await getApiUrl();
       
-      // Safety check: force 8001 if we detect wrong port
-      const finalApiUrl = apiUrl.includes('localhost:8002') 
-        ? apiUrl.replace('localhost:8002', 'localhost:8001')
-        : apiUrl;
-      
-      console.log('📡 API URL:', finalApiUrl);
-      
-      const response = await fetch(
-        `${finalApiUrl}/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=20`
-      );
-      
-      console.log('📨 API Response Status:', response.status);
+      const response = await fetch(`${finalApiUrl}/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=20`, {
+        signal: AbortSignal.timeout(10000), // 10 second timeout
+      });
       
       if (!response.ok) {
-        console.error(`API request failed with status: ${response.status}`);
-        setSuggestions([]);
-        setShowDropdown(false);
-        return;
+        throw new Error(`API request failed with status ${response.status}`);
       }
       
       const data = await response.json();
-      console.log('📦 API Response:', data);
-      
-      if (!Array.isArray(data)) {
-        console.error('API returned non-array data:', data);
-        setSuggestions([]);
+      if (Array.isArray(data)) {
+        setAllSuggestions(data);
+        setShowDropdown(data.length > 0);
+      } else {
+        console.warn('Invalid API response format:', data);
+        setAllSuggestions([]);
         setShowDropdown(false);
-        return;
+      }
+    } catch (error: any) {
+      console.error('Error fetching job title suggestions:', error);
+      setAllSuggestions([]);
+      setShowDropdown(false);
+      
+      // Don't show error to user for network timeouts
+      if (!error.message?.includes('timeout') && !error.message?.includes('Failed to fetch')) {
+        console.warn('API temporarily unavailable');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Fetch popular job titles
+  const fetchPopularTitles = useCallback(async () => {
+    try {
+      const finalApiUrl = await getApiUrl();
+      
+      const response = await fetch(`${finalApiUrl}/jobs/statistics`, {
+        signal: AbortSignal.timeout(10000), // 10 second timeout
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Statistics API failed with status ${response.status}`);
       }
       
-      const positions = data.map((item: any) => ({
-        title: item.title || item,
-        count: item.count || 0,
-        category: item.category || 'Unknown'
-      }));
+      const data = await response.json();
+      const popularTitles = data.positions?.slice(0, 5) || []; // 5 popular positions
       
-      // Filter out already selected positions
-      const filtered = positions.filter((pos: Position) => 
+      const filtered = popularTitles.filter((pos: AutocompleteItem) => 
         !selectedPositions.some(selected => 
           selected.title.toLowerCase() === pos.title.toLowerCase()
         )
       );
       
-      console.log('✅ Filtered positions:', filtered);
-      
-      setSuggestions(filtered);
-      if (filtered.length > 0) {
-        setShowDropdown(true);
-      }
-    } catch (error) {
-      console.error('Error fetching job title suggestions:', error);
-      setSuggestions([]);
-      setShowDropdown(false);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [selectedPositions]);
-
-  // Fetch popular job titles for empty input
-  const fetchPopularTitles = useCallback(async () => {
-    try {
-      const apiUrl = await getApiUrl();
-      const finalApiUrl = apiUrl.includes('localhost:8002') 
-        ? apiUrl.replace('localhost:8002', 'localhost:8001')
-        : apiUrl;
-      
-      const response = await fetch(`${finalApiUrl}/jobs/statistics`);
-      if (response.ok) {
-        const data = await response.json();
-        const popularTitles = data.positions?.slice(0, 3) || [];
-        
-        const filtered = popularTitles.filter((pos: Position) => 
-          !selectedPositions.some(selected => 
-            selected.title.toLowerCase() === pos.title.toLowerCase()
-          )
-        );
-        
-        setSuggestions(filtered);
-        return filtered.length > 0;
-      }
-    } catch (error) {
+      setAllSuggestions(filtered);
+      setShowDropdown(filtered.length > 0);
+    } catch (error: any) {
       console.error('Error fetching popular titles:', error);
+      
+      // Fallback popular titles
+      const fallbackTitles = [
+        { title: "Software Engineer", count: 100, category: "Technology" },
+        { title: "Product Manager", count: 80, category: "Management" },
+        { title: "Data Scientist", count: 60, category: "Technology" },
+        { title: "DevOps Engineer", count: 50, category: "Technology" },
+        { title: "UX Designer", count: 40, category: "Design" }
+      ];
+      
+      setAllSuggestions(fallbackTitles);
+      setShowDropdown(true);
     }
-    
-    // Fallback to static popular titles
-    const fallbackTitles = [
-      { title: 'Software Engineer', count: 1250, category: 'Technology' },
-      { title: 'Product Manager', count: 890, category: 'Management' },
-      { title: 'Frontend Developer', count: 670, category: 'Technology' }
-    ];
-    
-    const filtered = fallbackTitles.filter((pos: Position) => 
-      !selectedPositions.some(selected => 
-        selected.title.toLowerCase() === pos.title.toLowerCase()
-      )
-    );
-    
-    setSuggestions(filtered);
-    return filtered.length > 0;
   }, [selectedPositions]);
 
   // Handle input focus to show popular titles
   const handleInputFocus = async () => {
-    console.log('🎯 Input focused');
-    if (!inputValue.trim() && suggestions.length === 0) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🎯 Input focused');
+    }
+    if (!inputValue.trim() && allSuggestions.length === 0) {
       setIsLoading(true);
-      const hasPopular = await fetchPopularTitles();
+      await fetchPopularTitles();
       setIsLoading(false);
-      if (hasPopular) {
-        setShowDropdown(true);
-      }
-    } else if (suggestions.length > 0) {
+    } else if (allSuggestions.length > 0) {
       setShowDropdown(true);
     }
   };
 
-  // Handle input change with debounce
+  // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    console.log('⌨️ Input changed:', value);
     setInputValue(value);
-
-    // Clear previous timeout
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
-    // Set new timeout for search
-    if (value.trim()) {
-      console.log('⏱️ Setting debounce timer for search');
-      searchTimeoutRef.current = setTimeout(() => {
-        console.log('⏰ Debounce timer fired, fetching suggestions');
-        fetchSuggestions(value.trim());
-      }, 300);
+    
+    if (value.trim().length >= 2) {
+      fetchSuggestions(value);
     } else {
-      console.log('🧹 Input empty, clearing suggestions');
-      setSuggestions([]);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🧹 Input empty, clearing suggestions');
+      }
+      setAllSuggestions([]);
       setShowDropdown(false);
     }
   };
 
   // Select a position
-  const selectPosition = (position: Position) => {
+  const selectPosition = (position: AutocompleteItem) => {
     console.log('🎯 selectPosition called with:', position);
     
     if (selectedPositions.length >= maxSelections) {
@@ -215,7 +179,7 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
     // Clear and reset
     console.log('🧹 Clearing input and closing dropdown');
     setInputValue('');
-    setSuggestions([]);
+    setAllSuggestions([]);
     setShowDropdown(false);
     
     // Focus back to input
@@ -232,12 +196,13 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
     onPositionsChange(newPositions);
   };
 
-  // Clear all selections
-  const clearAll = () => {
-    console.log('🗑️ Clearing all selections');
+
+
+  // Clear all selected positions
+  const clearAllPositions = () => {
     onPositionsChange([]);
     setInputValue('');
-    setSuggestions([]);
+    setAllSuggestions([]);
     setShowDropdown(false);
   };
 
@@ -255,17 +220,25 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
   // Handle click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      // Check if click is outside both the container and the dropdown
+      if (
+        containerRef.current && 
+        !containerRef.current.contains(event.target as Node) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         console.log('👆 Click outside detected, closing dropdown');
         setShowDropdown(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [showDropdown]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -282,6 +255,39 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
     return rtlChars.test(text);
   };
 
+  // Calculate dropdown position
+  const updateDropdownPosition = useCallback(() => {
+    if (!inputRef.current) return;
+
+    const inputRect = inputRef.current.getBoundingClientRect();
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+
+    setDropdownPosition({
+      top: inputRect.bottom + scrollTop,
+      left: inputRect.left + scrollLeft,
+      width: inputRect.width
+    });
+  }, []);
+
+  // Update position when dropdown opens or window resizes
+  useEffect(() => {
+    if (showDropdown) {
+      updateDropdownPosition();
+      
+      const handleScroll = () => updateDropdownPosition();
+      const handleResize = () => updateDropdownPosition();
+      
+      window.addEventListener('scroll', handleScroll, true);
+      window.addEventListener('resize', handleResize);
+      
+      return () => {
+        window.removeEventListener('scroll', handleScroll, true);
+        window.removeEventListener('resize', handleResize);
+      };
+    }
+  }, [showDropdown, updateDropdownPosition]);
+
   return (
     <div className="w-full" ref={containerRef}>
       {/* Selected positions display */}
@@ -293,7 +299,7 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
             </span>
             <button
               type="button"
-              onClick={clearAll}
+              onClick={clearAllPositions}
               className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
             >
               Clear All
@@ -341,17 +347,27 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
             </div>
           )}
 
-          {/* Dropdown */}
-          {showDropdown && (
-            <div className="absolute top-full left-0 right-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg mt-1 max-h-64 overflow-y-auto z-[9999]">
+          {/* Dropdown Portal */}
+          {showDropdown && createPortal(
+            <div 
+              ref={dropdownRef}
+              className="fixed bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xl mt-1 max-h-64 overflow-y-auto"
+              style={{
+                top: `${dropdownPosition.top + 4}px`,
+                left: `${dropdownPosition.left}px`,
+                width: `${dropdownPosition.width}px`,
+                zIndex: 999999,
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+              }}
+            >
               {isLoading ? (
                 <div className="p-3 text-center text-gray-500 dark:text-gray-400">
                   <div className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full mr-2"></div>
                   Searching...
                 </div>
-              ) : suggestions.length > 0 ? (
+              ) : allSuggestions.length > 0 ? (
                 <>
-                  {suggestions.map((suggestion, index) => (
+                  {allSuggestions.map((suggestion, index) => (
                     <div
                       key={index}
                       className="px-4 py-2 hover:bg-blue-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-600 last:border-b-0"
@@ -377,7 +393,8 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
                   Type for more relevant job ads
                 </div>
               )}
-            </div>
+            </div>,
+            document.body
           )}
         </div>
 

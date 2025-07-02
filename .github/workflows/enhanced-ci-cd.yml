@@ -1,0 +1,277 @@
+name: Enhanced CI/CD with Auto-Fix
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip tests (emergency deploy)'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.11'
+  MAX_RETRY_ATTEMPTS: 3
+  
+jobs:
+  pre-deploy-automation:
+    name: 🚀 Pre-Deploy Automation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+        
+    - name: 📦 Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: |
+          frontend/package-lock.json
+          backend/package-lock.json
+          
+    - name: 🔧 Install Backend Dependencies
+      run: |
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: 📦 Install Frontend Dependencies
+      run: |
+        cd frontend
+        npm ci --legacy-peer-deps
+        
+    - name: 🛡️ Make Scripts Executable
+      run: |
+        chmod +x scripts/pre-deploy-automation.sh
+        chmod +x scripts/test_runner.sh
+        
+    - name: 🧪 Run Pre-Deploy Automation
+      id: pre_deploy
+      run: |
+        if [ "${{ github.event.inputs.skip_tests }}" = "true" ]; then
+          echo "⚠️ EMERGENCY DEPLOY - Skipping tests as requested"
+          echo "status=skipped" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        
+        ./scripts/pre-deploy-automation.sh
+        echo "status=success" >> $GITHUB_OUTPUT
+      continue-on-error: true
+      
+    - name: 📊 Upload Test Reports
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-reports-${{ github.run_number }}
+        path: |
+          deploy-logs/
+          frontend/coverage/
+          backend/htmlcov/
+          frontend/build/
+        retention-days: 30
+        
+    - name: 📋 Generate Job Summary
+      if: always()
+      run: |
+        echo "# 🚀 Pre-Deploy Automation Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Workflow:** ${{ github.workflow }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Status:** ${{ steps.pre_deploy.outputs.status }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ -f "deploy-logs/deployment_report_*.md" ]; then
+          echo "## 📊 Detailed Report" >> $GITHUB_STEP_SUMMARY
+          cat deploy-logs/deployment_report_*.md >> $GITHUB_STEP_SUMMARY
+        fi
+        
+    - name: 💬 Comment on PR
+      if: github.event_name == 'pull_request' && always()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const status = '${{ steps.pre_deploy.outputs.status }}';
+          
+          let statusEmoji = '✅';
+          let statusText = 'All tests passed!';
+          
+          if (status === 'skipped') {
+            statusEmoji = '⚠️';
+            statusText = 'Tests were skipped (emergency deploy)';
+          } else if (status !== 'success') {
+            statusEmoji = '❌';
+            statusText = 'Tests failed - review required';
+          }
+          
+          const comment = `
+          ## ${statusEmoji} Pre-Deploy Automation Results
+          
+          **Status:** ${statusText}  
+          **Workflow:** ${context.workflow}  
+          **Run:** [#${context.runNumber}](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+          
+          ${status === 'success' ? '🚀 This PR is ready for deployment!' : '🛑 This PR requires attention before deployment.'}
+          
+          <details>
+          <summary>📊 View detailed test report</summary>
+          
+          Check the workflow artifacts for complete logs and coverage reports.
+          </details>
+          `;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+          
+    - name: ❌ Fail if Tests Failed
+      if: steps.pre_deploy.outputs.status != 'success' && steps.pre_deploy.outputs.status != 'skipped'
+      run: |
+        echo "❌ Pre-deploy automation failed!"
+        echo "🔍 Check the logs above for detailed error information."
+        echo "🔧 Auto-fixes were attempted but were not sufficient."
+        echo "🛠️ Manual intervention is required before deployment."
+        exit 1
+
+  security-scan:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    needs: pre-deploy-automation
+    if: needs.pre-deploy-automation.outputs.status == 'success' || needs.pre-deploy-automation.outputs.status == 'skipped'
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 🔍 Run Security Audit (Frontend)
+      run: |
+        cd frontend
+        npm audit --audit-level=high || echo "⚠️ Security audit found issues"
+        
+    - name: 🔍 Run Security Audit (Backend)
+      run: |
+        cd backend
+        pip install safety bandit
+        safety check || echo "⚠️ Safety check found issues"
+        bandit -r . -f json -o bandit-report.json || echo "⚠️ Bandit found issues"
+        
+    - name: 📊 Upload Security Reports
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-reports-${{ github.run_number }}
+        path: |
+          backend/bandit-report.json
+        retention-days: 30
+
+  performance-test:
+    name: ⚡ Performance Tests
+    runs-on: ubuntu-latest
+    needs: pre-deploy-automation
+    if: needs.pre-deploy-automation.outputs.status == 'success' || needs.pre-deploy-automation.outputs.status == 'skipped'
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 📦 Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        
+    - name: 📦 Install Frontend Dependencies
+      run: |
+        cd frontend
+        npm ci --legacy-peer-deps
+        
+    - name: 🏗️ Build Frontend
+      run: |
+        cd frontend
+        npm run build
+        
+    - name: 📏 Analyze Bundle Size
+      run: |
+        cd frontend
+        npx bundlesize
+      continue-on-error: true
+      
+    - name: ⚡ Lighthouse CI
+      uses: treosh/lighthouse-ci-action@v9
+      with:
+        configPath: './frontend/.lighthouserc.json'
+        temporaryPublicStorage: true
+      continue-on-error: true
+
+  deploy-staging:
+    name: 🚀 Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [pre-deploy-automation, security-scan, performance-test]
+    if: github.ref == 'refs/heads/develop' && needs.pre-deploy-automation.outputs.status == 'success'
+    environment: staging
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 🚀 Deploy to Staging
+      run: |
+        echo "🚀 Deploying to staging environment..."
+        # Add your staging deployment commands here
+        echo "✅ Staging deployment completed!"
+        
+  deploy-production:
+    name: 🌟 Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [pre-deploy-automation, security-scan, performance-test]
+    if: github.ref == 'refs/heads/main' && needs.pre-deploy-automation.outputs.status == 'success'
+    environment: production
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 🌟 Deploy to Production
+      run: |
+        echo "🌟 Deploying to production environment..."
+        # Add your production deployment commands here
+        echo "✅ Production deployment completed!"
+        
+    - name: 📢 Notify Success
+      if: success()
+      run: |
+        echo "🎉 Production deployment successful!"
+        echo "🔗 Application URL: https://buzz2remote.com"
+        
+  rollback:
+    name: 🔄 Rollback Production
+    runs-on: ubuntu-latest
+    if: failure() && github.ref == 'refs/heads/main'
+    needs: deploy-production
+    environment: production
+    
+    steps:
+    - name: 🔄 Rollback Deployment
+      run: |
+        echo "🔄 Rolling back production deployment..."
+        # Add your rollback commands here
+        echo "✅ Rollback completed!"

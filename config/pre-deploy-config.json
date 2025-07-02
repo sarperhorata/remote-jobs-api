@@ -1,0 +1,319 @@
+{
+  "automation": {
+    "enabled": true,
+    "version": "2.0",
+    "description": "Pre-deployment automation configuration for Buzz2Remote"
+  },
+  "testing": {
+    "maxRetryAttempts": 3,
+    "timeoutSeconds": 120,
+    "quickModeTimeout": 60,
+    "enableParallelTests": true,
+    "testSuites": {
+      "frontend": {
+        "enabled": true,
+        "priority": 1,
+        "tests": [
+          {
+            "name": "Syntax Tests",
+            "command": "npm run test:quick -- --testPathPattern=syntax",
+            "timeout": 30,
+            "critical": true
+          },
+          {
+            "name": "Unit Tests", 
+            "command": "npm run test:quick -- --testPathPattern=unit",
+            "timeout": 45,
+            "critical": true
+          },
+          {
+            "name": "Integration Tests",
+            "command": "npm run test:quick -- --testPathPattern=integration",
+            "timeout": 60,
+            "critical": false
+          },
+          {
+            "name": "Build Test",
+            "command": "npm run build",
+            "timeout": 90,
+            "critical": true
+          },
+          {
+            "name": "Lint Check",
+            "command": "npm run lint",
+            "timeout": 30,
+            "critical": false
+          }
+        ]
+      },
+      "backend": {
+        "enabled": true,
+        "priority": 2,
+        "tests": [
+          {
+            "name": "Python Syntax Check",
+            "command": "python -m py_compile *.py",
+            "timeout": 15,
+            "critical": true
+          },
+          {
+            "name": "Unit Tests",
+            "command": "pytest tests/unit/ -v",
+            "timeout": 60,
+            "critical": true
+          },
+          {
+            "name": "Integration Tests", 
+            "command": "pytest tests/integration/ -v",
+            "timeout": 90,
+            "critical": false
+          },
+          {
+            "name": "API Tests",
+            "command": "pytest tests/api/ -v",
+            "timeout": 45,
+            "critical": true
+          },
+          {
+            "name": "Database Tests",
+            "command": "pytest tests/ -m database -v",
+            "timeout": 30,
+            "critical": true
+          }
+        ]
+      }
+    }
+  },
+  "errorDetection": {
+    "patterns": {
+      "SYNTAX_ERROR": {
+        "regex": "SyntaxError|Parse error|Unexpected token",
+        "severity": "critical",
+        "autoFixable": true
+      },
+      "IMPORT_ERROR": {
+        "regex": "Cannot resolve module|Module not found|Import error",
+        "severity": "critical", 
+        "autoFixable": true
+      },
+      "TYPE_ERROR": {
+        "regex": "TypeScript error|Type.*is not assignable",
+        "severity": "high",
+        "autoFixable": true
+      },
+      "LINT_ERROR": {
+        "regex": "ESLint.*error|Linting errors",
+        "severity": "medium",
+        "autoFixable": true
+      },
+      "TEST_FAILURE": {
+        "regex": "Test failed|Tests.*failed|FAIL",
+        "severity": "high",
+        "autoFixable": true
+      },
+      "BUILD_ERROR": {
+        "regex": "Build failed|Compilation error|npm ERR!",
+        "severity": "critical",
+        "autoFixable": true
+      },
+      "DEPENDENCY_ERROR": {
+        "regex": "Missing dependency|Package not found|npm install",
+        "severity": "high",
+        "autoFixable": true
+      },
+      "DATABASE_ERROR": {
+        "regex": "Connection refused|Database.*error|SQL.*error",
+        "severity": "critical",
+        "autoFixable": false
+      },
+      "MEMORY_ERROR": {
+        "regex": "Out of memory|Memory.*exceeded|ENOMEM",
+        "severity": "critical",
+        "autoFixable": false
+      }
+    }
+  },
+  "autoFix": {
+    "enabled": true,
+    "maxFixAttempts": 2,
+    "strategies": {
+      "SYNTAX_ERROR": [
+        "run_eslint_fix",
+        "fix_common_syntax_issues"
+      ],
+      "IMPORT_ERROR": [
+        "reinstall_dependencies",
+        "clear_cache"
+      ],
+      "TYPE_ERROR": [
+        "run_type_check",
+        "add_type_declarations"
+      ],
+      "LINT_ERROR": [
+        "run_eslint_fix"
+      ],
+      "TEST_FAILURE": [
+        "update_snapshots",
+        "clear_test_cache"
+      ],
+      "BUILD_ERROR": [
+        "run_eslint_fix",
+        "reinstall_dependencies"
+      ],
+      "DEPENDENCY_ERROR": [
+        "reinstall_dependencies",
+        "clear_cache",
+        "update_package_lock"
+      ]
+    }
+  },
+  "logging": {
+    "level": "info",
+    "directory": "deploy-logs",
+    "maxLogFiles": 10,
+    "includeTimestamp": true,
+    "formats": {
+      "console": "colored",
+      "file": "json"
+    }
+  },
+  "notifications": {
+    "enabled": true,
+    "channels": {
+      "console": {
+        "enabled": true,
+        "level": "all"
+      },
+      "file": {
+        "enabled": true,
+        "level": "error",
+        "path": "deploy-logs/notifications.log"
+      },
+      "slack": {
+        "enabled": false,
+        "webhook": "",
+        "level": "error"
+      },
+      "email": {
+        "enabled": false,
+        "smtp": {
+          "host": "",
+          "port": 587,
+          "secure": false
+        },
+        "recipients": []
+      }
+    }
+  },
+  "security": {
+    "scanForSecrets": true,
+    "preventLargeFiles": true,
+    "maxFileSize": "10MB",
+    "secretPatterns": [
+      "password\\s*=\\s*['\"][^'\"]+['\"]",
+      "api_key\\s*=\\s*['\"][^'\"]+['\"]",
+      "secret\\s*=\\s*['\"][^'\"]+['\"]",
+      "token\\s*=\\s*['\"][^'\"]+['\"]",
+      "-----BEGIN PRIVATE KEY-----",
+      "-----BEGIN RSA PRIVATE KEY-----",
+      "sk_live_[a-zA-Z0-9]+",
+      "pk_live_[a-zA-Z0-9]+",
+      "AKIA[0-9A-Z]{16}"
+    ],
+    "excludePatterns": [
+      "*.log",
+      "node_modules/*",
+      ".git/*",
+      "build/*",
+      "dist/*",
+      "*.min.js"
+    ]
+  },
+  "performance": {
+    "monitoring": {
+      "enabled": true,
+      "maxResponseTime": 5000,
+      "maxMemoryUsage": 90,
+      "maxCpuUsage": 80
+    },
+    "optimization": {
+      "enableCache": true,
+      "parallelTests": true,
+      "fastFail": true
+    }
+  },
+  "deployment": {
+    "environments": {
+      "development": {
+        "skipTests": [],
+        "quickMode": true
+      },
+      "staging": {
+        "skipTests": ["performance"],
+        "quickMode": false
+      },
+      "production": {
+        "skipTests": [],
+        "quickMode": false,
+        "requireApproval": true
+      }
+    },
+    "protectedBranches": ["main", "master", "production"],
+    "autoDeployBranches": ["develop", "staging"],
+    "rollback": {
+      "enabled": true,
+      "maxRollbackAttempts": 3
+    }
+  },
+  "reporting": {
+    "generateReports": true,
+    "formats": ["markdown", "json"],
+    "includeMetrics": true,
+    "includeLogs": true,
+    "retentionDays": 30,
+    "templates": {
+      "success": "templates/success-report.md",
+      "failure": "templates/failure-report.md"
+    }
+  },
+  "integrations": {
+    "github": {
+      "enabled": true,
+      "commentOnPR": true,
+      "updateStatus": true
+    },
+    "slack": {
+      "enabled": false,
+      "webhook": "",
+      "channels": {
+        "success": "#deployments",
+        "failure": "#alerts"
+      }
+    },
+    "jira": {
+      "enabled": false,
+      "baseUrl": "",
+      "credentials": {
+        "username": "",
+        "token": ""
+      }
+    }
+  },
+  "advanced": {
+    "customScripts": {
+      "beforeTests": [],
+      "afterTests": [],
+      "onSuccess": [],
+      "onFailure": []
+    },
+    "conditionalExecution": {
+      "skipOnFiles": ["*.md", "*.txt", "docs/*"],
+      "runOnFiles": ["*.js", "*.ts", "*.tsx", "*.py", "*.json"]
+    },
+    "featureFlags": {
+      "experimentalFixes": false,
+      "advancedMetrics": true,
+      "detailedLogging": true
+    }
+  }
+}

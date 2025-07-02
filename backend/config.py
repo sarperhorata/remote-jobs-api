@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     
     # LinkedIn OAuth
     LINKEDIN_CLIENT_ID: str = "77h3x8xn95e5rg"
-    LINKEDIN_CLIENT_SECRET: str = "WPL_AP1.wL2fdcuI4DxM8lL8.R5LwwA=="
+    LINKEDIN_CLIENT_SECRET: str = ""  # Set via environment variable
     LINKEDIN_REDIRECT_URI: str = "http://localhost:3000/auth/linkedin/callback"
     
     # Stripe

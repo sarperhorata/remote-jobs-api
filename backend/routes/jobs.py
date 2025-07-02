@@ -527,19 +527,20 @@ async def search_job_titles(
         cursor = db.jobs.aggregate(pipeline)
         job_titles = await cursor.to_list(length=limit * 2)
         
-        # Remove duplicates and filter relevant results
+        # Remove duplicates and filter relevant results with better normalization
         unique_titles = {}
         for item in job_titles:
             title = item['title']
             if title and title.strip():
-                title_lower = title.lower()
+                # Normalize title for comparison (remove case, extra spaces, punctuation)
+                normalized_title = ' '.join(title.lower().strip().split())
                 query_lower = q.lower()
                 
                 # Relevance scoring
                 score = 0
-                if title_lower.startswith(query_lower):
+                if normalized_title.startswith(query_lower):
                     score += 100  # Exact prefix match
-                elif query_lower in title_lower:
+                elif query_lower in normalized_title:
                     score += 50   # Contains match
                 
                 # Add count to score
@@ -547,12 +548,14 @@ async def search_job_titles(
                 
                 # Only include if reasonably relevant
                 if score > 0:
-                    if title_lower not in unique_titles or unique_titles[title_lower]['score'] < score:
-                        unique_titles[title_lower] = {
-                            'title': title,
+                    # Use normalized title as key to prevent true duplicates
+                    if normalized_title not in unique_titles or unique_titles[normalized_title]['score'] < score:
+                        unique_titles[normalized_title] = {
+                            'title': title,  # Keep original title for display
                             'count': item['count'],
                             'category': item.get('category', 'Technology'),
-                            'score': score
+                            'score': score,
+                            'normalized': normalized_title
                         }
         
         # Sort by relevance score and take top results

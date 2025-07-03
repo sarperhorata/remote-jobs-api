@@ -82,77 +82,84 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-600 p-4 hover:shadow-md transition-shadow duration-200 cursor-pointer"
+    <div className="group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-600 p-6 hover:shadow-xl hover:border-blue-200 dark:hover:border-blue-700 transition-all duration-300 cursor-pointer transform hover:-translate-y-1 relative overflow-hidden"
          onClick={handleJobClick}>
-      {/* Header */}
-      <div className="flex justify-between items-start mb-3">
-        <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1 line-clamp-2 hover:text-blue-600 dark:hover:text-blue-400">
-            {job.title}
-          </h3>
-          <button
-            onClick={handleCompanyClick}
-            className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline font-medium"
-          >
-            {typeof job.company === 'string' ? job.company : job.company?.name || 'Unknown Company'}
-          </button>
+      
+      {/* Subtle gradient overlay on hover */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-purple-50/50 dark:from-blue-900/10 dark:to-purple-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl"></div>
+      
+      {/* Content */}
+      <div className="relative z-10">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200">
+              {job.title}
+            </h3>
+            <button
+              onClick={handleCompanyClick}
+              className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline font-medium transition-colors duration-200"
+            >
+              {typeof job.company === 'string' ? job.company : job.company?.name || 'Unknown Company'}
+            </button>
+          </div>
+          <div className="flex items-center text-gray-500 dark:text-gray-400 text-sm ml-4 bg-gray-50 dark:bg-slate-700 px-2 py-1 rounded-full">
+            <Clock className="w-3 h-3 mr-1" />
+            {formatPostedDate(job.posted_date || job.created_at || new Date().toISOString())}
+          </div>
         </div>
-        <div className="flex items-center text-gray-500 dark:text-gray-400 text-sm ml-4">
-          <Clock className="w-4 h-4 mr-1" />
-          {formatPostedDate(job.posted_date || job.created_at || new Date().toISOString())}
+
+        {/* Tags Row */}
+        <div className="flex flex-wrap gap-2 mb-3">
+          <span className="px-3 py-1 bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 text-blue-800 dark:text-blue-200 text-xs rounded-full font-medium">
+            {job.job_type || 'Full-time'}
+          </span>
+          <span className="px-3 py-1 bg-gradient-to-r from-green-100 to-emerald-200 dark:from-green-900 dark:to-emerald-800 text-green-800 dark:text-green-200 text-xs rounded-full font-medium">
+            {getWorkTypeDisplay()}
+          </span>
+          <span className="px-3 py-1 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 text-gray-800 dark:text-gray-200 text-xs rounded-full flex items-center font-medium">
+            <MapPin className="w-3 h-3 mr-1" />
+            {getLocationDisplay()}
+          </span>
         </div>
-      </div>
 
-      {/* Tags Row */}
-      <div className="flex flex-wrap gap-2 mb-3">
-        <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full">
-          {job.job_type || 'Full-time'}
-        </span>
-        <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full">
-          {getWorkTypeDisplay()}
-        </span>
-        <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs rounded-full flex items-center">
-          <MapPin className="w-3 h-3 mr-1" />
-          {getLocationDisplay()}
-        </span>
-      </div>
+        {/* Description */}
+        {job.description && (
+          <p className="text-gray-600 dark:text-gray-300 text-sm mb-3 line-clamp-3 leading-relaxed" 
+             title={job.description}>
+            {job.description}
+          </p>
+        )}
 
-      {/* Description */}
-      {job.description && (
-        <p className="text-gray-600 dark:text-gray-300 text-sm mb-3 line-clamp-3" 
-           title={job.description}>
-          {job.description}
-        </p>
-      )}
+        {/* Skills */}
+        {job.skills && job.skills.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-3">
+            {job.skills.slice(0, 4).map((skill, index) => (
+              <span key={index} className="px-2 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs rounded-md font-medium">
+                {skill}
+              </span>
+            ))}
+            {job.skills.length > 4 && (
+              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs rounded-md">
+                +{job.skills.length - 4} more
+              </span>
+            )}
+          </div>
+        )}
 
-      {/* Skills */}
-      {job.skills && job.skills.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-3">
-          {job.skills.slice(0, 4).map((skill, index) => (
-            <span key={index} className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded">
-              {skill}
-            </span>
-          ))}
-          {job.skills.length > 4 && (
-            <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs rounded">
-              +{job.skills.length - 4} more
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Footer */}
-      <div className="flex justify-between items-center pt-3 border-t border-gray-100 dark:border-slate-600">
-        <div className="flex items-center text-gray-600 dark:text-gray-300">
-          {formatSalary(job.salary) && (
-            <span className="text-sm font-medium">
-              {formatSalary(job.salary)}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center text-blue-600 dark:text-blue-400 text-sm">
-          <span>Apply Now</span>
-          <ExternalLink className="w-4 h-4 ml-1" />
+        {/* Footer */}
+        <div className="flex justify-between items-center pt-3 border-t border-gray-100 dark:border-slate-600">
+          <div className="flex items-center text-gray-600 dark:text-gray-300">
+            {formatSalary(job.salary) && (
+              <span className="text-sm font-semibold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                {formatSalary(job.salary)}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center text-blue-600 dark:text-blue-400 text-sm font-medium group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors duration-200">
+            <span>Apply Now</span>
+            <ExternalLink className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform duration-200" />
+          </div>
         </div>
       </div>
     </div>

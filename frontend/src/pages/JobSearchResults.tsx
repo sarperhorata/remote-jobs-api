@@ -161,17 +161,17 @@ export default function JobSearchResults() {
 
       {/* Filter Modal */}
       {showFiltersModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-11/12 max-w-md lg:max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 dark:border-gray-700/20 w-11/12 max-w-md lg:max-w-4xl max-h-[90vh] overflow-y-auto">
             {/* Mobile Modal Layout */}
             <div className="lg:hidden">
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200/50 dark:border-gray-700/50">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Filters</h2>
                 <button
                   onClick={() => setShowFiltersModal(false)}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
               <div className="p-6">
@@ -211,13 +211,13 @@ export default function JobSearchResults() {
 
             {/* Desktop Modal Layout */}
             <div className="hidden lg:block">
-              <div className="flex items-center justify-between p-8 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between p-8 border-b border-gray-200/50 dark:border-gray-700/50">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Search Filters</h2>
                 <button
                   onClick={() => setShowFiltersModal(false)}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
               <div className="p-8 grid grid-cols-2 gap-8">
@@ -327,45 +327,55 @@ export default function JobSearchResults() {
       )}
 
       {/* Main Content - Dark Background */}
-      <div className="flex-1 relative bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <div className="flex-1 relative bg-gradient-to-br from-gray-50 to-blue-50/30 dark:from-gray-900 dark:to-blue-950/30 min-h-screen">
         <div className="container mx-auto px-4 py-8 max-w-7xl">
           
-          {/* Search Header with Filter Button */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 mb-8">
-            <div className="p-6">
+          {/* Enhanced Search Header */}
+          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 dark:border-gray-700/20 mb-8 overflow-hidden">
+            {/* Gradient overlay */}
+            <div className="bg-gradient-to-r from-blue-600/5 to-purple-600/5 dark:from-blue-400/5 dark:to-purple-400/5 p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    Job Search Results
-                  </h1>
-                  <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm rounded-full">
-                    {totalJobs} jobs found
-                  </span>
+                  <div>
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                      Job Search Results
+                    </h1>
+                    <div className="flex items-center gap-3">
+                      <span className="px-4 py-2 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/50 dark:to-purple-900/50 text-blue-800 dark:text-blue-200 text-sm font-medium rounded-full border border-blue-200/50 dark:border-blue-700/50">
+                        📊 {totalJobs.toLocaleString()} jobs found
+                      </span>
+                      {hasActiveFilters && (
+                        <span className="px-3 py-1 bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/50 dark:to-emerald-900/50 text-green-800 dark:text-green-200 text-xs font-medium rounded-full border border-green-200/50 dark:border-green-700/50">
+                          ✨ Filtered
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 
                 <div className="flex items-center gap-3">
                   {/* Save Search Button */}
                   <button
                     onClick={() => setShowSaveDialog(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-600/50 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-white dark:hover:bg-gray-600 transition-all duration-200 shadow-sm hover:shadow-md"
                   >
                     <Save className="w-4 h-4" />
-                    <span>Save Search</span>
+                    <span className="hidden sm:inline">Save Search</span>
                   </button>
 
                   {/* Filter Button */}
                   <button
                     onClick={() => setShowFiltersModal(true)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all duration-200 shadow-sm hover:shadow-md ${
                       hasActiveFilters 
-                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300' 
-                        : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                        ? 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300' 
+                        : 'bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm border-gray-200/50 dark:border-gray-600/50 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-600'
                     }`}
                   >
                     <Filter className="w-4 h-4" />
-                    <span>Filters</span>
+                    <span className="hidden sm:inline">Filters</span>
                     {hasActiveFilters && (
-                      <span className="ml-1 px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
+                      <span className="ml-1 px-2 py-0.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs rounded-full font-medium">
                         Active
                       </span>
                     )}
@@ -375,29 +385,33 @@ export default function JobSearchResults() {
             </div>
           </div>
 
-          {/* Job Results - Dark Background */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+          {/* Enhanced Job Results */}
+          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 dark:border-gray-700/20 overflow-hidden">
             {loading ? (
-              <div className="flex items-center justify-center py-16">
-                <div className="text-gray-500 dark:text-gray-400">Loading jobs...</div>
+              <div className="flex items-center justify-center py-20">
+                <div className="text-center">
+                  <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <div className="text-gray-500 dark:text-gray-400 font-medium">Loading amazing jobs...</div>
+                </div>
               </div>
             ) : jobs.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16">
-                <div className="text-gray-500 dark:text-gray-400 text-lg mb-2">No jobs found</div>
+              <div className="flex flex-col items-center justify-center py-20">
+                <div className="text-6xl mb-4">🔍</div>
+                <div className="text-gray-500 dark:text-gray-400 text-lg mb-2 font-medium">No jobs found</div>
                 <div className="text-gray-400 dark:text-gray-500 text-sm">Try adjusting your search criteria</div>
               </div>
             ) : (
               <div className="p-6">
-                {/* View Toggle */}
+                {/* Enhanced View Toggle */}
                 <div className="flex items-center justify-between mb-6">
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Showing {jobs.length} of {totalJobs} jobs
+                  <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                    Showing {jobs.length} of {totalJobs.toLocaleString()} jobs
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-xl">
                     <button
                       onClick={() => setViewMode('grid')}
-                      className={`p-2 rounded ${viewMode === 'grid' 
-                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300' 
+                      className={`p-2 rounded-lg transition-all duration-200 ${viewMode === 'grid' 
+                        ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-300 shadow-sm' 
                         : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
                     >
                       <div className="w-4 h-4 grid grid-cols-2 gap-0.5">
@@ -409,8 +423,8 @@ export default function JobSearchResults() {
                     </button>
                     <button
                       onClick={() => setViewMode('list')}
-                      className={`p-2 rounded ${viewMode === 'list' 
-                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300' 
+                      className={`p-2 rounded-lg transition-all duration-200 ${viewMode === 'list' 
+                        ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-300 shadow-sm' 
                         : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
                     >
                       <div className="w-4 h-4 space-y-1">

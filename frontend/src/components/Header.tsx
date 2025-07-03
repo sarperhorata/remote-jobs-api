@@ -1,154 +1,194 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { useTheme } from '../contexts/ThemeContext';
-import { useAuth, AuthContextType } from '../contexts/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
-import { Sun, Moon, User, LogOut, FileText, Heart } from 'lucide-react';
+import { Menu, X, User, LogOut, Settings, Heart, FileText, Search as SearchIcon } from 'lucide-react';
 
 const Header: React.FC = () => {
-  const { theme, toggleTheme } = useTheme();
-  const { user, isAuthenticated, logout }: AuthContextType = useAuth();
-  const location = useLocation();
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authModalTab, setAuthModalTab] = useState<'login' | 'register'>('login');
-  const [isProfileMenuOpen, setProfileMenuOpen] = useState(false);
-  const profileMenuRef = useRef<HTMLDivElement>(null);
+  const { user, logout } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
-  const isActive = (path: string) => location.pathname === path;
-
-  // Auto-detect OS theme - commented out to allow manual control
-  // useEffect(() => {
-  //   const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-  //   applyTheme(mediaQuery.matches ? 'dark' : 'light');
-  //   const handler = (e: MediaQueryListEvent) => applyTheme(e.matches ? 'dark' : 'light');
-  //   mediaQuery.addEventListener('change', handler);
-  //   return () => mediaQuery.removeEventListener('change', handler);
-  // }, [applyTheme]);
-  
-  // Close profile menu on outside click
+  // Close dropdowns when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
-        setProfileMenuOpen(false);
-      }
+    const handleClickOutside = () => {
+      setShowProfileDropdown(false);
+      setIsMobileMenuOpen(false);
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  const handleSignInClick = () => {
-    setAuthModalTab('login');
-    setIsAuthModalOpen(true);
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
 
-  const handleGetStartedClick = () => {
-    setAuthModalTab('register');
-    setIsAuthModalOpen(true);
-  };
-
-  const handleLogout = () => {
-    logout();
-    setProfileMenuOpen(false);
-  }
+  const navigation = [
+    { name: 'Jobs', href: '/jobs' },
+    { name: 'Companies', href: '/companies' },
+    { name: 'About', href: '/about' },
+    { name: 'Contact', href: '/contact' }
+  ];
 
   return (
     <>
-      <header className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 py-3 shadow-sm border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50">
-        <div className="container mx-auto px-4">
-          <nav className="flex items-center justify-between">
-            <div className="flex items-center space-x-8">
-              <Link to="/" className="text-2xl font-bold flex items-center gap-2 text-gray-900 dark:text-white">
-                <span className="text-3xl">🐝</span>
-                Buzz2Remote
+      <header className="relative z-50">
+        {/* Glassmorphism navbar */}
+        <nav className="fixed top-0 left-0 right-0 z-50 bg-white/10 backdrop-blur-md border-b border-white/20 shadow-lg">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              {/* Logo */}
+              <Link to="/" className="flex items-center space-x-2 group">
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-200">
+                    <span className="text-white font-bold text-lg animate-pulse">🐝</span>
+                  </div>
+                  <div className="absolute -inset-1 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-xl blur opacity-20 group-hover:opacity-40 transition-opacity duration-200"></div>
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-lg bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
+                    Buzz2Remote
+                  </span>
+                  <span className="text-xs text-white/70 -mt-1">Find Remote Jobs 🚀</span>
+                </div>
               </Link>
-              <div className="hidden md:flex space-x-6">
-                <Link
-                  to="/jobs/search"
-                  className={`hover:text-yellow-500 dark:hover:text-yellow-400 ${
-                    isActive('/jobs/search') ? 'font-semibold text-yellow-600 dark:text-yellow-400' : 'text-gray-600 dark:text-gray-300'
-                  }`}
-                >
-                  Find Jobs
-                </Link>
-                {/* Add other links here if needed */}
-              </div>
-            </div>
 
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors"
-                aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              >
-                {theme === 'dark' ? (
-                  <Sun className="h-5 w-5" />
-                ) : (
-                  <Moon className="h-5 w-5" />
-                )}
-              </button>
-
-              {isAuthenticated && user ? (
-                 <div className="relative" ref={profileMenuRef}>
-                  <button 
-                    onClick={() => setProfileMenuOpen(!isProfileMenuOpen)} 
-                    className="flex items-center space-x-2 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              {/* Desktop Navigation */}
+              <div className="hidden md:flex items-center space-x-8">
+                {navigation.map((item) => (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className="text-white/90 hover:text-white hover:bg-white/10 px-3 py-2 rounded-lg transition-all duration-200 font-medium"
                   >
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm shadow-md">
-                      {user.name?.charAt(0)?.toUpperCase() || 'U'}
-                    </div>
-                    <span className="hidden sm:inline text-sm font-medium text-gray-700 dark:text-gray-300">{user.name}</span>
-                  </button>
+                    {item.name}
+                  </Link>
+                ))}
+              </div>
 
-                  {isProfileMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 border dark:border-gray-700">
-                      <div className="px-4 py-2 border-b dark:border-gray-700">
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{user.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
+              {/* Right side */}
+              <div className="flex items-center space-x-4">
+                {/* Search icon for mobile/tablet */}
+                <button className="md:hidden p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200">
+                  <SearchIcon className="w-5 h-5" />
+                </button>
+
+                {user ? (
+                  /* User Menu */
+                  <div className="relative" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                      className="flex items-center space-x-2 p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-medium">
+                        {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
                       </div>
-                      <Link to="/my-profile" className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                        <User className="w-4 h-4 mr-2" /> My Profile
-                      </Link>
-                      <Link to="/favorites" className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                        <Heart className="w-4 h-4 mr-2" /> My Favorites
-                      </Link>
-                      <Link to="/my-applications" className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                        <FileText className="w-4 h-4 mr-2" /> My Applications
-                      </Link>
-                      <button
-                        onClick={handleLogout}
-                        className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      >
-                        <LogOut className="w-4 h-4 mr-2" /> Sign Out
-                      </button>
-                    </div>
-                  )}
-                 </div>
-              ) : (
-                <div className="flex items-center space-x-3">
+                      <span className="hidden sm:block font-medium">{user.name || 'User'}</span>
+                    </button>
+
+                    {showProfileDropdown && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-white/20 py-2 z-50">
+                        <Link
+                          to="/profile"
+                          className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-white/50 transition-colors duration-200"
+                        >
+                          <User className="w-4 h-4" />
+                          <span>Profile</span>
+                        </Link>
+                        <Link
+                          to="/favorites"
+                          className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-white/50 transition-colors duration-200"
+                        >
+                          <Heart className="w-4 h-4" />
+                          <span>Favorites</span>
+                        </Link>
+                        <Link
+                          to="/applications"
+                          className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-white/50 transition-colors duration-200"
+                        >
+                          <FileText className="w-4 h-4" />
+                          <span>Applications</span>
+                        </Link>
+                        <Link
+                          to="/settings"
+                          className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-white/50 transition-colors duration-200"
+                        >
+                          <Settings className="w-4 h-4" />
+                          <span>Settings</span>
+                        </Link>
+                        <hr className="my-2 border-gray-200" />
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center space-x-2 px-4 py-2 text-red-600 hover:bg-red-50 transition-colors duration-200 w-full text-left"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span>Logout</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Auth Button */
                   <button
-                    onClick={handleSignInClick}
-                    className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors text-sm font-medium"
+                    onClick={() => setShowAuthModal(true)}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
                   >
                     Sign In
                   </button>
-                  <button
-                    onClick={handleGetStartedClick}
-                    className="px-4 py-2 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-md hover:from-orange-600 hover:to-yellow-500 transition-colors font-medium text-sm"
-                  >
-                    Get Started
-                  </button>
-                </div>
-              )}
+                )}
+
+                {/* Mobile menu button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsMobileMenuOpen(!isMobileMenuOpen);
+                  }}
+                  className="md:hidden p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200"
+                >
+                  {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
-          </nav>
-        </div>
+          </div>
+
+          {/* Mobile menu */}
+          {isMobileMenuOpen && (
+            <div className="md:hidden bg-white/95 backdrop-blur-md border-t border-white/20">
+              <div className="px-4 py-4 space-y-2">
+                {navigation.map((item) => (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className="block px-3 py-2 text-gray-700 hover:bg-white/50 rounded-lg transition-colors duration-200 font-medium"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    {item.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </nav>
+
+        {/* Spacer for fixed header */}
+        <div className="h-16"></div>
       </header>
 
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)} 
-        defaultTab={authModalTab}
-      />
+      {/* Auth Modal */}
+      {showAuthModal && (
+        <AuthModal 
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)} 
+        />
+      )}
     </>
   );
 };

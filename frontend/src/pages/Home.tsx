@@ -7,16 +7,27 @@ import Layout from '../components/Layout';
 import { jobService } from '../services/jobService';
 import { Job } from '../types/job';
 import QuickSearchButton from '../components/QuickSearchButton';
+import { 
+  MapPin, 
+  Clock, 
+  DollarSign, 
+  Building, 
+  Globe, 
+  ArrowRight,
+  Star,
+  CheckCircle,
+  PlayCircle
+} from 'lucide-react';
 
 // Icons temporarily replaced with text
 const Search = () => <span>🔍</span>;
-const MapPin = () => <span>📍</span>;
-const Building = () => <span>🏢</span>;
-const Globe = () => <span>🌍</span>;
-const ArrowRight = () => <span>→</span>;
-const Star = () => <span>⭐</span>;
-const CheckCircle = () => <span>✅</span>;
-const DollarSign = () => <span>💲</span>;
+const MapPinIcon = () => <span>📍</span>;
+const BuildingIcon = () => <span>🏢</span>;
+const GlobeIcon = () => <span>🌍</span>;
+const ArrowRightIcon = () => <span>→</span>;
+const StarIcon = () => <span>⭐</span>;
+const CheckCircleIcon = () => <span>✅</span>;
+const DollarSignIcon = () => <span>💲</span>;
 
 interface Position {
   title: string;
@@ -32,6 +43,9 @@ const Home: React.FC = () => {
   const [featuredJobs, setFeaturedJobs] = useState<Job[]>([]);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [popularPositions, setPopularPositions] = useState<string[]>([]);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // Check if user needs onboarding
   useEffect(() => {
@@ -268,6 +282,15 @@ const Home: React.FC = () => {
     navigate(`/jobs/search?${searchParams.toString()}`);
   };
 
+  const handleSearch = (positions: Position[]) => {
+    if (positions.length > 0) {
+      const query = positions.map(p => p.title).join(',');
+      navigate(`/jobs/search?q=${encodeURIComponent(query)}`);
+    } else {
+      navigate('/jobs/search');
+    }
+  };
+
   const handleGetStartedClick = () => {
     setAuthModalTab('register');
     setIsAuthModalOpen(true);
@@ -305,423 +328,405 @@ const Home: React.FC = () => {
     navigate('/jobs');
   };
 
+  const stats = [
+    { label: "Active Jobs", value: "38K+", icon: Building },
+    { label: "Companies", value: "2K+", icon: Building },
+    { label: "Countries", value: "150+", icon: Globe }
+  ];
+
+  const features = [
+    {
+      title: "🎯 Smart Job Matching",
+      description: "AI-powered matching connects you with perfect remote opportunities"
+    },
+    {
+      title: "🌍 Global Opportunities", 
+      description: "Access remote jobs from companies worldwide, in your timezone"
+    },
+    {
+      title: "💰 Salary Transparency",
+      description: "See salary ranges upfront - no surprises, just honest compensation"
+    },
+    {
+      title: "⚡ Real-time Updates",
+      description: "Get notified instantly when new jobs matching your skills are posted"
+    }
+  ];
+
   return (
     <Layout>
-      {/* Hero Section with Enhanced Design */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-800 text-white">
-        {/* Animated background patterns */}
-        <div 
-          className="absolute inset-0 opacity-30"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-          }}
-        ></div>
-        
-        {/* Glassmorphism overlay */}
-        <div className="absolute inset-0 bg-white/5 backdrop-blur-sm"></div>
-        
-        <div className="relative container mx-auto px-4 py-20 md:py-32">
-          <div className="max-w-5xl mx-auto text-center mb-12">
-            {/* Main heading with enhanced typography */}
-            <h1 className="text-5xl md:text-7xl font-extrabold mb-6 leading-tight">
-              Find Your Perfect 
-              <span className="block bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
-                Remote Job 🐝
-              </span>
-            </h1>
-            
-            <p className="text-xl md:text-2xl opacity-95 mb-8 leading-relaxed max-w-3xl mx-auto">
-              Discover thousands of remote opportunities from top companies around the world. 
-              Your dream job is just a buzz away!
-            </p>
-
-            {/* Enhanced stats */}
-            <div className="flex flex-wrap justify-center gap-8 mb-12">
-              <div className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-yellow-400">38K+</div>
-                <div className="text-sm md:text-base opacity-80">Active Jobs</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-green-400">2K+</div>
-                <div className="text-sm md:text-base opacity-80">Companies</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-purple-400">150+</div>
-                <div className="text-sm md:text-base opacity-80">Countries</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Enhanced Search Section */}
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20 shadow-2xl">
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-semibold mb-2">Start Your Job Search</h2>
-                <p className="opacity-90">What position are you looking for?</p>
-              </div>
+      <div className="min-h-screen">
+        {/* Hero Section - Kompakt tasarım */}
+        <section className="relative pt-8 pb-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center">
+              {/* Ana başlık */}
+              <h1 className="text-4xl md:text-6xl font-bold mb-6">
+                <span className="bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
+                  Remote Job 🐝
+                </span>
+                <br />
+                <span className="text-white">Your Dream Career</span>
+              </h1>
               
-              <div className="space-y-6">
-                <div className="relative">
-                  <MultiJobAutocomplete 
-                    onSelect={(position) => handleJobTitleSelect(position.title)}
-                    placeholder="Search job titles (e.g., Frontend Developer, Product Manager)" 
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {popularPositions.map((position, index) => (
-                    <QuickSearchButton
-                      key={index}
-                      title={position}
-                      onClick={() => handleQuickSearch(position)}
-                    />
+              <p className="text-xl text-white/80 mb-8 max-w-2xl mx-auto">
+                Discover amazing remote opportunities from top companies worldwide. 
+                Work from anywhere, live everywhere! 🌍
+              </p>
+
+              {/* Search Section */}
+              <div className="max-w-4xl mx-auto mb-8">
+                {/* İstatistikler - Search alanının üstünde */}
+                <div className="flex justify-center items-center space-x-8 mb-6">
+                  {stats.map((stat, index) => (
+                    <div key={index} className="text-center">
+                      <div className="text-2xl font-bold text-white">{stat.value}</div>
+                      <div className="text-sm text-white/70">{stat.label}</div>
+                    </div>
                   ))}
                 </div>
-                
-                <div className="text-center">
-                  <button
-                    onClick={handleAdvancedSearch}
-                    className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold px-8 py-4 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
-                  >
-                    <Search />
-                    Advanced Search
-                  </button>
+
+                {/* Search Container */}
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-xl">
+                  <div className="flex flex-col lg:flex-row gap-4 items-end">
+                    {/* Autocomplete */}
+                    <div className="flex-1">
+                      <label className="block text-white/90 text-sm font-medium mb-2">
+                        What kind of job are you looking for?
+                      </label>
+                                             <MultiJobAutocomplete
+                         onSelect={(position) => {
+                           setSelectedPositions(prev => {
+                             const exists = prev.find(p => p.title === position.title);
+                             if (exists) return prev;
+                             return [...prev, position];
+                           });
+                         }}
+                         placeholder="Try: Frontend Developer, Product Manager, Designer..."
+                       />
+                    </div>
+                    
+                    {/* Search Button */}
+                                         <button
+                       onClick={() => handleSearch(selectedPositions)}
+                       className="bg-gradient-to-r from-orange-500 to-yellow-400 hover:from-orange-600 hover:to-yellow-500 text-white font-semibold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center space-x-2 whitespace-nowrap"
+                     >
+                      <span>Find Jobs</span>
+                      <ArrowRight className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
+              </div>
+
+              {/* Quick CTA - Daha kompakt */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center space-x-2"
+                >
+                  <Star className="w-5 h-5" />
+                  <span>Start Your Journey</span>
+                </button>
+                
+                <button
+                  onClick={() => setShowOnboarding(true)}
+                  className="bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold px-6 py-3 rounded-xl hover:bg-white/20 transition-all duration-200 flex items-center space-x-2"
+                >
+                  <PlayCircle className="w-5 h-5" />
+                  <span>Watch Demo</span>
+                </button>
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        </section>
 
-      {/* Featured Jobs with Infinite Horizontal Scroll */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Hot Remote Jobs 🔥</h2>
-            <p className="text-gray-600">Fresh opportunities from leading remote companies</p>
-          </div>
-          
-          {/* Infinite Horizontal Scrollable Container */}
-          <div className="relative">
-            <div className="overflow-x-auto pb-4 -mx-4 px-4">
-              <div className="flex gap-6 w-max animate-scroll-infinite">
-                {/* First set of jobs */}
-                {featuredJobs.map((job) => (
-                  <div key={job._id} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-xl transition-shadow cursor-pointer flex flex-col justify-between w-80 flex-shrink-0">
-                    <div>
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-2xl shadow-sm">
-                            {job.company_logo || (typeof job.company === 'string' ? job.company[0] : job.company.name[0])}
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-gray-900 text-lg line-clamp-1">{job.title}</h3>
-                            <p className="text-gray-600 text-sm line-clamp-1">{typeof job.company === 'string' ? job.company : job.company.name}</p>
-                          </div>
-                        </div>
-                        <button 
-                          onClick={() => {
-                            const userToken = localStorage.getItem('userToken');
-                            if (!userToken) {
-                              setAuthModalTab('login');
-                              setIsAuthModalOpen(true);
-                            } else {
-                              console.log('Adding job to favorites:', job._id);
-                            }
-                          }}
-                          className="p-1.5 rounded-full hover:bg-yellow-100 text-gray-400 hover:text-yellow-500 transition-colors"
-                        >
-                           <div className="w-5 h-5 flex items-center justify-center">
-                             <Star />
-                           </div>
-                        </button>
-                      </div>
-                          
-                      <div className="space-y-2 mb-4">
-                        <div className="flex items-center text-sm text-gray-600">
-                          <div className="w-4 h-4 mr-2 text-gray-400 flex items-center justify-center">
-                            <MapPin />
-                          </div>
-                          <span className="line-clamp-1">{job.location}</span>
-                        </div>
-                        <div className="flex items-center text-sm text-gray-600">
-                          <div className="w-4 h-4 mr-2 text-gray-400 flex items-center justify-center">
-                            <Building />
-                          </div>
-                          {job.job_type}
-                        </div>
-                        {job.salary_range && (
-                          <div className="flex items-center text-sm text-gray-600">
-                            <div className="w-4 h-4 mr-2 text-gray-400 flex items-center justify-center">
-                              <DollarSign />
-                            </div>
-                            {job.salary_range}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex flex-wrap gap-2 mb-6">
-                        {(job.skills || []).slice(0, 3).map((tag, index) => (
-                          <span key={index} className="px-3 py-1 bg-orange-50 text-orange-600 text-xs font-medium rounded-full">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                      <span className="text-xs text-gray-500">Posted: {getTimeAgo(job.created_at)}</span>
-                      <Link 
-                        to={`/jobs/${job._id}`} 
-                        className="text-orange-600 hover:text-orange-700 font-semibold text-sm flex items-center space-x-1 group"
-                      >
-                        <span>View Details</span>
-                        <div className="w-4 h-4 transition-transform group-hover:translate-x-1 flex items-center justify-center">
-                          <ArrowRight />
-                        </div>
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-                
-                {/* Duplicate set for infinite scroll effect */}
-                {featuredJobs.map((job) => (
-                  <div key={`duplicate-${job._id}`} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-xl transition-shadow cursor-pointer flex flex-col justify-between w-80 flex-shrink-0">
-                    <div>
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-2xl shadow-sm">
-                            {job.company_logo || (typeof job.company === 'string' ? job.company[0] : job.company.name[0])}
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-gray-900 text-lg line-clamp-1">{job.title}</h3>
-                            <p className="text-gray-600 text-sm line-clamp-1">{typeof job.company === 'string' ? job.company : job.company.name}</p>
-                          </div>
-                        </div>
-                        <button 
-                          onClick={() => {
-                            const userToken = localStorage.getItem('userToken');
-                            if (!userToken) {
-                              setAuthModalTab('login');
-                              setIsAuthModalOpen(true);
-                            } else {
-                              console.log('Adding job to favorites:', job._id);
-                            }
-                          }}
-                          className="p-1.5 rounded-full hover:bg-yellow-100 text-gray-400 hover:text-yellow-500 transition-colors"
-                        >
-                           <div className="w-5 h-5 flex items-center justify-center">
-                             <Star />
-                           </div>
-                        </button>
-                      </div>
-                          
-                      <div className="space-y-2 mb-4">
-                        <div className="flex items-center text-sm text-gray-600">
-                          <div className="w-4 h-4 mr-2 text-gray-400 flex items-center justify-center">
-                            <MapPin />
-                          </div>
-                          <span className="line-clamp-1">{job.location}</span>
-                        </div>
-                        <div className="flex items-center text-sm text-gray-600">
-                          <div className="w-4 h-4 mr-2 text-gray-400 flex items-center justify-center">
-                            <Building />
-                          </div>
-                          {job.job_type}
-                        </div>
-                        {job.salary_range && (
-                          <div className="flex items-center text-sm text-gray-600">
-                            <div className="w-4 h-4 mr-2 text-gray-400 flex items-center justify-center">
-                              <DollarSign />
-                            </div>
-                            {job.salary_range}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex flex-wrap gap-2 mb-6">
-                        {(job.skills || []).slice(0, 3).map((tag, index) => (
-                          <span key={index} className="px-3 py-1 bg-orange-50 text-orange-600 text-xs font-medium rounded-full">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                      <span className="text-xs text-gray-500">Posted: {getTimeAgo(job.created_at)}</span>
-                      <Link 
-                        to={`/jobs/${job._id}`} 
-                        className="text-orange-600 hover:text-orange-700 font-semibold text-sm flex items-center space-x-1 group"
-                      >
-                        <span>View Details</span>
-                        <div className="w-4 h-4 transition-transform group-hover:translate-x-1 flex items-center justify-center">
-                          <ArrowRight />
-                        </div>
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="text-center mt-12">
-            <Link
-              to="/jobs"
-              className="inline-flex items-center space-x-2 bg-gradient-to-r from-orange-500 to-yellow-500 text-white px-8 py-3 rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-colors font-semibold shadow-lg"
-            >
-              <span>Browse All Jobs</span>
-              <div className="w-5 h-5 flex items-center justify-center">
-                <ArrowRight />
-              </div>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section (Simplified) */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Buzz2Remote?</h2>
-            <p className="text-gray-600">Your smart way to a successful remote career.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[{
-                icon: <div className="w-8 h-8 text-orange-500 flex items-center justify-center"><Search /></div>,
-                title: "AI-Powered Matching",
-                description: "Our AI finds perfect job matches for you."
-              },
-              {
-                icon: <div className="w-8 h-8 text-green-500 flex items-center justify-center"><CheckCircle /></div>,
-                title: "One-Click Apply",
-                description: "Apply to jobs instantly with your saved profile."
-              },
-              {
-                icon: <div className="w-8 h-8 text-blue-500 flex items-center justify-center"><Globe /></div>,
-                title: "Global Opportunities",
-                description: "Access thousands of remote jobs worldwide."
-              }
-            ].map(feature => (
-              <div key={feature.title} className="bg-white p-8 rounded-xl shadow-lg text-center">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  {feature.icon}
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">{feature.title}</h3>
-                <p className="text-gray-600 text-sm">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-orange-500 to-yellow-500">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-            Ready to Buzz Your Way to a Remote Career?
-          </h2>
-          <p className="text-xl text-yellow-100 mb-10">
-            Join Buzz2Remote today and let our AI find your next big opportunity.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button
-              onClick={handleGetStartedClick}
-              className="bg-white text-orange-600 px-10 py-3 rounded-lg hover:bg-yellow-50 transition-colors font-semibold shadow-lg text-lg"
-            >
-              Create Free Account
-            </button>
-             <button
-                onClick={handleSignUpWithGoogleClick}
-                className="flex items-center justify-center space-x-2 bg-white text-orange-600 px-10 py-3 rounded-lg hover:bg-yellow-50 transition-colors font-semibold border border-orange-200 text-lg shadow-lg"
-              >
-                <svg className="w-6 h-6" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                <span>Sign up with Google</span>
-              </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <Link to="/" className="flex items-center space-x-3 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center shadow-md">
-                  <span className="text-xl">🐝</span>
-                </div>
-                <span className="text-xl font-bold">Buzz2Remote</span>
-              </Link>
-              <p className="text-gray-400 text-sm mb-4">
-                Your hive for global remote opportunities, powered by AI.
+        {/* Hot Remote Jobs Section */}
+        <section className="py-12 bg-black/20 backdrop-blur-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                🔥 Hot Remote Jobs
+              </h2>
+              <p className="text-white/80 text-lg">
+                Fresh opportunities from top companies, updated daily
               </p>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-4">For Job Seekers</h3>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li><Link to="/profile" className="hover:text-white">My Profile</Link></li>
-                <li><Link to="/applications" className="hover:text-white">My Applications</Link></li>
-                <li><Link to="/help" className="hover:text-white">Help Center</Link></li>
-              </ul>
+
+            {/* Featured Jobs Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {featuredJobs.length > 0 ? (
+                featuredJobs.slice(0, 6).map((job, index) => (
+                  <div
+                    key={job._id || index}
+                    className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-200 cursor-pointer transform hover:scale-105"
+                    onClick={() => navigate(`/jobs/${job._id}`)}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-white text-lg mb-1 line-clamp-2">
+                          {job.title}
+                        </h3>
+                        <p className="text-white/70 font-medium">{typeof job.company === 'string' ? job.company : job.company?.name}</p>
+                      </div>
+                      <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded-full text-xs font-medium">
+                        NEW
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center text-white/60 text-sm">
+                        <MapPin className="w-4 h-4 mr-2" />
+                        {job.location || 'Remote'}
+                      </div>
+                      {job.salary_range && (
+                        <div className="flex items-center text-white/60 text-sm">
+                          <DollarSign className="w-4 h-4 mr-2" />
+                          {job.salary_range}
+                        </div>
+                      )}
+                      <div className="flex items-center text-white/60 text-sm">
+                        <Clock className="w-4 h-4 mr-2" />
+                        {job.job_type}
+                      </div>
+                    </div>
+
+                    {job.skills && job.skills.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {job.skills.slice(0, 3).map((skill: string, skillIndex: number) => (
+                          <span
+                            key={skillIndex}
+                            className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full text-xs"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                        {job.skills.length > 3 && (
+                          <span className="text-white/60 text-xs px-2 py-1">
+                            +{job.skills.length - 3} more
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                // Sample jobs as fallback
+                Array.from({ length: 6 }, (_, index) => {
+                  const sampleJobs = [
+                    {
+                      title: "Senior Frontend Developer",
+                      company: "TechCorp Inc.",
+                      location: "Remote (US)",
+                      salary: "$90k - $130k",
+                      type: "Full-time",
+                      skills: ["React", "TypeScript", "Node.js"]
+                    },
+                    {
+                      title: "Product Manager",
+                      company: "StartupX",
+                      location: "Remote (EU)",
+                      salary: "$80k - $120k", 
+                      type: "Full-time",
+                      skills: ["Strategy", "Analytics", "Agile"]
+                    },
+                    {
+                      title: "UX Designer",
+                      company: "DesignHub",
+                      location: "Remote (Global)",
+                      salary: "$70k - $100k",
+                      type: "Contract",
+                      skills: ["Figma", "Research", "Prototyping"]
+                    },
+                    {
+                      title: "DevOps Engineer", 
+                      company: "CloudFirst",
+                      location: "Remote",
+                      salary: "$100k - $150k",
+                      type: "Full-time",
+                      skills: ["AWS", "Docker", "Kubernetes"]
+                    },
+                    {
+                      title: "Data Scientist",
+                      company: "DataCorp",
+                      location: "Remote (US)",
+                      salary: "$110k - $160k",
+                      type: "Full-time", 
+                      skills: ["Python", "ML", "SQL"]
+                    },
+                    {
+                      title: "Backend Developer",
+                      company: "ApiWorks",
+                      location: "Remote",
+                      salary: "$85k - $125k",
+                      type: "Full-time",
+                      skills: ["Node.js", "MongoDB", "GraphQL"]
+                    }
+                  ];
+                  
+                  const job = sampleJobs[index];
+                  return (
+                    <div
+                      key={index}
+                      className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-200 cursor-pointer transform hover:scale-105"
+                      onClick={() => navigate('/jobs/search')}
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-white text-lg mb-1">
+                            {job.title}
+                          </h3>
+                          <p className="text-white/70 font-medium">{job.company}</p>
+                        </div>
+                        <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded-full text-xs font-medium">
+                          NEW
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center text-white/60 text-sm">
+                          <MapPin className="w-4 h-4 mr-2" />
+                          {job.location}
+                        </div>
+                        <div className="flex items-center text-white/60 text-sm">
+                          <DollarSign className="w-4 h-4 mr-2" />
+                          {job.salary}
+                        </div>
+                        <div className="flex items-center text-white/60 text-sm">
+                          <Clock className="w-4 h-4 mr-2" />
+                          {job.type}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {job.skills.map((skill, skillIndex) => (
+                          <span
+                            key={skillIndex}
+                            className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full text-xs"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Company</h3>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li><Link to="/pricing" className="hover:text-white">Pricing</Link></li>
-                <li><Link to="/terms" className="hover:text-white">Terms & Conditions</Link></li>
-                <li><Link to="/privacy" className="hover:text-white">Privacy Policy</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold mb-4">For Employers</h4>
-              <ul className="space-y-2">
-                <li><a href="/post-job" className="text-gray-400 hover:text-white">Post a Job</a></li>
-              </ul>
+
+            {/* View All Jobs Button */}
+            <div className="text-center">
+              <button
+                onClick={() => navigate('/jobs/search')}
+                className="bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold px-8 py-3 rounded-xl hover:bg-white/20 transition-all duration-200 inline-flex items-center space-x-2"
+              >
+                <span>View All Jobs</span>
+                <ArrowRight className="w-5 h-5" />
+              </button>
             </div>
           </div>
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-500 text-sm">
-            <p>&copy; {new Date().getFullYear()} Buzz2Remote. All rights reserved. AI Powered Remote Job Matching.</p>
-          </div>
-        </div>
-      </footer>
+        </section>
 
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)} 
-        defaultTab={authModalTab}
-      />
+        {/* Features Section */}
+        <section className="py-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                Why Choose Buzz2Remote? 🚀
+              </h2>
+              <p className="text-white/80 text-lg max-w-2xl mx-auto">
+                We're not just another job board. We're your partner in finding the perfect remote career.
+              </p>
+            </div>
 
-      <Onboarding 
-        isOpen={isOnboardingOpen} 
-        onClose={() => setIsOnboardingOpen(false)}
-        onComplete={handleOnboardingComplete}
-      />
-
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h3 className="text-base font-medium text-gray-700 dark:text-gray-300 mb-3">
-              Most Searched Jobs
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-              {popularPositions.map((position, index) => (
-                <QuickSearchButton 
-                  key={`popular-${index}`}
-                  title={position}
-                  onClick={() => handleQuickSearch(position)}
-                />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {features.map((feature, index) => (
+                <div
+                  key={index}
+                  className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-200"
+                >
+                  <h3 className="text-white font-semibold text-lg mb-3">
+                    {feature.title}
+                  </h3>
+                  <p className="text-white/70">
+                    {feature.description}
+                  </p>
+                </div>
               ))}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+
+        {/* Footer */}
+        <footer className="bg-black/30 backdrop-blur-sm border-t border-white/10 py-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+              <div className="col-span-1 md:col-span-2">
+                <div className="flex items-center space-x-2 mb-4">
+                  <span className="text-2xl">🐝</span>
+                  <span className="font-bold text-xl text-white">Buzz2Remote</span>
+                </div>
+                <p className="text-white/70 mb-4">
+                  Your gateway to the best remote jobs worldwide. 
+                  Connect with top companies and build your dream career from anywhere.
+                </p>
+                <div className="flex space-x-4">
+                  <a href="#" className="text-white/60 hover:text-white transition-colors">
+                    Twitter
+                  </a>
+                  <a href="#" className="text-white/60 hover:text-white transition-colors">
+                    LinkedIn
+                  </a>
+                  <a href="#" className="text-white/60 hover:text-white transition-colors">
+                    GitHub
+                  </a>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-semibold text-white mb-4">For Job Seekers</h4>
+                <ul className="space-y-2">
+                  <li><a href="#" className="text-white/60 hover:text-white transition-colors">Browse Jobs</a></li>
+                  <li><a href="#" className="text-white/60 hover:text-white transition-colors">Create Profile</a></li>
+                  <li><a href="#" className="text-white/60 hover:text-white transition-colors">Career Tips</a></li>
+                  <li><a href="#" className="text-white/60 hover:text-white transition-colors">Salary Guide</a></li>
+                </ul>
+              </div>
+              
+              <div>
+                <h4 className="font-semibold text-white mb-4">For Employers</h4>
+                <ul className="space-y-2">
+                  <li><a href="#" className="text-white/60 hover:text-white transition-colors">Post Jobs</a></li>
+                  <li><a href="#" className="text-white/60 hover:text-white transition-colors">Find Talent</a></li>
+                  <li><a href="#" className="text-white/60 hover:text-white transition-colors">Pricing</a></li>
+                  <li><a href="#" className="text-white/60 hover:text-white transition-colors">Resources</a></li>
+                </ul>
+              </div>
+            </div>
+            
+            <div className="border-t border-white/10 mt-8 pt-8 text-center">
+              <p className="text-white/60">
+                © 2024 Buzz2Remote. Made with ❤️ for remote workers worldwide.
+              </p>
+            </div>
+          </div>
+        </footer>
+      </div>
+
+             {/* Modals */}
+       {showAuthModal && (
+         <AuthModal 
+           isOpen={showAuthModal}
+           onClose={() => setShowAuthModal(false)} 
+         />
+       )}
+       
+       {showOnboarding && (
+         <Onboarding 
+           isOpen={showOnboarding}
+           onClose={() => setShowOnboarding(false)}
+           onComplete={handleOnboardingComplete}
+         />
+       )}
     </Layout>
   );
 };

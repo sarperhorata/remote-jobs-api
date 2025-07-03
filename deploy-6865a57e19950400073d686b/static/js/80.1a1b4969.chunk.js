@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunkremote_jobs_frontend=self.webpackChunkremote_jobs_frontend||[]).push([[80],{1080:(e,s,r)=>{r.r(s),r.d(s,{default:()=>o});r(5043);var n=r(3216),t=r(579);const o=()=>{const{id:e}=(0,n.g)();return(0,t.jsxs)("div",{children:[(0,t.jsx)("h1",{children:"Job Detail Page"}),(0,t.jsxs)("p",{children:["Details for job ID: ",e]})]})}}}]);
+//# sourceMappingURL=80.1a1b4969.chunk.js.map

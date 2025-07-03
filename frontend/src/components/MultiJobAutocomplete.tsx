@@ -1,31 +1,29 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, X, Search } from 'lucide-react';
+// Unused imports removed for cleaner code
 import { getApiUrl } from '../utils/apiConfig';
 
-interface AutocompleteItem {
+interface Position {
   title: string;
   count: number;
   category?: string;
 }
 
 interface MultiJobAutocompleteProps {
-  selectedPositions: AutocompleteItem[];
-  onPositionsChange: (positions: AutocompleteItem[]) => void;
-  onSearch?: (positions: AutocompleteItem[]) => void;
+  onSelect: (position: Position) => void;
   placeholder?: string;
-  maxSelections?: number;
+  className?: string;
+  disabled?: boolean;
 }
 
 const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
-  selectedPositions = [],
-  onPositionsChange,
-  onSearch,
+  onSelect,
   placeholder = "Search and select job titles (up to 10)",
-  maxSelections = 10
+  className,
+  disabled = false
 }) => {
   const [inputValue, setInputValue] = useState('');
-  const [allSuggestions, setAllSuggestions] = useState<AutocompleteItem[]>([]);
+  const [allSuggestions, setAllSuggestions] = useState<Position[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
@@ -43,10 +41,9 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
         suggestionsCount: allSuggestions.length,
         showDropdown,
         isLoading,
-        selectedPositions: selectedPositions.length
       });
     }
-  }, [inputValue, allSuggestions.length, showDropdown, isLoading, selectedPositions.length]);
+  }, [inputValue, allSuggestions.length, showDropdown, isLoading]);
 
   // Fetch suggestions when user types
   const fetchSuggestions = useCallback(async (query: string) => {
@@ -107,14 +104,8 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
       const data = await response.json();
       const popularTitles = data.positions?.slice(0, 5) || []; // 5 popular positions
       
-      const filtered = popularTitles.filter((pos: AutocompleteItem) => 
-        !selectedPositions.some(selected => 
-          selected.title.toLowerCase() === pos.title.toLowerCase()
-        )
-      );
-      
-      setAllSuggestions(filtered);
-      setShowDropdown(filtered.length > 0);
+      setAllSuggestions(popularTitles);
+      setShowDropdown(popularTitles.length > 0);
     } catch (error: any) {
       console.error('Error fetching popular titles:', error);
       
@@ -130,7 +121,7 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
       setAllSuggestions(fallbackTitles);
       setShowDropdown(true);
     }
-  }, [selectedPositions]);
+  }, []);
 
   // Handle input focus to show popular titles
   const handleInputFocus = async () => {
@@ -163,18 +154,10 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
   };
 
   // Select a position
-  const selectPosition = (position: AutocompleteItem) => {
+  const selectPosition = (position: Position) => {
     console.log('🎯 selectPosition called with:', position);
     
-    if (selectedPositions.length >= maxSelections) {
-      console.log('⚠️ Max selections reached');
-      alert(`Maximum ${maxSelections} positions can be selected.`);
-      return;
-    }
-
-    console.log('➕ Adding position to selected');
-    const newPositions = [...selectedPositions, position];
-    onPositionsChange(newPositions);
+    onSelect(position);
     
     // Clear and reset
     console.log('🧹 Clearing input and closing dropdown');
@@ -187,34 +170,6 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
       console.log('🎯 Focusing back to input');
       inputRef.current?.focus();
     }, 50);
-  };
-
-  // Remove a selected position
-  const removePosition = (index: number) => {
-    console.log('➖ Removing position at index:', index);
-    const newPositions = selectedPositions.filter((_, i) => i !== index);
-    onPositionsChange(newPositions);
-  };
-
-
-
-  // Clear all selected positions
-  const clearAllPositions = () => {
-    onPositionsChange([]);
-    setInputValue('');
-    setAllSuggestions([]);
-    setShowDropdown(false);
-  };
-
-  // Handle search button click
-  const handleSearchClick = () => {
-    console.log('🔍 Search button clicked with positions:', selectedPositions.map(p => p.title));
-    
-    if (selectedPositions.length === 0) {
-      alert('Please select at least one job position to search.');
-      return;
-    }
-    onSearch?.(selectedPositions);
   };
 
   // Handle click outside
@@ -289,43 +244,7 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
   }, [showDropdown, updateDropdownPosition]);
 
   return (
-    <div className="w-full" ref={containerRef}>
-      {/* Selected positions display */}
-      {selectedPositions.length > 0 && (
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Selected Positions ({selectedPositions.length}/{maxSelections}):
-            </span>
-            <button
-              type="button"
-              onClick={clearAllPositions}
-              className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-            >
-              Clear All
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {selectedPositions.map((position, index) => (
-              <div
-                key={`${position.title}-${index}`}
-                className="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm"
-              >
-                <span>{position.title}</span>
-                <button
-                  type="button"
-                  onClick={() => removePosition(index)}
-                  className="text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100 font-bold"
-                  aria-label={`Remove ${position.title}`}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
+    <div className={`w-full ${className || ''}`} ref={containerRef}>
       {/* Search input and button */}
       <div className="flex gap-2">
         <div className="relative flex-1">
@@ -335,8 +254,8 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
             value={inputValue}
             onChange={handleInputChange}
             onFocus={handleInputFocus}
-            placeholder={selectedPositions.length >= maxSelections ? "Maximum selections reached" : placeholder}
-            disabled={selectedPositions.length >= maxSelections}
+            placeholder={placeholder}
+            disabled={disabled}
             className="w-full px-4 py-3 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
           />
           
@@ -397,24 +316,6 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
             document.body
           )}
         </div>
-
-        <button
-          type="button"
-          onClick={handleSearchClick}
-          disabled={selectedPositions.length === 0}
-          className="px-6 py-3 bg-gradient-to-r from-orange-500 to-yellow-500 text-white rounded-lg hover:from-orange-600 hover:to-yellow-600 disabled:from-gray-300 disabled:to-gray-300 disabled:cursor-not-allowed transition-all font-semibold shadow-md disabled:shadow-none"
-        >
-          Search Jobs
-        </button>
-      </div>
-
-      {/* Help text */}
-      <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-        {selectedPositions.length === 0
-          ? "Start typing to search job positions. You can select up to " + maxSelections + " positions."
-          : selectedPositions.length === maxSelections
-          ? "Maximum selections reached."
-          : `${maxSelections - selectedPositions.length} more selection${maxSelections - selectedPositions.length !== 1 ? 's' : ''} available.`}
       </div>
     </div>
   );

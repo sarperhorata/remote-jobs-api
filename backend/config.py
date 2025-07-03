@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from pydantic import ConfigDict
+from pydantic import ConfigDict, field_validator
 from typing import Optional, List, Union
 from functools import lru_cache
 import os
@@ -88,7 +88,14 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Buzz2Remote"
     
     # CORS settings
-    BACKEND_CORS_ORIGINS: list = ["http://localhost:3000"]
+    BACKEND_CORS_ORIGINS: Union[str, List[str]] = "http://localhost:3000"
+    
+    @field_validator('BACKEND_CORS_ORIGINS')
+    @classmethod
+    def validate_cors_origins(cls, v):
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v
     
     @property
     def cors_origins(self) -> List[str]:

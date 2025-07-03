@@ -30,6 +30,9 @@ os.environ.setdefault("STRIPE_WEBHOOK_SECRET", "whsec_test_secret")
 os.environ.setdefault("OPENAI_API_KEY", "test_openai_key")
 os.environ.setdefault("TELEGRAM_BOT_TOKEN", "test_telegram_token")
 os.environ.setdefault("TELEGRAM_CHAT_ID", "123456789")
+os.environ["BACKEND_CORS_ORIGINS"] = "http://localhost:3000,http://localhost:3001"
+os.environ["ENVIRONMENT"] = "test"
+os.environ["MONGODB_URI"] = "mongodb://localhost:27017/test_buzz2remote"
 
 # Configure asyncio mode for pytest-asyncio
 pytest_plugins = ['pytest_asyncio']
@@ -64,25 +67,56 @@ async def db_mock():
     Provides a mock of the database connection for function-scoped tests.
     This is ideal for unit tests of services or CRUD operations.
     """
-    db = MagicMock()
+    db = AsyncMock()
+    
+    # Create async mock collections
     db.users = AsyncMock()
     db.jobs = AsyncMock()
     db.companies = AsyncMock()
+    db.user_activities = AsyncMock()
+    db.user_sessions = AsyncMock()
+    db.activity_summaries = AsyncMock()
+    db.crawl_errors = AsyncMock()
+    db.service_logs = AsyncMock()
+    db.ads = AsyncMock()
+    db.notifications = AsyncMock()
+    db.test_collection = AsyncMock()
+    db.test_concurrent = AsyncMock()
     
-    # Default return values
+    # Default return values for common methods
     db.users.find_one.return_value = None
     db.jobs.find_one.return_value = None
+    db.companies.find_one.return_value = None
+    db.user_activities.find_one.return_value = None
+    db.user_sessions.find_one.return_value = None
+    
+    # Mock collection methods
+    for collection in [db.users, db.jobs, db.companies, db.user_activities, 
+                      db.user_sessions, db.activity_summaries, db.crawl_errors,
+                      db.service_logs, db.ads, db.notifications]:
+        collection.insert_one = AsyncMock()
+        collection.insert_many = AsyncMock()
+        collection.update_one = AsyncMock()
+        collection.update_many = AsyncMock()
+        collection.delete_one = AsyncMock()
+        collection.delete_many = AsyncMock()
+        collection.find = AsyncMock()
+        collection.find_one = AsyncMock()
+        collection.count_documents = AsyncMock()
+        collection.aggregate = AsyncMock()
+        collection.create_index = AsyncMock()
+        collection.drop = AsyncMock()
     
     return db
 
 @pytest.fixture(autouse=True)
-def override_db(db_mock):
+async def override_db(db_mock):
     """
     Automatically override the `get_database` dependency for all tests
     to use the mock database.
     """
     async def _override_get_db():
-        return db_mock
+        return await db_mock
 
     app.dependency_overrides[get_database] = _override_get_db
     yield

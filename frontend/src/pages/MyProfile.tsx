@@ -6,7 +6,13 @@ import {
 } from 'lucide-react';
 import Header from '../components/Header';
 import { useAuth } from '../contexts/AuthContext';
-import { toast } from 'react-hot-toast';
+// import { toast } from 'react-hot-toast';
+
+// Temporary toast replacement
+const toast = {
+  success: (message: string) => console.log('✅', message),
+  error: (message: string) => console.error('❌', message)
+};
 
 interface UserProfile {
   id: string;
@@ -294,11 +300,11 @@ const MyProfile: React.FC = () => {
       current: false,
       description: ''
     };
-    const currentExperiences = profile?.work_experience || [];
-    setEditForm({
-      ...editForm,
-      work_experience: [...currentExperiences, newExperience]
-    });
+
+    setEditForm(prev => ({
+      ...prev,
+      work_experience: [...(prev.work_experience || []), newExperience]
+    }));
   };
 
   // Update work experience
@@ -319,34 +325,37 @@ const MyProfile: React.FC = () => {
   // Add education
   const addEducation = () => {
     const newEducation: Education = {
-      degree: '',
       institution: '',
+      degree: '',
       field_of_study: '',
       start_date: '',
       end_date: '',
       current: false,
       gpa: ''
     };
-    const currentEducation = profile?.education || [];
-    setEditForm({
-      ...editForm,
-      education: [...currentEducation, newEducation]
-    });
+
+    setEditForm(prev => ({
+      ...prev,
+      education: [...(prev.education || []), newEducation]
+    }));
   };
 
   // Update education
-  const updateEducation = (index: number, field: keyof Education, value: any) => {
-    const education = editForm.education || [];
-    const updatedEducation = [...education];
-    updatedEducation[index] = { ...updatedEducation[index], [field]: value };
-    setEditForm({ ...editForm, education: updatedEducation });
+  const updateEducation = (index: number, field: keyof Education, value: string | boolean) => {
+    setEditForm(prev => ({
+      ...prev,
+      education: prev.education?.map((edu, i) => 
+        i === index ? { ...edu, [field]: value } : edu
+      ) || []
+    }));
   };
 
   // Remove education
   const removeEducation = (index: number) => {
-    const education = editForm.education || [];
-    const updatedEducation = education.filter((_, i) => i !== index);
-    setEditForm({ ...editForm, education: updatedEducation });
+    setEditForm(prev => ({
+      ...prev,
+      education: prev.education?.filter((_, i) => i !== index) || []
+    }));
   };
 
   // Handle profile image change

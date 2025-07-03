@@ -96,8 +96,7 @@ export default function JobSearchResults() {
   }, []);
   
   // Add missing state variables
-  const [availableCompanies] = useState<string[]>([]);
-  const [availableLocations] = useState<string[]>([]);
+  // Add missing state variables if needed later
 
   const fetchJobs = async () => {
     setLoading(true);

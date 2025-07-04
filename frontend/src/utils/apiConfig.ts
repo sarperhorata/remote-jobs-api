@@ -1,3 +1,4 @@
+/* global process */
 // Dinamik API URL detection sistemi
 // Backend için 8xxx portları (8001, 8000, 8002, vb.) kontrol eder
 // Frontend için 5xxx portları ile çalışabilir
@@ -97,10 +98,32 @@ const detectBackendPort = async (): Promise<string> => {
 };
 
 export const getApiUrl = async (): Promise<string> => {
-  // Her zaman doğru portu kullanması için hardcode ettim.
-  const apiUrl = 'http://localhost:8001/api/v1';
-  console.log(`📡 Using hardcoded API URL: ${apiUrl}`);
-  return apiUrl;
+  // 1. Return from cache if available
+  if (cachedApiUrl) {
+    return cachedApiUrl;
+  }
+
+  // 2. If an explicit environment variable is set, honour it verbatim (minus a possible trailing slash)
+  if (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL.trim() !== '') {
+    const envUrl = process.env.REACT_APP_API_URL.replace(/\/$/, '');
+    cachedApiUrl = envUrl.endsWith('/api') || envUrl.endsWith('/api/v1')
+      ? envUrl.replace(/\/api$/, '/api/v1') // append /v1 if only /api is present
+      : `${envUrl}/api/v1`;
+    console.log(`📡 Using API URL from environment: ${cachedApiUrl}`);
+    return cachedApiUrl;
+  }
+
+  // 3. If we are not on localhost (i.e. likely running in production behind a domain)
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    cachedApiUrl = `${window.location.origin.replace(/\/$/, '')}/api/v1`;
+    console.log(`📡 Using same-origin API URL: ${cachedApiUrl}`);
+    return cachedApiUrl;
+  }
+
+  // 4. Fallback to dynamic port detection (development experience)
+  cachedApiUrl = await detectBackendPort();
+  console.log(`📡 Using detected API URL: ${cachedApiUrl}`);
+  return cachedApiUrl;
 };
 
 // Development/Production mode detection

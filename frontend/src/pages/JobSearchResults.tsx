@@ -47,7 +47,6 @@ export default function JobSearchResults() {
   
   // Job status tracking
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   
   // Save Search States
@@ -102,7 +101,7 @@ export default function JobSearchResults() {
     setLoading(true);
     try {
       const queryParams = new URLSearchParams({
-        q: searchQuery,
+        q: filters.query,
         page: filters.page?.toString() || "1",
         limit: "25",
         sort_by: 'relevance',
@@ -131,20 +130,34 @@ export default function JobSearchResults() {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    setSearchQuery(params.get('q') || '');
-    
-    // Check if company parameter exists in URL
-    const companyParam = params.get('company');
-    if (companyParam && companyParam !== filters.company) {
-      // Update filters with company from URL
-      setFilters(prev => ({ ...prev, company: companyParam, page: 1 }));
-    }
-    
+    const queryFromUrl = params.get('q') || '';
+    const companyFromUrl = params.get('company') || '';
+
+    setFilters(prev => {
+      const newFilters = {
+        ...prev,
+        query: queryFromUrl,
+        company: companyFromUrl,
+      };
+      // Eğer filtreler değişmediyse (örneğin sadece sayfa değişti), gereksiz re-render'ı önle
+      if (
+        prev.query === newFilters.query &&
+        prev.company === newFilters.company &&
+        prev.page === newFilters.page
+      ) {
+        return prev;
+      }
+      return newFilters;
+    });
+  }, [location.search]);
+
+  // `filters` state'i her değiştiğinde iş ilanlarını yeniden çek
+  useEffect(() => {
     fetchJobs();
-  }, [location.search, filters]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filters]);
   
   const handleFiltersChange = useCallback((newFilters: Partial<Filters>) => {
-    setFilters(prev => ({ ...prev, ...newFilters, page: newFilters.page || 1 }));
+    setFilters(prev => ({ ...prev, ...newFilters, page: 1 })); // Filtre değiştiğinde 1. sayfaya dön
   }, []);
 
   // Check if any filters are active

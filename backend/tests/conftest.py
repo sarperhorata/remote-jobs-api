@@ -34,9 +34,6 @@ os.environ["BACKEND_CORS_ORIGINS"] = "http://localhost:3000,http://localhost:300
 os.environ["ENVIRONMENT"] = "test"
 os.environ["MONGODB_URI"] = "mongodb://localhost:27017/test_buzz2remote"
 
-# Configure asyncio mode for pytest-asyncio
-pytest_plugins = ['pytest_asyncio']
-
 # Add project root to path to allow imports from backend
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 

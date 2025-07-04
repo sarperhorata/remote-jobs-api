@@ -18,9 +18,10 @@ import sqlite3
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 try:
-    from app import app
-    from database import get_db_connection
-    from config import Config
+    from main import app
+    from fastapi.testclient import TestClient
+    from database.db import get_db_connection
+    from core.config import settings as Config
 except ImportError as e:
     print(f"⚠️ Import error: {e}. Creating mock implementations for testing.")
     
@@ -49,7 +50,8 @@ except ImportError as e:
 @pytest.fixture
 def client():
     """Create test client"""
-    return app.test_client()
+    with TestClient(app) as c:
+        yield c
 
 @pytest.fixture
 def temp_db():

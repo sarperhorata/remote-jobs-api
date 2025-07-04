@@ -22,21 +22,35 @@ const Header: React.FC = () => {
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate('/');
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
-  };
-
   const navigation = [
     { name: 'Jobs', href: '/jobs' },
     { name: 'Companies', href: '/companies' },
     { name: 'About', href: '/about' },
-    { name: 'Contact', href: '/contact' }
+    { name: 'Contact', href: '/contact' },
   ];
+
+  const handleProfileAction = (action: string) => {
+    setShowProfileDropdown(false);
+    
+    switch (action) {
+      case 'profile':
+        navigate('/profile');
+        break;
+      case 'saved':
+        navigate('/saved-jobs');
+        break;
+      case 'applications':
+        navigate('/applications');
+        break;
+      case 'settings':
+        navigate('/settings');
+        break;
+      case 'logout':
+        logout();
+        navigate('/');
+        break;
+    }
+  };
 
   return (
     <>
@@ -76,73 +90,90 @@ const Header: React.FC = () => {
 
               {/* Right side */}
               <div className="flex items-center space-x-4">
-                {/* Search icon for mobile/tablet */}
-                <button className="md:hidden p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200">
-                  <SearchIcon className="w-5 h-5" />
-                </button>
-
                 {user ? (
                   /* User Menu */
-                  <div className="relative" onClick={(e) => e.stopPropagation()}>
+                  <div className="relative">
                     <button
-                      onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                      className="flex items-center space-x-2 p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowProfileDropdown(!showProfileDropdown);
+                      }}
+                      className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-3 py-2 text-white hover:bg-white/20 transition-all duration-200"
                     >
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-medium">
-                        {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                        <User className="w-4 h-4 text-white" />
                       </div>
-                      <span className="hidden sm:block font-medium">{user.name || 'User'}</span>
+                      <span className="font-medium hidden md:inline">{user.email?.split('@')[0] || 'User'}</span>
                     </button>
 
+                    {/* Dropdown Menu */}
                     {showProfileDropdown && (
-                      <div className="absolute right-0 mt-2 w-48 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-white/20 py-2 z-50">
-                        <Link
-                          to="/profile"
-                          className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-white/50 transition-colors duration-200"
-                        >
-                          <User className="w-4 h-4" />
-                          <span>Profile</span>
-                        </Link>
-                        <Link
-                          to="/favorites"
-                          className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-white/50 transition-colors duration-200"
-                        >
-                          <Heart className="w-4 h-4" />
-                          <span>Favorites</span>
-                        </Link>
-                        <Link
-                          to="/applications"
-                          className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-white/50 transition-colors duration-200"
-                        >
-                          <FileText className="w-4 h-4" />
-                          <span>Applications</span>
-                        </Link>
-                        <Link
-                          to="/settings"
-                          className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-white/50 transition-colors duration-200"
-                        >
-                          <Settings className="w-4 h-4" />
-                          <span>Settings</span>
-                        </Link>
-                        <hr className="my-2 border-gray-200" />
+                      <div className="absolute right-0 mt-2 w-56 bg-white/95 backdrop-blur-lg rounded-xl shadow-xl border border-white/20 py-2 z-50">
+                        <div className="px-4 py-2 border-b border-gray-200/50">
+                          <p className="text-sm font-medium text-gray-900">{user.email}</p>
+                          <p className="text-xs text-gray-500">Free Plan</p>
+                        </div>
+                        
                         <button
-                          onClick={handleLogout}
-                          className="flex items-center space-x-2 px-4 py-2 text-red-600 hover:bg-red-50 transition-colors duration-200 w-full text-left"
+                          onClick={() => handleProfileAction('profile')}
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                         >
-                          <LogOut className="w-4 h-4" />
-                          <span>Logout</span>
+                          <User className="w-4 h-4 mr-3" />
+                          My Profile
                         </button>
+                        
+                        <button
+                          onClick={() => handleProfileAction('saved')}
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <Heart className="w-4 h-4 mr-3" />
+                          Saved Jobs
+                        </button>
+                        
+                        <button
+                          onClick={() => handleProfileAction('applications')}
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <FileText className="w-4 h-4 mr-3" />
+                          Applications
+                        </button>
+                        
+                        <button
+                          onClick={() => handleProfileAction('settings')}
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <Settings className="w-4 h-4 mr-3" />
+                          Settings
+                        </button>
+                        
+                        <div className="border-t border-gray-200/50 mt-2 pt-2">
+                          <button
+                            onClick={() => handleProfileAction('logout')}
+                            className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                          >
+                            <LogOut className="w-4 h-4 mr-3" />
+                            Sign Out
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
                 ) : (
-                  /* Auth Button */
-                  <button
-                    onClick={() => setShowAuthModal(true)}
-                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-                  >
-                    Sign In
-                  </button>
+                  /* Login/Register Buttons */
+                  <div className="flex items-center space-x-3">
+                    <button
+                      onClick={() => setShowAuthModal(true)}
+                      className="text-white/90 hover:text-white font-medium px-4 py-2 transition-colors"
+                    >
+                      Sign In
+                    </button>
+                    <button
+                      onClick={() => setShowAuthModal(true)}
+                      className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                    >
+                      Get Started
+                    </button>
+                  </div>
                 )}
 
                 {/* Mobile menu button */}
@@ -151,35 +182,55 @@ const Header: React.FC = () => {
                     e.stopPropagation();
                     setIsMobileMenuOpen(!isMobileMenuOpen);
                   }}
-                  className="md:hidden p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200"
+                  className="md:hidden text-white p-2 hover:bg-white/10 rounded-lg transition-colors"
                 >
-                  {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                  {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Mobile menu */}
+          {/* Mobile Navigation */}
           {isMobileMenuOpen && (
-            <div className="md:hidden bg-white/95 backdrop-blur-md border-t border-white/20">
-              <div className="px-4 py-4 space-y-2">
+            <div className="md:hidden bg-white/10 backdrop-blur-lg border-t border-white/20">
+              <div className="px-4 py-3 space-y-2">
                 {navigation.map((item) => (
                   <Link
                     key={item.name}
                     to={item.href}
-                    className="block px-3 py-2 text-gray-700 hover:bg-white/50 rounded-lg transition-colors duration-200 font-medium"
+                    className="block text-white/90 hover:text-white hover:bg-white/10 px-3 py-2 rounded-lg transition-all duration-200 font-medium"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     {item.name}
                   </Link>
                 ))}
+                
+                {!user && (
+                  <div className="border-t border-white/20 pt-3 mt-3">
+                    <button
+                      onClick={() => {
+                        setShowAuthModal(true);
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="block w-full text-left text-white/90 hover:text-white hover:bg-white/10 px-3 py-2 rounded-lg transition-all duration-200 font-medium"
+                    >
+                      Sign In
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAuthModal(true);
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="block w-full mt-2 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white font-medium px-3 py-2 rounded-lg transition-all duration-200"
+                    >
+                      Get Started
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
         </nav>
-
-        {/* Spacer for fixed header */}
-        <div className="h-16"></div>
       </header>
 
       {/* Auth Modal */}

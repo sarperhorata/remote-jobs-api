@@ -96,7 +96,7 @@ class TestComprehensiveMissingCoverage:
     
     @patch('pymongo.MongoClient')
     @patch('motor.motor_asyncio.AsyncIOMotorClient')
-    def test_database_comprehensive_coverage(self, mock_async_client, mock_sync_client):
+    async def test_database_comprehensive_coverage(self, mock_async_client, mock_sync_client):
         """Comprehensive database coverage for all untested areas"""
         # Setup mocks
         mock_db = Mock()
@@ -168,7 +168,7 @@ class TestComprehensiveMissingCoverage:
                         for pattern in test_patterns:
                             try:
                                 if asyncio.iscoroutinefunction(func):
-                                    asyncio.run(func(*pattern))
+                                    await func(*pattern)
                                 else:
                                     func(*pattern)
                                 db_coverage += 0.05

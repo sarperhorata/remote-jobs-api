@@ -1,33 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AuthModal from '../components/AuthModal';
 import Onboarding from '../components/Onboarding';
 import MultiJobAutocomplete from '../components/MultiJobAutocomplete';
 import Layout from '../components/Layout';
 import { jobService } from '../services/jobService';
 import { Job } from '../types/job';
-import QuickSearchButton from '../components/QuickSearchButton';
+import { useAuth } from '../contexts/AuthContext';
 import { 
   MapPin, 
   Clock, 
   DollarSign, 
-  Building, 
-  Globe, 
   ArrowRight,
-  Star,
-  CheckCircle,
-  PlayCircle
+  PlayCircle,
+  Search,
+  X
 } from 'lucide-react';
-
-// Icons temporarily replaced with text
-const Search = () => <span>🔍</span>;
-const MapPinIcon = () => <span>📍</span>;
-const BuildingIcon = () => <span>🏢</span>;
-const GlobeIcon = () => <span>🌍</span>;
-const ArrowRightIcon = () => <span>→</span>;
-const StarIcon = () => <span>⭐</span>;
-const CheckCircleIcon = () => <span>✅</span>;
-const DollarSignIcon = () => <span>💲</span>;
 
 interface Position {
   title: string;
@@ -38,14 +26,13 @@ interface Position {
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const [selectedPositions, setSelectedPositions] = useState<Position[]>([]);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authModalTab, setAuthModalTab] = useState<'login' | 'register'>('login');
   const [featuredJobs, setFeaturedJobs] = useState<Job[]>([]);
-  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
-  const [popularPositions, setPopularPositions] = useState<string[]>([]);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [topRowIndex, setTopRowIndex] = useState(0);
+  const [bottomRowIndex, setBottomRowIndex] = useState(0);
+  const topRowRef = useRef<HTMLDivElement>(null);
+  const bottomRowRef = useRef<HTMLDivElement>(null);
 
   // Check if user needs onboarding
   useEffect(() => {
@@ -54,16 +41,32 @@ const Home: React.FC = () => {
     
     // Show onboarding for new users who just registered
     if (userToken && !onboardingCompleted) {
-      setIsOnboardingOpen(true);
+      setShowOnboarding(true);
     }
   }, []);
+
+  // Auto-scroll for top row (left to right) - faster speed for visibility
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTopRowIndex(prev => (prev + 1) % Math.max(1, featuredJobs.length - 10));
+    }, 3000); // 3 seconds for visible movement
+    return () => clearInterval(interval);
+  }, [featuredJobs.length]);
+
+  // Auto-scroll for bottom row (right to left) - faster speed for visibility
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBottomRowIndex(prev => (prev + 1) % Math.max(1, featuredJobs.length - 10));
+    }, 3500); // 3.5 seconds for visible movement
+    return () => clearInterval(interval);
+  }, [featuredJobs.length]);
 
   // Fetch featured jobs on component mount
   useEffect(() => {
     const loadFeaturedJobs = async () => {
       try {
         console.log('🔥 Loading Hot Remote Jobs from API...');
-        const response = await jobService.getJobs(1, 10); // Get 10 jobs instead of 6
+        const response = await jobService.getJobs(1, 25); // Get more jobs for infinite scroll (10 visible + buffer)
         console.log('API Response:', response);
         
         // API'den gelen verileri kontrol et
@@ -85,7 +88,7 @@ const Home: React.FC = () => {
             is_active: job.is_active !== false
           }));
           
-          setFeaturedJobs(formattedJobs); // Show all 10
+          setFeaturedJobs(formattedJobs);
           console.log('✅ Hot Remote Jobs loaded successfully:', formattedJobs.length);
         } else {
           console.warn('⚠️ No jobs returned from API, using fallback data');
@@ -93,7 +96,7 @@ const Home: React.FC = () => {
         }
       } catch (error) {
         console.error('❌ Error loading featured jobs from API:', error);
-        // Fallback to static data if API fails - 10 jobs
+        // Fallback to static data if API fails - 20 jobs for infinite scroll
         setFeaturedJobs([
           {
             _id: '1',
@@ -182,13 +185,13 @@ const Home: React.FC = () => {
           {
             _id: '7',
             title: 'Mobile Developer',
-            company: 'AppHive Ltd.',
+            company: 'AppHive Inc.',
             location: 'Remote (Global)',
-            job_type: 'Contract',
+            job_type: 'Full-time',
             salary_range: '$95k - $140k',
             skills: ['React Native', 'iOS', 'Android'],
-            created_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-            description: 'Develop cross-platform mobile applications.',
+            created_at: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
+            description: 'Build cross-platform mobile applications.',
             company_logo: '📱',
             url: '#',
             is_active: true
@@ -196,91 +199,191 @@ const Home: React.FC = () => {
           {
             _id: '8',
             title: 'Data Scientist',
-            company: 'InsightBee Analytics',
+            company: 'AnalyticsPro',
             location: 'Remote (US)',
             job_type: 'Full-time',
             salary_range: '$110k - $160k',
             skills: ['Python', 'ML', 'Statistics'],
-            created_at: new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString(),
-            description: 'Turn data into actionable insights.',
+            created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+            description: 'Build machine learning models and analyze complex data.',
             company_logo: '📊',
             url: '#',
             is_active: true
           },
           {
             _id: '9',
-            title: 'Customer Success Manager',
-            company: 'SupportHive',
-            location: 'Remote (EU)',
+            title: 'Product Designer',
+            company: 'DesignHub',
+            location: 'Remote (Europe)',
             job_type: 'Full-time',
-            salary_range: '$65k - $85k',
-            skills: ['CRM', 'Communication', 'SaaS'],
-            created_at: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
+            salary_range: '$75k - $110k',
+            skills: ['UI/UX', 'Prototyping', 'Research'],
+            created_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+            description: 'Create user-centered design solutions.',
+            company_logo: '🎯',
+            url: '#',
+            is_active: true
+          },
+          {
+            _id: '10',
+            title: 'Full Stack Developer',
+            company: 'WebFlow Inc.',
+            location: 'Remote (Global)',
+            job_type: 'Full-time',
+            salary_range: '$90k - $130k',
+            skills: ['React', 'Node.js', 'MongoDB'],
+            created_at: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString(),
+            description: 'Build end-to-end web applications.',
+            company_logo: '🌐',
+            url: '#',
+            is_active: true
+          },
+          {
+            _id: '11',
+            title: 'QA Engineer',
+            company: 'QualityTech',
+            location: 'Remote (US/EU)',
+            job_type: 'Full-time',
+            salary_range: '$70k - $100k',
+            skills: ['Testing', 'Automation', 'Selenium'],
+            created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+            description: 'Ensure software quality through comprehensive testing.',
+            company_logo: '🔍',
+            url: '#',
+            is_active: true
+          },
+          {
+            _id: '12',
+            title: 'Content Writer',
+            company: 'ContentCraft',
+            location: 'Remote (Worldwide)',
+            job_type: 'Part-time',
+            salary_range: '$50k - $80k',
+            skills: ['Writing', 'SEO', 'Marketing'],
+            created_at: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000).toISOString(),
+            description: 'Create engaging content for digital platforms.',
+            company_logo: '✍️',
+            url: '#',
+            is_active: true
+          },
+          {
+            _id: '13',
+            title: 'Cybersecurity Analyst',
+            company: 'SecureNet',
+            location: 'Remote (US)',
+            job_type: 'Full-time',
+            salary_range: '$100k - $150k',
+            skills: ['Security', 'Networking', 'Compliance'],
+            created_at: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
+            description: 'Protect systems and data from cyber threats.',
+            company_logo: '🔒',
+            url: '#',
+            is_active: true
+          },
+          {
+            _id: '14',
+            title: 'Sales Manager',
+            company: 'SalesForce Pro',
+            location: 'Remote (US/EU)',
+            job_type: 'Full-time',
+            salary_range: '$80k - $120k',
+            skills: ['Sales', 'CRM', 'Leadership'],
+            created_at: new Date(Date.now() - 13 * 24 * 60 * 60 * 1000).toISOString(),
+            description: 'Lead sales teams and drive revenue growth.',
+            company_logo: '💼',
+            url: '#',
+            is_active: true
+          },
+          {
+            _id: '15',
+            title: 'Customer Success Manager',
+            company: 'SuccessHub',
+            location: 'Remote (Global)',
+            job_type: 'Full-time',
+            salary_range: '$70k - $100k',
+            skills: ['Customer Service', 'Onboarding', 'Retention'],
+            created_at: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
             description: 'Ensure customer satisfaction and retention.',
             company_logo: '🤝',
             url: '#',
             is_active: true
           },
           {
-            _id: '10',
-            title: 'Blockchain Developer',
-            company: 'CryptoBee Tech',
-            location: 'Remote (Worldwide)',
+            _id: '16',
+            title: 'Business Analyst',
+            company: 'BusinessIntel',
+            location: 'Remote (US)',
             job_type: 'Full-time',
-            salary_range: '$130k - $180k',
-            skills: ['Solidity', 'Web3', 'Smart Contracts'],
-            created_at: new Date(Date.now() - 16 * 60 * 60 * 1000).toISOString(),
-            description: 'Build the future of decentralized applications.',
-            company_logo: '⛓️',
+            salary_range: '$85k - $120k',
+            skills: ['Analysis', 'Requirements', 'Documentation'],
+            created_at: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+            description: 'Bridge business needs with technical solutions.',
+            company_logo: '📋',
+            url: '#',
+            is_active: true
+          },
+          {
+            _id: '17',
+            title: 'DevOps Engineer',
+            company: 'CloudOps',
+            location: 'Remote (Europe)',
+            job_type: 'Full-time',
+            salary_range: '$90k - $130k',
+            skills: ['Docker', 'Kubernetes', 'CI/CD'],
+            created_at: new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).toISOString(),
+            description: 'Streamline development and deployment processes.',
+            company_logo: '⚙️',
+            url: '#',
+            is_active: true
+          },
+          {
+            _id: '18',
+            title: 'UI Developer',
+            company: 'InterfaceLab',
+            location: 'Remote (Global)',
+            job_type: 'Full-time',
+            salary_range: '$75k - $110k',
+            skills: ['HTML', 'CSS', 'JavaScript'],
+            created_at: new Date(Date.now() - 17 * 24 * 60 * 60 * 1000).toISOString(),
+            description: 'Create beautiful and functional user interfaces.',
+            company_logo: '🎨',
+            url: '#',
+            is_active: true
+          },
+          {
+            _id: '19',
+            title: 'Technical Writer',
+            company: 'DocTech',
+            location: 'Remote (US/EU)',
+            job_type: 'Part-time',
+            salary_range: '$60k - $90k',
+            skills: ['Documentation', 'Technical Writing', 'APIs'],
+            created_at: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000).toISOString(),
+            description: 'Create clear technical documentation.',
+            company_logo: '📚',
+            url: '#',
+            is_active: true
+          },
+          {
+            _id: '20',
+            title: 'Project Manager',
+            company: 'ProjectFlow',
+            location: 'Remote (Global)',
+            job_type: 'Full-time',
+            salary_range: '$90k - $130k',
+            skills: ['Agile', 'Scrum', 'Leadership'],
+            created_at: new Date(Date.now() - 19 * 24 * 60 * 60 * 1000).toISOString(),
+            description: 'Lead projects from conception to completion.',
+            company_logo: '📊',
             url: '#',
             is_active: true
           }
-        ] as Job[]);
-        console.log('📋 Using fallback job data');
+        ]);
       }
     };
 
     loadFeaturedJobs();
   }, []);
-
-  const handleQuickSearch = (term: string) => {
-    navigate(`/search?q=${encodeURIComponent(term)}`);
-  };
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        // Popular search terms - fallback if API fails
-        const fallbackPositions = ['Software Engineer', 'Product Manager', 'Data Scientist', 'DevOps Engineer', 'UX Designer'];
-        
-        // Get popular job titles for quick search
-        const positionsResult = await jobService.getJobTitleSuggestions('', 5); // 5 popular positions
-        const positions = positionsResult.filter(pos => pos.title).map(pos => pos.title);
-        setPopularPositions(positions.length > 0 ? positions : fallbackPositions);
-      } catch (error) {
-        console.error('Error loading popular positions:', error);
-        // Use fallback positions if API fails
-        const fallbackPositions = ['Software Engineer', 'Product Manager', 'Data Scientist', 'DevOps Engineer', 'UX Designer'];
-        setPopularPositions(fallbackPositions);
-      }
-    };
-
-    loadData();
-  }, []); // Remove fallbackPositions dependency since it's defined inside useEffect
-
-  // Handle search with multiple positions
-  const handleMultiPositionSearch = (positions: Position[]) => {
-    if (positions.length === 0) {
-      alert('Please select at least one position to search.');
-      return;
-    }
-
-    const searchParams = new URLSearchParams();
-    searchParams.set('multi_search', 'true');
-    searchParams.set('job_titles', positions.map(p => p.title).join(','));
-    
-    navigate(`/jobs/search?${searchParams.toString()}`);
-  };
 
   const handleSearch = (positions: Position[]) => {
     if (positions.length > 0) {
@@ -291,53 +394,20 @@ const Home: React.FC = () => {
     }
   };
 
-  const handleGetStartedClick = () => {
-    setAuthModalTab('register');
-    setIsAuthModalOpen(true);
-  };
-
-  const handleSignUpWithGoogleClick = () => {
-    setAuthModalTab('register');
-    setIsAuthModalOpen(true);
-  };
-
   const handleOnboardingComplete = () => {
-    setIsOnboardingOpen(false);
-    // Optionally redirect to jobs page or show success message
-    navigate('/jobs');
+    setShowOnboarding(false);
+    localStorage.setItem('onboardingCompleted', 'true');
+    navigate('/jobs/search');
   };
 
-  // Helper function to format time ago
-  const getTimeAgo = (dateString: string) => {
-    const now = new Date();
-    const posted = new Date(dateString);
-    const diffMs = now.getTime() - posted.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffHours < 1) return 'Just now';
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  const handleJobCardClick = (jobId: string) => {
+    window.open(`/jobs/${jobId}`, '_blank');
   };
-
-  const handleJobTitleSelect = (jobTitle: string) => {
-    navigate(`/search?q=${encodeURIComponent(jobTitle)}`);
-  };
-
-  const handleAdvancedSearch = () => {
-    navigate('/jobs');
-  };
-
-  const stats = [
-    { label: "Active Jobs", value: "38K+", icon: Building },
-    { label: "Companies", value: "2K+", icon: Building },
-    { label: "Countries", value: "150+", icon: Globe }
-  ];
 
   const features = [
     {
-      title: "🎯 Smart Job Matching",
-      description: "AI-powered matching connects you with perfect remote opportunities"
+      title: "🎯 Smart Matching",
+      description: "Our AI finds the perfect job matches based on your skills, experience, and preferences"
     },
     {
       title: "🌍 Global Opportunities", 
@@ -356,89 +426,103 @@ const Home: React.FC = () => {
   return (
     <Layout>
       <div className="min-h-screen">
-        {/* Hero Section - Kompakt tasarım */}
-        <section className="relative pt-8 pb-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center">
-              {/* Ana başlık */}
-              <h1 className="text-4xl md:text-6xl font-bold mb-6">
-                <span className="bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
+        {/* Hero Section with Enhanced Design */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-800 text-white">
+          {/* Animated background patterns */}
+          <div 
+            className="absolute inset-0 opacity-30"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+            }}
+          ></div>
+          
+          {/* Glassmorphism overlay */}
+          <div className="absolute inset-0 bg-white/5 backdrop-blur-sm"></div>
+          
+          <div className="relative container mx-auto px-4 py-12">
+            <div className="max-w-5xl mx-auto text-center mb-6">
+              {/* Main heading with enhanced typography */}
+              <h1 className="text-5xl md:text-7xl font-extrabold mb-6 leading-tight">
+                <br />
+                Find Your Perfect 
+                <span className="block bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
                   Remote Job 🐝
                 </span>
-                <br />
-                <span className="text-white">Your Dream Career</span>
               </h1>
               
-              <p className="text-xl text-white/80 mb-8 max-w-2xl mx-auto">
-                Discover amazing remote opportunities from top companies worldwide. 
-                Work from anywhere, live everywhere! 🌍
+              <p className="text-xl md:text-2xl opacity-95 mb-6 leading-relaxed max-w-3xl mx-auto">
+                Discover thousands of remote opportunities from top companies around the world. 
+                Your dream job is just a buzz away!
               </p>
+            </div>
 
-              {/* Search Section */}
-              <div className="max-w-4xl mx-auto mb-8">
-                {/* İstatistikler - Search alanının üstünde */}
-                <div className="flex justify-center items-center space-x-8 mb-6">
-                  {stats.map((stat, index) => (
-                    <div key={index} className="text-center">
-                      <div className="text-2xl font-bold text-white">{stat.value}</div>
-                      <div className="text-sm text-white/70">{stat.label}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Search Container */}
-                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-xl">
-                  <div className="flex flex-col lg:flex-row gap-4 items-end">
-                    {/* Autocomplete */}
+            {/* Enhanced Search Section */}
+            <div className="max-w-4xl mx-auto">
+              <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20 shadow-2xl">
+                <div className="space-y-6">
+                  {/* Search input with buttons side by side */}
+                  <div className="flex gap-3">
                     <div className="flex-1">
-                      <label className="block text-white/90 text-sm font-medium mb-2">
-                        What kind of job are you looking for?
-                      </label>
-                                             <MultiJobAutocomplete
-                         onSelect={(position) => {
-                           setSelectedPositions(prev => {
-                             const exists = prev.find(p => p.title === position.title);
-                             if (exists) return prev;
-                             return [...prev, position];
-                           });
-                         }}
-                         placeholder="Try: Frontend Developer, Product Manager, Designer..."
-                       />
+                      <MultiJobAutocomplete
+                        onSelect={(position) => {
+                          setSelectedPositions(prev => {
+                            const exists = prev.find(p => p.title === position.title);
+                            if (exists) return prev;
+                            return [...prev, position];
+                          });
+                        }}
+                        placeholder="Try: Frontend Developer, Product Manager, Designer..."
+                      />
                     </div>
-                    
-                    {/* Search Button */}
-                                         <button
-                       onClick={() => handleSearch(selectedPositions)}
-                       className="bg-gradient-to-r from-orange-500 to-yellow-400 hover:from-orange-600 hover:to-yellow-500 text-white font-semibold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center space-x-2 whitespace-nowrap"
-                     >
-                      <span>Find Jobs</span>
-                      <ArrowRight className="w-5 h-5" />
+                    <button
+                      onClick={() => handleSearch(selectedPositions)}
+                      disabled={selectedPositions.length === 0 || selectedPositions.length > 5}
+                      className="bg-gradient-to-r from-orange-500 to-yellow-400 hover:from-orange-600 hover:to-yellow-500 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white font-semibold px-4 md:px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center space-x-2 whitespace-nowrap"
+                    >
+                      <Search className="w-5 h-5" />
+                      <span className="hidden md:inline">Find Jobs</span>
+                    </button>
+                    <button
+                      onClick={() => setShowOnboarding(true)}
+                      className="hidden md:flex bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold px-6 py-3 rounded-xl hover:bg-white/20 transition-all duration-200 items-center space-x-2"
+                    >
+                      <PlayCircle className="w-5 h-5" />
+                      <span>Job Wizard</span>
                     </button>
                   </div>
-                </div>
-              </div>
 
-              {/* Quick CTA - Daha kompakt */}
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <button
-                  onClick={() => setShowAuthModal(true)}
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center space-x-2"
-                >
-                  <Star className="w-5 h-5" />
-                  <span>Start Your Journey</span>
-                </button>
-                
-                <button
-                  onClick={() => setShowOnboarding(true)}
-                  className="bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold px-6 py-3 rounded-xl hover:bg-white/20 transition-all duration-200 flex items-center space-x-2"
-                >
-                  <PlayCircle className="w-5 h-5" />
-                  <span>Watch Demo</span>
-                </button>
+                  {/* Selected Positions Display */}
+                  {selectedPositions.length > 0 && (
+                    <div className="mt-4">
+                      <div className="flex flex-wrap gap-2">
+                        {selectedPositions.map((position, index) => (
+                          <div
+                            key={index}
+                            className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg px-3 py-2 flex items-center space-x-2 text-white"
+                          >
+                            <span className="font-medium">{position.title}</span>
+                            <span className="text-white/70 text-sm">({position.count} jobs)</span>
+                            <button
+                              onClick={() => {
+                                setSelectedPositions(prev => prev.filter((_, i) => i !== index));
+                              }}
+                              className="ml-2 text-white/70 hover:text-white transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-2 text-white/70 text-sm">
+                        {selectedPositions.length} position{selectedPositions.length !== 1 ? 's' : ''} selected
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </section>
+        </div>
 
         {/* Hot Remote Jobs Section */}
         <section className="py-12 bg-black/20 backdrop-blur-sm">
@@ -447,177 +531,375 @@ const Home: React.FC = () => {
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
                 🔥 Hot Remote Jobs
               </h2>
-              <p className="text-white/80 text-lg">
+              <p className="text-white/80 text-lg mb-8">
                 Fresh opportunities from top companies, updated daily
               </p>
+              
+              {/* Statistics Section */}
+              <div className="flex flex-wrap justify-center gap-8">
+                <div className="text-center">
+                  <div className="text-2xl md:text-3xl font-bold text-yellow-400">38K+</div>
+                  <div className="text-sm text-white/80">Active Jobs</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl md:text-3xl font-bold text-green-400">2K+</div>
+                  <div className="text-sm text-white/80">Companies</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl md:text-3xl font-bold text-purple-400">150+</div>
+                  <div className="text-sm text-white/80">Countries</div>
+                </div>
+              </div>
             </div>
 
-            {/* Featured Jobs Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {featuredJobs.length > 0 ? (
-                featuredJobs.slice(0, 6).map((job, index) => (
-                  <div
-                    key={job._id || index}
-                    className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-200 cursor-pointer transform hover:scale-105"
-                    onClick={() => navigate(`/jobs/${job._id}`)}
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-white text-lg mb-1 line-clamp-2">
-                          {job.title}
-                        </h3>
-                        <p className="text-white/70 font-medium">{typeof job.company === 'string' ? job.company : job.company?.name}</p>
-                      </div>
-                      <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded-full text-xs font-medium">
-                        NEW
-                      </span>
-                    </div>
-
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center text-white/60 text-sm">
-                        <MapPin className="w-4 h-4 mr-2" />
-                        {job.location || 'Remote'}
-                      </div>
-                      {job.salary_range && (
-                        <div className="flex items-center text-white/60 text-sm">
-                          <DollarSign className="w-4 h-4 mr-2" />
-                          {job.salary_range}
-                        </div>
-                      )}
-                      <div className="flex items-center text-white/60 text-sm">
-                        <Clock className="w-4 h-4 mr-2" />
-                        {job.job_type}
-                      </div>
-                    </div>
-
-                    {job.skills && job.skills.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {job.skills.slice(0, 3).map((skill: string, skillIndex: number) => (
-                          <span
-                            key={skillIndex}
-                            className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full text-xs"
-                          >
-                            {skill}
+            {/* Featured Jobs with Infinite Scroll */}
+            <div className="space-y-8 mb-8">
+              {/* Top Row - Left to Right Scroll (10 cards) */}
+              <div className="relative overflow-hidden">
+                <div 
+                  ref={topRowRef}
+                  className="flex gap-6 transition-transform duration-2000 ease-in-out"
+                  style={{ 
+                    transform: `translateX(-${topRowIndex * 10}%)`,
+                    width: `${Math.max(100, (featuredJobs.length * 10))}%`
+                  }}
+                >
+                  {featuredJobs.length > 0 ? (
+                    featuredJobs.slice(0, 10).map((job, index) => (
+                      <div
+                        key={job._id || index}
+                        className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-200 cursor-pointer transform hover:scale-105 flex-shrink-0"
+                        style={{ width: '400px', height: '210px' }}
+                        onClick={() => handleJobCardClick(job._id || `job-${index}`)}
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-white text-lg mb-1 line-clamp-2">
+                              {job.title}
+                            </h3>
+                            <p className="text-white/70 font-medium">{typeof job.company === 'string' ? job.company : job.company?.name}</p>
+                          </div>
+                          <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded-full text-xs font-medium">
+                            NEW
                           </span>
-                        ))}
-                        {job.skills.length > 3 && (
-                          <span className="text-white/60 text-xs px-2 py-1">
-                            +{job.skills.length - 3} more
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          <span className="text-white/60 text-sm flex items-center">
+                            <MapPin className="w-3 h-3 mr-1" />
+                            {job.location || 'Remote'}
                           </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))
-              ) : (
-                // Sample jobs as fallback
-                Array.from({ length: 6 }, (_, index) => {
-                  const sampleJobs = [
-                    {
-                      title: "Senior Frontend Developer",
-                      company: "TechCorp Inc.",
-                      location: "Remote (US)",
-                      salary: "$90k - $130k",
-                      type: "Full-time",
-                      skills: ["React", "TypeScript", "Node.js"]
-                    },
-                    {
-                      title: "Product Manager",
-                      company: "StartupX",
-                      location: "Remote (EU)",
-                      salary: "$80k - $120k", 
-                      type: "Full-time",
-                      skills: ["Strategy", "Analytics", "Agile"]
-                    },
-                    {
-                      title: "UX Designer",
-                      company: "DesignHub",
-                      location: "Remote (Global)",
-                      salary: "$70k - $100k",
-                      type: "Contract",
-                      skills: ["Figma", "Research", "Prototyping"]
-                    },
-                    {
-                      title: "DevOps Engineer", 
-                      company: "CloudFirst",
-                      location: "Remote",
-                      salary: "$100k - $150k",
-                      type: "Full-time",
-                      skills: ["AWS", "Docker", "Kubernetes"]
-                    },
-                    {
-                      title: "Data Scientist",
-                      company: "DataCorp",
-                      location: "Remote (US)",
-                      salary: "$110k - $160k",
-                      type: "Full-time", 
-                      skills: ["Python", "ML", "SQL"]
-                    },
-                    {
-                      title: "Backend Developer",
-                      company: "ApiWorks",
-                      location: "Remote",
-                      salary: "$85k - $125k",
-                      type: "Full-time",
-                      skills: ["Node.js", "MongoDB", "GraphQL"]
-                    }
-                  ];
-                  
-                  const job = sampleJobs[index];
-                  return (
-                    <div
-                      key={index}
-                      className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-200 cursor-pointer transform hover:scale-105"
-                      onClick={() => navigate('/jobs/search')}
-                    >
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-white text-lg mb-1">
-                            {job.title}
-                          </h3>
-                          <p className="text-white/70 font-medium">{job.company}</p>
-                        </div>
-                        <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded-full text-xs font-medium">
-                          NEW
-                        </span>
-                      </div>
-
-                      <div className="space-y-2 mb-4">
-                        <div className="flex items-center text-white/60 text-sm">
-                          <MapPin className="w-4 h-4 mr-2" />
-                          {job.location}
-                        </div>
-                        <div className="flex items-center text-white/60 text-sm">
-                          <DollarSign className="w-4 h-4 mr-2" />
-                          {job.salary}
-                        </div>
-                        <div className="flex items-center text-white/60 text-sm">
-                          <Clock className="w-4 h-4 mr-2" />
-                          {job.type}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        {job.skills.map((skill, skillIndex) => (
-                          <span
-                            key={skillIndex}
-                            className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full text-xs"
-                          >
-                            {skill}
+                          <span className="text-white/60 text-sm flex items-center">
+                            <Clock className="w-3 h-3 mr-1" />
+                            {job.job_type || 'Full-time'}
                           </span>
-                        ))}
+                        </div>
+                        
+                        {(job.salary || job.salary_range) ? (
+                          <div className="flex items-center text-green-300 font-medium">
+                            <DollarSign className="w-4 h-4 mr-1" />
+                            <span>
+                              {job.salary_range || 
+                               (job.salary ? `${job.salary.currency}${job.salary.min || 0}${job.salary.max ? ` - ${job.salary.currency}${job.salary.max}` : '+'}` : '')
+                              }
+                            </span>
+                          </div>
+                        ) : null}
                       </div>
-                    </div>
-                  );
-                })
-              )}
+                    ))
+                  ) : (
+                    Array.from({ length: 10 }, (_, index) => {
+                      const sampleJobs = [
+                        {
+                          title: "Senior React Developer",
+                          company: "TechCorp",
+                          location: "Remote",
+                          salary_range: "$90k - $130k",
+                          job_type: "Full-time"
+                        },
+                        {
+                          title: "Product Designer", 
+                          company: "DesignStudio",
+                          location: "Remote",
+                          salary_range: "$70k - $110k", 
+                          job_type: "Full-time"
+                        },
+                        {
+                          title: "Data Scientist",
+                          company: "DataLabs",
+                          location: "Remote", 
+                          salary_range: "$100k - $150k",
+                          job_type: "Full-time"
+                        },
+                        {
+                          title: "DevOps Engineer",
+                          company: "CloudTech",
+                          location: "Remote",
+                          salary_range: "$95k - $135k", 
+                          job_type: "Full-time"
+                        },
+                        {
+                          title: "Frontend Developer",
+                          company: "WebFlow",
+                          location: "Remote",
+                          salary_range: "$75k - $115k",
+                          job_type: "Full-time"
+                        },
+                        {
+                          title: "Backend Developer",
+                          company: "ApiWorks",
+                          location: "Remote",
+                          salary_range: "$85k - $125k",
+                          job_type: "Full-time"
+                        },
+                        {
+                          title: "Mobile Developer",
+                          company: "AppHive",
+                          location: "Remote",
+                          salary_range: "$95k - $140k",
+                          job_type: "Full-time"
+                        },
+                        {
+                          title: "UX Designer",
+                          company: "DesignHub",
+                          location: "Remote",
+                          salary_range: "$80k - $120k",
+                          job_type: "Full-time"
+                        },
+                        {
+                          title: "Product Manager",
+                          company: "ProductCorp",
+                          location: "Remote",
+                          salary_range: "$100k - $150k",
+                          job_type: "Full-time"
+                        },
+                        {
+                          title: "QA Engineer",
+                          company: "QualityTech",
+                          location: "Remote",
+                          salary_range: "$70k - $110k",
+                          job_type: "Full-time"
+                        }
+                      ];
+                      
+                      const job = sampleJobs[index];
+                      return (
+                        <div
+                          key={index}
+                          className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-200 cursor-pointer transform hover:scale-105 flex-shrink-0"
+                          style={{ width: '400px', height: '210px' }}
+                          onClick={() => window.open('/jobs/search', '_blank')}
+                        >
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-white text-lg mb-1">
+                                {job.title}
+                              </h3>
+                              <p className="text-white/70 font-medium">{job.company}</p>
+                            </div>
+                            <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded-full text-xs font-medium">
+                              NEW
+                            </span>
+                          </div>
+                          
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            <span className="text-white/60 text-sm flex items-center">
+                              <MapPin className="w-3 h-3 mr-1" />
+                              {job.location}
+                            </span>
+                            <span className="text-white/60 text-sm flex items-center">
+                              <Clock className="w-3 h-3 mr-1" />
+                              {job.job_type}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center text-green-300 font-medium">
+                            <DollarSign className="w-4 h-4 mr-1" />
+                            <span>{job.salary_range}</span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Bottom Row - Right to Left Scroll (10 cards) */}
+              <div className="relative overflow-hidden">
+                <div 
+                  ref={bottomRowRef}
+                  className="flex gap-6 transition-transform duration-2000 ease-in-out"
+                  style={{ 
+                    transform: `translateX(-${bottomRowIndex * 10}%)`,
+                    width: `${Math.max(100, (featuredJobs.length * 10))}%`
+                  }}
+                >
+                  {featuredJobs.length > 0 ? (
+                    featuredJobs.slice(0, 10).reverse().map((job, index) => (
+                      <div
+                        key={job._id || index}
+                        className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-200 cursor-pointer transform hover:scale-105 flex-shrink-0"
+                        style={{ width: '400px', height: '210px' }}
+                        onClick={() => handleJobCardClick(job._id || `job-${index}`)}
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-white text-lg mb-1 line-clamp-2">
+                              {job.title}
+                            </h3>
+                            <p className="text-white/70 font-medium">{typeof job.company === 'string' ? job.company : job.company?.name}</p>
+                          </div>
+                          <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded-full text-xs font-medium">
+                            NEW
+                          </span>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          <span className="text-white/60 text-sm flex items-center">
+                            <MapPin className="w-3 h-3 mr-1" />
+                            {job.location || 'Remote'}
+                          </span>
+                          <span className="text-white/60 text-sm flex items-center">
+                            <Clock className="w-3 h-3 mr-1" />
+                            {job.job_type || 'Full-time'}
+                          </span>
+                        </div>
+                        
+                        {(job.salary || job.salary_range) ? (
+                          <div className="flex items-center text-green-300 font-medium">
+                            <DollarSign className="w-4 h-4 mr-1" />
+                            <span>
+                              {job.salary_range || 
+                               (job.salary ? `${job.salary.currency}${job.salary.min || 0}${job.salary.max ? ` - ${job.salary.currency}${job.salary.max}` : '+'}` : '')
+                              }
+                            </span>
+                          </div>
+                        ) : null}
+                      </div>
+                    ))
+                  ) : (
+                    Array.from({ length: 10 }, (_, index) => {
+                      const sampleJobs = [
+                        {
+                          title: "Backend Developer",
+                          company: "ApiWorks",
+                          location: "Remote",
+                          salary_range: "$85k - $125k",
+                          job_type: "Full-time"
+                        },
+                        {
+                          title: "Mobile Developer",
+                          company: "AppHive",
+                          location: "Remote",
+                          salary_range: "$95k - $140k",
+                          job_type: "Full-time"
+                        },
+                        {
+                          title: "UX Designer",
+                          company: "DesignHub",
+                          location: "Remote",
+                          salary_range: "$80k - $120k",
+                          job_type: "Full-time"
+                        },
+                        {
+                          title: "Product Manager",
+                          company: "ProductCorp",
+                          location: "Remote",
+                          salary_range: "$100k - $150k",
+                          job_type: "Full-time"
+                        },
+                        {
+                          title: "QA Engineer",
+                          company: "QualityTech",
+                          location: "Remote",
+                          salary_range: "$70k - $110k",
+                          job_type: "Full-time"
+                        },
+                        {
+                          title: "Full Stack Developer",
+                          company: "WebFlow Inc.",
+                          location: "Remote",
+                          salary_range: "$90k - $130k",
+                          job_type: "Full-time"
+                        },
+                        {
+                          title: "Data Engineer",
+                          company: "DataFlow",
+                          location: "Remote",
+                          salary_range: "$100k - $140k",
+                          job_type: "Full-time"
+                        },
+                        {
+                          title: "Security Engineer",
+                          company: "SecureNet",
+                          location: "Remote",
+                          salary_range: "$110k - $160k",
+                          job_type: "Full-time"
+                        },
+                        {
+                          title: "Marketing Manager",
+                          company: "GrowthBuzz",
+                          location: "Remote",
+                          salary_range: "$80k - $120k",
+                          job_type: "Full-time"
+                        },
+                        {
+                          title: "Content Strategist",
+                          company: "ContentCraft",
+                          location: "Remote",
+                          salary_range: "$70k - $100k",
+                          job_type: "Full-time"
+                        }
+                      ];
+                      
+                      const job = sampleJobs[index];
+                      return (
+                        <div
+                          key={index}
+                          className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-200 cursor-pointer transform hover:scale-105 flex-shrink-0"
+                          style={{ width: '400px', height: '180px' }}
+                          onClick={() => window.open('/jobs/search', '_blank')}
+                        >
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-white text-lg mb-1">
+                                {job.title}
+                              </h3>
+                              <p className="text-white/70 font-medium">{job.company}</p>
+                            </div>
+                            <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded-full text-xs font-medium">
+                              NEW
+                            </span>
+                          </div>
+                          
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            <span className="text-white/60 text-sm flex items-center">
+                              <MapPin className="w-3 h-3 mr-1" />
+                              {job.location}
+                            </span>
+                            <span className="text-white/60 text-sm flex items-center">
+                              <Clock className="w-3 h-3 mr-1" />
+                              {job.job_type}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center text-green-300 font-medium">
+                            <DollarSign className="w-4 h-4 mr-1" />
+                            <span>{job.salary_range}</span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* View All Jobs Button */}
             <div className="text-center">
               <button
                 onClick={() => navigate('/jobs/search')}
-                className="bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold px-8 py-3 rounded-xl hover:bg-white/20 transition-all duration-200 inline-flex items-center space-x-2"
+                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center space-x-2 mx-auto"
               >
                 <span>View All Jobs</span>
                 <ArrowRight className="w-5 h-5" />
@@ -627,7 +909,7 @@ const Home: React.FC = () => {
         </section>
 
         {/* Features Section */}
-        <section className="py-16">
+        <section className="py-16 bg-gradient-to-br from-gray-900/50 via-purple-900/30 to-blue-900/50 backdrop-blur-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
@@ -642,12 +924,12 @@ const Home: React.FC = () => {
               {features.map((feature, index) => (
                 <div
                   key={index}
-                  className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-200"
+                  className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 hover:border-white/30 transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
                 >
                   <h3 className="text-white font-semibold text-lg mb-3">
                     {feature.title}
                   </h3>
-                  <p className="text-white/70">
+                  <p className="text-white/80">
                     {feature.description}
                   </p>
                 </div>
@@ -695,38 +977,38 @@ const Home: React.FC = () => {
               <div>
                 <h4 className="font-semibold text-white mb-4">For Employers</h4>
                 <ul className="space-y-2">
-                  <li><a href="#" className="text-white/60 hover:text-white transition-colors">Post Jobs</a></li>
-                  <li><a href="#" className="text-white/60 hover:text-white transition-colors">Find Talent</a></li>
+                  <li><a href="#" className="text-white/60 hover:text-white transition-colors">Post a Job</a></li>
                   <li><a href="#" className="text-white/60 hover:text-white transition-colors">Pricing</a></li>
                   <li><a href="#" className="text-white/60 hover:text-white transition-colors">Resources</a></li>
+                  <li><a href="#" className="text-white/60 hover:text-white transition-colors">Support</a></li>
                 </ul>
               </div>
             </div>
             
             <div className="border-t border-white/10 mt-8 pt-8 text-center">
               <p className="text-white/60">
-                © 2024 Buzz2Remote. Made with ❤️ for remote workers worldwide.
+                © 2024 Buzz2Remote. All rights reserved. Made with 💜 for remote workers everywhere.
               </p>
             </div>
           </div>
         </footer>
       </div>
 
-             {/* Modals */}
-       {showAuthModal && (
-         <AuthModal 
-           isOpen={showAuthModal}
-           onClose={() => setShowAuthModal(false)} 
-         />
-       )}
-       
-       {showOnboarding && (
-         <Onboarding 
-           isOpen={showOnboarding}
-           onClose={() => setShowOnboarding(false)}
-           onComplete={handleOnboardingComplete}
-         />
-       )}
+      {/* Modals */}
+      {showAuthModal && (
+        <AuthModal 
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)} 
+        />
+      )}
+      
+      {showOnboarding && (
+        <Onboarding 
+          isOpen={showOnboarding}
+          onClose={() => setShowOnboarding(false)}
+          onComplete={handleOnboardingComplete}
+        />
+      )}
     </Layout>
   );
 };

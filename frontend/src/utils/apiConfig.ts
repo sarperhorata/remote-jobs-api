@@ -97,42 +97,10 @@ const detectBackendPort = async (): Promise<string> => {
 };
 
 export const getApiUrl = async (): Promise<string> => {
-  console.log('📡 getApiUrl called, cachedApiUrl:', cachedApiUrl);
-  
-  // Test ortamında her zaman cache'i temizle
-  if (process.env.NODE_ENV === 'test') {
-    console.log('🧪 Test mode - clearing cache for fresh detection');
-    clearApiUrlCache();
-  }
-  
-  // Cache varsa onu kullan
-  if (cachedApiUrl) {
-    console.log('📋 Using cached API URL:', cachedApiUrl);
-    return cachedApiUrl;
-  }
-
-  // Zaten bir detection çalışıyorsa aynı promise'i bekle
-  if (apiUrlPromise) {
-    console.log('⏳ Detection already in progress, waiting...');
-    return apiUrlPromise;
-  }
-
-  // Yeni detection başlat
-  console.log('🚀 Starting new detection...');
-  apiUrlPromise = detectBackendPort();
-  
-  try {
-    cachedApiUrl = await apiUrlPromise;
-    console.log('✅ Detection complete, cached URL:', cachedApiUrl);
-    return cachedApiUrl;
-  } catch (error) {
-    console.error('❌ Backend detection failed:', error);
-    cachedApiUrl = 'http://localhost:8001/api/v1'; // Fallback
-    console.log('🔄 Using fallback URL:', cachedApiUrl);
-    return cachedApiUrl;
-  } finally {
-    apiUrlPromise = null; // Promise'i temizle
-  }
+  // Her zaman doğru portu kullanması için hardcode ettim.
+  const apiUrl = 'http://localhost:8001/api/v1';
+  console.log(`📡 Using hardcoded API URL: ${apiUrl}`);
+  return apiUrl;
 };
 
 // Development/Production mode detection

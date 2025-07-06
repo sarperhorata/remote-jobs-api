@@ -64,7 +64,7 @@ jobs:
     - name: Install dependencies
       run: |
         cd frontend
-        npm ci
+        npm ci --no-optional
     
     - name: Run npm audit
       run: |

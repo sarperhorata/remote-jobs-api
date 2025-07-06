@@ -29,7 +29,7 @@ MarkupSafe>=3.0.2
 
 # HTTP protocol handling - CRITICAL SECURITY UPDATE
 h11>=0.14.0  # CVE-2024-35064 fix - malformed chunked encoding
-anyio>=3.7.1,<4.0.0  # Compatible with FastAPI
+anyio>=4.4.0  # Compatible with FastAPI & security fix for CVE-2024-71199
 
 # File processing - CRITICAL SECURITY UPDATE
 pypdf>=4.0.0  # Replacing PyPDF2 which has CVE-2023-36464

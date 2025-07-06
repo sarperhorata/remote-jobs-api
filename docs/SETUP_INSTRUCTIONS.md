@@ -47,7 +47,7 @@ CORS_ORIGINS=https://buzz2remote.com,https://www.buzz2remote.com
 ## 📢 Telegram Bildirimleri (@buzz2remote)
 
 ### Mevcut Durum
-- ✅ Bot Token: `8116251711:AAFhGxXtOJu2eCqCORoDr46XWq7ejqMeYnY`
+- ✅ Bot Token: `your-telegram-bot-token-here`
 - ⚠️ Chat ID: `455797523` (kişisel chat - kanal değil)
 - ✅ Tüm bildirim fonksiyonları çalışıyor
 

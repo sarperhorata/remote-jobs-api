@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request, HTTPException, Depends, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 from typing import Optional, Dict, Any
 import os
 import sys
@@ -13,6 +14,7 @@ import uuid
 from bson import ObjectId
 import time
 import subprocess
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 # Add backend to path for imports
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -55,7 +57,15 @@ except Exception as e:
     SCHEDULER_AVAILABLE = False
 
 # Setup templates
-templates = Jinja2Templates(directory=os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates"))
+templates_path = os.path.join(os.path.dirname(__file__), "templates")
+env = Environment(
+    loader=FileSystemLoader(templates_path),
+    autoescape=select_autoescape(['html', 'xml'])
+)
+templates = Jinja2Templates(env=env)
+
+# Admin paneli statik dosyaları (CSS, JS)
+admin_panel_app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
 
 admin_router = APIRouter()
 

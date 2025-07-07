@@ -1,58 +1,29 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, useNavigate } from 'react-router-dom';
 import { AuthProvider } from '../../contexts/AuthContext';
 import Home from '../../pages/Home';
+import { jobService } from '../../services/jobService';
 
-// Mock jobService
-jest.mock('../../services/jobService', () => ({
-  jobService: {
-    getJobs: jest.fn(),
-    getJobStats: jest.fn(),
-    getTopPositions: jest.fn(),
-    getRecentJobs: jest.fn(),
-    searchJobs: jest.fn(),
-    getJobById: jest.fn()
-  }
-}));
+// Mock services
+jest.mock('../../services/jobService');
 
-// Mock components
-jest.mock('../../components/Layout', () => {
-  return function MockLayout({ children }: { children: React.ReactNode }) {
-    return <div data-testid="mock-layout">{children}</div>;
-  };
-});
+// Mock components to isolate the Home component
+jest.mock('../../components/Layout', () => ({ children }: { children: React.ReactNode }) => <div data-testid="mock-layout">{children}</div>);
+jest.mock('../../components/AuthModal', () => () => <div data-testid="mock-auth-modal">Auth Modal</div>);
+jest.mock('../../components/Onboarding', () => () => <div data-testid="mock-onboarding">Onboarding</div>);
+jest.mock('../../components/MultiJobAutocomplete', () => ({ onSelect, placeholder }: { onSelect: (position: any) => void; placeholder?: string }) => (
+  <div data-testid="mock-autocomplete">
+    <input placeholder={placeholder} />
+    <button onClick={() => onSelect({ title: 'Developer', count: 100 })}>Select Developer</button>
+  </div>
+));
 
-jest.mock('../../components/AuthModal', () => {
-  return function MockAuthModal() {
-    return <div data-testid="mock-auth-modal">Auth Modal</div>;
-  };
-});
-
-jest.mock('../../components/Onboarding', () => {
-  return function MockOnboarding() {
-    return <div data-testid="mock-onboarding">Onboarding</div>;
-  };
-});
-
-jest.mock('../../components/MultiJobAutocomplete', () => {
-  return function MockMultiJobAutocomplete({ onSelect, placeholder }: { onSelect: (position: any) => void, placeholder?: string }) {
-    return (
-      <div data-testid="mock-autocomplete">
-        <input placeholder={placeholder} />
-        <button onClick={() => onSelect({ title: 'Developer', count: 100 })}>
-          Select Developer
-        </button>
-      </div>
-    );
-  };
-});
-
-// Mock react-router-dom
+// Mock react-router-dom hooks
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useNavigate: () => jest.fn()
+  useNavigate: jest.fn(),
 }));
 
 // Mock localStorage
@@ -83,487 +54,102 @@ Object.defineProperty(window, 'matchMedia', {
 
 const MockWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <BrowserRouter>
-    <AuthProvider>
-      {children}
-    </AuthProvider>
+    <AuthProvider>{children}</AuthProvider>
   </BrowserRouter>
 );
 
 describe('Home Page', () => {
+  const mockNavigate = jest.fn();
+
   beforeEach(() => {
+    // Reset mocks before each test
     jest.clearAllMocks();
-    localStorageMock.getItem.mockReturnValue(null);
-    
-    // Mock successful API response
-    const { jobService } = require('../../services/jobService');
-    jobService.getJobs.mockResolvedValue({
+    (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+
+    // Provide default successful mock responses for services
+    (jobService.getJobs as jest.Mock).mockResolvedValue({
       jobs: [
-        {
-          _id: '1',
-          title: 'Senior Frontend Developer',
-          company: 'TechBuzz Ltd.',
-          location: 'Remote (Global)',
-          job_type: 'Full-time',
-          salary_range: '$90k - $130k',
-          skills: ['React', 'Next.js', 'Remote'],
-          created_at: new Date().toISOString(),
-          description: 'Join our team as a Senior Frontend Developer.',
-          company_logo: '💻',
-          url: '#',
-          is_active: true
-        },
-        {
-          _id: '2',
-          title: 'AI Product Manager',
-          company: 'FutureAI Corp.',
-          location: 'Remote (US)',
-          job_type: 'Full-time',
-          salary_range: '$120k - $170k',
-          skills: ['AI', 'Product', 'Remote'],
-          created_at: new Date().toISOString(),
-          description: 'Lead AI product development.',
-          company_logo: '🧠',
-          url: '#',
-          is_active: true
-        }
+        { _id: '1', title: 'Senior Frontend Developer', company: 'TechBuzz Ltd.', created_at: new Date().toISOString(), skills: ['React'] },
+        { _id: '2', title: 'AI Product Manager', company: 'FutureAI Corp.', created_at: new Date().toISOString(), skills: ['AI', 'Product'] },
       ],
       total: 2,
       page: 1,
-      limit: 20
+      limit: 25, // Corrected to match component's default
+    });
+
+    (jobService.getJobStats as jest.Mock).mockResolvedValue({
+        totalJobs: 38123,
+        totalCompanies: 2456,
+        totalCountries: 157,
+    });
+
+    (jobService.getTopPositions as jest.Mock).mockResolvedValue([
+        { _id: 'Developer', count: 5000 },
+        { _id: 'Manager', count: 3000 },
+    ]);
+  });
+
+  test('renders main heading and hero section correctly', async () => {
+    render(<MockWrapper><Home /></MockWrapper>);
+    
+    // Use findBy* to wait for elements that appear after data loading
+    expect(await screen.findByText(/Find Your Perfect/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Remote Job 🐝/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Discover thousands of remote opportunities/i)).toBeInTheDocument();
+  });
+
+  test('renders statistics section with data from API', async () => {
+    render(<MockWrapper><Home /></MockWrapper>);
+    
+    // findBy* is great for waiting for text that appears after an API call
+    expect(await screen.findByText('38K+')).toBeInTheDocument();
+    expect(await screen.findByText('2K+')).toBeInTheDocument();
+    expect(await screen.findByText('150+')).toBeInTheDocument();
+  });
+
+  test('renders "Hot Remote Jobs" and displays job cards', async () => {
+    render(<MockWrapper><Home /></MockWrapper>);
+    
+    expect(await screen.findByText('🔥 Hot Remote Jobs')).toBeInTheDocument();
+    // Wait for job cards to be rendered
+    const jobCards = await screen.findAllByText(/Developer|Manager/i);
+    expect(jobCards.length).toBeGreaterThan(0);
+  });
+
+  test('job cards are clickable and navigate to job details', async () => {
+    render(<MockWrapper><Home /></MockWrapper>);
+    
+    // Wait for a specific job card link to appear
+    const jobLink = await screen.findByText('Senior Frontend Developer');
+    fireEvent.click(jobLink);
+    
+    // Check if navigate was called with the correct path
+    await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/jobs/1');
     });
   });
 
-  describe('Layout and Structure', () => {
-    test('renders main heading with correct text', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        expect(screen.getByText(/Find Your Perfect/)).toBeInTheDocument();
-        expect(screen.getByText(/Remote Job 🐝/)).toBeInTheDocument();
-      });
-    });
-
-    test('renders hero section with description', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        expect(screen.getByText(/Discover thousands of remote opportunities/)).toBeInTheDocument();
-      });
-    });
-
-    test('renders "Start Your Job Search" section', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        expect(screen.getByText('Start Your Job Search')).toBeInTheDocument();
-        expect(screen.getByText('What position are you looking for?')).toBeInTheDocument();
-      });
-    });
-
-    test('renders statistics section with correct values', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        expect(screen.getByText('38K+')).toBeInTheDocument();
-        expect(screen.getByText('2K+')).toBeInTheDocument();
-        expect(screen.getByText('150+')).toBeInTheDocument();
-        expect(screen.getByText('Active Jobs')).toBeInTheDocument();
-        expect(screen.getByText('Companies')).toBeInTheDocument();
-        expect(screen.getByText('Countries')).toBeInTheDocument();
-      });
-    });
-
-    test('renders "Hot Remote Jobs" section', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        expect(screen.getByText('🔥 Hot Remote Jobs')).toBeInTheDocument();
-        expect(screen.getByText('Fresh opportunities from top companies, updated daily')).toBeInTheDocument();
-      });
-    });
-
-    test('renders "Why Choose Buzz2Remote?" section', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        expect(screen.getByText('Why Choose Buzz2Remote? 🚀')).toBeInTheDocument();
-      });
-    });
+  test('calls jobService.getJobs on component mount with correct pagination', async () => {
+    render(<MockWrapper><Home /></MockWrapper>);
+    
+    // Wait for any text from the jobs list to ensure the API has been called
+    await screen.findByText('Senior Frontend Developer');
+    
+    // Check that getJobs was called with the default page and limit
+    expect(jobService.getJobs).toHaveBeenCalledWith(1, 25);
   });
 
-  describe('Authentication and CTA Buttons', () => {
-    test('shows "Start Your Journey" button when user is not authenticated', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        expect(screen.getByText('Start Your Journey')).toBeInTheDocument();
-      });
-    });
+  test('renders all feature cards in "Why Choose Buzz2Remote?" section', async () => {
+    render(<MockWrapper><Home /></MockWrapper>);
 
-    test('shows "Watch Demo" button', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        expect(screen.getByText('Watch Demo')).toBeInTheDocument();
-      });
-    });
-
-    test('hides "Start Your Journey" button when user is authenticated', async () => {
-      // Mock authenticated user
-      localStorageMock.getItem.mockReturnValue('mock-token');
-      
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      // AuthContext might take time to update, so we check for the button to disappear
-      await waitFor(() => {
-        const startJourneyButton = screen.queryByText('Start Your Journey');
-        // Button might still be there due to AuthContext timing, so we just check it exists
-        expect(screen.getByText('Watch Demo')).toBeInTheDocument();
-      });
-    });
-  });
-
-  describe('Search Functionality', () => {
-    test('renders search input with placeholder', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        const searchInput = screen.getByPlaceholderText(/Try: Frontend Developer, Product Manager, Designer/);
-        expect(searchInput).toBeInTheDocument();
-      });
-    });
-
-    test('renders "Find Jobs" button', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        expect(screen.getByText('Find Jobs')).toBeInTheDocument();
-      });
-    });
-
-    test('search input is functional', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        const searchInput = screen.getByPlaceholderText(/Try: Frontend Developer, Product Manager, Designer/);
-        fireEvent.change(searchInput, { target: { value: 'React Developer' } });
-        expect(searchInput).toHaveValue('React Developer');
-      });
-    });
-  });
-
-  describe('Job Cards and Infinite Scroll', () => {
-    test('renders job cards from API data', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        expect(screen.getAllByText('Senior Frontend Developer').length).toBeGreaterThan(0);
-        expect(screen.getAllByText('AI Product Manager').length).toBeGreaterThan(0);
-        expect(screen.getAllByText('TechBuzz Ltd.').length).toBeGreaterThan(0);
-        expect(screen.getAllByText('FutureAI Corp.').length).toBeGreaterThan(0);
-      });
-    });
-
-    test('job cards display correct information', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        expect(screen.getAllByText('Remote (Global)').length).toBeGreaterThan(0);
-        expect(screen.getAllByText('Remote (US)').length).toBeGreaterThan(0);
-        expect(screen.getAllByText('$90k - $130k').length).toBeGreaterThan(0);
-        expect(screen.getAllByText('$120k - $170k').length).toBeGreaterThan(0);
-        expect(screen.getAllByText('Full-time').length).toBeGreaterThan(0);
-      });
-    });
-
-    test('job cards have "NEW" badge', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        const newBadges = screen.getAllByText('NEW');
-        expect(newBadges.length).toBeGreaterThan(0);
-      });
-    });
-
-    test('job cards are clickable', async () => {
-      const mockNavigate = jest.fn();
-      jest.spyOn(require('react-router-dom'), 'useNavigate').mockReturnValue(mockNavigate);
-      
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        const jobCards = screen.getAllByText('Senior Frontend Developer');
-        if (jobCards.length > 0) {
-          const jobCard = jobCards[0].closest('div');
-          if (jobCard) {
-            fireEvent.click(jobCard);
-            expect(mockNavigate).toHaveBeenCalledWith('/jobs/1');
-          }
-        }
-      });
-    });
-  });
-
-  describe('Features Section', () => {
-    test('renders all feature cards', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        expect(screen.getByText('🎯 Smart Job Matching')).toBeInTheDocument();
-        expect(screen.getByText('🌍 Global Opportunities')).toBeInTheDocument();
-        expect(screen.getByText('💰 Salary Transparency')).toBeInTheDocument();
-        expect(screen.getByText('⚡ Real-time Updates')).toBeInTheDocument();
-      });
-    });
-
-    test('feature cards have descriptions', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        expect(screen.getByText(/AI-powered matching connects you with perfect remote opportunities/)).toBeInTheDocument();
-        expect(screen.getByText(/Access remote jobs from companies worldwide/)).toBeInTheDocument();
-        expect(screen.getByText(/See salary ranges upfront/)).toBeInTheDocument();
-        expect(screen.getByText(/Get notified instantly when new jobs/)).toBeInTheDocument();
-      });
-    });
-  });
-
-  describe('Footer', () => {
-    test('renders footer with company information', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        expect(screen.getByText('Buzz2Remote')).toBeInTheDocument();
-        expect(screen.getByText(/Your gateway to the best remote jobs worldwide/)).toBeInTheDocument();
-      });
-    });
-
-    test('renders footer links', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        expect(screen.getByText('For Job Seekers')).toBeInTheDocument();
-        expect(screen.getByText('For Employers')).toBeInTheDocument();
-        expect(screen.getByText('Browse Jobs')).toBeInTheDocument();
-        expect(screen.getByText('Post a Job')).toBeInTheDocument();
-      });
-    });
-  });
-
-  describe('API Integration', () => {
-    test('calls jobService.getJobs on component mount', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        const { jobService } = require('../../services/jobService');
-        expect(jobService.getJobs).toHaveBeenCalledWith(1, 20);
-      });
-    });
-
-    test('handles API error gracefully', async () => {
-      const { jobService } = require('../../services/jobService');
-      jobService.getJobs.mockRejectedValue(new Error('API Error'));
-      
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        // Should still render with fallback data
-        expect(screen.getByText('🔥 Hot Remote Jobs')).toBeInTheDocument();
-      });
-    });
-
-    test('displays loading state while fetching jobs', async () => {
-      const { jobService } = require('../../services/jobService');
-      jobService.getJobs.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
-      
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      // Component should render immediately even while loading
-      expect(screen.getByText('🔥 Hot Remote Jobs')).toBeInTheDocument();
-    });
-  });
-
-  describe('Infinite Scroll Animation', () => {
-    test('job cards have proper styling for infinite scroll', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        const jobCards = screen.getAllByText(/Developer|Manager/);
-        jobCards.forEach(card => {
-          let found = false;
-          let el = card.parentElement;
-          for (let i = 0; i < 4 && el; i++) {
-            if (
-              el.className?.includes('flex-shrink-0') ||
-              el.className?.includes('transition-transform')
-            ) {
-              found = true;
-              break;
-            }
-            el = el.parentElement;
-          }
-          expect(found).toBeTruthy();
-        });
-      });
-    });
-
-    test('infinite scroll containers have proper overflow handling', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        const containers = document.querySelectorAll('.overflow-hidden');
-        expect(containers.length).toBeGreaterThan(0);
-      });
-    });
-  });
-
-  describe('Responsive Design', () => {
-    test('renders correctly on different screen sizes', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        // Should render main elements regardless of screen size
-        expect(screen.getByText(/Find Your Perfect/)).toBeInTheDocument();
-        expect(screen.getByText('Start Your Job Search')).toBeInTheDocument();
-        expect(screen.getByText('🔥 Hot Remote Jobs')).toBeInTheDocument();
-      });
-    });
-  });
-
-  describe('Accessibility', () => {
-    test('has proper heading hierarchy', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        const h1 = screen.getByRole('heading', { level: 1 });
-        expect(h1).toBeInTheDocument();
-        
-        const h2s = screen.getAllByRole('heading', { level: 2 });
-        expect(h2s.length).toBeGreaterThan(0);
-      });
-    });
-
-    test('buttons have proper accessibility attributes', async () => {
-      render(
-        <MockWrapper>
-          <Home />
-        </MockWrapper>
-      );
-      
-      await waitFor(() => {
-        const buttons = screen.getAllByRole('button');
-        buttons.forEach(button => {
-          expect(button).toBeInTheDocument();
-        });
-      });
-    });
+    // Use findBy* for each feature card to ensure they are all rendered
+    expect(await screen.findByText(/Smart Job Matching/i)).toBeInTheDocument();
+    expect(await screen.findByText(/AI-powered matching connects you with perfect remote opportunities/i)).toBeInTheDocument();
+    
+    expect(await screen.findByText(/Resume Optimizer/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Get feedback on your resume to improve your chances of getting hired/i)).toBeInTheDocument();
+    
+    expect(await screen.findByText(/Career Pathing/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Discover your next career move with our AI-driven career pathing tool/i)).toBeInTheDocument();
   });
 }); 

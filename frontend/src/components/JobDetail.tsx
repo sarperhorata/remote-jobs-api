@@ -1,5 +1,6 @@
 import React from 'react';
 import { Job } from '../types/job';
+import DOMPurify from 'dompurify';
 
 interface JobDetailProps {
   job: Job;
@@ -51,7 +52,7 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, similarJobs = [], onApply })
       
       <div className="prose max-w-none mb-6">
         <h2 className="text-xl font-semibold mb-4">Job Description</h2>
-        <div dangerouslySetInnerHTML={{ __html: job.description }} />
+        <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(job.description) }} />
       </div>
       
       <div className="mb-6">

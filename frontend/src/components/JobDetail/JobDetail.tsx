@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { jobService } from '../../services/AllServices';
 import { Job } from '../../types/job';
+import DOMPurify from 'dompurify';
 
 // Extend the Job type to include the optional companyName property
 interface ExtendedJob extends Partial<{
@@ -112,7 +113,7 @@ const JobDetail: React.FC = () => {
 
               <div className="prose max-w-none mb-6">
                 <h2 className="text-xl font-semibold mb-4">Job Description</h2>
-                <div dangerouslySetInnerHTML={{ __html: job.description }} />
+                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(job.description) }} />
               </div>
 
               <div className="mb-6">

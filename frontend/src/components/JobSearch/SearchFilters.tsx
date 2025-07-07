@@ -216,20 +216,18 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
               <div
                 key={value}
                 className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer flex items-center"
-                onClick={(e) => e.stopPropagation()}
+                onClick={() => {
+                  const newExperiences = experiences.includes(value)
+                    ? experiences.filter(t => t !== value)
+                    : [...experiences, value];
+                  onFiltersChange({ ...filters, experiences: newExperiences });
+                }}
               >
                 <input
                   type="checkbox"
+                  readOnly
                   checked={experiences.includes(value)}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    const newExperiences = e.target.checked 
-                      ? [...experiences, value]
-                      : experiences.filter(t => t !== value);
-                    onFiltersChange({ ...filters, experiences: newExperiences });
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded mr-2"
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded mr-2 pointer-events-none"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
               </div>
@@ -303,19 +301,15 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
 
       {/* Clear Filters */}
       <button
-        onClick={() => onFiltersChange({
-          query: '',
-          location: '',
-          jobType: '',
-          workType: '',
-          experience_level: '',
-          salaryMin: '',
-          salaryMax: '',
-          company: '',
-          postedWithin: '',
-          experiences: [],
+        onClick={() => onFiltersChange({ 
+          query: '', 
+          location: '', 
+          jobType: '', 
+          workType: '', 
+          experiences: [], 
+          company: '', 
           postedAge: '',
-          salaryRange: ''
+          salaryRange: '' 
         })}
         className="w-full px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
       >

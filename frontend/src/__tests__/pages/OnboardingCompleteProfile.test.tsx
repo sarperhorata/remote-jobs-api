@@ -1,99 +1,86 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
+import '@testing-library/jest-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import OnboardingCompleteProfile from '../../pages/OnboardingCompleteProfile';
 import { getApiUrl } from '../../utils/apiConfig';
 
-// Mock API configuration
+// Mocks
+jest.mock('../../services/notificationService');
 jest.mock('../../utils/apiConfig');
-const mockGetApiUrl = getApiUrl as jest.MockedFunction<typeof getApiUrl>;
 
-// Mock notification service
-jest.mock('../../services/notificationService', () => ({
-  notificationService: {
-    requestPermission: jest.fn().mockResolvedValue(true),
-    startPeriodicJobCheck: jest.fn(),
-  },
-}));
-
-// Mock react-router
-const mockNavigate = jest.fn();
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useNavigate: () => mockNavigate,
-  useLocation: () => ({
-    state: { userId: 'test-user-id' },
-  }),
-}));
-
-// Mock fetch
-global.fetch = jest.fn();
-global.console.error = jest.fn();
+const mockGetApiUrl = getApiUrl as jest.Mock;
 
 const renderComponent = () => {
   return render(
-    <BrowserRouter>
-      <OnboardingCompleteProfile />
-    </BrowserRouter>
+    <MemoryRouter initialEntries={[{ pathname: '/onboarding/complete-profile', state: { userId: '123' } }]}>
+      <Routes>
+        <Route path="/onboarding/complete-profile" element={<OnboardingCompleteProfile />} />
+      </Routes>
+    </MemoryRouter>
   );
 };
 
 describe('OnboardingCompleteProfile', () => {
   beforeEach(() => {
+    // Reset mocks
     jest.clearAllMocks();
-    mockGetApiUrl.mockResolvedValue('http://localhost:8002/api/v1');
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve([]),
+    mockGetApiUrl.mockResolvedValue('http://fakeapi.com');
+    // Mock fetch for job title and skill searches
+    global.fetch = jest.fn((url) =>
+      Promise.resolve({
+        ok: true,
+        json: () => {
+          if (url.toString().includes('job-titles')) {
+            return Promise.resolve([{ id: '1', title: 'Software Engineer', category: 'Tech' }]);
+          }
+          if (url.toString().includes('skills')) {
+            return Promise.resolve([{ id: 's1', name: 'React' }]);
+          }
+          return Promise.resolve([]);
+        },
+      })
+    ) as jest.Mock;
+  });
+
+  test('renders all sections correctly using robust queries', async () => {
+    renderComponent();
+    
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /complete your profile/i })).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/enter your location or use gps/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/search and select job titles/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/search for skills/i)).toBeInTheDocument();
+      expect(screen.getByText(/experience level/i)).toBeInTheDocument();
+      expect(screen.getByText(/what is your desired salary range/i)).toBeInTheDocument();
     });
   });
 
-  it('renders correctly without errors', () => {
-    renderComponent();
-    
-    expect(screen.getByText('Complete Your Profile')).toBeInTheDocument();
-    expect(screen.getByText(/tell us about yourself/i)).toBeInTheDocument();
-  });
-
-  it('handles API errors gracefully and shows fallback options', async () => {
-    mockGetApiUrl.mockResolvedValue('http://localhost:8002/api/v1');
-    (global.fetch as jest.Mock).mockRejectedValue(new Error('API Error'));
-
-    renderComponent();
-    
-    const jobTitleInput = screen.getByPlaceholderText(/enter job titles/i);
-    fireEvent.change(jobTitleInput, { target: { value: 'Software' } });
-
-    await waitFor(() => {
-      expect(global.console.error).toHaveBeenCalledWith('Job titles search error:', expect.any(Error));
-    }, { timeout: 1000 });
-  });
-
-  it('prevents form submission with incomplete data', async () => {
+  test('shows validation error when submitting with empty required fields', async () => {
     renderComponent();
     
     const completeButton = screen.getByRole('button', { name: /complete profile/i });
     fireEvent.click(completeButton);
-
+    
     await waitFor(() => {
-      expect(screen.getByText('Please select at least one job title')).toBeInTheDocument();
+      const alert = screen.getByRole('alert');
+      expect(alert).toHaveTextContent(/at least one job title is required/i);
     });
   });
 
-  it('validates required fields before submission', () => {
+  test('handles API errors gracefully and shows fallback options', async () => {
+    // Mock a failed API response
+    mockGetApiUrl.mockRejectedValue(new Error('API Down'));
+    
     renderComponent();
     
-    // Check that all required form sections are present
-    expect(screen.getByText('Location')).toBeInTheDocument();
-    expect(screen.getByText('Preferred Job Titles')).toBeInTheDocument();
-    expect(screen.getByText('Experience Level')).toBeInTheDocument();
-    expect(screen.getByText('Skills')).toBeInTheDocument();
-    expect(screen.getByText('Salary Range')).toBeInTheDocument();
-    expect(screen.getByText('Work Type')).toBeInTheDocument();
-  });
+    // Corrected placeholder text
+    const jobTitleInput = screen.getByPlaceholderText(/Search and select job titles/i);
+    fireEvent.change(jobTitleInput, { target: { value: 'Software' } });
 
-  it('should not throw any TypeScript compilation errors', () => {
-    // This test ensures the component compiles without TypeScript errors
-    expect(() => renderComponent()).not.toThrow();
+    // The component should now show fallback options
+    await waitFor(() => {
+      expect(screen.getByText('Software Engineer')).toBeInTheDocument();
+    });
   });
 }); 

@@ -10,7 +10,7 @@ httpx>=0.24.1
 httpcore>=1.0.8
 
 # Database dependencies
-pymongo>=4.6.3  # CVE-2024-5629 fix
+pymongo==4.6.3
 motor>=3.3.1,<4.0.0
 beanie>=1.29.0
 sqlalchemy>=2.0.0  # Added for legacy imports compatibility
@@ -135,7 +135,7 @@ soupsieve>=2.6
 trio>=0.29.0
 trio-websocket>=0.12.2
 typing-extensions>=4.13.2
-urllib3>=2.4.0  # Security update
+urllib3==2.5.0
 webencodings>=0.5.1
 wsproto>=1.2.0
 yarl>=1.19.0

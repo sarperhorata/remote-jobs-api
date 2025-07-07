@@ -247,10 +247,10 @@ class FantasticJobsAPI:
     
     def __init__(self):
         self.base_url = "https://active-jobs-db.p.rapidapi.com"
-        self.api_key = os.getenv('RAPIDAPI_KEY', '9c58f51d0dmsh97f8afac642c5f1p1fd8a9jsn2aae92a07f7a')
+        self.api_key = os.getenv('RAPIDAPI_KEY')
         self.headers = {
-            'x-rapidapi-host': 'active-jobs-db.p.rapidapi.com',
-            'x-rapidapi-key': self.api_key
+            "X-RapidAPI-Key": self.api_key,
+            "X-RapidAPI-Host": self.base_url.replace("https://", "")
         }
         # 15 requests per month = 30 days
         self.rate_limiter = RateLimiter(max_requests=15, time_period_days=30)
@@ -400,10 +400,10 @@ class JobPostingFeedAPI:
     
     def __init__(self):
         self.base_url = "https://job-posting-feed-api.p.rapidapi.com"
-        self.api_key = os.getenv('RAPIDAPI_KEY', '9c58f51d0dmsh97f8afac642c5f1p1fd8a9jsn2aae92a07f7a')
+        self.api_key = os.getenv('RAPIDAPI_KEY')
         self.headers = {
-            'x-rapidapi-host': 'job-posting-feed-api.p.rapidapi.com',
-            'x-rapidapi-key': self.api_key
+            "X-RapidAPI-Key": self.api_key,
+            "X-RapidAPI-Host": self.base_url.replace("https://", "")
         }
         # 5 requests per month = 30 days
         self.rate_limiter = RateLimiter(max_requests=5, time_period_days=30)
@@ -615,7 +615,7 @@ class RemoteOKAPI:
     
     def __init__(self):
         self.base_url = "https://jobs-from-remoteok.p.rapidapi.com"
-        self.api_key = os.getenv('RAPIDAPI_KEY', '9c58f51d0dmsh97f8afac642c5f1p1fd8a9jsn2aae92a07f7a')
+        self.api_key = os.getenv('RAPIDAPI_KEY')
         self.headers = {
             'x-rapidapi-host': 'jobs-from-remoteok.p.rapidapi.com',
             'x-rapidapi-key': self.api_key
@@ -809,7 +809,7 @@ class ArbeitnowFreeAPI:
     
     def __init__(self):
         self.base_url = "https://arbeitnow-free-job-board.p.rapidapi.com"
-        self.api_key = os.getenv('RAPIDAPI_KEY', '9c58f51d0dmsh97f8afac642c5f1p1fd8a9jsn2aae92a07f7a')
+        self.api_key = os.getenv('RAPIDAPI_KEY')
         self.headers = {
             'Content-Type': 'application/json',
             'x-rapidapi-host': 'arbeitnow-free-job-board.p.rapidapi.com',
@@ -901,7 +901,7 @@ class JobicyAPI:
     
     def __init__(self):
         self.base_url = "https://jobicy.p.rapidapi.com/api/v2"
-        self.api_key = os.getenv('RAPIDAPI_KEY', '9c58f51d0dmsh97f8afac642c5f1p1fd8a9jsn2aae92a07f7a')
+        self.api_key = os.getenv('RAPIDAPI_KEY')
         self.headers = {
             'x-rapidapi-host': 'jobicy.p.rapidapi.com',
             'x-rapidapi-key': self.api_key
@@ -1002,7 +1002,7 @@ class RemoteJobsPlansAPI:
     
     def __init__(self):
         self.base_url = "https://remote-jobs1.p.rapidapi.com"
-        self.api_key = os.getenv('RAPIDAPI_KEY', '9c58f51d0dmsh97f8afac642c5f1p1fd8a9jsn2aae92a07f7a')
+        self.api_key = os.getenv('RAPIDAPI_KEY')
         self.headers = {
             'x-rapidapi-host': 'remote-jobs1.p.rapidapi.com',
             'x-rapidapi-key': self.api_key
@@ -1109,7 +1109,7 @@ class JobPostingsRSSAPI:
     """Job Postings RSS API integration - 31 requests/month, 10 jobs per request, up to 300 jobs free"""
     def __init__(self):
         self.base_url = "https://job-postings-rss-feed.p.rapidapi.com/api/rss/v1/jobs_full"
-        self.api_key = os.getenv('RAPIDAPI_KEY', '9c58f51d0dmsh97f8afac642c5f1p1fd8a9jsn2aae92a07f7a')
+        self.api_key = os.getenv('RAPIDAPI_KEY')
         self.headers = {
             'x-rapidapi-host': 'job-postings-rss-feed.p.rapidapi.com',
             'x-rapidapi-key': self.api_key

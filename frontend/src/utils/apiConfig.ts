@@ -97,10 +97,30 @@ const detectBackendPort = async (): Promise<string> => {
 };
 
 export const getApiUrl = async (): Promise<string> => {
-  // Her zaman doğru portu kullanması için hardcode ettim.
-  const apiUrl = 'http://localhost:8001/api/v1';
-  console.log(`📡 Using hardcoded API URL: ${apiUrl}`);
-  return apiUrl;
+  if (process.env.NODE_ENV === 'production') {
+    // Production'da her zaman canlı API adresini kullan
+    return 'https://buzz2remote.com/api/v1';
+  }
+
+  // Development ortamında, çalışan portu dinamik olarak bul
+  if (cachedApiUrl) {
+    logApiDetection('Returning cached API URL:', cachedApiUrl);
+    return cachedApiUrl;
+  }
+
+  if (apiUrlPromise) {
+    logApiDetection('Waiting for existing API detection promise...');
+    return apiUrlPromise;
+  }
+
+  apiUrlPromise = detectBackendPort();
+  
+  try {
+    cachedApiUrl = await apiUrlPromise;
+    return cachedApiUrl;
+  } finally {
+    apiUrlPromise = null;
+  }
 };
 
 // Development/Production mode detection

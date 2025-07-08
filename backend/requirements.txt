@@ -4,7 +4,7 @@ starlette>=0.41.0  # CVE-2024-47874 fix
 uvicorn[standard]>=0.32.1
 
 # HTTP client library - security update
-requests>=2.32.2  # CVE-2024-35195 fix
+requests>=2.32.4  # CVE-2024-35195 fix
 aiohttp>=3.11.10  # Multiple CVE fixes
 httpx>=0.24.1
 httpcore>=1.0.8

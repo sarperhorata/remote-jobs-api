@@ -13,7 +13,7 @@
   "dependencies": {
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
-    "axios": "^1.8.4",
+    "axios": "^1.8.7",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "csv-parse": "^5.6.0",
@@ -47,5 +47,8 @@
   },
   "repository": {
     "url": "https://github.com/sarperhorata/buzz2remote"
+  },
+  "overrides": {
+    "axios": "^1.8.7"
   }
 }

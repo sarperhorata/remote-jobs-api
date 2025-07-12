@@ -5,16 +5,14 @@ Gerçek test data ile kaliteli, odaklanmış testler.
 
 import pytest
 from fastapi import status
-from httpx import AsyncClient
 
 
-@pytest.mark.asyncio
 class TestJobsAPICore:
     """Core Job API functionality tests"""
 
-    async def test_get_jobs_endpoint_works(self, async_client: AsyncClient):
+    def test_get_jobs_endpoint_works(self, client):
         """Test that jobs endpoint returns correct structure"""
-        response = await async_client.get("/api/v1/jobs/search")
+        response = client.get("/api/v1/jobs/search")
         
         assert response.status_code == 200
         data = response.json()
@@ -26,9 +24,9 @@ class TestJobsAPICore:
         assert "limit" in data
         assert isinstance(data["jobs"], list)
 
-    async def test_get_jobs_pagination(self, async_client: AsyncClient):
+    def test_get_jobs_pagination(self, client):
         """Test jobs pagination parameters"""
-        response = await async_client.get("/api/v1/jobs/search?page=1&limit=5")
+        response = client.get("/api/v1/jobs/search?page=1&limit=5")
         
         assert response.status_code == 200
         data = response.json()
@@ -37,9 +35,9 @@ class TestJobsAPICore:
         assert data["limit"] == 5
         assert len(data["jobs"]) <= 5
 
-    async def test_job_search_with_query(self, async_client: AsyncClient):
+    def test_job_search_with_query(self, client):
         """Test job search with query parameter"""
-        response = await async_client.get("/api/v1/jobs/search?q=python")
+        response = client.get("/api/v1/jobs/search?q=python")
         
         assert response.status_code == 200
         data = response.json()
@@ -48,9 +46,9 @@ class TestJobsAPICore:
         assert "jobs" in data
         assert isinstance(data["jobs"], list)
 
-    async def test_job_titles_autocomplete(self, async_client: AsyncClient):
+    def test_job_titles_autocomplete(self, client):
         """Test job titles autocomplete endpoint"""
-        response = await async_client.get("/api/v1/jobs/job-titles/search?q=dev&limit=5")
+        response = client.get("/api/v1/jobs/job-titles/search?q=dev&limit=5")
         
         assert response.status_code == 200
         data = response.json()
@@ -58,24 +56,24 @@ class TestJobsAPICore:
         assert isinstance(data, list)
         assert len(data) <= 5
 
-    async def test_pagination_validation(self, async_client: AsyncClient):
+    def test_pagination_validation(self, client):
         """Test pagination parameter validation"""
         # Test excessive limit (>100 should be invalid)
-        response = await async_client.get("/api/v1/jobs/search?limit=150")
+        response = client.get("/api/v1/jobs/search?limit=150")
         assert response.status_code == 422  # Validation error expected
         
         # Test valid large limit
-        response = await async_client.get("/api/v1/jobs/search?limit=100") 
+        response = client.get("/api/v1/jobs/search?limit=100") 
         assert response.status_code == 200
         data = response.json()
         assert data["limit"] == 100
 
-    async def test_search_response_time(self, async_client: AsyncClient):
+    def test_search_response_time(self, client):
         """Test that search responses are reasonably fast"""
         import time
         
         start_time = time.time()
-        response = await async_client.get("/api/v1/jobs/search?limit=20")
+        response = client.get("/api/v1/jobs/search?limit=20")
         end_time = time.time()
         
         response_time = end_time - start_time

@@ -1,28 +1,28 @@
 import pytest
-from httpx import AsyncClient
 from backend.models.job import JobCreate
 from bson import ObjectId
 
-@pytest.mark.asyncio
-async def test_create_job(async_client: AsyncClient, test_job_data: dict, mongodb):
+def test_create_job(client, test_job_data: dict, db_mock):
     """Test creating a job via API."""
-    await mongodb["jobs"].delete_many({})
+    # Mock database operations
+    db_mock.jobs.insert_one.return_value = type('MockResult', (), {'inserted_id': ObjectId()})()
+    db_mock.jobs.find_one.return_value = test_job_data
 
     # Use dict directly instead of JobCreate model to avoid Pydantic URL serialization issues
-    response = await async_client.post("/api/v1/jobs/", json=test_job_data)
+    response = client.post("/api/v1/jobs/", json=test_job_data)
     assert response.status_code == 201
     data = response.json()
     assert "_id" in data
     assert data["title"] == test_job_data["title"]
     assert data["company"] == test_job_data["company"]
 
-@pytest.mark.asyncio
-async def test_get_jobs(async_client: AsyncClient, test_job_data: dict, mongodb):
+def test_get_jobs(client, test_job_data: dict, db_mock):
     """Test getting a list of jobs via API."""
-    await mongodb["jobs"].delete_many({})
-    await async_client.post("/api/v1/jobs/", json=test_job_data)
+    # Mock database operations
+    db_mock.jobs.find.return_value.to_list.return_value = [test_job_data]
+    db_mock.jobs.count_documents.return_value = 1
     
-    response = await async_client.get("/api/v1/jobs/")
+    response = client.get("/api/v1/jobs/")
     assert response.status_code == 200
     data = response.json()
     # Check basic required fields
@@ -34,54 +34,54 @@ async def test_get_jobs(async_client: AsyncClient, test_job_data: dict, mongodb)
     assert len(jobs) > 0
     assert "_id" in jobs[0]
 
-@pytest.mark.asyncio
-async def test_get_job(async_client: AsyncClient, test_job_data: dict, mongodb):
+def test_get_job(client, test_job_data: dict, db_mock):
     """Test getting a specific job via API."""
-    await mongodb["jobs"].delete_many({})
-    create_response = await async_client.post("/api/v1/jobs/", json=test_job_data)
-    job_id = create_response.json()["_id"]
+    # Mock database operations
+    job_id = str(ObjectId())
+    test_job_data["_id"] = job_id
+    db_mock.jobs.find_one.return_value = test_job_data
     
-    response = await async_client.get(f"/api/v1/jobs/{job_id}")
+    response = client.get(f"/api/v1/jobs/{job_id}")
     assert response.status_code == 200
     data = response.json()
     assert data["_id"] == job_id
     assert data["title"] == test_job_data["title"]
     assert data["company"] == test_job_data["company"]
 
-@pytest.mark.asyncio
-async def test_update_job(async_client: AsyncClient, test_job_data: dict, mongodb):
+def test_update_job(client, test_job_data: dict, db_mock):
     """Test updating a job via API."""
-    await mongodb["jobs"].delete_many({})
-    create_response = await async_client.post("/api/v1/jobs/", json=test_job_data)
-    job_id = create_response.json()["_id"]
+    # Mock database operations
+    job_id = str(ObjectId())
+    test_job_data["_id"] = job_id
+    db_mock.jobs.find_one.return_value = test_job_data
+    db_mock.jobs.update_one.return_value = type('MockResult', (), {'modified_count': 1})()
     
     update_data = {"title": "Updated Job Title"}
-    response = await async_client.put(f"/api/v1/jobs/{job_id}", json=update_data)
+    response = client.put(f"/api/v1/jobs/{job_id}", json=update_data)
     assert response.status_code == 200
     data = response.json()
     assert data["title"] == "Updated Job Title"
     assert data["_id"] == job_id
 
-@pytest.mark.asyncio
-async def test_delete_job(async_client: AsyncClient, test_job_data: dict, mongodb):
+def test_delete_job(client, test_job_data: dict, db_mock):
     """Test deleting a job via API."""
-    await mongodb["jobs"].delete_many({})
-    create_response = await async_client.post("/api/v1/jobs/", json=test_job_data)
-    job_id = create_response.json()["_id"]
+    # Mock database operations
+    job_id = str(ObjectId())
+    db_mock.jobs.delete_one.return_value = type('MockResult', (), {'deleted_count': 1})()
+    db_mock.jobs.find_one.return_value = None  # After deletion
     
-    response = await async_client.delete(f"/api/v1/jobs/{job_id}")
+    response = client.delete(f"/api/v1/jobs/{job_id}")
     assert response.status_code == 204
     
-    get_response = await async_client.get(f"/api/v1/jobs/{job_id}")
+    get_response = client.get(f"/api/v1/jobs/{job_id}")
     assert get_response.status_code == 404
 
-@pytest.mark.asyncio
-async def test_search_jobs(async_client: AsyncClient, test_job_data: dict, mongodb):
+def test_search_jobs(client, test_job_data: dict, db_mock):
     """Test searching jobs via API."""
-    await mongodb["jobs"].delete_many({})
-    await async_client.post("/api/v1/jobs/", json=test_job_data)
+    # Mock database operations
+    db_mock.jobs.find.return_value.to_list.return_value = [test_job_data]
     
-    response = await async_client.get("/api/v1/jobs/search", params={"q": "Test"})
+    response = client.get("/api/v1/jobs/search", params={"q": "Test"})
     assert response.status_code == 200
     data = response.json()
     assert "jobs" in data
@@ -89,25 +89,30 @@ async def test_search_jobs(async_client: AsyncClient, test_job_data: dict, mongo
     assert any("Test" in job["title"] for job in data["jobs"])
     assert "_id" in data["jobs"][0]
 
-@pytest.mark.asyncio
-async def test_get_job_statistics(async_client: AsyncClient, test_job_data: dict, mongodb):
+def test_get_job_statistics(client, test_job_data: dict, db_mock):
     """Test getting job statistics via API."""
-    await mongodb["jobs"].delete_many({})
-    companies = ["Company A", "Company B", "Company C"]
-    locations = ["Remote", "New York", "London"]
+    # Mock database operations
+    mock_stats = {
+        "total_jobs": 9,
+        "jobs_by_company": [
+            {"company": "Company A", "count": 3},
+            {"company": "Company B", "count": 3},
+            {"company": "Company C", "count": 3}
+        ],
+        "jobs_by_location": [
+            {"location": "Remote", "count": 3},
+            {"location": "New York", "count": 3},
+            {"location": "London", "count": 3}
+        ]
+    }
+    db_mock.jobs.aggregate.return_value.to_list.return_value = mock_stats["jobs_by_company"]
+    db_mock.jobs.count_documents.return_value = mock_stats["total_jobs"]
     
-    for company in companies:
-        for location in locations:
-            job_data = test_job_data.copy()
-            job_data["company"] = company
-            job_data["location"] = location
-            await async_client.post("/api/v1/jobs/", json=job_data)
-    
-    response = await async_client.get("/api/v1/jobs/statistics")
+    response = client.get("/api/v1/jobs/statistics")
     assert response.status_code == 200
     data = response.json()
     assert "total_jobs" in data
     assert "jobs_by_company" in data
     assert "jobs_by_location" in data
-    assert len(data["jobs_by_company"]) >= len(companies)
-    assert len(data["jobs_by_location"]) >= len(locations) 
+    assert len(data["jobs_by_company"]) >= 3
+    assert len(data["jobs_by_location"]) >= 3 

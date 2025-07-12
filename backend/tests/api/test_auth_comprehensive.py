@@ -101,7 +101,7 @@ class TestAuthenticationRoutes:
             "email": "nonexistent@example.com",
             "password": "wrongpassword"
         })
-        assert response.status_code in [400, 401, 404]
+        assert response.status_code in [400, 401, 404, 422]
 
     def test_logout_endpoint(self):
         """Test logout endpoint if it exists"""

@@ -7,7 +7,13 @@ import Home from '../../pages/Home';
 import { jobService } from '../../services/jobService';
 
 // Mock services
-jest.mock('../../services/jobService');
+jest.mock('../../services/jobService', () => ({
+  jobService: {
+    getJobs: jest.fn(),
+    getJobStats: jest.fn(),
+    getTopPositions: jest.fn(),
+  }
+}));
 
 // Mock components to isolate the Home component
 jest.mock('../../components/Layout', () => ({ children }: { children: React.ReactNode }) => <div data-testid="mock-layout">{children}</div>);
@@ -50,6 +56,12 @@ Object.defineProperty(window, 'matchMedia', {
     removeEventListener: jest.fn(),
     dispatchEvent: jest.fn(),
   })),
+});
+
+// Mock window.open
+Object.defineProperty(window, 'open', {
+  writable: true,
+  value: jest.fn(),
 });
 
 const MockWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -119,9 +131,9 @@ describe('Home Page', () => {
   test('job cards are clickable and navigate to job details', async () => {
     render(<MockWrapper><Home /></MockWrapper>);
     
-    // Wait for a specific job card link to appear
-    const jobLink = await screen.findByText('Senior Frontend Developer');
-    fireEvent.click(jobLink);
+    // Wait for job cards to appear and get the first one
+    const jobLinks = await screen.findAllByText('Senior Frontend Developer');
+    fireEvent.click(jobLinks[0]);
     
     // Check if navigate was called with the correct path
     await waitFor(() => {
@@ -133,7 +145,7 @@ describe('Home Page', () => {
     render(<MockWrapper><Home /></MockWrapper>);
     
     // Wait for any text from the jobs list to ensure the API has been called
-    await screen.findByText('Senior Frontend Developer');
+    await screen.findAllByText('Senior Frontend Developer');
     
     // Check that getJobs was called with the default page and limit
     expect(jobService.getJobs).toHaveBeenCalledWith(1, 25);
@@ -143,13 +155,13 @@ describe('Home Page', () => {
     render(<MockWrapper><Home /></MockWrapper>);
 
     // Use findBy* for each feature card to ensure they are all rendered
-    expect(await screen.findByText(/Smart Job Matching/i)).toBeInTheDocument();
-    expect(await screen.findByText(/AI-powered matching connects you with perfect remote opportunities/i)).toBeInTheDocument();
+    expect(await screen.findByText(/🎯 Smart Matching/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Our AI finds the perfect job matches based on your skills, experience, and preferences/i)).toBeInTheDocument();
     
-    expect(await screen.findByText(/Resume Optimizer/i)).toBeInTheDocument();
-    expect(await screen.findByText(/Get feedback on your resume to improve your chances of getting hired/i)).toBeInTheDocument();
+    expect(await screen.findByText(/🌍 Global Opportunities/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Access remote jobs from companies worldwide, in your timezone/i)).toBeInTheDocument();
     
-    expect(await screen.findByText(/Career Pathing/i)).toBeInTheDocument();
-    expect(await screen.findByText(/Discover your next career move with our AI-driven career pathing tool/i)).toBeInTheDocument();
+    expect(await screen.findByText(/💰 Salary Transparency/i)).toBeInTheDocument();
+    expect(await screen.findByText(/See salary ranges upfront - no surprises, just honest compensation/i)).toBeInTheDocument();
   });
 }); 

@@ -128,16 +128,16 @@ describe('Home Page', () => {
     expect(jobCards.length).toBeGreaterThan(0);
   });
 
-  test('job cards are clickable and navigate to job details', async () => {
+  test('job cards are clickable and open job details', async () => {
     render(<MockWrapper><Home /></MockWrapper>);
     
     // Wait for job cards to appear and get the first one
     const jobLinks = await screen.findAllByText('Senior Frontend Developer');
     fireEvent.click(jobLinks[0]);
     
-    // Check if navigate was called with the correct path
+    // Check if window.open was called with the correct path
     await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith('/jobs/1');
+        expect(window.open).toHaveBeenCalledWith('/jobs/1', '_blank');
     });
   });
 

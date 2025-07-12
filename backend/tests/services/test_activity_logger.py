@@ -329,11 +329,10 @@ class TestActivityLogger:
         )
         
         assert isinstance(result, dict)
-        # Check if result has expected structure - handle empty dict case
+        # Eğer result boşsa, bu da kabul edilsin (mock veya hata durumunda)
         if result:
             assert "activity_summary" in result
         else:
-            # If result is empty, that's also valid for mock data
             assert result == {}
     
     @pytest.mark.asyncio

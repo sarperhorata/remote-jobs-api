@@ -302,7 +302,7 @@ class TestJobRelationships:
     def test_job_search_complex(self, db_mock, mock_jobs_collection):
         """Test complex job search scenarios."""
         # Mock complex search results
-        mock_cursor = Mock()
+        mock_cursor = MagicMock()
         mock_cursor.to_list.return_value = [
             {"title": "Senior Python Developer", "location": "Remote", "salary": "100k+"},
             {"title": "Python Developer", "location": "New York", "salary": "80k+"}
@@ -321,7 +321,7 @@ class TestJobRelationships:
     def test_job_sorting(self, db_mock, mock_jobs_collection):
         """Test job sorting functionality."""
         # Mock sorted results
-        mock_cursor = Mock()
+        mock_cursor = MagicMock()
         mock_cursor.to_list.return_value = [
             {"title": "A Job", "salary": 100000},
             {"title": "B Job", "salary": 90000},
@@ -337,7 +337,7 @@ class TestJobRelationships:
     def test_job_filtering_complex(self, db_mock, mock_jobs_collection):
         """Test complex job filtering."""
         # Mock filtered results
-        mock_cursor = Mock()
+        mock_cursor = MagicMock()
         mock_cursor.to_list.return_value = [
             {"title": "Remote Job", "location": "Remote", "is_active": True},
             {"title": "Office Job", "location": "New York", "is_active": True}
@@ -356,7 +356,7 @@ class TestJobRelationships:
     def test_job_aggregation(self, db_mock, mock_jobs_collection):
         """Test job aggregation operations."""
         # Mock aggregation results
-        mock_cursor = Mock()
+        mock_cursor = MagicMock()
         mock_cursor.to_list.return_value = [
             {"_id": "Remote", "count": 5, "avg_salary": 95000},
             {"_id": "Office", "count": 3, "avg_salary": 85000}

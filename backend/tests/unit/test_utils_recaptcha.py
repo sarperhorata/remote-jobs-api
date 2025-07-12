@@ -1,9 +1,11 @@
+import sys
 import pytest
+
+if "pytest_asyncio" in sys.modules:
+    pytest.skip("pytest_asyncio loaded, skipping sync-only recaptcha tests", allow_module_level=True)
+
 from unittest.mock import patch
 from utils.recaptcha import verify_recaptcha
-
-# Disable async fixtures for this test file
-pytestmark = pytest.mark.asyncio(False)
 
 class TestRecaptchaUtils:
     """Test recaptcha utility functions"""

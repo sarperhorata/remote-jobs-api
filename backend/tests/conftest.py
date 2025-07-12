@@ -6,7 +6,7 @@ from httpx import AsyncClient
 from backend.main import app
 from backend.database import get_async_db
 import mongomock
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock, AsyncMock, Mock
 from datetime import datetime
 from backend.config import Settings
 import pytest_asyncio
@@ -352,30 +352,18 @@ def test_job_data():
     }
 
 @pytest.fixture
-def mock_jobs_collection(mongodb):
+def mock_jobs_collection():
     """Mock jobs collection with sample data."""
-    collection = mongodb["jobs"]
-    collection.insert_many([
-        {
-            "_id": ObjectId(),
-            "title": "Senior Python Developer",
-            "company": "TechCorp",
-            "location": "Remote",
-            "description": "We are looking for a senior Python developer",
-            "is_active": True,
-            "created_at": datetime.utcnow()
-        },
-        {
-            "_id": ObjectId(),
-            "title": "Frontend Developer",
-            "company": "StartupXYZ",
-            "location": "Remote",
-            "description": "Join our growing team",
-            "is_active": True,
-            "created_at": datetime.utcnow()
-        }
-    ])
-    return collection
+    # Return a simple mock instead of using async mongodb
+    mock_collection = Mock()
+    mock_collection.insert_many = Mock()
+    mock_collection.find = Mock()
+    mock_collection.find_one = Mock()
+    mock_collection.insert_one = Mock()
+    mock_collection.update_one = Mock()
+    mock_collection.delete_one = Mock()
+    mock_collection.aggregate = Mock()
+    return mock_collection
 
 @pytest.fixture
 def mock_users_collection(mongodb):

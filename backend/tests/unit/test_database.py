@@ -301,10 +301,12 @@ class TestJobRelationships:
     def test_job_search_complex(self, db_mock, mock_jobs_collection):
         """Test complex job search scenarios."""
         # Mock complex search results
-        db_mock.jobs.find.return_value.to_list.return_value = [
+        mock_cursor = Mock()
+        mock_cursor.to_list.return_value = [
             {"title": "Senior Python Developer", "location": "Remote", "salary": "100k+"},
             {"title": "Python Developer", "location": "New York", "salary": "80k+"}
         ]
+        db_mock.jobs.find.return_value = mock_cursor
         
         # Test complex search
         jobs = db_mock.jobs.find({
@@ -318,11 +320,13 @@ class TestJobRelationships:
     def test_job_sorting(self, db_mock, mock_jobs_collection):
         """Test job sorting functionality."""
         # Mock sorted results
-        db_mock.jobs.find.return_value.sort.return_value.to_list.return_value = [
+        mock_cursor = Mock()
+        mock_cursor.to_list.return_value = [
             {"title": "A Job", "salary": 100000},
             {"title": "B Job", "salary": 90000},
             {"title": "C Job", "salary": 80000}
         ]
+        db_mock.jobs.find.return_value.sort.return_value = mock_cursor
         
         # Test sorting by salary
         jobs = db_mock.jobs.find().sort("salary", -1).to_list()
@@ -332,10 +336,12 @@ class TestJobRelationships:
     def test_job_filtering_complex(self, db_mock, mock_jobs_collection):
         """Test complex job filtering."""
         # Mock filtered results
-        db_mock.jobs.find.return_value.to_list.return_value = [
+        mock_cursor = Mock()
+        mock_cursor.to_list.return_value = [
             {"title": "Remote Job", "location": "Remote", "is_active": True},
             {"title": "Office Job", "location": "New York", "is_active": True}
         ]
+        db_mock.jobs.find.return_value = mock_cursor
         
         # Test complex filtering
         jobs = db_mock.jobs.find({
@@ -349,10 +355,12 @@ class TestJobRelationships:
     def test_job_aggregation(self, db_mock, mock_jobs_collection):
         """Test job aggregation operations."""
         # Mock aggregation results
-        db_mock.jobs.aggregate.return_value.to_list.return_value = [
+        mock_cursor = Mock()
+        mock_cursor.to_list.return_value = [
             {"_id": "Remote", "count": 5, "avg_salary": 95000},
             {"_id": "Office", "count": 3, "avg_salary": 85000}
         ]
+        db_mock.jobs.aggregate.return_value = mock_cursor
         
         # Test aggregation
         pipeline = [

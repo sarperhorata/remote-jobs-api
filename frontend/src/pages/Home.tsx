@@ -6,7 +6,7 @@ import MultiJobAutocomplete from '../components/MultiJobAutocomplete';
 import Layout from '../components/Layout';
 import { jobService } from '../services/jobService';
 import { Job } from '../types/job';
-import { useAuth } from '../contexts/AuthContext';
+// import { useAuth } from '../contexts/AuthContext';
 import { 
   MapPin, 
   Clock, 

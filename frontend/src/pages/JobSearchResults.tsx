@@ -8,7 +8,7 @@ import JobCard from '../components/JobCard/JobCard';
 import { useAuth } from '../contexts/AuthContext';
 import { Job } from '../types/job';
 import { Filter, X, Save } from 'lucide-react';
-import jobService from '../services/jobService';
+// import jobService from '../services/jobService';
 
 interface Filters {
   query: string;
@@ -35,7 +35,7 @@ interface SavedSearch {
 
 export default function JobSearchResults() {
   const location = useLocation();
-  const { user } = useAuth();
+  // const { user } = useAuth();
   
   // States
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -43,7 +43,7 @@ export default function JobSearchResults() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => 
     window.innerWidth >= 1024 ? 'grid' : 'list'
   );
-  const [hiddenJobs, setHiddenJobs] = useState<Set<string>>(new Set());
+  // const [hiddenJobs, setHiddenJobs] = useState<Set<string>>(new Set());
   
   // Job status tracking
   const [loading, setLoading] = useState(true);
@@ -53,7 +53,7 @@ export default function JobSearchResults() {
   const [searchName, setSearchName] = useState('');
   
   // Saved searches
-  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
+  // const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showSavedSearches, setShowSavedSearches] = useState(false);
   
@@ -75,13 +75,13 @@ export default function JobSearchResults() {
   });
   
   // View layout state - Mobile: list, Desktop: grid
-  const [isMobile, setIsMobile] = useState(false);
+  // const [isMobile, setIsMobile] = useState(false);
 
   // Check for mobile screen size
   useEffect(() => {
     const checkMobile = () => {
       const mobile = window.innerWidth < 768; // md breakpoint
-      setIsMobile(mobile);
+      // setIsMobile(mobile);
       if (mobile) {
         setViewMode('list'); // Force list view on mobile
       } else {
@@ -154,7 +154,7 @@ export default function JobSearchResults() {
   // `filters` state'i her değiştiğinde iş ilanlarını yeniden çek
   useEffect(() => {
     fetchJobs();
-  }, [filters]);
+  }, [filters, fetchJobs]);
   
   const handleFiltersChange = useCallback((newFilters: Partial<Filters>) => {
     setFilters(prev => ({ ...prev, ...newFilters, page: 1 })); // Filtre değiştiğinde 1. sayfaya dön

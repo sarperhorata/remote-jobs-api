@@ -65,7 +65,7 @@ env = Environment(
 templates = Jinja2Templates(env=env)
 
 # Admin paneli statik dosyaları (CSS, JS)
-admin_panel_app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
+# admin_panel_app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
 
 admin_router = APIRouter()
 

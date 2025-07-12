@@ -1,17 +1,15 @@
 import pytest
 import asyncio
 from fastapi import status
-from httpx import AsyncClient
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 from datetime import datetime
 from bson import ObjectId
 
 
-@pytest.mark.asyncio
 class TestCompaniesAPI:
     """Test suite for Companies API endpoints."""
 
-    async def test_get_companies_success(self, async_client: AsyncClient, mock_database):
+    def test_get_companies_success(self, client, db_mock):
         """Test successful companies retrieval."""
         # Mock companies data
         companies_data = [
@@ -34,23 +32,23 @@ class TestCompaniesAPI:
         ]
         
         # Mock companies collection result
-        mock_cursor = AsyncMock()
-        mock_cursor.to_list = AsyncMock(return_value=companies_data)
-        mock_cursor.sort = MagicMock(return_value=mock_cursor)
-        mock_cursor.skip = MagicMock(return_value=mock_cursor)
-        mock_cursor.limit = MagicMock(return_value=mock_cursor)
-        mock_database.companies.find = MagicMock(return_value=mock_cursor)
-        mock_database.companies.count_documents = AsyncMock(return_value=len(companies_data))
+        mock_cursor = MagicMock()
+        mock_cursor.to_list.return_value = companies_data
+        mock_cursor.sort.return_value = mock_cursor
+        mock_cursor.skip.return_value = mock_cursor
+        mock_cursor.limit.return_value = mock_cursor
+        db_mock.companies.find.return_value = mock_cursor
+        db_mock.companies.count_documents.return_value = len(companies_data)
         # Mock jobs.count_documents for jobs_count field
-        mock_database.jobs.count_documents = AsyncMock(return_value=5)
+        db_mock.jobs.count_documents.return_value = 5
         
-        response = await async_client.get("/api/v1/companies/")
+        response = client.get("/api/v1/companies/")
         assert response.status_code == 200
         data = response.json()
         assert "items" in data or "companies" in data or isinstance(data, list)
         # Flexible assertion - endpoint structure may vary
 
-    async def test_get_companies_with_pagination(self, async_client: AsyncClient, mock_database):
+    def test_get_companies_with_pagination(self, client, db_mock):
         """Test companies retrieval with pagination."""
         companies_data = []
         for i in range(5):
@@ -61,17 +59,17 @@ class TestCompaniesAPI:
                 "latest_job": datetime.now()
             })
         
-        mock_cursor = AsyncMock()
-        mock_cursor.to_list = AsyncMock(return_value=companies_data[:2])  # First page
-        mock_database.jobs.aggregate = MagicMock(return_value=mock_cursor)
+        mock_cursor = MagicMock()
+        mock_cursor.to_list.return_value = companies_data[:2]  # First page
+        db_mock.jobs.aggregate.return_value = mock_cursor
         
-        response = await async_client.get("/api/v1/companies/?page=1&per_page=2")
+        response = client.get("/api/v1/companies/?page=1&per_page=2")
         assert response.status_code == 200
         data = response.json()
         # Flexible assertion for pagination
         assert isinstance(data, (dict, list))
 
-    async def test_get_company_by_id_success(self, async_client: AsyncClient, mock_database):
+    def test_get_company_by_id_success(self, client, db_mock):
         """Test successful company retrieval by ID."""
         company_data = {
             "_id": "tech-corp",
@@ -81,26 +79,26 @@ class TestCompaniesAPI:
             "job_count": 15
         }
         
-        mock_cursor = AsyncMock()
-        mock_cursor.to_list = AsyncMock(return_value=[company_data])
-        mock_database.jobs.aggregate = MagicMock(return_value=mock_cursor)
+        mock_cursor = MagicMock()
+        mock_cursor.to_list.return_value = [company_data]
+        db_mock.jobs.aggregate.return_value = mock_cursor
         
-        response = await async_client.get("/api/v1/companies/tech-corp")
+        response = client.get("/api/v1/companies/tech-corp")
         assert response.status_code in [200, 404]  # Endpoint may not exist
         if response.status_code == 200:
             data = response.json()
             assert "name" in data or "company" in data
 
-    async def test_get_company_by_id_not_found(self, async_client: AsyncClient, mock_database):
+    def test_get_company_by_id_not_found(self, client, db_mock):
         """Test company not found scenario."""
-        mock_cursor = AsyncMock()
-        mock_cursor.to_list = AsyncMock(return_value=[])
-        mock_database.jobs.aggregate = MagicMock(return_value=mock_cursor)
+        mock_cursor = MagicMock()
+        mock_cursor.to_list.return_value = []
+        db_mock.jobs.aggregate.return_value = mock_cursor
         
-        response = await async_client.get("/api/v1/companies/non-existent")
+        response = client.get("/api/v1/companies/non-existent")
         assert response.status_code == 404
 
-    async def test_get_company_jobs_success(self, async_client: AsyncClient, mock_database):
+    def test_get_company_jobs_success(self, client, db_mock):
         """Test getting jobs for a specific company."""
         jobs_data = [
             {
@@ -120,17 +118,17 @@ class TestCompaniesAPI:
         ]
         
         # Mock job storage in database
-        for job in jobs_data:
-            job_id = str(job["_id"])
-            mock_database.jobs._storage[job_id] = job
+        mock_cursor = MagicMock()
+        mock_cursor.to_list.return_value = jobs_data
+        db_mock.jobs.find.return_value = mock_cursor
         
-        response = await async_client.get("/api/v1/companies/TechCorp/jobs")
+        response = client.get("/api/v1/companies/TechCorp/jobs")
         assert response.status_code in [200, 404]  # Endpoint may not exist
         if response.status_code == 200:
             data = response.json()
             assert "jobs" in data or isinstance(data, list)
 
-    async def test_search_companies_success(self, async_client: AsyncClient, mock_database):
+    def test_search_companies_success(self, client, db_mock):
         """Test company search functionality."""
         search_results = [
             {
@@ -140,49 +138,49 @@ class TestCompaniesAPI:
             }
         ]
         
-        mock_cursor = AsyncMock()
-        mock_cursor.to_list = AsyncMock(return_value=search_results)
-        mock_database.jobs.aggregate = MagicMock(return_value=mock_cursor)
+        mock_cursor = MagicMock()
+        mock_cursor.to_list.return_value = search_results
+        db_mock.jobs.aggregate.return_value = mock_cursor
         
-        response = await async_client.get("/api/v1/companies/search?q=tech")
+        response = client.get("/api/v1/companies/search?q=tech")
         assert response.status_code in [200, 404]  # Endpoint may not exist
         if response.status_code == 200:
             data = response.json()
             assert "items" in data or "companies" in data or isinstance(data, list)
 
-    async def test_get_companies_filtering(self, async_client: AsyncClient, mock_database):
+    def test_get_companies_filtering(self, client, db_mock):
         """Test companies filtering by various criteria."""
-        mock_cursor = AsyncMock()
-        mock_cursor.to_list = AsyncMock(return_value=[])
-        mock_database.jobs.aggregate = MagicMock(return_value=mock_cursor)
+        mock_cursor = MagicMock()
+        mock_cursor.to_list.return_value = []
+        db_mock.jobs.aggregate.return_value = mock_cursor
         
         # Test filtering by industry
-        response = await async_client.get("/api/v1/companies/?industry=technology")
+        response = client.get("/api/v1/companies/?industry=technology")
         assert response.status_code == 200
         
         # Test filtering by size
-        response = await async_client.get("/api/v1/companies/?size=startup")
+        response = client.get("/api/v1/companies/?size=startup")
         assert response.status_code == 200
         
         # Test filtering by location
-        response = await async_client.get("/api/v1/companies/?location=remote")
+        response = client.get("/api/v1/companies/?location=remote")
         assert response.status_code == 200
 
-    async def test_get_companies_sorting(self, async_client: AsyncClient, mock_database):
+    def test_get_companies_sorting(self, client, db_mock):
         """Test companies sorting options."""
-        mock_cursor = AsyncMock()
-        mock_cursor.to_list = AsyncMock(return_value=[])
-        mock_database.jobs.aggregate = MagicMock(return_value=mock_cursor)
+        mock_cursor = MagicMock()
+        mock_cursor.to_list.return_value = []
+        db_mock.jobs.aggregate.return_value = mock_cursor
         
         # Test sorting by job count
-        response = await async_client.get("/api/v1/companies/?sort_by=job_count&sort_order=desc")
+        response = client.get("/api/v1/companies/?sort_by=job_count&sort_order=desc")
         assert response.status_code == 200
         
         # Test sorting by name
-        response = await async_client.get("/api/v1/companies/?sort_by=name&sort_order=asc")
+        response = client.get("/api/v1/companies/?sort_by=name&sort_order=asc")
         assert response.status_code == 200
 
-    async def test_get_company_statistics(self, async_client: AsyncClient, mock_database):
+    def test_get_company_statistics(self, client, db_mock):
         """Test company statistics endpoint."""
         stats_data = [
             {
@@ -193,56 +191,60 @@ class TestCompaniesAPI:
             }
         ]
         
-        mock_cursor = AsyncMock()
-        mock_cursor.to_list = AsyncMock(return_value=stats_data)
-        mock_database.jobs.aggregate = MagicMock(return_value=mock_cursor)
+        mock_cursor = MagicMock()
+        mock_cursor.to_list.return_value = stats_data
+        db_mock.jobs.aggregate.return_value = mock_cursor
         
-        response = await async_client.get("/api/v1/companies/statistics")
+        response = client.get("/api/v1/companies/statistics")
         assert response.status_code in [200, 404]  # Endpoint may not exist
         if response.status_code == 200:
             data = response.json()
-            assert "total_companies" in data or isinstance(data, dict)
+            assert "total_companies" in data or "statistics" in data
 
-    async def test_companies_pagination_edge_cases(self, async_client: AsyncClient, mock_database):
+    def test_companies_pagination_edge_cases(self, client, db_mock):
         """Test pagination edge cases."""
-        mock_cursor = AsyncMock()
-        mock_cursor.to_list = AsyncMock(return_value=[])
-        mock_database.jobs.aggregate = MagicMock(return_value=mock_cursor)
+        mock_cursor = MagicMock()
+        mock_cursor.to_list.return_value = []
+        db_mock.jobs.aggregate.return_value = mock_cursor
         
-        # Test invalid page numbers
-        response = await async_client.get("/api/v1/companies/?page=0")
-        assert response.status_code in [200, 422]  # Should handle gracefully
+        # Test negative page number
+        response = client.get("/api/v1/companies/?page=-1")
+        assert response.status_code == 200
         
-        response = await async_client.get("/api/v1/companies/?page=-1")
-        assert response.status_code in [200, 422]
+        # Test zero per_page
+        response = client.get("/api/v1/companies/?per_page=0")
+        assert response.status_code == 200
         
-        response = await async_client.get("/api/v1/companies/?per_page=0")
-        assert response.status_code in [200, 422]
+        # Test very large page number
+        response = client.get("/api/v1/companies/?page=999999")
+        assert response.status_code == 200
 
-    async def test_companies_error_handling(self, async_client: AsyncClient, mock_database):
-        """Test error handling in companies endpoints."""
-        # Test error handling without simulation
-        response = await async_client.get("/api/v1/companies/")
-        assert response.status_code in [200, 500, 503]  # Should handle gracefully
+    def test_companies_error_handling(self, client, db_mock):
+        """Test error handling in companies API."""
+        # Mock database error
+        db_mock.jobs.aggregate.side_effect = Exception("Database error")
+        
+        response = client.get("/api/v1/companies/")
+        assert response.status_code in [500, 404]  # Should handle error gracefully
 
-    async def test_company_detailed_info(self, async_client: AsyncClient, mock_database):
+    def test_company_detailed_info(self, client, db_mock):
         """Test detailed company information endpoint."""
-        company_detail = {
+        company_data = {
             "_id": "tech-corp",
             "name": "TechCorp",
-            "description": "Leading technology company",
+            "description": "Leading tech company",
             "website": "https://techcorp.com",
-            "industry": "Technology",
-            "size": "1000-5000",
-            "location": "San Francisco, CA",
-            "job_count": 25,
-            "active_jobs": 20,
-            "remote_jobs": 15
+            "founded_year": 2010,
+            "employee_count": 500,
+            "industry": "Technology"
         }
         
-        mock_cursor = AsyncMock()
-        mock_cursor.to_list = AsyncMock(return_value=[company_detail])
-        mock_database.jobs.aggregate = MagicMock(return_value=mock_cursor)
+        mock_cursor = MagicMock()
+        mock_cursor.to_list.return_value = [company_data]
+        db_mock.jobs.aggregate.return_value = mock_cursor
         
-        response = await async_client.get("/api/v1/companies/tech-corp/details")
-        assert response.status_code in [200, 404]  # Endpoint may not exist yet 
+        response = client.get("/api/v1/companies/tech-corp/details")
+        assert response.status_code in [200, 404]  # Endpoint may not exist
+        if response.status_code == 200:
+            data = response.json()
+            assert "name" in data or "company" in data 

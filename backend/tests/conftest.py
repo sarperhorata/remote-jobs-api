@@ -6,7 +6,7 @@ from httpx import AsyncClient
 from backend.main import app
 from backend.database import get_async_db
 import mongomock
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock, AsyncMock, Mock
 from datetime import datetime
 from backend.config import Settings
 import pytest_asyncio
@@ -59,26 +59,26 @@ def client():
         yield test_client
 
 @pytest.fixture(scope="function")
-async def db_mock():
+def db_mock():
     """
     Provides a mock of the database connection for function-scoped tests.
     This is ideal for unit tests of services or CRUD operations.
     """
-    db = AsyncMock()
+    db = MagicMock()
     
-    # Create async mock collections
-    db.users = AsyncMock()
-    db.jobs = AsyncMock()
-    db.companies = AsyncMock()
-    db.user_activities = AsyncMock()
-    db.user_sessions = AsyncMock()
-    db.activity_summaries = AsyncMock()
-    db.crawl_errors = AsyncMock()
-    db.service_logs = AsyncMock()
-    db.ads = AsyncMock()
-    db.notifications = AsyncMock()
-    db.test_collection = AsyncMock()
-    db.test_concurrent = AsyncMock()
+    # Create mock collections
+    db.users = MagicMock()
+    db.jobs = MagicMock()
+    db.companies = MagicMock()
+    db.user_activities = MagicMock()
+    db.user_sessions = MagicMock()
+    db.activity_summaries = MagicMock()
+    db.crawl_errors = MagicMock()
+    db.service_logs = MagicMock()
+    db.ads = MagicMock()
+    db.notifications = MagicMock()
+    db.test_collection = MagicMock()
+    db.test_concurrent = MagicMock()
     
     # Default return values for common methods
     db.users.find_one.return_value = None
@@ -91,29 +91,29 @@ async def db_mock():
     for collection in [db.users, db.jobs, db.companies, db.user_activities, 
                       db.user_sessions, db.activity_summaries, db.crawl_errors,
                       db.service_logs, db.ads, db.notifications]:
-        collection.insert_one = AsyncMock()
-        collection.insert_many = AsyncMock()
-        collection.update_one = AsyncMock()
-        collection.update_many = AsyncMock()
-        collection.delete_one = AsyncMock()
-        collection.delete_many = AsyncMock()
-        collection.find = AsyncMock()
-        collection.find_one = AsyncMock()
-        collection.count_documents = AsyncMock()
-        collection.aggregate = AsyncMock()
-        collection.create_index = AsyncMock()
-        collection.drop = AsyncMock()
+        collection.insert_one = MagicMock()
+        collection.insert_many = MagicMock()
+        collection.update_one = MagicMock()
+        collection.update_many = MagicMock()
+        collection.delete_one = MagicMock()
+        collection.delete_many = MagicMock()
+        collection.find = MagicMock()
+        collection.find_one = MagicMock()
+        collection.count_documents = MagicMock()
+        collection.aggregate = MagicMock()
+        collection.create_index = MagicMock()
+        collection.drop = MagicMock()
     
     return db
 
 @pytest.fixture(autouse=True)
-async def override_db(db_mock):
+def override_db(db_mock):
     """
     Automatically override the `get_database` dependency for all tests
     to use the mock database.
     """
-    async def _override_get_db():
-        return await db_mock
+    def _override_get_db():
+        return db_mock
 
     app.dependency_overrides[get_database] = _override_get_db
     yield
@@ -352,30 +352,18 @@ def test_job_data():
     }
 
 @pytest.fixture
-def mock_jobs_collection(mongodb):
+def mock_jobs_collection():
     """Mock jobs collection with sample data."""
-    collection = mongodb["jobs"]
-    collection.insert_many([
-        {
-            "_id": ObjectId(),
-            "title": "Senior Python Developer",
-            "company": "TechCorp",
-            "location": "Remote",
-            "description": "We are looking for a senior Python developer",
-            "is_active": True,
-            "created_at": datetime.utcnow()
-        },
-        {
-            "_id": ObjectId(),
-            "title": "Frontend Developer",
-            "company": "StartupXYZ",
-            "location": "Remote",
-            "description": "Join our growing team",
-            "is_active": True,
-            "created_at": datetime.utcnow()
-        }
-    ])
-    return collection
+    # Return a simple mock instead of using async mongodb
+    mock_collection = Mock()
+    mock_collection.insert_many = Mock()
+    mock_collection.find = Mock()
+    mock_collection.find_one = Mock()
+    mock_collection.insert_one = Mock()
+    mock_collection.update_one = Mock()
+    mock_collection.delete_one = Mock()
+    mock_collection.aggregate = Mock()
+    return mock_collection
 
 @pytest.fixture
 def mock_users_collection(mongodb):

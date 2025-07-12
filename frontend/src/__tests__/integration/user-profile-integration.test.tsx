@@ -13,11 +13,9 @@ global.fetch = mockFetch;
 // Test wrapper with all providers
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
   <BrowserRouter>
-    <ThemeProvider>
-      <AuthProvider>
-        {children}
-      </AuthProvider>
-    </ThemeProvider>
+    <AuthProvider>
+      {children}
+    </AuthProvider>
   </BrowserRouter>
 );
 

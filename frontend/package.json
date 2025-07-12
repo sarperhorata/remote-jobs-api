@@ -56,8 +56,7 @@
       "!src/**/*.d.ts",
       "!src/index.tsx",
       "!src/reportWebVitals.ts"
-    ],
-    "testTimeout": 10000
+    ]
   },
   "eslintConfig": {
     "extends": [

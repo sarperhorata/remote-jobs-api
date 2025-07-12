@@ -3,7 +3,7 @@ from unittest.mock import patch
 from utils.recaptcha import verify_recaptcha
 
 # Disable async fixtures for this test file
-pytestmark = pytest.mark.asyncio(loop_scope=None)
+pytestmark = pytest.mark.asyncio(False)
 
 class TestRecaptchaUtils:
     """Test recaptcha utility functions"""

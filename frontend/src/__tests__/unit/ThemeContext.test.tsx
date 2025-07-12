@@ -26,6 +26,21 @@ Object.defineProperty(document, 'documentElement', {
   writable: true,
 });
 
+// Mock window.matchMedia
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: jest.fn().mockReturnValue({
+    matches: false,
+    media: '(prefers-color-scheme: dark)',
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  }),
+});
+
 describe('ThemeContext', () => {
   beforeEach(() => {
     jest.clearAllMocks();

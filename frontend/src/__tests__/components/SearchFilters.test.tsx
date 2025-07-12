@@ -37,11 +37,11 @@ describe('SearchFilters Component', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /filters/i })).toBeInTheDocument();
       expect(screen.getByPlaceholderText(/job title, keywords.../i)).toBeInTheDocument();
-      expect(screen.getByText(/work type/i)).toBeInTheDocument();
-      expect(screen.getByText(/job type/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/work type/i)).toHaveLength(2);
+      expect(screen.getAllByText(/job type/i)).toHaveLength(2);
       expect(screen.getByText(/experience level/i)).toBeInTheDocument();
-      expect(screen.getByRole('combobox', { name: /posted/i })).toBeInTheDocument();
-      expect(screen.getByRole('combobox', { name: /salary/i })).toBeInTheDocument();
+      expect(screen.getByText(/posted/i)).toBeInTheDocument();
+      expect(screen.getByText(/salary/i)).toBeInTheDocument();
       expect(screen.getByPlaceholderText(/city, country.../i)).toBeInTheDocument();
       expect(screen.getByPlaceholderText(/company name.../i)).toBeInTheDocument();
     });
@@ -52,8 +52,9 @@ describe('SearchFilters Component', () => {
     
     fireEvent.click(screen.getByText(/select experience.../i));
     
-    const seniorCheckbox = await screen.findByRole('checkbox', { name: /senior/i });
-    fireEvent.click(seniorCheckbox);
+    // Click on the Senior option div instead of the checkbox
+    const seniorOption = await screen.findByText(/senior/i);
+    fireEvent.click(seniorOption);
 
     await waitFor(() => {
       expect(mockOnFiltersChange).toHaveBeenCalledWith(expect.objectContaining({

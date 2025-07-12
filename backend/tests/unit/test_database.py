@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import Mock, MagicMock, patch
 from bson import ObjectId
 from backend.crud import job as job_crud
 from backend.models.job import JobCreate, JobUpdate

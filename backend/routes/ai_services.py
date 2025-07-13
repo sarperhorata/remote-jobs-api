@@ -9,7 +9,7 @@ from services.resume_parser_service import ResumeParserService
 from services.job_matching_service import JobMatchingService
 from services.salary_prediction_service import SalaryPredictionService
 from backend.utils.auth import get_current_user
-from backend.models.user import User
+from backend.models.models import User
 
 logger = logging.getLogger(__name__)
 

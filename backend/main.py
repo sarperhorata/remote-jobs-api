@@ -41,6 +41,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from backend.routes import auth, profile, jobs, ads, notification_routes, companies, payment, onboarding, applications, translation
 from backend.routes.auto_apply import router as auto_apply_router
 from backend.routes.ai_recommendations import router as ai_router
+from backend.routes.ai_services import router as ai_services_router
 from backend.routes.legal import router as legal_router
 from backend.routes.fake_job_detection import router as fake_job_router
 from backend.routes.sentry_webhook import router as sentry_webhook_router
@@ -155,6 +156,7 @@ routers_to_include = [
     (auto_apply_router, "/api/v1/auto-apply", ["auto-apply"]),
     (translation.router, "/api/v1", ["translation"]),
     (ai_router, "/api/v1", ["ai"]),
+    (ai_services_router, "/api/v1", ["ai-services"]),
     (fake_job_router, "/api/v1", ["fake-job-detection"]),
     (sentry_webhook_router, "/api/v1", ["webhooks"])
 ]

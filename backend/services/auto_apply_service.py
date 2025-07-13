@@ -8,8 +8,8 @@ import json
 import re
 from urllib.parse import urljoin, urlparse
 
-from backend.services.user_application_service import get_user_application_service
-from backend.models.user_application import UserApplicationCreate
+from services.user_application_service import get_user_application_service
+from models.user_application import UserApplicationCreate
 
 logger = logging.getLogger(__name__)
 

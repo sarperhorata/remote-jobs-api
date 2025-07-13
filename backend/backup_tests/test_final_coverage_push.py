@@ -78,7 +78,7 @@ class TestComprehensiveModuleCoverage:
     def test_database_module_coverage(self):
         """Test database module patterns"""
         try:
-            from backend.database.db import get_async_db, init_database, close_db_connections
+            from database.db import get_async_db, init_database, close_db_connections
             
             # Test function existence
             assert callable(get_async_db)
@@ -105,7 +105,7 @@ class TestComprehensiveModuleCoverage:
         """Test all model classes comprehensively"""
         # Test User model
         try:
-            from backend.models.user import User
+            from models.user import User
             user = User(
                 email="test@example.com",
                 username="testuser",
@@ -119,7 +119,7 @@ class TestComprehensiveModuleCoverage:
         
         # Test Job model
         try:
-            from backend.models.job import Job
+            from models.job import Job
             job = Job(
                 title="Software Engineer",
                 company="Tech Corp",
@@ -132,7 +132,7 @@ class TestComprehensiveModuleCoverage:
         
         # Test Company model
         try:
-            from backend.models.company import Company
+            from models.company import Company
             company = Company(
                 name="Tech Corp",
                 website="https://techcorp.com"
@@ -145,7 +145,7 @@ class TestComprehensiveModuleCoverage:
         """Test all schema classes"""
         # Test User schemas
         try:
-            from backend.schemas.user import UserCreate, UserUpdate, UserResponse
+            from schemas.user import UserCreate, UserUpdate, UserResponse
             
             user_create = UserCreate(
                 email="test@test.com",
@@ -159,7 +159,7 @@ class TestComprehensiveModuleCoverage:
         
         # Test Job schemas
         try:
-            from backend.schemas.job import JobCreate, JobUpdate, JobResponse
+            from schemas.job import JobCreate, JobUpdate, JobResponse
             
             job_create = JobCreate(
                 title="Developer",
@@ -204,7 +204,7 @@ class TestComprehensiveModuleCoverage:
         """Test service modules comprehensively"""
         # Test AI Application Service
         try:
-            from backend.services.ai_application_service import AIApplicationService
+            from services.ai_application_service import AIApplicationService
             service = AIApplicationService()
             assert service is not None
             
@@ -220,7 +220,7 @@ class TestComprehensiveModuleCoverage:
         
         # Test Translation Service
         try:
-            from backend.services.translation_service import TranslationService, translate_text
+            from services.translation_service import TranslationService, translate_text
             
             # Mock translation
             with patch('backend.services.translation_service.GoogleTranslator') as mock_translator:
@@ -233,7 +233,7 @@ class TestComprehensiveModuleCoverage:
         
         # Test Activity Logger
         try:
-            from backend.services.activity_logger import ActivityLogger
+            from services.activity_logger import ActivityLogger
             logger = ActivityLogger()
             assert logger is not None
             
@@ -251,7 +251,7 @@ class TestComprehensiveModuleCoverage:
         """Test utility modules comprehensively"""
         # Test auth utils
         try:
-            from backend.utils.auth import create_access_token, verify_token, get_password_hash, verify_password
+            from utils.auth import create_access_token, verify_token, get_password_hash, verify_password
             
             # Test password hashing
             password = "testpassword123"
@@ -270,7 +270,7 @@ class TestComprehensiveModuleCoverage:
         
         # Test email utils
         try:
-            from backend.utils.email import send_email, create_password_reset_token, verify_token
+            from utils.email import send_email, create_password_reset_token, verify_token
             
             # Mock email sending
             with patch('backend.utils.email.smtplib') as mock_smtp:
@@ -286,7 +286,7 @@ class TestComprehensiveModuleCoverage:
         
         # Test config utils
         try:
-            from backend.utils.config import get_database_url, get_setting
+            from utils.config import get_database_url, get_setting
             
             # Mock environment variables
             with patch.dict(os.environ, {'DATABASE_URL': 'test://localhost'}):
@@ -303,7 +303,7 @@ class TestAsyncPatternsCoverage:
     async def test_async_database_patterns(self):
         """Test async database patterns"""
         try:
-            from backend.database.db import get_async_db
+            from database.db import get_async_db
             
             # Mock async database
             async def mock_get_db():
@@ -348,7 +348,7 @@ class TestConfigurationCoverage:
     def test_settings_comprehensive(self):
         """Test comprehensive settings coverage"""
         try:
-            from backend.core.config import get_settings, Settings
+            from core.config import get_settings, Settings
             
             settings = get_settings()
             assert settings is not None
@@ -461,7 +461,7 @@ class TestSecurityPatternsCoverage:
     def test_password_security_comprehensive(self):
         """Test password security comprehensively"""
         try:
-            from backend.utils.auth import get_password_hash, verify_password
+            from utils.auth import get_password_hash, verify_password
             
             # Test various password scenarios
             passwords = [

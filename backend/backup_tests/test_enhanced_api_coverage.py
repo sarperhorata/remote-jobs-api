@@ -31,7 +31,7 @@ class TestAPIRoutesCoverage:
     def test_auth_route_patterns(self):
         """Test authentication route patterns"""
         try:
-            from backend.routes import auth
+            from routes import auth
             # Test route structure
             assert hasattr(auth, 'router')
             # Mock authentication functions
@@ -45,7 +45,7 @@ class TestAPIRoutesCoverage:
     def test_jobs_route_patterns(self):
         """Test jobs route patterns"""
         try:
-            from backend.routes import jobs
+            from routes import jobs
             assert hasattr(jobs, 'router')
             # Test job search functionality
             with patch('backend.routes.jobs.search_jobs') as mock_search:
@@ -58,7 +58,7 @@ class TestAPIRoutesCoverage:
     def test_companies_route_patterns(self):
         """Test companies route patterns"""
         try:
-            from backend.routes import companies
+            from routes import companies
             assert hasattr(companies, 'router')
             # Test company operations
             with patch('backend.routes.companies.get_companies') as mock_get:
@@ -74,7 +74,7 @@ class TestDatabaseCoverage:
     def test_database_connection_patterns(self):
         """Test database connection patterns"""
         try:
-            from backend.database.db import get_async_db
+            from database.db import get_async_db
             # Mock database connection
             with patch('backend.database.db.AsyncIOMotorClient') as mock_client:
                 mock_db = Mock()
@@ -87,7 +87,7 @@ class TestDatabaseCoverage:
     def test_repository_patterns(self):
         """Test repository patterns"""
         try:
-            from backend.database import db
+            from database import db
             # Test repository operations
             with patch.object(db, 'get_collection') as mock_collection:
                 mock_collection.return_value = Mock()
@@ -102,7 +102,7 @@ class TestServicesCoverage:
     def test_ai_application_service(self):
         """Test AI application service"""
         try:
-            from backend.services.ai_application_service import AIApplicationService
+            from services.ai_application_service import AIApplicationService
             service = AIApplicationService()
             # Mock AI operations
             with patch.object(service, 'generate_cover_letter') as mock_generate:
@@ -115,7 +115,7 @@ class TestServicesCoverage:
     def test_translation_service(self):
         """Test translation service"""
         try:
-            from backend.services.translation_service import translate_text
+            from services.translation_service import translate_text
             with patch('backend.services.translation_service.translator') as mock_translator:
                 mock_translator.translate.return_value.text = "translated text"
                 result = translate_text("hello", "es")
@@ -126,7 +126,7 @@ class TestServicesCoverage:
     def test_notification_service(self):
         """Test notification service"""
         try:
-            from backend.services.notification_service import send_notification
+            from services.notification_service import send_notification
             with patch('backend.services.notification_service.send_email') as mock_send:
                 mock_send.return_value = True
                 result = mock_send("test@test.com", "subject", "body")
@@ -140,7 +140,7 @@ class TestUtilitiesCoverage:
     def test_auth_utilities(self):
         """Test authentication utilities"""
         try:
-            from backend.utils.auth import create_access_token, verify_token
+            from utils.auth import create_access_token, verify_token
             # Test token creation
             with patch('backend.utils.auth.jwt.encode') as mock_encode:
                 mock_encode.return_value = "test_token"
@@ -152,7 +152,7 @@ class TestUtilitiesCoverage:
     def test_email_utilities(self):
         """Test email utilities"""
         try:
-            from backend.utils.email import send_email
+            from utils.email import send_email
             with patch('backend.utils.email.smtplib') as mock_smtp:
                 mock_server = Mock()
                 mock_smtp.SMTP.return_value = mock_server
@@ -164,7 +164,7 @@ class TestUtilitiesCoverage:
     def test_validation_utilities(self):
         """Test validation utilities"""
         try:
-            from backend.utils.validation import validate_email, validate_password
+            from utils.validation import validate_email, validate_password
             # Test email validation
             assert validate_email("test@test.com") == True
             assert validate_email("invalid") == False
@@ -188,7 +188,7 @@ class TestModelsCoverage:
     def test_user_model(self):
         """Test user model"""
         try:
-            from backend.models.user import User
+            from models.user import User
             # Test model creation
             user_data = {
                 "email": "test@test.com",
@@ -203,7 +203,7 @@ class TestModelsCoverage:
     def test_job_model(self):
         """Test job model"""
         try:
-            from backend.models.job import Job
+            from models.job import Job
             job_data = {
                 "title": "Software Engineer",
                 "company": "Tech Corp",
@@ -217,7 +217,7 @@ class TestModelsCoverage:
     def test_company_model(self):
         """Test company model"""
         try:
-            from backend.models.company import Company
+            from models.company import Company
             company_data = {
                 "name": "Tech Corp",
                 "website": "https://techcorp.com"
@@ -233,7 +233,7 @@ class TestSchemasCoverage:
     def test_request_schemas(self):
         """Test request schemas"""
         try:
-            from backend.schemas.user import UserCreate, UserUpdate
+            from schemas.user import UserCreate, UserUpdate
             # Test schema validation
             user_create = UserCreate(
                 email="test@test.com",
@@ -247,7 +247,7 @@ class TestSchemasCoverage:
     def test_response_schemas(self):
         """Test response schemas"""
         try:
-            from backend.schemas.job import JobResponse
+            from schemas.job import JobResponse
             job_response = JobResponse(
                 id="job123",
                 title="Software Engineer",
@@ -264,7 +264,7 @@ class TestAsyncPatterns:
     async def test_async_database_operations(self):
         """Test async database operations"""
         try:
-            from backend.database.db import get_async_db
+            from database.db import get_async_db
             # Mock async database
             mock_db = AsyncMock()
             with patch('backend.database.db.get_async_db', return_value=mock_db):
@@ -292,7 +292,7 @@ class TestSecurityPatterns:
     def test_password_hashing(self):
         """Test password hashing"""
         try:
-            from backend.utils.auth import get_password_hash, verify_password
+            from utils.auth import get_password_hash, verify_password
             password = "test123"
             hashed = get_password_hash(password)
             assert hashed != password
@@ -323,7 +323,7 @@ class TestConfigurationCoverage:
     def test_settings_loading(self):
         """Test settings loading"""
         try:
-            from backend.core.config import get_settings
+            from core.config import get_settings
             settings = get_settings()
             assert settings is not None
         except ImportError:

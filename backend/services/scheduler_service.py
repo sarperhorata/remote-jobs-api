@@ -145,7 +145,7 @@ class SchedulerService:
             
             # Send to database if available
             try:
-                from backend.database.db import get_async_db
+                from database.db import get_async_db
                 db = await get_async_db()
                 if db:
                     await db.scheduler_logs.insert_one({
@@ -411,7 +411,7 @@ class SchedulerService:
             logger.info("🧹 Starting database cleanup job")
             await self._log_job_run("database_cleanup", "started", "Database cleanup started")
             
-            from backend.database import get_async_db
+            from database import get_async_db
             
             db = await get_async_db()
             
@@ -452,7 +452,7 @@ class SchedulerService:
             logger.info("📊 Starting job statistics job")
             await self._log_job_run("job_statistics", "started", "Job statistics job started")
             
-            from backend.database import get_async_db
+            from database import get_async_db
             
             db = await get_async_db()
             jobs_collection = db["jobs"]

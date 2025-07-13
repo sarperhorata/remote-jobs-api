@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from backend.database import get_db, DATABASE_AVAILABLE
+from backend.database import get_db
 import logging
 
 logger = logging.getLogger(__name__)
@@ -10,7 +10,7 @@ async def cleanup_unknown_company():
     """Clean up jobs with 'Unknown Company' or empty company names"""
     try:
         db = await get_db()
-        if not DATABASE_AVAILABLE or db is None:
+        if db is None:
             raise HTTPException(status_code=503, detail="Database not available")
         
         # Count jobs with unknown/empty company
@@ -87,7 +87,7 @@ async def get_unknown_company_stats():
     """Get statistics about unknown company jobs"""
     try:
         db = await get_db()
-        if not DATABASE_AVAILABLE or db is None:
+        if db is None:
             raise HTTPException(status_code=503, detail="Database not available")
         
         # Count different variations

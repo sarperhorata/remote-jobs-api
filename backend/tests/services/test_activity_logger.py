@@ -4,8 +4,8 @@ from unittest.mock import Mock, AsyncMock, patch, MagicMock
 from datetime import datetime, timedelta
 from bson import ObjectId
 
-from backend.services.activity_logger import ActivityLogger, activity_logger
-from backend.models.user_activity import ActivityType, UserSession, UserActivity
+from services.activity_logger import ActivityLogger, activity_logger
+from models.user_activity import ActivityType, UserSession, UserActivity
 
 
 class TestActivityLogger:

@@ -39,9 +39,9 @@ class TestComprehensiveCoverage:
     def test_models_initialization(self):
         """Test model classes."""
         try:
-            from backend.models.job import Job, JobStatus
-            from backend.models.user import User
-            from backend.models.company import Company
+            from models.job import Job, JobStatus
+            from models.user import User
+            from models.company import Company
             
             assert Job.__name__ == 'Job'
             assert hasattr(Job, 'title')
@@ -56,8 +56,8 @@ class TestComprehensiveCoverage:
     def test_schemas_validation(self):
         """Test schema validation."""
         try:
-            from backend.schemas.job import JobSearchQuery, JobCreate
-            from backend.schemas.user import UserCreate, UserUpdate
+            from schemas.job import JobSearchQuery, JobCreate
+            from schemas.user import UserCreate, UserUpdate
             
             assert hasattr(JobSearchQuery, '__fields__') or hasattr(JobSearchQuery, 'model_fields')
             assert hasattr(JobCreate, '__fields__') or hasattr(JobCreate, 'model_fields')
@@ -69,7 +69,7 @@ class TestComprehensiveCoverage:
     def test_utils_functions(self):
         """Test utility functions."""
         try:
-            from backend.utils import config, auth, email
+            from utils import config, auth, email
             
             config_functions = [attr for attr in dir(config) if not attr.startswith('_')]
             assert len(config_functions) > 0
@@ -86,7 +86,7 @@ class TestComprehensiveCoverage:
     def test_database_patterns(self):
         """Test database patterns."""
         try:
-            from backend.database.db import get_database, get_collection
+            from database.db import get_database, get_collection
             
             assert callable(get_database)
             assert callable(get_collection)
@@ -145,7 +145,7 @@ class TestComprehensiveCoverage:
     def test_telegram_bot_structure(self):
         """Test telegram bot module."""
         try:
-            from backend.telegram_bot import bot_manager
+            from telegram_bot import bot_manager
             
             assert hasattr(bot_manager, '__file__')
             
@@ -159,7 +159,7 @@ class TestComprehensiveCoverage:
     def test_admin_panel_routes(self):
         """Test admin panel routes."""
         try:
-            from backend.admin_panel.routes import router
+            from admin_panel.routes import router
             
             assert router is not None
             if hasattr(router, 'routes'):
@@ -175,7 +175,7 @@ class TestComprehensiveCoverage:
     def test_middleware_functionality(self):
         """Test middleware modules."""
         try:
-            from backend.middleware.activity_middleware import ActivityMiddleware
+            from middleware.activity_middleware import ActivityMiddleware
             
             assert ActivityMiddleware is not None
             assert hasattr(ActivityMiddleware, '__call__') or hasattr(ActivityMiddleware, 'dispatch')

@@ -3,12 +3,12 @@ import asyncio
 import os
 from motor.motor_asyncio import AsyncIOMotorClient
 from httpx import AsyncClient
-from backend.main import app
+from main import app
 from backend.database import get_async_db
 import mongomock
 from unittest.mock import patch, MagicMock, AsyncMock, Mock
 from datetime import datetime
-from backend.config import Settings
+from config import Settings
 import pytest_asyncio
 from bson import ObjectId
 from fastapi.testclient import TestClient
@@ -37,7 +37,7 @@ os.environ["MONGODB_URI"] = "mongodb://localhost:27017/test_buzz2remote"
 # Add project root to path to allow imports from backend
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from backend.database.db import get_database
+from backend.database.db import get_db
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -115,7 +115,7 @@ def override_db(db_mock):
     def _override_get_db():
         return db_mock
 
-    app.dependency_overrides[get_database] = _override_get_db
+    app.dependency_overrides[get_db] = _override_get_db
     yield
     app.dependency_overrides.clear()
 
@@ -516,7 +516,7 @@ def test_pytest_is_working():
 def test_can_import_fastapi_app():
     """Checks if the main FastAPI app instance can be imported without errors."""
     try:
-        from backend.main import app
+        from main import app
         assert app is not None
     except ImportError as e:
-        pytest.fail(f"Failed to import the FastAPI app from backend.main: {e}") 
+        pytest.fail(f"Failed to import the FastAPI app from main: {e}") 

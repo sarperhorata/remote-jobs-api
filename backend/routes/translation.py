@@ -6,11 +6,11 @@ import logging
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from backend.database.db import get_async_db
-from backend.services.translation_service import translation_service
-from backend.utils.auth import get_current_user
-from backend.schemas.user import User
-from backend.database.db import get_db
+from database.db import get_async_db
+from services.translation_service import translation_service
+from utils.auth import get_current_user
+from schemas.user import User
+from database.db import get_db
 
 # Translation schemas - defined inline for now
 class TranslationRequest(BaseModel):

@@ -44,7 +44,7 @@ async def process_sentry_webhook(data: Dict[str, Any]):
     try:
         # Import telegram bot
         try:
-            from backend.telegram_bot.bot_manager import bot_manager
+            from telegram_bot.bot_manager import bot_manager
             bot = bot_manager.bot_instance
             
             if not bot or not bot.enabled:

@@ -19,7 +19,7 @@ class TestCrawlerCoverage:
         mock_requests.return_value.text = "<html><body>Test</body></html>"
         
         try:
-            from backend.crawler import job_crawler
+            from crawler import job_crawler
             assert hasattr(job_crawler, '__file__')
             
             # Test basic attributes if they exist
@@ -48,7 +48,7 @@ class TestCrawlerCoverage:
         mock_bs.return_value = MagicMock()
         
         try:
-            from backend.crawler import job_board_parser
+            from crawler import job_board_parser
             assert hasattr(job_board_parser, '__file__')
             
             # Test parser functions
@@ -78,7 +78,7 @@ class TestCrawlerCoverage:
         mock_chrome.return_value = mock_driver
         
         try:
-            from backend.crawler import linkedin_crawler
+            from crawler import linkedin_crawler
             assert hasattr(linkedin_crawler, '__file__')
             
             # Test crawler class if exists
@@ -93,7 +93,7 @@ class TestCrawlerCoverage:
     def test_crawler_utils(self):
         """Test crawler utility functions"""
         try:
-            from backend.crawler import utils
+            from crawler import utils
             assert hasattr(utils, '__file__')
             
             # Test utility functions

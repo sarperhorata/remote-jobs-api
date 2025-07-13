@@ -13,27 +13,27 @@ class TestBasicImports:
     
     def test_config_import(self):
         """Test config imports"""
-        from backend.core.config import settings
+        from core.config import settings
         assert settings is not None
         
     def test_models_import(self):
         """Test models can be imported"""
-        from backend.models.job import Job
-        from backend.models.company import Company
+        from models.job import Job
+        from models.company import Company
         assert Job is not None
         assert Company is not None
         
     def test_schemas_import(self):
         """Test schemas can be imported"""
-        from backend.schemas.job import JobBase
-        from backend.schemas.company import CompanyBase
+        from schemas.job import JobBase
+        from schemas.company import CompanyBase
         assert JobBase is not None
         assert CompanyBase is not None
         
     def test_utils_import(self):
         """Test utils can be imported"""
-        from backend.utils.config import get_db_url
-        from backend.utils.auth import get_password_hash
+        from utils.config import get_db_url
+        from utils.auth import get_password_hash
         assert callable(get_db_url)
         assert callable(get_password_hash)
 
@@ -42,7 +42,7 @@ class TestSchemaBasics:
     
     def test_job_schema_creation(self):
         """Test job schema creation"""
-        from backend.schemas.job import JobBase
+        from schemas.job import JobBase
         
         job_data = {
             "title": "Test Job",
@@ -58,7 +58,7 @@ class TestSchemaBasics:
         
     def test_company_schema_creation(self):
         """Test company schema creation"""
-        from backend.schemas.company import CompanyBase
+        from schemas.company import CompanyBase
         
         company_data = {
             "name": "Test Company",
@@ -74,7 +74,7 @@ class TestUtilityFunctions:
     
     def test_password_hashing(self):
         """Test password hashing utility"""
-        from backend.utils.auth import get_password_hash, verify_password
+        from utils.auth import get_password_hash, verify_password
         
         password = "testpassword123"
         hashed = get_password_hash(password)
@@ -85,7 +85,7 @@ class TestUtilityFunctions:
         
     def test_config_functions(self):
         """Test config utility functions"""
-        from backend.utils.config import get_db_url, get_all_config
+        from utils.config import get_db_url, get_all_config
         
         db_url = get_db_url()
         config = get_all_config()
@@ -100,16 +100,16 @@ class TestModelBasics:
     def test_model_imports_work(self):
         """Test that model imports don't crash"""
         try:
-            from backend.models.job import Job
-            from backend.models.company import Company
-            from backend.models.user import User
+            from models.job import Job
+            from models.company import Company
+            from models.user import User
             assert True  # If we get here, imports worked
         except ImportError as e:
             pytest.skip(f"Model import failed: {e}")
     
     def test_pydantic_models_work(self):
         """Test Pydantic model functionality"""
-        from backend.models.models import JobCreate
+        from models.models import JobCreate
         
         job_data = {
             "title": "Software Engineer",
@@ -128,13 +128,13 @@ class TestCoreImports:
     
     def test_security_imports(self):
         """Test security module imports"""
-        from backend.core.security import verify_password, get_password_hash
+        from core.security import verify_password, get_password_hash
         assert callable(verify_password)
         assert callable(get_password_hash)
         
     def test_config_imports(self):
         """Test config imports"""
-        from backend.core.config import settings
+        from core.config import settings
         assert hasattr(settings, 'database_url')
 
 class TestSimpleFunctionality:

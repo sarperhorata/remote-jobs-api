@@ -38,23 +38,23 @@ sentry_sdk.init(
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from backend.routes import auth, profile, jobs, ads, notification_routes, companies, payment, onboarding, applications, translation
-from backend.routes.auto_apply import router as auto_apply_router
-from backend.routes.ai_recommendations import router as ai_router
-from backend.routes.legal import router as legal_router
-from backend.routes.fake_job_detection import router as fake_job_router
-from backend.routes.sentry_webhook import router as sentry_webhook_router
-from backend.database.db import get_async_db, close_db_connections, init_database
+from routes import auth, profile, jobs, ads, notification_routes, companies, payment, onboarding, applications, translation
+from routes.auto_apply import router as auto_apply_router
+from routes.ai_recommendations import router as ai_router
+from routes.legal import router as legal_router
+from routes.fake_job_detection import router as fake_job_router
+from routes.sentry_webhook import router as sentry_webhook_router
+from database.db import get_async_db, close_db_connections, init_database
 
 # Import Telegram bot and scheduler with error handling
 try:
-    from backend.telegram_bot.bot_manager import get_managed_bot, stop_managed_bot
+    from telegram_bot.bot_manager import get_managed_bot, stop_managed_bot
     TELEGRAM_BOT_AVAILABLE = True
 except ImportError:
     TELEGRAM_BOT_AVAILABLE = False
 
 try:
-    from backend.services.scheduler_service import start_scheduler, stop_scheduler
+    from services.scheduler_service import start_scheduler, stop_scheduler
     SCHEDULER_AVAILABLE = True
 except ImportError:
     SCHEDULER_AVAILABLE = False
@@ -116,7 +116,7 @@ app.add_middleware(
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Add activity tracking middleware
-from backend.middleware.activity_middleware import ActivityTrackingMiddleware
+from middleware.activity_middleware import ActivityTrackingMiddleware
 app.add_middleware(ActivityTrackingMiddleware)
 
 # Add session middleware
@@ -151,7 +151,7 @@ for router, prefix, tags in routers_to_include:
     
 # Optional: Include admin panel router if available and enabled
 try:
-    from backend.admin_panel.routes import admin_router
+    from admin_panel.routes import admin_router
     if os.getenv("ADMIN_PANEL_ENABLED", "true").lower() == "true":
         app.include_router(admin_router, prefix="/admin", tags=["admin"])
         logger.info("Admin panel successfully included.")

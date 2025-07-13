@@ -16,12 +16,12 @@ class TestCoverageBoost:
         
     def test_config_access(self):
         """Test config access"""
-        from backend.core.config import settings
+        from core.config import settings
         assert settings is not None
         
     def test_models_basic(self):
         """Test basic model functionality"""
-        from backend.models.job import Job
-        from backend.models.company import Company
+        from models.job import Job
+        from models.company import Company
         assert Job is not None
         assert Company is not None 

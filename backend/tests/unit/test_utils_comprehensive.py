@@ -1,10 +1,10 @@
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
-from backend.utils.auth import get_current_user
-from backend.utils.email import send_email, send_verification_email, send_password_reset_email
-from backend.utils.security import SecurityUtils
-from backend.utils.config import get_all_config
-from backend.utils.recaptcha import verify_recaptcha
+from utils.auth import get_current_user
+from utils.email import send_email, send_verification_email, send_password_reset_email
+from utils.security import SecurityUtils
+from utils.config import get_all_config
+from utils.recaptcha import verify_recaptcha
 
 class TestAuthUtils:
     """Auth utility fonksiyonları için testler"""

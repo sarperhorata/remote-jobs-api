@@ -9,7 +9,7 @@ import os
 # Add proper paths for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from backend.main import app
+from main import app
 
 class TestAdminRoutes:
     """Test admin routes - simple but effective"""

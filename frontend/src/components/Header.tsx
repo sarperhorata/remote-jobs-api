@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
-import { Menu, X, User, LogOut, Settings, Heart, FileText, Search as SearchIcon } from 'lucide-react';
+import { Menu, X, User, LogOut, Settings, Heart, FileText, Search as SearchIcon, Bell } from 'lucide-react';
 
 const Header: React.FC = () => {
   const { user, logout } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const navigate = useNavigate();
 
   // Close dropdowns when clicking outside
@@ -21,6 +22,35 @@ const Header: React.FC = () => {
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
+
+  // Load unread notifications count
+  useEffect(() => {
+    if (user) {
+      loadUnreadCount();
+    }
+  }, [user]);
+
+  const loadUnreadCount = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL || 'http://localhost:8001'}/api/v1/notifications/unread-count`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setUnreadNotifications(data.unread_count);
+      }
+    } catch (error) {
+      console.error('Error loading unread count:', error);
+    }
+  };
 
   const navigation = [
     { name: 'Jobs', href: '/jobs' },
@@ -41,6 +71,9 @@ const Header: React.FC = () => {
         break;
       case 'applications':
         navigate('/applications');
+        break;
+      case 'notifications':
+        navigate('/notifications');
         break;
       case 'settings':
         navigate('/settings');
@@ -92,71 +125,99 @@ const Header: React.FC = () => {
               <div className="flex items-center space-x-4">
                 {user ? (
                   /* User Menu */
-                  <div className="relative">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowProfileDropdown(!showProfileDropdown);
-                      }}
-                      className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-3 py-2 text-white hover:bg-white/20 transition-all duration-200"
+                  <div className="flex items-center space-x-3">
+                    {/* Notifications */}
+                    <Link
+                      to="/notifications"
+                      className="relative p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200"
                     >
-                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                        <User className="w-4 h-4 text-white" />
-                      </div>
-                      <span className="font-medium hidden md:inline">{user.email?.split('@')[0] || 'User'}</span>
-                    </button>
+                      <Bell className="w-5 h-5" />
+                      {unreadNotifications > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                          {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                        </span>
+                      )}
+                    </Link>
 
-                    {/* Dropdown Menu */}
-                    {showProfileDropdown && (
-                      <div className="absolute right-0 mt-2 w-56 bg-white/95 backdrop-blur-lg rounded-xl shadow-xl border border-white/20 py-2 z-50">
-                        <div className="px-4 py-2 border-b border-gray-200/50">
-                          <p className="text-sm font-medium text-gray-900">{user.email}</p>
-                          <p className="text-xs text-gray-500">Free Plan</p>
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowProfileDropdown(!showProfileDropdown);
+                        }}
+                        className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-3 py-2 text-white hover:bg-white/20 transition-all duration-200"
+                      >
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                          <User className="w-4 h-4 text-white" />
                         </div>
-                        
-                        <button
-                          onClick={() => handleProfileAction('profile')}
-                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          <User className="w-4 h-4 mr-3" />
-                          My Profile
-                        </button>
-                        
-                        <button
-                          onClick={() => handleProfileAction('saved')}
-                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          <Heart className="w-4 h-4 mr-3" />
-                          Saved Jobs
-                        </button>
-                        
-                        <button
-                          onClick={() => handleProfileAction('applications')}
-                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          <FileText className="w-4 h-4 mr-3" />
-                          Applications
-                        </button>
-                        
-                        <button
-                          onClick={() => handleProfileAction('settings')}
-                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          <Settings className="w-4 h-4 mr-3" />
-                          Settings
-                        </button>
-                        
-                        <div className="border-t border-gray-200/50 mt-2 pt-2">
+                        <span className="font-medium hidden md:inline">{user.email?.split('@')[0] || 'User'}</span>
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {showProfileDropdown && (
+                        <div className="absolute right-0 mt-2 w-56 bg-white/95 backdrop-blur-lg rounded-xl shadow-xl border border-white/20 py-2 z-50">
+                          <div className="px-4 py-2 border-b border-gray-200/50">
+                            <p className="text-sm font-medium text-gray-900">{user.email}</p>
+                            <p className="text-xs text-gray-500">Free Plan</p>
+                          </div>
+                          
                           <button
-                            onClick={() => handleProfileAction('logout')}
-                            className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                            onClick={() => handleProfileAction('profile')}
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                           >
-                            <LogOut className="w-4 h-4 mr-3" />
-                            Sign Out
+                            <User className="w-4 h-4 mr-3" />
+                            My Profile
                           </button>
+                          
+                          <button
+                            onClick={() => handleProfileAction('saved')}
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            <Heart className="w-4 h-4 mr-3" />
+                            Saved Jobs
+                          </button>
+                          
+                          <button
+                            onClick={() => handleProfileAction('applications')}
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            <FileText className="w-4 h-4 mr-3" />
+                            Applications
+                          </button>
+                          
+                          <button
+                            onClick={() => handleProfileAction('notifications')}
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            <Bell className="w-4 h-4 mr-3" />
+                            Notifications
+                            {unreadNotifications > 0 && (
+                              <span className="ml-auto bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                                {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                              </span>
+                            )}
+                          </button>
+                          
+                          <button
+                            onClick={() => handleProfileAction('settings')}
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            <Settings className="w-4 h-4 mr-3" />
+                            Settings
+                          </button>
+                          
+                          <div className="border-t border-gray-200/50 mt-2 pt-2">
+                            <button
+                              onClick={() => handleProfileAction('logout')}
+                              className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                              <LogOut className="w-4 h-4 mr-3" />
+                              Sign Out
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 ) : (
                   /* Login/Register Buttons */
@@ -198,34 +259,28 @@ const Header: React.FC = () => {
                   <Link
                     key={item.name}
                     to={item.href}
-                    className="block text-white/90 hover:text-white hover:bg-white/10 px-3 py-2 rounded-lg transition-all duration-200 font-medium"
-                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block text-white/90 hover:text-white hover:bg-white/10 px-3 py-2 rounded-lg transition-colors"
                   >
                     {item.name}
                   </Link>
                 ))}
                 
-                {!user && (
-                  <div className="border-t border-white/20 pt-3 mt-3">
-                    <button
-                      onClick={() => {
-                        setShowAuthModal(true);
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="block w-full text-left text-white/90 hover:text-white hover:bg-white/10 px-3 py-2 rounded-lg transition-all duration-200 font-medium"
-                    >
-                      Sign In
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowAuthModal(true);
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="block w-full mt-2 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white font-medium px-3 py-2 rounded-lg transition-all duration-200"
-                    >
-                      Get Started
-                    </button>
-                  </div>
+                {user && (
+                  <>
+                    <div className="border-t border-white/20 pt-2 mt-2">
+                      <Link
+                        to="/notifications"
+                        className="flex items-center justify-between text-white/90 hover:text-white hover:bg-white/10 px-3 py-2 rounded-lg transition-colors"
+                      >
+                        <span>Notifications</span>
+                        {unreadNotifications > 0 && (
+                          <span className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                            {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                          </span>
+                        )}
+                      </Link>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -234,12 +289,7 @@ const Header: React.FC = () => {
       </header>
 
       {/* Auth Modal */}
-      {showAuthModal && (
-        <AuthModal 
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)} 
-        />
-      )}
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </>
   );
 };

@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, date
 import os
 
-from backend.services.mailgun_service import MailgunService
+from services.mailgun_service import MailgunService
 
 
 class TestMailgunService:

@@ -21,7 +21,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
-    from backend.models.models import UserProfile, UserProfileCreate, UserProfileUpdate, WorkType, JobType, WorkHours, UserNotificationPreference
+    from models.models import UserProfile, UserProfileCreate, UserProfileUpdate, WorkType, JobType, WorkHours, UserNotificationPreference
 except ImportError:
     # Fallback for when imports are not available
     logger.warning("Could not import models, some features will be limited")

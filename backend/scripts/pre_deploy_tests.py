@@ -175,7 +175,7 @@ class PreDeploymentTester:
         try:
             # Try to import and test database connection
             sys.path.append(str(self.backend_dir))
-            from backend.database import get_async_db
+            from database import get_async_db
             import asyncio
             
             async def test_db():
@@ -452,7 +452,7 @@ class PreDeploymentTester:
             # Test importing main application
             import_cmd = [
                 sys.executable, "-c",
-                "import sys; sys.path.append('.'); from backend.main import app"
+                "import sys; sys.path.append('.'); from main import app"
             ]
             
             result = self._run_command(import_cmd, cwd=self.backend_dir)

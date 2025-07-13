@@ -15,7 +15,7 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 
 # Import from current backend directory
-from database import get_db
+from backend.database import get_db
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

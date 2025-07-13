@@ -5,9 +5,9 @@ from datetime import datetime
 from bson import ObjectId
 
 # Import the correct models
-from backend.models.profile import Profile  # SQLAlchemy model
-from backend.models.user import UserBase, UserCreate, UserUpdate, UserResponse, UserInDB  # Pydantic models
-from backend.models.job_multilang import (
+from models.profile import Profile  # SQLAlchemy model
+from models.user import UserBase, UserCreate, UserUpdate, UserResponse, UserInDB  # Pydantic models
+from models.job_multilang import (
     MultiLangText, JobMultiLang, TranslationService, JobMigrationService
 )
 

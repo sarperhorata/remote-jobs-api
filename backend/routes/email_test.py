@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import Dict, Any
-from backend.services.mailgun_service import mailgun_service
+from services.mailgun_service import mailgun_service
 import logging
 
 logger = logging.getLogger(__name__)

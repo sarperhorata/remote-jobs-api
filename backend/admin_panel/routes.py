@@ -62,7 +62,7 @@ env = Environment(
     loader=FileSystemLoader(templates_path),
     autoescape=select_autoescape(['html', 'xml'])
 )
-templates = Jinja2Templates(env=env)
+templates = Jinja2Templates(directory=templates_path)
 
 # Admin paneli statik dosyaları (CSS, JS)
 # admin_panel_app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
@@ -3234,7 +3234,7 @@ async def send_telegram_notification(request: Request, admin_auth: bool = Depend
         message = data.get("message", "")
         
         # Send to Telegram
-        from backend.services.telegram_service import send_telegram_message
+        from services.telegram_service import send_telegram_message
         await send_telegram_message(message)
         
         return {"status": "success", "message": "Telegram notification sent"}

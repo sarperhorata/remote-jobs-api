@@ -6,15 +6,8 @@ import os
 import aiofiles
 import uuid
 from backend.database import get_async_db
-from backend.schemas.user import (
-    EmailOnlyRegister, EmailVerification, SetPassword, 
-    LinkedInProfile, ProfileCompletion
-)
-from backend.utils.email import (
-    create_email_verification_token, 
-    verify_token, 
-    send_verification_email
-)
+from backend.schemas.user import UserCreate, OnboardingStep
+from backend.utils.email import create_email_verification_token, send_verification_email
 import logging
 from bson import ObjectId
 import jwt
@@ -61,7 +54,7 @@ class OnboardingResponse(BaseModel):
 
 @router.post("/register-email", response_model=OnboardingResponse)
 async def register_with_email_only(
-    user_data: EmailOnlyRegister,
+    user_data: UserCreate,
     db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
     """Step 1: Register with email only and send verification email."""
@@ -130,7 +123,7 @@ async def register_with_email_only(
 
 @router.post("/verify-email", response_model=OnboardingResponse)
 async def verify_email(
-    verification_data: EmailVerification,
+    verification_data: OnboardingStep,
     db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
     """Step 2: Verify email and activate user."""
@@ -197,7 +190,7 @@ async def verify_email(
 
 @router.post("/set-password", response_model=OnboardingResponse)
 async def set_password(
-    password_data: SetPassword,
+    password_data: OnboardingStep,
     db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
     """Step 3: Set user password."""

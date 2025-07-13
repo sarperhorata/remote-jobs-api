@@ -3,7 +3,7 @@ from datetime import datetime
 from bson import ObjectId
 from pydantic import ValidationError
 
-from backend.models.job import (
+from models.job import (
     PyObjectId, 
     JobBase, 
     JobCreate, 

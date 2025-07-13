@@ -1,5 +1,5 @@
 import pytest
-from backend.models.job import JobCreate
+from models.job import JobCreate
 from bson import ObjectId
 
 def test_create_job(client, test_job_data: dict, db_mock):

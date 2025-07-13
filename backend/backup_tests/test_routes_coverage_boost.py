@@ -13,8 +13,8 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 # Import the main app and routes
-from backend.main import app
-from backend.routes import companies, ads
+from main import app
+from routes import companies, ads
 
 class TestCompaniesRoutes:
     """Test companies routes to boost coverage from 43% to 90%+"""

@@ -1,10 +1,10 @@
 import pytest
-from backend.crawler.job_crawler import JobCrawler
-from backend.crawler.job_board_parser import JobBoardParser
-from backend.crawler.monitor_manager import MonitorManager
-from backend.crawler.jobs_from_space_parser import JobsFromSpaceParser
-from backend.crawler.linkedin_parser import LinkedInParser
-from backend.crawler.remotive_parser import RemotiveParser
+from crawler.job_crawler import JobCrawler
+from crawler.job_board_parser import JobBoardParser
+from crawler.monitor_manager import MonitorManager
+from crawler.jobs_from_space_parser import JobsFromSpaceParser
+from crawler.linkedin_parser import LinkedInParser
+from crawler.remotive_parser import RemotiveParser
 
 class TestJobCrawler:
     def test_job_crawler_initialization(self):

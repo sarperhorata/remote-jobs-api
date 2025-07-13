@@ -105,7 +105,7 @@ class TestMaximumCoverageBoost:
     def test_comprehensive_model_testing(self):
         """Test model classes comprehensively."""
         try:
-            from backend.models import job, user, company, profile, user_activity
+            from models import job, user, company, profile, user_activity
             
             # Test model attributes and methods
             model_modules = [job, user, company, profile, user_activity]
@@ -291,7 +291,7 @@ class TestMaximumCoverageBoost:
     def test_database_operations_comprehensive(self):
         """Test database operations comprehensively."""
         try:
-            from backend.database import db, company_repository, job_repository
+            from database import db, company_repository, job_repository
             
             # Test database module with extensive mocking
             with patch('pymongo.MongoClient') as mock_client:
@@ -371,7 +371,7 @@ class TestMaximumCoverageBoost:
     def test_middleware_comprehensive(self):
         """Test middleware modules comprehensively."""
         try:
-            from backend.middleware import activity_middleware, security
+            from middleware import activity_middleware, security
             
             # Test activity middleware
             activity_attrs = [attr for attr in dir(activity_middleware) if not attr.startswith('_')]

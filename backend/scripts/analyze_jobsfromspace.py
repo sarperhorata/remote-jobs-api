@@ -10,8 +10,8 @@ script_dir = Path(__file__).resolve().parent
 backend_dir = script_dir.parent
 sys.path.append(str(backend_dir.parent))
 
-from backend.crawler.jobs_from_space_parser import JobsFromSpaceParser
-from backend.models.models import WebsiteType, Website, SelectorBase
+from crawler.jobs_from_space_parser import JobsFromSpaceParser
+from models.models import WebsiteType, Website, SelectorBase
 
 # Configure logging
 logging.basicConfig(

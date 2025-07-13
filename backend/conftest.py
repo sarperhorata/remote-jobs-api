@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from main import app
-from database import get_async_db, get_db
+from backend.database import get_async_db, get_db
 
 # Set up test event loop
 @pytest.fixture(scope="session")

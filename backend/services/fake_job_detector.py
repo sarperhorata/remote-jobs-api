@@ -426,7 +426,7 @@ Company URL: {job_data.get('companyUrl', 'N/A')}
     async def _log_analysis(self, analysis: FakeJobAnalysis):
         """Log analysis results for learning and improvement"""
         try:
-            from backend.database import get_async_db
+            from database import get_async_db
             db = await get_async_db()
             
             await db.fake_job_analyses.insert_one(analysis.to_dict())
@@ -447,7 +447,7 @@ Company URL: {job_data.get('companyUrl', 'N/A')}
     async def get_analysis_statistics(self, days: int = 30) -> Dict[str, Any]:
         """Get fake job detection statistics"""
         try:
-            from backend.database import get_async_db
+            from database import get_async_db
             from datetime import timedelta
             
             db = await get_async_db()

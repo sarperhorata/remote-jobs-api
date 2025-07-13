@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from unittest.mock import patch, Mock
 import os
 
-from backend.utils.email import (
+from utils.email import (
     send_email,
     create_email_verification_token,
     create_password_reset_token,

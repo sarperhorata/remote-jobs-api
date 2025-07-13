@@ -7,7 +7,7 @@ class TestAIJobMatchingService:
     def test_service_import(self):
         """Service import testi"""
         try:
-            from backend.services.ai_job_matching_service import AIJobMatchingService
+            from services.ai_job_matching_service import AIJobMatchingService
             assert AIJobMatchingService is not None
         except ImportError:
             pytest.skip("AIJobMatchingService not available")
@@ -15,7 +15,7 @@ class TestAIJobMatchingService:
     def test_service_initialization(self):
         """Service başlatma testi"""
         try:
-            from backend.services.ai_job_matching_service import AIJobMatchingService
+            from services.ai_job_matching_service import AIJobMatchingService
             mock_db = AsyncMock()
             service = AIJobMatchingService(mock_db)
             assert service is not None
@@ -26,7 +26,7 @@ class TestAIJobMatchingService:
     def test_service_methods_exist(self):
         """Service metodlarının varlığını test et"""
         try:
-            from backend.services.ai_job_matching_service import AIJobMatchingService
+            from services.ai_job_matching_service import AIJobMatchingService
             mock_db = AsyncMock()
             service = AIJobMatchingService(mock_db)
             
@@ -45,7 +45,7 @@ class TestAIApplicationService:
     def test_service_import(self):
         """Service import testi"""
         try:
-            from backend.services.ai_application_service import AIApplicationService
+            from services.ai_application_service import AIApplicationService
             assert AIApplicationService is not None
         except ImportError:
             pytest.skip("AIApplicationService not available")
@@ -53,7 +53,7 @@ class TestAIApplicationService:
     def test_service_initialization(self):
         """Service başlatma testi"""
         try:
-            from backend.services.ai_application_service import AIApplicationService
+            from services.ai_application_service import AIApplicationService
             mock_db = AsyncMock()
             service = AIApplicationService(mock_db)
             assert service is not None
@@ -64,7 +64,7 @@ class TestAIApplicationService:
     def test_service_methods_exist(self):
         """Service metodlarının varlığını test et"""
         try:
-            from backend.services.ai_application_service import AIApplicationService
+            from services.ai_application_service import AIApplicationService
             mock_db = AsyncMock()
             service = AIApplicationService(mock_db)
             
@@ -83,7 +83,7 @@ class TestFakeJobDetector:
     def test_service_import(self):
         """Service import testi"""
         try:
-            from backend.services.fake_job_detector import FakeJobDetector
+            from services.fake_job_detector import FakeJobDetector
             assert FakeJobDetector is not None
         except ImportError:
             pytest.skip("FakeJobDetector not available")
@@ -91,7 +91,7 @@ class TestFakeJobDetector:
     def test_service_initialization(self):
         """Service başlatma testi"""
         try:
-            from backend.services.fake_job_detector import FakeJobDetector
+            from services.fake_job_detector import FakeJobDetector
             mock_db = AsyncMock()
             service = FakeJobDetector(mock_db)
             assert service is not None
@@ -102,7 +102,7 @@ class TestFakeJobDetector:
     def test_service_methods_exist(self):
         """Service metodlarının varlığını test et"""
         try:
-            from backend.services.fake_job_detector import FakeJobDetector
+            from services.fake_job_detector import FakeJobDetector
             mock_db = AsyncMock()
             service = FakeJobDetector(mock_db)
             
@@ -121,7 +121,7 @@ class TestAutoApplicationService:
     def test_service_import(self):
         """Service import testi"""
         try:
-            from backend.services.auto_application_service import AutoApplicationService
+            from services.auto_application_service import AutoApplicationService
             assert AutoApplicationService is not None
         except ImportError:
             pytest.skip("AutoApplicationService not available")
@@ -129,7 +129,7 @@ class TestAutoApplicationService:
     def test_service_initialization(self):
         """Service başlatma testi"""
         try:
-            from backend.services.auto_application_service import AutoApplicationService
+            from services.auto_application_service import AutoApplicationService
             mock_db = AsyncMock()
             service = AutoApplicationService(mock_db)
             assert service is not None
@@ -140,7 +140,7 @@ class TestAutoApplicationService:
     def test_service_methods_exist(self):
         """Service metodlarının varlığını test et"""
         try:
-            from backend.services.auto_application_service import AutoApplicationService
+            from services.auto_application_service import AutoApplicationService
             mock_db = AsyncMock()
             service = AutoApplicationService(mock_db)
             
@@ -159,7 +159,7 @@ class TestAutoApplyService:
     def test_service_import(self):
         """Service import testi"""
         try:
-            from backend.services.auto_apply_service import AutoApplyService
+            from services.auto_apply_service import AutoApplyService
             assert AutoApplyService is not None
         except ImportError:
             pytest.skip("AutoApplyService not available")
@@ -167,7 +167,7 @@ class TestAutoApplyService:
     def test_service_initialization(self):
         """Service başlatma testi"""
         try:
-            from backend.services.auto_apply_service import AutoApplyService
+            from services.auto_apply_service import AutoApplyService
             mock_db = AsyncMock()
             service = AutoApplyService(mock_db)
             assert service is not None
@@ -178,7 +178,7 @@ class TestAutoApplyService:
     def test_service_methods_exist(self):
         """Service metodlarının varlığını test et"""
         try:
-            from backend.services.auto_apply_service import AutoApplyService
+            from services.auto_apply_service import AutoApplyService
             mock_db = AsyncMock()
             service = AutoApplyService(mock_db)
             
@@ -198,31 +198,31 @@ class TestAIServiceIntegration:
         services = []
         
         try:
-            from backend.services.ai_job_matching_service import AIJobMatchingService
+            from services.ai_job_matching_service import AIJobMatchingService
             services.append(AIJobMatchingService)
         except ImportError:
             pass
         
         try:
-            from backend.services.ai_application_service import AIApplicationService
+            from services.ai_application_service import AIApplicationService
             services.append(AIApplicationService)
         except ImportError:
             pass
         
         try:
-            from backend.services.fake_job_detector import FakeJobDetector
+            from services.fake_job_detector import FakeJobDetector
             services.append(FakeJobDetector)
         except ImportError:
             pass
         
         try:
-            from backend.services.auto_application_service import AutoApplicationService
+            from services.auto_application_service import AutoApplicationService
             services.append(AutoApplicationService)
         except ImportError:
             pass
         
         try:
-            from backend.services.auto_apply_service import AutoApplyService
+            from services.auto_apply_service import AutoApplyService
             services.append(AutoApplyService)
         except ImportError:
             pass
@@ -238,7 +238,7 @@ class TestAIServiceIntegration:
         services_created = 0
         
         try:
-            from backend.services.ai_job_matching_service import AIJobMatchingService
+            from services.ai_job_matching_service import AIJobMatchingService
             service = AIJobMatchingService(mock_db)
             assert service is not None
             services_created += 1
@@ -246,7 +246,7 @@ class TestAIServiceIntegration:
             pass
         
         try:
-            from backend.services.ai_application_service import AIApplicationService
+            from services.ai_application_service import AIApplicationService
             service = AIApplicationService(mock_db)
             assert service is not None
             services_created += 1
@@ -254,7 +254,7 @@ class TestAIServiceIntegration:
             pass
         
         try:
-            from backend.services.fake_job_detector import FakeJobDetector
+            from services.fake_job_detector import FakeJobDetector
             service = FakeJobDetector(mock_db)
             assert service is not None
             services_created += 1
@@ -262,7 +262,7 @@ class TestAIServiceIntegration:
             pass
         
         try:
-            from backend.services.auto_application_service import AutoApplicationService
+            from services.auto_application_service import AutoApplicationService
             service = AutoApplicationService(mock_db)
             assert service is not None
             services_created += 1
@@ -270,7 +270,7 @@ class TestAIServiceIntegration:
             pass
         
         try:
-            from backend.services.auto_apply_service import AutoApplyService
+            from services.auto_apply_service import AutoApplyService
             service = AutoApplyService(mock_db)
             assert service is not None
             services_created += 1

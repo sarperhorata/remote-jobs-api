@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from datetime import datetime
 from bson import ObjectId
 
-from backend.main import app
+from main import app
 
 
 class TestAdminPanelExtended:
@@ -19,7 +19,7 @@ class TestAdminPanelExtended:
     def test_admin_panel_import_success(self):
         """Admin panel modülü başarıyla import edilir"""
         try:
-            from backend.admin_panel.routes import router as admin_router
+            from admin_panel.routes import router as admin_router
             assert admin_router is not None
         except ImportError as e:
             pytest.skip(f"Admin panel routes not available: {e}")
@@ -27,7 +27,7 @@ class TestAdminPanelExtended:
     def test_admin_panel_router_configuration(self):
         """Admin panel router konfigürasyonu doğru"""
         try:
-            from backend.admin_panel.routes import router as admin_router
+            from admin_panel.routes import router as admin_router
             # Router object properties
             assert hasattr(admin_router, 'routes')
             assert hasattr(admin_router, 'prefix')

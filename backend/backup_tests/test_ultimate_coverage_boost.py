@@ -65,7 +65,7 @@ class TestUltimateCoverageBoost:
             try:
                 os.environ[var] = "test_value"
                 # This exercises config loading paths
-                from backend.utils import config
+                from utils import config
                 config_tests += 1
             except:
                 config_tests += 0.5
@@ -84,7 +84,7 @@ class TestUltimateCoverageBoost:
         
         # Test async database functions
         try:
-            from backend.database.db import get_async_db
+            from database.db import get_async_db
             if callable(get_async_db):
                 # Test async function existence
                 assert asyncio.iscoroutinefunction(get_async_db) or callable(get_async_db)

@@ -91,7 +91,7 @@ class ServiceNotifier:
         """Send comprehensive crawler summary"""
         try:
             # Import telegram bot
-            from backend.telegram_bot.bot_manager import bot_manager
+            from telegram_bot.bot_manager import bot_manager
             bot = bot_manager.bot_instance
             
             if bot and bot.enabled:

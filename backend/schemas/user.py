@@ -113,4 +113,9 @@ class Token(BaseModel):
     token_type: str
 
 class TokenData(BaseModel):
-    email: Optional[str] = None 
+    email: Optional[str] = None
+
+class OnboardingStep(BaseModel):
+    step: str
+    completed: bool = False
+    data: Optional[Dict[str, Any]] = None 

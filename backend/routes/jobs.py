@@ -2,17 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from bson import ObjectId
+from motor.motor_asyncio import AsyncIOMotorDatabase
 from backend.database import get_async_db
 from backend.utils.auth import get_current_user, get_current_admin, get_current_active_user
 import os
 import logging
-from backend.schemas.job import JobCreate, JobResponse
+from backend.schemas.job import JobCreate, JobResponse, JobUpdate, JobListResponse, Job, JobSearchQuery, ApplicationCreate
 from backend.crud import job as job_crud
-from backend.schemas.job import JobUpdate, JobListResponse
-from motor.motor_asyncio import AsyncIOMotorDatabase
-from backend.schemas.job import Job, JobCreate
 from backend.models.models import JobApplication
-from backend.schemas.job import JobSearchQuery, ApplicationCreate
 from backend.services.job_scraping_service import JobScrapingService
 from backend.services.auto_application_service import AutoApplicationService
 import re
@@ -1186,14 +1183,14 @@ async def trigger_api_job_fetching(
     """
     try:
         from utils.job_api_integrations import JobAPIIntegration
-        from backend.database import get_async_db
+        from database import get_async_db
         from datetime import datetime
         
         api_integration = JobAPIIntegration()
         jobs = await api_integration.fetch_jobs_from_all_apis(query, location)
         
         # Save to database
-        from backend.database import get_async_db
+        from database import get_async_db
         db = await get_async_db()
         jobs_collection = db["jobs"]
         

@@ -12,7 +12,7 @@ class TestModuleSystematicCoverage:
     def test_admin_panel_comprehensive(self):
         """Test admin panel modules comprehensively."""
         try:
-            from backend.admin_panel import routes
+            from admin_panel import routes
             
             # Test route definitions
             assert hasattr(routes, 'router')
@@ -32,7 +32,7 @@ class TestModuleSystematicCoverage:
     def test_crud_operations_coverage(self):
         """Test CRUD operations modules."""
         try:
-            from backend.crud import job, user
+            from crud import job, user
             
             # Test job CRUD functions exist
             job_functions = [attr for attr in dir(job) if not attr.startswith('_') and callable(getattr(job, attr))]
@@ -48,7 +48,7 @@ class TestModuleSystematicCoverage:
     def test_notification_system_coverage(self):
         """Test notification system modules."""
         try:
-            from backend.notification import notification_manager
+            from notification import notification_manager
             
             # Test notification manager exists
             assert hasattr(notification_manager, '__file__')
@@ -64,7 +64,7 @@ class TestModuleSystematicCoverage:
     def test_database_repository_coverage(self):
         """Test database repository modules."""
         try:
-            from backend.database import company_repository, job_repository
+            from database import company_repository, job_repository
             
             # Test company repository functions
             company_repo_functions = [attr for attr in dir(company_repository) if not attr.startswith('_')]
@@ -80,7 +80,7 @@ class TestModuleSystematicCoverage:
     def test_crawler_modules_coverage(self):
         """Test crawler modules."""
         try:
-            from backend.crawler import job_crawler, job_board_parser
+            from crawler import job_crawler, job_board_parser
             
             # Test crawler module structure
             crawler_attrs = [attr for attr in dir(job_crawler) if not attr.startswith('_')]
@@ -96,7 +96,7 @@ class TestModuleSystematicCoverage:
     def test_api_modules_coverage(self):
         """Test API modules."""
         try:
-            from backend.api import jobs, monitors, notifications, websites
+            from api import jobs, monitors, notifications, websites
             
             # Test each API module has content
             for module in [jobs, monitors, notifications, websites]:
@@ -167,7 +167,7 @@ class TestModuleSystematicCoverage:
     def test_model_relationships_coverage(self):
         """Test model relationships and associations."""
         try:
-            from backend.models import job, user, company, profile
+            from models import job, user, company, profile
             
             # Test each model module has classes
             for module in [job, user, company, profile]:
@@ -245,7 +245,7 @@ class TestModuleSystematicCoverage:
     def test_middleware_comprehensive_coverage(self):
         """Test middleware modules comprehensively."""
         try:
-            from backend.middleware import activity_middleware, security
+            from middleware import activity_middleware, security
             
             # Test activity middleware
             if hasattr(activity_middleware, 'ActivityMiddleware'):
@@ -267,7 +267,7 @@ class TestModuleSystematicCoverage:
     def test_telegram_bot_comprehensive(self):
         """Test telegram bot modules comprehensively."""
         try:
-            from backend.telegram_bot import bot_manager, bot
+            from telegram_bot import bot_manager, bot
             
             # Test bot manager functionality with mocks
             with patch('backend.telegram_bot.bot_manager.Application') as mock_app:
@@ -318,7 +318,7 @@ class TestModuleSystematicCoverage:
     def test_configuration_modules_coverage(self):
         """Test configuration modules."""
         try:
-            from backend.core import config, security
+            from core import config, security
             
             # Test config module
             config_attrs = [attr for attr in dir(config) if not attr.startswith('_')]

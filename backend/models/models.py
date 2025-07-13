@@ -437,6 +437,40 @@ class BatchTranslationResponse(BaseModel):
     results: List[JobTranslationResult]
     errors: List[str] = []
 
+class UserNotification(BaseModel):
+    """Model for user notifications in MongoDB"""
+    id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    title: str
+    message: str
+    notification_type: str = "info"  # info, success, warning, error
+    category: str = "general"  # general, job, application, system
+    is_read: bool = False
+    is_active: bool = True
+    action_url: Optional[str] = None  # URL to navigate when clicked
+    action_text: Optional[str] = None  # Text for action button
+    metadata: Optional[Dict[str, Any]] = None  # Additional data
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    read_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+class UserNotificationCreate(BaseModel):
+    user_id: str
+    title: str
+    message: str
+    notification_type: str = "info"
+    category: str = "general"
+    action_url: Optional[str] = None
+    action_text: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+class UserNotificationUpdate(BaseModel):
+    is_read: Optional[bool] = None
+    is_active: Optional[bool] = None
+    read_at: Optional[datetime] = None
+
 class JobApplicationMongo(BaseModel):
     """MongoDB Job Application model using Pydantic"""
     

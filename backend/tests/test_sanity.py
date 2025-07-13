@@ -12,7 +12,7 @@ def test_pytest_is_working():
 def test_can_import_fastapi_app():
     """Checks if the main FastAPI app instance can be imported without errors."""
     try:
-        from backend.main import app
+        from main import app
         assert app is not None
     except ImportError as e:
-        pytest.fail(f"Failed to import the FastAPI app from backend.main: {e}") 
+        pytest.fail(f"Failed to import the FastAPI app from main: {e}") 

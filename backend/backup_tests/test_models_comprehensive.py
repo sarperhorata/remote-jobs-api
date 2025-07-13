@@ -1,5 +1,5 @@
 import pytest
-from backend.models.models import User, TranslationRequest
+from models.models import User, TranslationRequest
 
 class TestUserModel:
     def test_user_creation(self):

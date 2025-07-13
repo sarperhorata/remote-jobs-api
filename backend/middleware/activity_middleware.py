@@ -7,7 +7,7 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from datetime import datetime
 
-from backend.services.activity_logger import activity_logger
+from services.activity_logger import activity_logger
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ class ActivityTrackingMiddleware(BaseHTTPMiddleware):
             authorization = request.headers.get("authorization")
             if authorization and authorization.startswith("Bearer "):
                 # Import here to avoid circular imports
-                from backend.utils.auth import decode_token
+                from utils.auth import decode_token
                 token = authorization.split(" ")[1]
                 payload = decode_token(token)
                 return payload.get("sub") if payload else None

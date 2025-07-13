@@ -3,7 +3,7 @@ import os
 from unittest.mock import patch, Mock
 from typing import Dict, Any
 
-from backend.utils.config import (
+from utils.config import (
     get_db_url,
     get_crawler_headers,
     get_all_config,

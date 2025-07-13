@@ -12,8 +12,8 @@ import random
 def realistic_jobs_data():
     """Gerçekçi iş ilanı verileri - gerçek veritabanından alınan verilerin kopyası"""
     return [
-        {
-            "_id": ObjectId("507f1f77bcf86cd799439011"),
+    {
+        "_id": ObjectId("507f1f77bcf86cd799439011"),
             "title": "Senior Product Manager",
             "company": "TechCorp Inc.",
             "location": "Remote",
@@ -28,9 +28,9 @@ def realistic_jobs_data():
             "skills": ["Product Strategy", "User Experience", "Market Analysis", "Leadership"],
             "experience_level": "Senior",
             "work_type": "Remote"
-        },
-        {
-            "_id": ObjectId("507f1f77bcf86cd799439012"),
+    },
+    {
+        "_id": ObjectId("507f1f77bcf86cd799439012"),
             "title": "Frontend Developer",
             "company": "StartupXYZ",
             "location": "San Francisco, CA",
@@ -50,7 +50,7 @@ def realistic_jobs_data():
             "_id": ObjectId("507f1f77bcf86cd799439013"),
             "title": "Data Scientist",
             "company": "BigData Corp",
-            "location": "New York, NY",
+        "location": "New York, NY",
             "description": "We're seeking a Data Scientist to help us build predictive models...",
             "requirements": ["Python", "Machine Learning", "Statistics", "SQL"],
             "salary_min": 100000,
@@ -96,15 +96,15 @@ def realistic_jobs_data():
             "skills": ["Figma", "Sketch", "Adobe XD", "User Research", "Prototyping", "Design Systems"],
             "experience_level": "Mid",
             "work_type": "Hybrid"
-        }
-    ]
+    }
+]
 
 @pytest.fixture
 def realistic_companies_data():
     """Gerçekçi şirket verileri"""
     return [
-        {
-            "_id": ObjectId("507f1f77bcf86cd799439021"),
+    {
+        "_id": ObjectId("507f1f77bcf86cd799439021"),
             "name": "TechCorp Inc.",
             "website": "https://techcorp.com",
             "linkedin": "https://linkedin.com/company/techcorp",
@@ -123,7 +123,7 @@ def realistic_companies_data():
             "description": "Fast-growing startup in the fintech space",
             "industry": "Fintech",
             "size": "50-100",
-            "location": "San Francisco, CA",
+        "location": "San Francisco, CA",
             "is_verified": True,
             "created_at": datetime.utcnow() - timedelta(days=15)
         },
@@ -145,10 +145,10 @@ def realistic_companies_data():
 def realistic_users_data():
     """Gerçekçi kullanıcı verileri"""
     return [
-        {
-            "_id": ObjectId("507f1f77bcf86cd799439031"),
-            "email": "john.doe@example.com",
-            "name": "John Doe",
+    {
+        "_id": ObjectId("507f1f77bcf86cd799439031"),
+        "email": "john.doe@example.com",
+        "name": "John Doe",
             "password_hash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/HS.iK2",  # "password123"
             "is_verified": True,
             "created_at": datetime.utcnow() - timedelta(days=60),
@@ -165,7 +165,7 @@ def realistic_users_data():
             "email": "jane.smith@example.com",
             "name": "Jane Smith",
             "password_hash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/HS.iK2",  # "password123"
-            "is_verified": True,
+        "is_verified": True,
             "created_at": datetime.utcnow() - timedelta(days=30),
             "profile": {
                 "skills": ["Product Management", "User Research", "Data Analysis"],
@@ -224,8 +224,8 @@ def realistic_notifications_data():
             "job_id": ObjectId("507f1f77bcf86cd799439013"),
             "is_read": True,
             "created_at": datetime.utcnow() - timedelta(days=1)
-        }
-    ]
+    }
+]
 
 @pytest.fixture
 def mock_jobs_collection_with_data(realistic_jobs_data):

@@ -1,5 +1,5 @@
 import pytest
-from backend.services.translation_service import translation_service
+from services.translation_service import translation_service
 
 class TestTranslationService:
     def test_service_exists(self):

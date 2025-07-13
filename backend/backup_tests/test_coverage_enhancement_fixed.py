@@ -39,7 +39,7 @@ class TestCoverageEnhancementFixed:
     def test_admin_panel_structure_fixed(self):
         """Test admin panel structure with correct attributes."""
         try:
-            from backend.admin_panel import routes
+            from admin_panel import routes
             
             # Test that routes module exists
             assert hasattr(routes, '__file__')
@@ -59,7 +59,7 @@ class TestCoverageEnhancementFixed:
     def test_telegram_bot_fixed(self):
         """Test telegram bot with correct imports."""
         try:
-            from backend.telegram_bot import bot_manager
+            from telegram_bot import bot_manager
             
             # Test basic structure exists
             assert hasattr(bot_manager, '__file__')
@@ -165,7 +165,7 @@ class TestCoverageEnhancementFixed:
     def test_database_enhanced_coverage(self):
         """Test database modules with enhanced coverage."""
         try:
-            from backend.database import db, company_repository, job_repository
+            from database import db, company_repository, job_repository
             
             # Test database functions with mocks
             with patch('backend.database.db.MongoClient') as mock_client:
@@ -216,7 +216,7 @@ class TestCoverageEnhancementFixed:
     def test_notification_system_enhanced(self):
         """Test notification system with enhanced coverage."""
         try:
-            from backend.notification import notification_manager
+            from notification import notification_manager
             
             # Test notification manager with mocks
             with patch('smtplib.SMTP', create=True) as mock_smtp:

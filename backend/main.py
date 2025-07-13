@@ -48,6 +48,7 @@ from backend.routes.legal import router as legal_router
 from backend.routes.fake_job_detection import router as fake_job_router
 from backend.routes.sentry_webhook import router as sentry_webhook_router
 from backend.routes.email_test import router as email_test_router
+from backend.routes.notifications import router as user_notifications_router
 from backend.database.db import get_async_db, close_db_connections, init_database
 from backend.utils.auth import get_current_user
 
@@ -153,6 +154,7 @@ routers_to_include = [
     (jobs.router, "/api/v1", ["jobs"]),
     (ads.router, "/api/v1", ["ads"]),
     (notification_routes.router, "/api/v1", ["notifications"]),
+    (user_notifications_router, "/api/v1", ["user-notifications"]),
     (companies.router, "/api/v1", ["companies"]),
     (legal_router, "/api/v1", ["legal"]),
     (payment.router, "/api/v1", ["payment"]),
@@ -907,7 +909,3 @@ async def stripe_webhook(request: Request):
     logger.info(f"Received Stripe event: {event['type']}")
     
     return {"status": "success"}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8001, reload=True) 

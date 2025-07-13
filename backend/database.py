@@ -6,7 +6,7 @@ import asyncio
 
 # Import configuration
 try:
-    from backend.utils.config import DATABASE_URL, IS_PRODUCTION
+    from utils.config import DATABASE_URL, IS_PRODUCTION
 except ImportError:
     try:
         from utils.config import DATABASE_URL, IS_PRODUCTION

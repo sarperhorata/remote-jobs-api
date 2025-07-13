@@ -5,17 +5,17 @@ from datetime import datetime, timedelta
 import uuid
 from fastapi.security import HTTPBearer
 
-from backend.database.db import get_async_db
-from backend.routes.auth import get_current_user_dependency
+from database.db import get_async_db
+from routes.auth import get_current_user_dependency
 from bson import ObjectId
 import logging
 
-from backend.models.user_application import (
+from models.user_application import (
     UserApplicationCreate, 
     UserApplicationUpdate, 
     UserApplicationResponse
 )
-from backend.services.user_application_service import get_user_application_service
+from services.user_application_service import get_user_application_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/applications", tags=["applications"])

@@ -6,10 +6,10 @@ from bson import ObjectId
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from backend.models.job import Job
-from backend.database.db import get_async_db
+from models.job import Job
+from database.db import get_async_db
 
-from backend.utils.db import async_jobs
+from utils.db import async_jobs
 
 logger = logging.getLogger(__name__)
 

@@ -80,7 +80,7 @@ class TestUntestedAreasBoost:
         
         # Test CRUD operations
         try:
-            from backend.database import db, company_repository, job_repository
+            from database import db, company_repository, job_repository
             
             # Test database functions
             if hasattr(db, 'get_database'):

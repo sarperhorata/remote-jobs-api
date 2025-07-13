@@ -4,14 +4,14 @@ from unittest.mock import Mock, AsyncMock
 def test_ai_service_creation():
     """Test AI service can be created."""
     mock_db = Mock()
-    from backend.services.ai_job_matching_service import AIJobMatchingService
+    from services.ai_job_matching_service import AIJobMatchingService
     service = AIJobMatchingService(mock_db)
     assert service.db == mock_db
     assert service.cache_ttl == 3600
 
 def test_ai_routes_import():
     """Test AI routes can be imported."""
-    from backend.routes.ai_recommendations import router
+    from routes.ai_recommendations import router
     assert router is not None
 
 def test_new_functionality_coverage():

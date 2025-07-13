@@ -15,12 +15,12 @@ class TestConfigCoverage:
     
     def test_config_import(self):
         """Test config module import"""
-        from backend.core.config import settings
+        from core.config import settings
         assert settings is not None
         
     def test_security_import(self):
         """Test security module import"""
-        from backend.core.security import verify_password, get_password_hash
+        from core.security import verify_password, get_password_hash
         assert callable(verify_password)
         assert callable(get_password_hash)
 
@@ -29,21 +29,21 @@ class TestModelsCoverage:
     
     def test_user_model(self):
         """Test User model"""
-        from backend.models.user import User
+        from models.user import User
         user = User()
         assert hasattr(user, 'username')
         assert hasattr(user, 'email')
         
     def test_job_model(self):
         """Test Job model"""
-        from backend.models.job import Job
+        from models.job import Job
         job = Job()
         assert hasattr(job, 'title')
         assert hasattr(job, 'company')
         
     def test_company_model(self):
         """Test Company model"""
-        from backend.models.company import Company
+        from models.company import Company
         company = Company()
         assert hasattr(company, 'name')
 
@@ -52,19 +52,19 @@ class TestSchemasCoverage:
     
     def test_user_schema(self):
         """Test user schemas"""
-        from backend.schemas.user import UserCreate, UserResponse
+        from schemas.user import UserCreate, UserResponse
         assert UserCreate is not None
         assert UserResponse is not None
         
     def test_job_schema(self):
         """Test job schemas"""
-        from backend.schemas.job import JobCreate, JobResponse
+        from schemas.job import JobCreate, JobResponse
         assert JobCreate is not None
         assert JobResponse is not None
         
     def test_company_schema(self):
         """Test company schemas"""
-        from backend.schemas.company import CompanyCreate, CompanyResponse
+        from schemas.company import CompanyCreate, CompanyResponse
         assert CompanyCreate is not None
         assert CompanyResponse is not None
 
@@ -73,13 +73,13 @@ class TestUtilsCoverage:
     
     def test_auth_utils(self):
         """Test auth utilities"""
-        from backend.utils.auth import create_access_token, verify_token
+        from utils.auth import create_access_token, verify_token
         assert callable(create_access_token)
         assert callable(verify_token)
         
     def test_config_utils(self):
         """Test config utilities"""
-        from backend.utils.config import get_settings
+        from utils.config import get_settings
         settings = get_settings()
         assert settings is not None
         
@@ -87,7 +87,7 @@ class TestUtilsCoverage:
     def test_email_utils(self, mock_send):
         """Test email utilities"""
         mock_send.return_value = True
-        from backend.utils.email import send_verification_email
+        from utils.email import send_verification_email
         result = send_verification_email("test@example.com", "token123")
         assert result is True or result is None
 
@@ -98,13 +98,13 @@ class TestServicesCoverage:
     async def test_activity_logger(self, mock_db):
         """Test activity logger service"""
         mock_db.return_value = MagicMock()
-        from backend.services.activity_logger import ActivityLogger
+        from services.activity_logger import ActivityLogger
         logger = ActivityLogger()
         assert logger is not None
         
     def test_scheduler_service_import(self):
         """Test scheduler service import"""
-        from backend.services.scheduler_service import SchedulerService
+        from services.scheduler_service import SchedulerService
         assert SchedulerService is not None
 
 class TestDatabaseCoverage:
@@ -114,13 +114,13 @@ class TestDatabaseCoverage:
     async def test_database_init(self, mock_client):
         """Test database initialization"""
         mock_client.return_value = MagicMock()
-        from backend.database.db import get_database
+        from database.db import get_database
         db = await get_database()
         assert db is not None
         
     def test_database_config(self):
         """Test database configuration"""
-        from backend.database.db import DATABASE_URL
+        from database.db import DATABASE_URL
         assert DATABASE_URL is not None
 
 class TestAPIRoutesCoverage:
@@ -128,17 +128,17 @@ class TestAPIRoutesCoverage:
     
     def test_auth_routes_import(self):
         """Test auth routes import"""
-        from backend.routes.auth import router
+        from routes.auth import router
         assert router is not None
         
     def test_jobs_routes_import(self):
         """Test jobs routes import"""
-        from backend.routes.jobs import router
+        from routes.jobs import router
         assert router is not None
         
     def test_companies_routes_import(self):
         """Test companies routes import"""
-        from backend.routes.companies import router
+        from routes.companies import router
         assert router is not None
 
 class TestMiddlewareCoverage:
@@ -146,7 +146,7 @@ class TestMiddlewareCoverage:
     
     def test_activity_middleware_import(self):
         """Test activity middleware import"""
-        from backend.middleware.activity_middleware import ActivityTrackingMiddleware
+        from middleware.activity_middleware import ActivityTrackingMiddleware
         assert ActivityTrackingMiddleware is not None
 
 class TestCRUDCoverage:
@@ -154,13 +154,13 @@ class TestCRUDCoverage:
     
     def test_job_crud_import(self):
         """Test job CRUD import"""
-        from backend.crud.job import get_job, create_job
+        from crud.job import get_job, create_job
         assert callable(get_job)
         assert callable(create_job)
         
     def test_user_crud_import(self):
         """Test user CRUD import"""
-        from backend.crud.user import get_user, create_user
+        from crud.user import get_user, create_user
         assert callable(get_user)
         assert callable(create_user)
 
@@ -170,7 +170,7 @@ class TestConstantsCoverage:
     def test_constants_exist(self):
         """Test that key constants exist"""
         try:
-            from backend.core.config import settings
+            from core.config import settings
             assert hasattr(settings, 'database_url')
         except:
             pass  # Some settings might not be available in test environment

@@ -46,10 +46,10 @@ class CVParser:
     def _extract_pdf_text(self, file_path: str) -> str:
         """Extract text from PDF file"""
         try:
-            import PyPDF2
+            import pypdf
             
             with open(file_path, 'rb') as file:
-                pdf_reader = PyPDF2.PdfReader(file)
+                pdf_reader = pypdf.PdfReader(file)
                 text = ""
                 for page in pdf_reader.pages:
                     text += page.extract_text() + "\n"

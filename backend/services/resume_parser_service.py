@@ -3,7 +3,7 @@ import json
 import logging
 from typing import Dict, List, Optional, Any
 from datetime import datetime
-import PyPDF2
+import pypdf
 from docx import Document
 from io import BytesIO
 import base64
@@ -79,7 +79,7 @@ class ResumeParserService:
     def _extract_text_from_pdf(self, file_content: bytes) -> str:
         """Extract text from PDF file"""
         try:
-            pdf_reader = PyPDF2.PdfReader(BytesIO(file_content))
+            pdf_reader = pypdf.PdfReader(BytesIO(file_content))
             text = ""
             for page in pdf_reader.pages:
                 text += page.extract_text() + "\n"

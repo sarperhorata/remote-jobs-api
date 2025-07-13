@@ -33,7 +33,6 @@ anyio>=4.4.0  # Compatible with FastAPI & security fix for CVE-2024-71199
 
 # File processing - CRITICAL SECURITY UPDATE
 pypdf>=4.0.0  # Replacing PyPDF2 which has CVE-2023-36464
-PyPDF2>=3.0.1  # For resume parsing
 python-docx>=1.1.0
 
 # Web scraping and automation

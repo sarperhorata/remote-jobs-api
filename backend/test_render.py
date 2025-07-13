@@ -26,6 +26,10 @@ def test_imports():
         import user_agent
         print("✅ User Agent imported")
         
+        # Test pypdf import
+        import pypdf
+        print("✅ PyPDF imported")
+        
         # Test app import
         from main import app
         print("✅ App imported successfully")

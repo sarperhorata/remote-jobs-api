@@ -58,7 +58,8 @@ def create_email_verification_token(email: str) -> str:
     to_encode = {
         "sub": email,
         "type": "email_verification",
-        "exp": expire
+        "exp": expire,
+        "iat": datetime.utcnow().timestamp()  # Add issued at timestamp for uniqueness
     }
     
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -80,7 +81,8 @@ def create_password_reset_token(email: str) -> str:
     to_encode = {
         "sub": email,
         "type": "password_reset",
-        "exp": expire
+        "exp": expire,
+        "iat": datetime.utcnow().timestamp()  # Add issued at timestamp for uniqueness
     }
     
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)

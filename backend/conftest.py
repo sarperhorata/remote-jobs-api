@@ -104,6 +104,25 @@ def client(async_db_override, db_override) -> Generator[TestClient, None, None]:
     # Clean up overrides
     app.dependency_overrides.clear()
 
+@pytest.fixture(scope="function")
+def client_with_realistic_data(mock_database_with_realistic_data) -> Generator[TestClient, None, None]:
+    """Create test client with realistic test data."""
+    
+    async def get_async_db_override():
+        return mock_database_with_realistic_data
+    
+    def get_db_override():
+        return mock_database_with_realistic_data
+    
+    app.dependency_overrides[get_async_db] = get_async_db_override
+    app.dependency_overrides[get_db] = get_db_override
+    
+    with TestClient(app) as test_client:
+        yield test_client
+    
+    # Clean up overrides
+    app.dependency_overrides.clear()
+
 @pytest.fixture
 def sample_job_data():
     """Sample job data for testing."""
@@ -183,6 +202,71 @@ def mock_database(mock_collection):
     db.users = mock_collection
     db.notifications = mock_collection
     db.notification_settings = mock_collection
+    
+    # Create admin collection with command method for health checks
+    admin_collection = AsyncMock()
+    admin_collection.command = AsyncMock(return_value={"ok": 1})
+    db.admin = admin_collection
+    
+    # Add command method to database itself for health checks
+    db.command = AsyncMock(return_value={"ok": 1})
+    
+    return db
+
+@pytest.fixture(scope="session")
+def mock_database_with_realistic_data(realistic_jobs_data, realistic_companies_data, realistic_users_data):
+    """Create a mock database with realistic test data."""
+    
+    db = AsyncMock(spec=AsyncIOMotorDatabase)
+    
+    # Mock jobs collection with realistic data
+    jobs_collection = AsyncMock()
+    async def mock_jobs_find(*args, **kwargs):
+        cursor = AsyncMock()
+        cursor.to_list = AsyncMock(return_value=realistic_jobs_data)
+        cursor.sort = MagicMock(return_value=cursor)
+        cursor.skip = MagicMock(return_value=cursor)
+        cursor.limit = MagicMock(return_value=cursor)
+        return cursor
+    
+    jobs_collection.find = mock_jobs_find
+    jobs_collection.find_one = AsyncMock(side_effect=lambda *args, **kwargs: 
+        next((job for job in realistic_jobs_data if job["_id"] == kwargs.get("_id")), None))
+    jobs_collection.count_documents = AsyncMock(return_value=len(realistic_jobs_data))
+    jobs_collection.aggregate = AsyncMock(return_value=AsyncMock(to_list=AsyncMock(return_value=realistic_jobs_data)))
+    db.jobs = jobs_collection
+    
+    # Mock companies collection with realistic data
+    companies_collection = AsyncMock()
+    async def mock_companies_find(*args, **kwargs):
+        cursor = AsyncMock()
+        cursor.to_list = AsyncMock(return_value=realistic_companies_data)
+        cursor.sort = MagicMock(return_value=cursor)
+        cursor.skip = MagicMock(return_value=cursor)
+        cursor.limit = MagicMock(return_value=cursor)
+        return cursor
+    
+    companies_collection.find = mock_companies_find
+    companies_collection.find_one = AsyncMock(side_effect=lambda *args, **kwargs: 
+        next((company for company in realistic_companies_data if company["_id"] == kwargs.get("_id")), None))
+    companies_collection.count_documents = AsyncMock(return_value=len(realistic_companies_data))
+    db.companies = companies_collection
+    
+    # Mock users collection with realistic data
+    users_collection = AsyncMock()
+    async def mock_users_find(*args, **kwargs):
+        cursor = AsyncMock()
+        cursor.to_list = AsyncMock(return_value=realistic_users_data)
+        cursor.sort = MagicMock(return_value=cursor)
+        cursor.skip = MagicMock(return_value=cursor)
+        cursor.limit = MagicMock(return_value=cursor)
+        return cursor
+    
+    users_collection.find = mock_users_find
+    users_collection.find_one = AsyncMock(side_effect=lambda *args, **kwargs: 
+        next((user for user in realistic_users_data if user["_id"] == kwargs.get("_id") or user["email"] == kwargs.get("email")), None))
+    users_collection.count_documents = AsyncMock(return_value=len(realistic_users_data))
+    db.users = users_collection
     
     # Create admin collection with command method for health checks
     admin_collection = AsyncMock()
@@ -348,6 +432,27 @@ async def async_client(mock_database):
     
     def mock_get_db():
         return mock_database
+    
+    app.dependency_overrides[get_async_db] = mock_get_async_db
+    app.dependency_overrides[get_db] = mock_get_db
+    
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        yield client
+    
+    # Clean up overrides
+    app.dependency_overrides.clear()
+
+@pytest.fixture
+async def async_client_with_realistic_data(mock_database_with_realistic_data):
+    """Create async test client with realistic test data."""
+    from main import app
+    
+    # Set up database dependency overrides
+    async def mock_get_async_db():
+        return mock_database_with_realistic_data
+    
+    def mock_get_db():
+        return mock_database_with_realistic_data
     
     app.dependency_overrides[get_async_db] = mock_get_async_db
     app.dependency_overrides[get_db] = mock_get_db

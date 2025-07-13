@@ -6,6 +6,7 @@ from passlib.context import CryptContext
 from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
 from backend.core.config import get_settings
+from backend.database.db import get_async_db
 
 settings = get_settings()
 

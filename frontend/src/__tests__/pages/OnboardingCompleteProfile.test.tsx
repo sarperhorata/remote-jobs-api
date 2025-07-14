@@ -50,7 +50,7 @@ describe('OnboardingCompleteProfile', () => {
       expect(screen.getByRole('heading', { name: /complete your profile/i })).toBeInTheDocument();
       expect(screen.getByPlaceholderText(/enter your location or use gps/i)).toBeInTheDocument();
       expect(screen.getByPlaceholderText(/search and select job titles/i)).toBeInTheDocument();
-      expect(screen.getByPlaceholderText(/search for skills/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/search and add skills/i)).toBeInTheDocument();
       expect(screen.getByText(/experience level/i)).toBeInTheDocument();
       expect(screen.getByText(/what is your desired salary range/i)).toBeInTheDocument();
     });
@@ -63,8 +63,7 @@ describe('OnboardingCompleteProfile', () => {
     fireEvent.click(completeButton);
     
     await waitFor(() => {
-      const alert = screen.getByRole('alert');
-      expect(alert).toHaveTextContent(/at least one job title is required/i);
+      expect(screen.getByText(/please select at least one job title/i)).toBeInTheDocument();
     });
   });
 

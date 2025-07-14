@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from enum import Enum
@@ -74,8 +74,9 @@ class UserActivity(BaseModel):
     is_success: bool = True
     metadata: Optional[Dict[str, Any]] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True
+    )
 
 class UserSession(BaseModel):
     """User session tracking"""
@@ -106,8 +107,9 @@ class UserSession(BaseModel):
     avg_response_time: Optional[float] = None
     total_session_time: Optional[float] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True
+    )
 
 class ActivitySummary(BaseModel):
     """Daily/weekly activity summary"""
@@ -132,5 +134,6 @@ class ActivitySummary(BaseModel):
     features_used: List[str] = Field(default_factory=list)
     most_used_feature: Optional[str] = None
     
-    class Config:
-        from_attributes = True 
+    model_config = ConfigDict(
+        from_attributes=True
+    ) 

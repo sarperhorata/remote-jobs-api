@@ -1,4 +1,4 @@
-from pydantic import BaseModel, HttpUrl, Field, EmailStr
+from pydantic import BaseModel, HttpUrl, Field, EmailStr, ConfigDict
 from typing import List, Optional, Dict, Any, Union
 from enum import Enum
 from datetime import datetime
@@ -75,8 +75,7 @@ class UserNotificationPreference(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class SelectorBase(BaseModel):
     name: str
@@ -347,8 +346,7 @@ class User(BaseModel):
     subscription_plan: Optional[str] = None
     subscription_end_date: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Enhanced Job Model for MongoDB with Translation Support
 class EnhancedJob(BaseModel):
@@ -382,8 +380,7 @@ class EnhancedJob(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Translation Models
 class TranslationRequest(BaseModel):
@@ -453,8 +450,7 @@ class UserNotification(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     read_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class UserNotificationCreate(BaseModel):
     user_id: str
@@ -500,9 +496,8 @@ class JobApplicationMongo(BaseModel):
     viewed_by_company: bool = False
     company_response_date: Optional[datetime] = None
     company_response: Optional[str] = None
-    
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
     
     def to_dict(self):
         return {

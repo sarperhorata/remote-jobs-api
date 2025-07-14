@@ -54,11 +54,11 @@ describe('Notifications Page', () => {
     mockFetch
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ unread_count: 1 })
+        json: async () => mockNotifications
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => mockNotifications
+        json: async () => ({ unread_count: 1 })
       });
 
     renderWithProviders(<Notifications />);
@@ -230,11 +230,11 @@ describe('Notifications Page', () => {
     mockFetch
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ unread_count: 2 })
+        json: async () => mockNotifications
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => mockNotifications
+        json: async () => ({ unread_count: 2 })
       })
       .mockResolvedValueOnce({
         ok: true,

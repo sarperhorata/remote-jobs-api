@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, Dict, List
 from datetime import datetime
 from bson import ObjectId
@@ -54,10 +54,6 @@ class JobMultiLang(BaseModel):
         description="Languages that were auto-translated"
     )
     
-    class Config:
-        populate_by_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
     
     def get_localized_job(self, lang: str = "en") -> dict:
         """Get job data localized to specific language"""

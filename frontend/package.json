@@ -25,6 +25,7 @@
     "lucide-react": "^0.525.0",
     "react": "^18.2.0",
     "react-dom": "^18.3.1",
+    "react-error-boundary": "^6.0.0",
     "react-hot-toast": "^2.5.2",
     "react-icons": "^5.0.1",
     "react-query": "^3.39.3",
@@ -41,6 +42,8 @@
     "dev": "react-scripts start",
     "start:test": "PORT=3002 react-scripts start",
     "build": "react-scripts build",
+    "build:analyze": "npm run build && npx serve -s build",
+    "bundle-analyzer": "npx webpack-bundle-analyzer build/static/js/*.js",
     "test": "react-scripts test",
     "test:quick": "react-scripts test --watchAll=false",
     "test:lint": "react-scripts test --testPathPattern=lint-validation --watchAll=false",
@@ -90,7 +93,8 @@
     "@svgr/webpack": "^8.1.0",
     "@svgr/plugin-svgo": "^8.1.0",
     "resolve-url-loader": "^5.0.0",
-    "braces": "^3.0.3"
+    "braces": "^3.0.3",
+    "webpack-dev-server": "^5.2.1"
   },
   "resolutions": {
     "@mui/material": "^5.15.10",
@@ -109,7 +113,8 @@
     "@svgr/webpack": "^8.1.0",
     "@svgr/plugin-svgo": "^8.1.0",
     "resolve-url-loader": "^5.0.0",
-    "braces": "^3.0.3"
+    "braces": "^3.0.3",
+    "webpack-dev-server": "^5.2.1"
   },
   "devDependencies": {
     "@testing-library/user-event": "^14.5.2",

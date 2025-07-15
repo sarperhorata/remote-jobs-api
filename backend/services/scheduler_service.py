@@ -85,6 +85,24 @@ class SchedulerService:
                 replace_existing=True
             )
             
+            # LinkedIn job crawler - daily at 11 AM UTC
+            self.scheduler.add_job(
+                self._linkedin_job_crawler_job,
+                CronTrigger(hour=11, minute=0),
+                id="linkedin_job_crawler",
+                name="LinkedIn Job Crawler",
+                replace_existing=True
+            )
+            
+            # LinkedIn job crawler - daily at 11 AM UTC
+            self.scheduler.add_job(
+                self._linkedin_job_crawler_job,
+                CronTrigger(hour=11, minute=0),
+                id="linkedin_job_crawler",
+                name="LinkedIn Job Crawler",
+                replace_existing=True
+            )
+            
             # Buzz2Remote-Companies distill crawler - daily at 10 AM UTC
             self.scheduler.add_job(
                 self._distill_crawler_job,
@@ -242,6 +260,110 @@ class SchedulerService:
 {chr(10).join(results_text)}
 
 🕐 <b>Completed at:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC""")
+                
+            except ImportError as ie:
+                logger.warning(f"External API modules not available: {ie}")
+                await self._log_job_run("external_api_crawler", "skipped", f"External API modules not available: {ie}")
+            except Exception as inner_e:
+                logger.error(f"External API crawler inner error: {inner_e}")
+                await self._log_job_run("external_api_crawler", "failed", str(inner_e))
+                raise inner_e
+                
+        except Exception as e:
+            logger.error(f"External API crawler job failed: {e}")
+            await self._log_job_run("external_api_crawler", "failed", str(e))
+            
+            # Send failure notification
+            try:
+                notifier._send_message(f"""❌ <b>SCHEDULED CRAWLER FAILED</b>
+
+⚠️ <b>Error:</b> {str(e)}
+🕐 <b>Failed at:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC""")
+            except:
+                pass
+    
+    async def _linkedin_job_crawler_job(self):
+        """LinkedIn job crawler job"""
+        try:
+            logger.info("🔗 Starting LinkedIn job crawler job")
+            await self._log_job_run("linkedin_job_crawler", "started", "LinkedIn job crawler started")
+            
+            # Import here to avoid circular imports
+            try:
+                from services.linkedin_job_service import LinkedInJobService
+                from service_notifications import ServiceNotifier
+                
+                linkedin_service = LinkedInJobService()
+                notifier = ServiceNotifier()
+                
+                # Send start notification
+                notifier._send_message(f"""🔗 <b>LINKEDIN JOB CRAWLER STARTED</b>
+
+📅 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
+🔄 <b>Starting LinkedIn job crawling...</b>
+🎯 <b>Target:</b> Remote jobs from LinkedIn""")
+                
+                # Run LinkedIn crawler with different keywords
+                keywords_list = ["remote", "remote developer", "remote software engineer", "remote frontend", "remote backend"]
+                total_new_jobs = 0
+                total_duplicates = 0
+                
+                for keywords in keywords_list:
+                    try:
+                        result = await linkedin_service.crawl_linkedin_jobs(
+                            keywords=keywords,
+                            location="",
+                            limit=50  # Limit per keyword to avoid rate limiting
+                        )
+                        
+                        if result.get("new_jobs"):
+                            total_new_jobs += result["new_jobs"]
+                        if result.get("duplicates"):
+                            total_duplicates += result["duplicates"]
+                        
+                        # Rate limiting between keywords
+                        await asyncio.sleep(30)
+                        
+                    except Exception as e:
+                        logger.error(f"Error crawling LinkedIn jobs for keywords '{keywords}': {str(e)}")
+                        continue
+                
+                # Log success
+                await self._log_job_run("linkedin_job_crawler", "success", f"Crawled LinkedIn jobs: {total_new_jobs} new, {total_duplicates} duplicates", {
+                    "new_jobs": total_new_jobs,
+                    "duplicates": total_duplicates,
+                    "keywords_processed": len(keywords_list)
+                })
+                
+                # Send success notification
+                notifier._send_message(f"""✅ <b>LINKEDIN JOB CRAWLER COMPLETED</b>
+
+🎉 <b>Crawl successful!</b>
+📊 <b>New jobs:</b> {total_new_jobs}
+🔄 <b>Duplicates:</b> {total_duplicates}
+🔍 <b>Keywords processed:</b> {len(keywords_list)}
+
+🕐 <b>Completed at:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC""")
+                
+            except ImportError as e:
+                logger.error(f"Failed to import LinkedIn job crawler modules: {str(e)}")
+                await self._log_job_run("linkedin_job_crawler", "error", f"Import error: {str(e)}")
+                raise e
+                
+        except Exception as e:
+            logger.error(f"❌ LinkedIn job crawler job failed: {str(e)}")
+            await self._log_job_run("linkedin_job_crawler", "error", f"Job failed: {str(e)}")
+            
+            # Send error notification
+            try:
+                from service_notifications import ServiceNotifier
+                notifier = ServiceNotifier()
+                notifier._send_message(f"""❌ <b>LINKEDIN JOB CRAWLER FAILED</b>
+
+🚨 <b>Error:</b> {str(e)}
+🕐 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC""")
+            except Exception as notify_error:
+                logger.error(f"Failed to send LinkedIn crawler error notification: {str(notify_error)}")
                 
                 logger.info(f"✅ External API crawler completed successfully. Total jobs: {total_jobs}")
                 
@@ -404,6 +526,89 @@ class SchedulerService:
             if "ImportError" in str(type(e)) or "Failed to load companies data" in str(e):
                 raise e
             # For other errors, just log them but don't crash the scheduler
+    
+    async def _linkedin_job_crawler_job(self):
+        """LinkedIn job crawler job"""
+        try:
+            logger.info("🔗 Starting LinkedIn job crawler job")
+            await self._log_job_run("linkedin_job_crawler", "started", "LinkedIn job crawler started")
+            
+            # Import here to avoid circular imports
+            try:
+                from services.linkedin_job_service import LinkedInJobService
+                from service_notifications import ServiceNotifier
+                
+                linkedin_service = LinkedInJobService()
+                notifier = ServiceNotifier()
+                
+                # Send start notification
+                notifier._send_message(f"""🔗 <b>LINKEDIN JOB CRAWLER STARTED</b>
+
+📅 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
+🔄 <b>Starting LinkedIn job crawling...</b>
+🎯 <b>Target:</b> Remote jobs from LinkedIn""")
+                
+                # Run LinkedIn crawler with different keywords
+                keywords_list = ["remote", "remote developer", "remote software engineer", "remote frontend", "remote backend"]
+                total_new_jobs = 0
+                total_duplicates = 0
+                
+                for keywords in keywords_list:
+                    try:
+                        result = await linkedin_service.crawl_linkedin_jobs(
+                            keywords=keywords,
+                            location="",
+                            limit=50  # Limit per keyword to avoid rate limiting
+                        )
+                        
+                        if result.get("new_jobs"):
+                            total_new_jobs += result["new_jobs"]
+                        if result.get("duplicates"):
+                            total_duplicates += result["duplicates"]
+                        
+                        # Rate limiting between keywords
+                        await asyncio.sleep(30)
+                        
+                    except Exception as e:
+                        logger.error(f"Error crawling LinkedIn jobs for keywords '{keywords}': {str(e)}")
+                        continue
+                
+                # Log success
+                await self._log_job_run("linkedin_job_crawler", "success", f"Crawled LinkedIn jobs: {total_new_jobs} new, {total_duplicates} duplicates", {
+                    "new_jobs": total_new_jobs,
+                    "duplicates": total_duplicates,
+                    "keywords_processed": len(keywords_list)
+                })
+                
+                # Send success notification
+                notifier._send_message(f"""✅ <b>LINKEDIN JOB CRAWLER COMPLETED</b>
+
+🎉 <b>Crawl successful!</b>
+📊 <b>New jobs:</b> {total_new_jobs}
+🔄 <b>Duplicates:</b> {total_duplicates}
+🔍 <b>Keywords processed:</b> {len(keywords_list)}
+
+🕐 <b>Completed at:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC""")
+                
+            except ImportError as e:
+                logger.error(f"Failed to import LinkedIn job crawler modules: {str(e)}")
+                await self._log_job_run("linkedin_job_crawler", "error", f"Import error: {str(e)}")
+                raise e
+                
+        except Exception as e:
+            logger.error(f"❌ LinkedIn job crawler job failed: {str(e)}")
+            await self._log_job_run("linkedin_job_crawler", "error", f"Job failed: {str(e)}")
+            
+            # Send error notification
+            try:
+                from service_notifications import ServiceNotifier
+                notifier = ServiceNotifier()
+                notifier._send_message(f"""❌ <b>LINKEDIN JOB CRAWLER FAILED</b>
+
+🚨 <b>Error:</b> {str(e)}
+🕐 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC""")
+            except:
+                pass
     
     async def _database_cleanup_job(self):
         """Database cleanup job"""

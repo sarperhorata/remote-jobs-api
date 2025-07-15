@@ -1,7 +1,44 @@
 import os
+import re
 from google.ads.googleads.client import GoogleAdsClient
 from google.ads.googleads.errors import GoogleAdsException
 from typing import Dict, List, Any, Optional
+
+def clean_company_name(company_name: str) -> str:
+    """
+    Cleans company names by removing unnecessary text patterns
+    Examples:
+    - "Careers | Jobs | How can you join the team? | Chili Piper" -> "Chili Piper"
+    - "Jobs at Company Name" -> "Company Name"
+    """
+    if not company_name:
+        return company_name
+    
+    # Remove common patterns
+    patterns_to_remove = [
+        r'Careers\s*\|\s*Jobs\s*\|\s*.*?\|\s*',  # "Careers | Jobs | ... |"
+        r'Jobs\s*\|\s*Careers\s*\|\s*.*?\|\s*',  # "Jobs | Careers | ... |" 
+        r'How can you join the team\?\s*\|\s*',   # "How can you join the team? |"
+        r'Jobs at\s+',                           # "Jobs at "
+        r'Careers at\s+',                        # "Careers at "
+        r'Working at\s+',                        # "Working at "
+        r'\s*\|\s*Careers$',                     # "| Careers" at end
+        r'\s*\|\s*Jobs$',                        # "| Jobs" at end
+        r'^\s*Jobs\s*\|\s*',                     # "Jobs |" at start
+        r'^\s*Careers\s*\|\s*',                  # "Careers |" at start
+    ]
+    
+    cleaned = company_name
+    for pattern in patterns_to_remove:
+        cleaned = re.sub(pattern, '', cleaned, flags=re.IGNORECASE)
+    
+    # Clean up extra whitespace and pipes
+    cleaned = re.sub(r'\s*\|\s*$', '', cleaned)  # Remove trailing pipe
+    cleaned = re.sub(r'^\s*\|\s*', '', cleaned)  # Remove leading pipe
+    cleaned = re.sub(r'\s+', ' ', cleaned)       # Multiple spaces to single
+    cleaned = cleaned.strip()
+    
+    return cleaned if cleaned else company_name
 
 def setup_google_ads_client() -> Optional[GoogleAdsClient]:
     """
@@ -201,3 +238,39 @@ def get_campaign_performance(client: GoogleAdsClient, customer_id: str, campaign
     except GoogleAdsException as e:
         print(f"Google Ads API hatası: {e}")
         return {} 
+
+def clean_company_name(company_name: str) -> str:
+    """
+    Cleans company names by removing unnecessary text patterns
+    Examples:
+    - "Careers | Jobs | How can you join the team? | Chili Piper" -> "Chili Piper"
+    - "Jobs at Company Name" -> "Company Name"
+    """
+    if not company_name:
+        return company_name
+    
+    # Remove common patterns
+    patterns_to_remove = [
+        r'Careers\s*\|\s*Jobs\s*\|\s*.*?\|\s*',  # "Careers | Jobs | ... |"
+        r'Jobs\s*\|\s*Careers\s*\|\s*.*?\|\s*',  # "Jobs | Careers | ... |" 
+        r'How can you join the team\?\s*\|\s*',   # "How can you join the team? |"
+        r'Jobs at\s+',                           # "Jobs at "
+        r'Careers at\s+',                        # "Careers at "
+        r'Working at\s+',                        # "Working at "
+        r'\s*\|\s*Careers$',                     # "| Careers" at end
+        r'\s*\|\s*Jobs$',                        # "| Jobs" at end
+        r'^\s*Jobs\s*\|\s*',                     # "Jobs |" at start
+        r'^\s*Careers\s*\|\s*',                  # "Careers |" at start
+    ]
+    
+    cleaned = company_name
+    for pattern in patterns_to_remove:
+        cleaned = re.sub(pattern, '', cleaned, flags=re.IGNORECASE)
+    
+    # Clean up extra whitespace and pipes
+    cleaned = re.sub(r'\s*\|\s*$', '', cleaned)  # Remove trailing pipe
+    cleaned = re.sub(r'^\s*\|\s*', '', cleaned)  # Remove leading pipe
+    cleaned = re.sub(r'\s+', ' ', cleaned)       # Multiple spaces to single
+    cleaned = cleaned.strip()
+    
+    return cleaned if cleaned else company_name 

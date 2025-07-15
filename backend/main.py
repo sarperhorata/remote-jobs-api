@@ -14,33 +14,39 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, File
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 
-# Sentry configuration for error monitoring
-import sentry_sdk
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-from sentry_sdk.integrations.logging import LoggingIntegration
+# Sentry configuration for error monitoring (optional) - DISABLED
+# try:
+#     import sentry_sdk
+#     from sentry_sdk.integrations.fastapi import FastApiIntegration  
+#     from sentry_sdk.integrations.logging import LoggingIntegration
 
-# Initialize Sentry for error monitoring
-sentry_sdk.init(
-    dsn=os.getenv("SENTRY_DSN", "https://e307d92640eb7e8b60a7ebabf76db882@o4509547047616512.ingest.us.sentry.io/4509547146575872"),
-    traces_sample_rate=0.2,  # 20% of transactions for performance monitoring
-    profiles_sample_rate=0.2, # 20% of profiles for performance monitoring
-    environment=os.getenv("ENVIRONMENT", "development"), # 'development' or 'production'
-    release="buzz2remote@1.0.0", # App version
-    integrations=[
-        FastApiIntegration(transaction_style="endpoint"),
-        LoggingIntegration(
-            level=logging.INFO,        # Capture info and above as breadcrumbs
-            event_level=logging.ERROR  # Send errors as events
-        ),
-    ],
-    # Do not send 404 errors to Sentry
-    before_send=lambda event, hint: None if "Not Found" in event.get('logentry', {}).get('message', '') else event,
-)
+#     # Initialize Sentry for error monitoring
+#     sentry_sdk.init(
+#         dsn=os.getenv("SENTRY_DSN", "https://e307d92640eb7e8b60a7ebabf76db882@o4509547047616512.ingest.us.sentry.io/4509547146575872"),
+#         traces_sample_rate=0.2,  # 20% of transactions for performance monitoring
+#         profiles_sample_rate=0.2, # 20% of profiles for performance monitoring
+#         environment=os.getenv("ENVIRONMENT", "development"), # 'development' or 'production'
+#         release="buzz2remote@1.0.0", # App version
+#         integrations=[
+#             FastApiIntegration(transaction_style="endpoint"),
+#             LoggingIntegration(
+#                 level=logging.INFO,        # Capture info and above as breadcrumbs
+#                 event_level=logging.ERROR  # Send errors as events
+#             ),
+#         ],
+#         # Do not send 404 errors to Sentry
+#         before_send=lambda event, hint: None if "Not Found" in event.get('logentry', {}).get('message', '') else event,
+#     )
+#     SENTRY_AVAILABLE = True
+# except ImportError:
+#     SENTRY_AVAILABLE = False
+#     logger.warning("Sentry SDK not available. Error monitoring disabled.")
 
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from backend.routes import auth, profile, jobs, ads, notification_routes, companies, payment, onboarding, applications, translation
+from backend.routes.linkedin_jobs import router as linkedin_jobs_router
 from backend.routes.auto_apply import router as auto_apply_router
 from backend.routes.ai_recommendations import router as ai_router
 from backend.routes.ai_services import router as ai_services_router
@@ -118,7 +124,7 @@ allowed_origins = [
     "http://localhost:3002",
     "https://buzz2remote.com",
     "https://www.buzz2remote.com",
-    "https://buzz2remote-api.onrender.com"
+    "https://remote-jobs-api-k9v1.onrender.com"
 ]
 
 if os.getenv("ENVIRONMENT") == "development":
@@ -166,6 +172,7 @@ routers_to_include = [
     (fake_job_router, "/api/v1", ["fake-job-detection"]),
     (sentry_webhook_router, "/api/v1", ["webhooks"]),
     (email_test_router, "/email-test", ["email-test"]),
+    (linkedin_jobs_router, "/api/v1", ["linkedin-jobs"]),
 ]
 
 for router, prefix, tags in routers_to_include:
@@ -904,6 +911,11 @@ async def stripe_webhook(request: Request):
         raise HTTPException(status_code=400, detail="Invalid payload")
     except stripe.error.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid signature")
+    
+    # Handle Stripe events...
+    logger.info(f"Received Stripe event: {event['type']}")
+    
+    return {"status": "success"}
     
     # Handle Stripe events...
     logger.info(f"Received Stripe event: {event['type']}")

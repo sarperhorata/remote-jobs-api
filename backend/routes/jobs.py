@@ -12,6 +12,8 @@ from backend.crud import job as job_crud
 from backend.models.models import JobApplication
 from backend.services.job_scraping_service import JobScrapingService
 from backend.services.auto_application_service import AutoApplicationService
+from backend.services.job_deduplication_service import deduplication_service
+from backend.utils.ads import clean_company_name
 import re
 import json
 from collections import defaultdict, Counter
@@ -26,12 +28,70 @@ logger = logging.getLogger(__name__)
 async def create_job(
     job: JobCreate, db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
-    """Create a new job."""
-    # Use model_dump(mode='json') to properly serialize Pydantic models including URLs
+    """Create a new job with deduplication check."""
+    # Use deduplication service
     job_dict = job.model_dump(mode='json')
-    result = await db.jobs.insert_one(job_dict)
-    created_job = await db.jobs.find_one({"_id": result.inserted_id})
-    return created_job
+    job_id, dedup_result = await deduplication_service.save_job_with_deduplication(job_dict)
+    
+    # Get the created/updated job
+    created_job = await db.jobs.find_one({"_id": ObjectId(job_id)})
+    
+    # Add deduplication info to response
+    response_data = dict(created_job)
+    response_data["deduplication_info"] = {
+        "is_duplicate": dedup_result.is_duplicate,
+        "duplicate_reason": dedup_result.duplicate_reason,
+        "confidence_level": dedup_result.confidence_level,
+        "similarity_score": dedup_result.similarity_score
+    }
+    
+    return response_data
+
+@router.post("/batch", status_code=status.HTTP_201_CREATED)
+async def create_jobs_batch(
+    jobs: List[JobCreate], db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """Create multiple jobs with deduplication check."""
+    results = await job_crud.create_job_batch(db, jobs)
+    return results
+
+@router.post("/admin/deduplication/scan", status_code=status.HTTP_200_OK)
+async def scan_for_duplicates(
+    current_user: dict = Depends(get_current_admin)
+):
+    """Scan database for duplicates and generate report."""
+    try:
+        report = await deduplication_service.get_duplicate_report()
+        return report
+    except Exception as e:
+        logger.error(f"Error scanning for duplicates: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to scan for duplicates: {str(e)}"
+        )
+
+@router.post("/admin/deduplication/cleanup", status_code=status.HTTP_200_OK)
+async def cleanup_duplicates(
+    current_user: dict = Depends(get_current_admin)
+):
+    """Find and remove duplicate jobs from database."""
+    try:
+        stats = await deduplication_service.find_and_remove_duplicates()
+        return {
+            "message": "Duplicate cleanup completed",
+            "stats": {
+                "total_checked": stats.total_checked,
+                "duplicates_found": stats.duplicates_found,
+                "removed_duplicates": stats.removed_duplicates,
+                "processing_time": stats.processing_time
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error cleaning up duplicates: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to cleanup duplicates: {str(e)}"
+        )
 
 @router.get("/", response_model=JobListResponse)
 async def read_jobs(
@@ -229,6 +289,25 @@ async def search_jobs(
                 {"date_posted": {"$gte": cutoff_date.isoformat()}}
             ]
         
+        # Always filter out jobs older than 2 months (60 days)
+        now = datetime.utcnow()
+        two_months_ago = now - timedelta(days=60)
+        
+        # Add date filters to ensure no jobs older than 2 months are returned
+        date_filters = [
+            {"created_at": {"$gte": two_months_ago}},
+            {"posted_date": {"$gte": two_months_ago.isoformat()}},
+            {"date_posted": {"$gte": two_months_ago.isoformat()}},
+            # Also check for jobs without any date field (recent imports)
+            {"$and": [
+                {"created_at": {"$exists": False}},
+                {"posted_date": {"$exists": False}},
+                {"date_posted": {"$exists": False}}
+            ]}
+        ]
+        
+        query["$or"] = date_filters
+        
         # Debug: Log the final query
         logger.info(f"Search query: {query}")
         
@@ -265,6 +344,10 @@ async def search_jobs(
             job.setdefault("job_type", "Full-time")
             job.setdefault("isRemote", True)
             job.setdefault("posted_date", datetime.utcnow().isoformat())
+            
+            # Clean company name to remove unnecessary text
+            if job.get("company"):
+                job["company"] = clean_company_name(job["company"])
         
         # If no real jobs found, provide sample data for development
         if not jobs and q:
@@ -498,9 +581,34 @@ async def search_job_titles(
                 {"required_skills": {"$regex": safe_q, "$options": "i"}}
             ])
         
+        # Always filter out jobs older than 2 months (60 days)
+        now = datetime.utcnow()
+        two_months_ago = now - timedelta(days=60)
+        
+        # Add date filters to ensure no jobs older than 2 months are used for autocomplete
+        date_filters = [
+            {"created_at": {"$gte": two_months_ago}},
+            {"posted_date": {"$gte": two_months_ago.isoformat()}},
+            {"date_posted": {"$gte": two_months_ago.isoformat()}},
+            # Also check for jobs without any date field (recent imports)
+            {"$and": [
+                {"created_at": {"$exists": False}},
+                {"posted_date": {"$exists": False}},
+                {"date_posted": {"$exists": False}}
+            ]}
+        ]
+        
+        # Combine search patterns with date filters
+        final_query = {
+            "$and": [
+                {"$or": search_patterns},
+                {"$or": date_filters}
+            ]
+        }
+        
         # Aggregation pipeline with multiple stages
         pipeline = [
-            {"$match": {"$or": search_patterns}},
+            {"$match": final_query},
             {"$group": {
                 "_id": "$title", 
                 "count": {"$sum": 1},
@@ -816,6 +924,25 @@ async def get_jobs(
     if location:
         query["location"] = location
     
+    # Always filter out jobs older than 2 months (60 days)
+    now = datetime.utcnow()
+    two_months_ago = now - timedelta(days=60)
+    
+    # Add date filters to ensure no jobs older than 2 months are returned
+    date_filters = [
+        {"created_at": {"$gte": two_months_ago}},
+        {"posted_date": {"$gte": two_months_ago.isoformat()}},
+        {"date_posted": {"$gte": two_months_ago.isoformat()}},
+        # Also check for jobs without any date field (recent imports)
+        {"$and": [
+            {"created_at": {"$exists": False}},
+            {"posted_date": {"$exists": False}},
+            {"date_posted": {"$exists": False}}
+        ]}
+    ]
+    
+    query["$or"] = date_filters
+    
     # Build sort criteria
     sort_criteria = []
     if sort_by:
@@ -834,6 +961,10 @@ async def get_jobs(
         for job in jobs:
             if "_id" in job and isinstance(job["_id"], ObjectId):
                 job["_id"] = str(job["_id"])
+                
+            # Clean company name to remove unnecessary text
+            if job.get("company"):
+                job["company"] = clean_company_name(job["company"])
         
         # If no jobs found, return sample data for development
         if not jobs or total == 0:

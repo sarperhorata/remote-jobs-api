@@ -3,7 +3,10 @@ import logging
 import time
 import secrets
 import hashlib
-from typing import Dict, Tuple, Set, List, Optional
+from typing import Dict, Tuple, Set, List, Optional, Any
+from datetime import datetime, timedelta
+import jwt
+import bleach
 import os
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -46,16 +49,22 @@ class SecurityUtils:
     @staticmethod
     def sanitize_input(input_str: str) -> str:
         """
-        Kullanıcı girdilerini temizler ve XSS saldırılarına karşı korur.
+        Sanitize user input to prevent XSS and other injection attacks
+        Using bleach library for proper HTML sanitization
         """
         if not input_str:
             return ""
             
-        # Replace potentially dangerous characters
-        sanitized = input_str
-        sanitized = re.sub(r'<script.*?>.*?</script>', '', sanitized, flags=re.DOTALL)
-        sanitized = re.sub(r'<.*?javascript:.*?>', '', sanitized)
-        sanitized = re.sub(r'<.*?\s+on\w+\s*=.*?>', '', sanitized)
+        # Use bleach for proper HTML sanitization
+        allowed_tags = ['p', 'br', 'strong', 'em', 'u', 'ol', 'ul', 'li']
+        allowed_attributes = {}
+        
+        sanitized = bleach.clean(
+            input_str, 
+            tags=allowed_tags,
+            attributes=allowed_attributes,
+            strip=True
+        )
         
         return sanitized
     

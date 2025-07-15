@@ -6,6 +6,7 @@ from typing import Dict, List, Any, Optional
 from urllib.parse import urljoin, urlparse
 import logging
 from dataclasses import dataclass
+import ipaddress
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +47,56 @@ class JobScrapingService:
         if self.session:
             await self.session.close()
 
+    def _validate_url(self, url: str) -> bool:
+        """
+        Validate URL to prevent SSRF attacks
+        """
+        try:
+            parsed = urlparse(url)
+            
+            # Only allow http/https
+            if parsed.scheme not in ['http', 'https']:
+                return False
+            
+            # Block private/internal networks
+            if parsed.hostname:
+                try:
+                    ip = ipaddress.ip_address(parsed.hostname)
+                    if ip.is_private or ip.is_loopback or ip.is_reserved:
+                        return False
+                except ValueError:
+                    # It's a domain name, check if it's internal
+                    hostname = parsed.hostname.lower()
+                    blocked_domains = [
+                        'localhost', '127.0.0.1', '0.0.0.0',
+                        'metadata.google.internal',
+                        'instance-data',
+                        '10.', '172.', '192.168.',
+                        '.local', '.internal'
+                    ]
+                    if any(blocked in hostname for blocked in blocked_domains):
+                        return False
+            
+            # Block certain ports
+            if parsed.port and parsed.port in [22, 3389, 5432, 27017, 6379]:
+                return False
+                
+            return True
+        except Exception:
+            return False
+
     async def scrape_application_form(self, url: str) -> Dict[str, Any]:
         """
         Scrape job application form fields from the given URL
         """
         try:
+            # Validate URL to prevent SSRF
+            if not self._validate_url(url):
+                return {
+                    "success": False,
+                    "error": "Invalid or blocked URL"
+                }
+
             if not self.session:
                 self.session = aiohttp.ClientSession(
                     headers=self.headers,

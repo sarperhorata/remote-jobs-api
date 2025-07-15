@@ -10,6 +10,7 @@ import json
 from urllib.parse import urljoin, urlparse
 from dataclasses import dataclass
 import time
+from backend.services.job_deduplication_service import deduplication_service
 
 logger = logging.getLogger(__name__)
 
@@ -30,358 +31,117 @@ class JobListing:
     external_id: str
 
 class JobCrawler:
+    """Job crawler with deduplication support"""
+    
     def __init__(self):
         self.session = None
-        self.crawl_config = self._load_crawl_config()
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
-        
-    def _load_crawl_config(self) -> Dict:
-        """
-        Load crawling configuration for different company websites
-        """
-        return {
-            "companies": {
-                "remote_ok": {
-                    "base_url": "https://remoteok.io/api",
-                    "type": "api",
-                    "rate_limit": 1,  # requests per second
-                    "selectors": {}
-                },
-                "we_work_remotely": {
-                    "base_url": "https://weworkremotely.com",
-                    "type": "scrape",
-                    "rate_limit": 0.5,
-                    "job_list_path": "/remote-jobs",
-                    "selectors": {
-                        "job_item": "section.jobs li",
-                        "title": ".title",
-                        "company": ".company",
-                        "location": ".region",
-                        "job_link": "a"
-                    }
-                },
-                "remote_co": {
-                    "base_url": "https://remote.co",
-                    "type": "scrape",
-                    "rate_limit": 0.5,
-                    "job_list_path": "/remote-jobs",
-                    "selectors": {
-                        "job_item": ".job_board_list .card",
-                        "title": ".card-title",
-                        "company": ".card-text .company",
-                        "location": ".card-text .location",
-                        "job_link": "a"
-                    }
-                },
-                "angel_co": {
-                    "base_url": "https://angel.co",
-                    "type": "api",
-                    "rate_limit": 0.5,
-                    "api_endpoint": "/api/jobs",
-                    "selectors": {}
-                },
-                "stackoverflow_jobs": {
-                    "base_url": "https://stackoverflow.com",
-                    "type": "scrape",
-                    "rate_limit": 0.5,
-                    "job_list_path": "/jobs/remote-developer-jobs",
-                    "selectors": {
-                        "job_item": ".js-job-link",
-                        "title": ".fc-black-900",
-                        "company": ".fc-black-700",
-                        "location": ".fc-black-500",
-                        "job_link": "a"
-                    }
-                }
-            }
-        }
     
-    async def crawl_all_companies(self) -> List[JobListing]:
-        """
-        Crawl all configured companies for job listings
-        """
-        all_jobs = []
-        
-        async with aiohttp.ClientSession(headers=self.headers) as session:
-            self.session = session
-            
-            for company_name, config in self.crawl_config["companies"].items():
-                try:
-                    logger.info(f"Crawling {company_name}...")
-                    
-                    if config["type"] == "api":
-                        jobs = await self._crawl_api_jobs(company_name, config)
-                    else:
-                        jobs = await self._crawl_website_jobs(company_name, config)
-                    
-                    all_jobs.extend(jobs)
-                    logger.info(f"Found {len(jobs)} jobs from {company_name}")
-                    
-                    # Rate limiting
-                    await asyncio.sleep(1 / config["rate_limit"])
-                    
-                except Exception as e:
-                    logger.error(f"Error crawling {company_name}: {str(e)}")
-                    continue
-        
-        return all_jobs
+    async def __aenter__(self):
+        self.session = aiohttp.ClientSession(headers=self.headers)
+        return self
     
-    async def _crawl_api_jobs(self, company_name: str, config: Dict) -> List[JobListing]:
-        """
-        Crawl jobs from API endpoints
-        """
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self.session:
+            await self.session.close()
+    
+    async def crawl_jobs(self, urls: List[str]) -> List[Dict[str, Any]]:
+        """Crawl jobs from multiple URLs with deduplication"""
         jobs = []
         
-        try:
-            if company_name == "remote_ok":
-                jobs = await self._crawl_remote_ok_api(config)
-            elif company_name == "angel_co":
-                jobs = await self._crawl_angel_co_api(config)
-            
-        except Exception as e:
-            logger.error(f"Error crawling API for {company_name}: {str(e)}")
+        for url in urls:
+            try:
+                page_jobs = await self.crawl_single_page(url)
+                jobs.extend(page_jobs)
+                await asyncio.sleep(1)  # Rate limiting
+            except Exception as e:
+                logger.error(f"Error crawling {url}: {str(e)}")
+                continue
         
         return jobs
     
-    async def _crawl_remote_ok_api(self, config: Dict) -> List[JobListing]:
-        """
-        Crawl RemoteOK API
-        """
-        jobs = []
+    async def crawl_single_page(self, url: str) -> List[Dict[str, Any]]:
+        """Crawl jobs from a single page"""
+        if not self.session:
+            self.session = aiohttp.ClientSession(headers=self.headers)
         
         try:
-            async with self.session.get(f"{config['base_url']}") as response:
-                if response.status == 200:
-                    data = await response.json()
-                    
-                    for job_data in data[1:]:  # Skip first item (metadata)
-                        try:
-                            job = JobListing(
-                                title=job_data.get("position", ""),
-                                company=job_data.get("company", ""),
-                                location=job_data.get("location", "Remote"),
-                                job_type="Full-time",
-                                salary=self._extract_salary(job_data.get("description", "")),
-                                description=job_data.get("description", ""),
-                                requirements=self._extract_requirements(job_data.get("description", "")),
-                                posted_date=datetime.fromtimestamp(job_data.get("date", 0)) if job_data.get("date") else None,
-                                apply_url=job_data.get("url", ""),
-                                remote_type="remote",
-                                skills=job_data.get("tags", []),
-                                source_url="https://remoteok.io",
-                                external_id=str(job_data.get("id", ""))
-                            )
-                            jobs.append(job)
-                        except Exception as e:
-                            logger.error(f"Error parsing RemoteOK job: {str(e)}")
-                            continue
-                            
-        except Exception as e:
-            logger.error(f"Error fetching RemoteOK API: {str(e)}")
-        
-        return jobs
-    
-    async def _crawl_website_jobs(self, company_name: str, config: Dict) -> List[JobListing]:
-        """
-        Crawl jobs from website HTML
-        """
-        jobs = []
-        
-        try:
-            url = f"{config['base_url']}{config['job_list_path']}"
-            
             async with self.session.get(url) as response:
-                if response.status == 200:
-                    html = await response.text()
-                    soup = BeautifulSoup(html, 'html.parser')
-                    
-                    job_elements = soup.select(config["selectors"]["job_item"])
-                    
-                    for job_element in job_elements:
-                        try:
-                            job = await self._parse_job_element(job_element, config, company_name)
-                            if job:
-                                jobs.append(job)
-                        except Exception as e:
-                            logger.error(f"Error parsing job element from {company_name}: {str(e)}")
-                            continue
-                            
+                if response.status != 200:
+                    logger.warning(f"Failed to fetch {url}: {response.status}")
+                    return []
+                
+                html = await response.text()
+                return self.parse_jobs(html, url)
+                
         except Exception as e:
-            logger.error(f"Error crawling website {company_name}: {str(e)}")
+            logger.error(f"Error fetching {url}: {str(e)}")
+            return []
+    
+    def parse_jobs(self, html: str, source_url: str) -> List[Dict[str, Any]]:
+        """Parse jobs from HTML content"""
+        soup = BeautifulSoup(html, 'html.parser')
+        jobs = []
+        
+        # Generic job parsing logic
+        job_elements = soup.find_all(['div', 'article', 'li'], class_=re.compile(r'job|position|listing', re.I))
+        
+        for element in job_elements:
+            try:
+                job_data = self.extract_job_data(element, source_url)
+                if job_data:
+                    jobs.append(job_data)
+            except Exception as e:
+                logger.error(f"Error parsing job element: {str(e)}")
+                continue
         
         return jobs
     
-    async def _parse_job_element(self, job_element, config: Dict, company_name: str) -> Optional[JobListing]:
-        """
-        Parse individual job element from HTML
-        """
+    def extract_job_data(self, element, source_url: str) -> Optional[Dict[str, Any]]:
+        """Extract job data from HTML element"""
         try:
-            selectors = config["selectors"]
+            # Extract title
+            title_elem = element.find(['h1', 'h2', 'h3', 'h4'], class_=re.compile(r'title|position', re.I))
+            title = title_elem.get_text().strip() if title_elem else None
             
-            title_elem = job_element.select_one(selectors.get("title", ""))
-            company_elem = job_element.select_one(selectors.get("company", ""))
-            location_elem = job_element.select_one(selectors.get("location", ""))
-            link_elem = job_element.select_one(selectors.get("job_link", "a"))
+            # Extract company
+            company_elem = element.find(['span', 'div'], class_=re.compile(r'company|employer', re.I))
+            company = company_elem.get_text().strip() if company_elem else None
             
-            if not (title_elem and link_elem):
+            # Extract description
+            desc_elem = element.find(['div', 'p'], class_=re.compile(r'description|summary', re.I))
+            description = desc_elem.get_text().strip() if desc_elem else None
+            
+            # Extract location
+            location_elem = element.find(['span', 'div'], class_=re.compile(r'location|place', re.I))
+            location = location_elem.get_text().strip() if location_elem else "Remote"
+            
+            # Extract apply URL
+            apply_link = element.find('a', href=True, text=re.compile(r'apply|application', re.I))
+            apply_url = urljoin(source_url, apply_link['href']) if apply_link else None
+            
+            # Generate external ID
+            external_id = f"{title}_{company}_{source_url}" if title and company else None
+            
+            if not title or not company:
                 return None
             
-            title = title_elem.get_text(strip=True)
-            company = company_elem.get_text(strip=True) if company_elem else ""
-            location = location_elem.get_text(strip=True) if location_elem else "Remote"
-            
-            job_url = link_elem.get('href', '')
-            if job_url and not job_url.startswith('http'):
-                job_url = urljoin(config["base_url"], job_url)
-            
-            # Get job details from individual job page
-            job_details = await self._get_job_details(job_url)
-            
-            return JobListing(
-                title=title,
-                company=company,
-                location=location,
-                job_type="Full-time",
-                salary=job_details.get("salary"),
-                description=job_details.get("description", ""),
-                requirements=job_details.get("requirements", []),
-                posted_date=job_details.get("posted_date"),
-                apply_url=job_url,
-                remote_type=self._determine_remote_type(location),
-                skills=job_details.get("skills", []),
-                source_url=config["base_url"],
-                external_id=self._generate_external_id(job_url)
-            )
+            return {
+                'title': title,
+                'company': company,
+                'description': description,
+                'location': location,
+                'apply_url': apply_url,
+                'source_url': source_url,
+                'external_id': external_id,
+                'crawled_at': datetime.utcnow().isoformat()
+            }
             
         except Exception as e:
-            logger.error(f"Error parsing job element: {str(e)}")
+            logger.error(f"Error extracting job data: {str(e)}")
             return None
-    
-    async def _get_job_details(self, job_url: str) -> Dict:
-        """
-        Get detailed job information from individual job page
-        """
-        details = {
-            "description": "",
-            "requirements": [],
-            "salary": None,
-            "posted_date": None,
-            "skills": []
-        }
-        
-        try:
-            async with self.session.get(job_url) as response:
-                if response.status == 200:
-                    html = await response.text()
-                    soup = BeautifulSoup(html, 'html.parser')
-                    
-                    # Extract description
-                    description_selectors = [
-                        '.job-description',
-                        '.description',
-                        '.job-content',
-                        '[class*="description"]'
-                    ]
-                    
-                    for selector in description_selectors:
-                        desc_elem = soup.select_one(selector)
-                        if desc_elem:
-                            details["description"] = desc_elem.get_text(strip=True)
-                            break
-                    
-                    # Extract requirements
-                    details["requirements"] = self._extract_requirements(details["description"])
-                    
-                    # Extract salary
-                    details["salary"] = self._extract_salary(details["description"])
-                    
-                    # Extract skills
-                    details["skills"] = self._extract_skills(details["description"])
-                    
-        except Exception as e:
-            logger.error(f"Error getting job details from {job_url}: {str(e)}")
-        
-        return details
-    
-    def _extract_salary(self, text: str) -> Optional[str]:
-        """
-        Extract salary information from job text
-        """
-        salary_patterns = [
-            r'\$[\d,]+\s*-\s*\$[\d,]+',
-            r'\$[\d,]+k?\s*-\s*\$[\d,]+k?',
-            r'[\d,]+\s*-\s*[\d,]+\s*USD',
-            r'€[\d,]+\s*-\s*€[\d,]+',
-            r'£[\d,]+\s*-\s*£[\d,]+'
-        ]
-        
-        for pattern in salary_patterns:
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                return match.group(0)
-        
-        return None
-    
-    def _extract_requirements(self, text: str) -> List[str]:
-        """
-        Extract job requirements from description
-        """
-        requirements = []
-        
-        # Look for common requirement patterns
-        requirement_patterns = [
-            r'(?:requirements?|qualifications?|must have).*?(?:\n\n|\n(?=[A-Z])|$)',
-            r'(?:experience with|knowledge of|proficient in).*?(?:\n|\.|,)',
-            r'(?:\d+\+?\s*years?\s*(?:of\s*)?experience)',
-        ]
-        
-        for pattern in requirement_patterns:
-            matches = re.findall(pattern, text, re.IGNORECASE | re.DOTALL)
-            requirements.extend(matches)
-        
-        return [req.strip() for req in requirements if len(req.strip()) > 10]
-    
-    def _extract_skills(self, text: str) -> List[str]:
-        """
-        Extract technical skills from job description
-        """
-        common_skills = [
-            'Python', 'JavaScript', 'Java', 'C++', 'C#', 'PHP', 'Ruby', 'Go', 'Rust',
-            'React', 'Vue', 'Angular', 'Node.js', 'Django', 'Flask', 'Laravel',
-            'AWS', 'Azure', 'GCP', 'Docker', 'Kubernetes', 'Jenkins',
-            'SQL', 'MongoDB', 'PostgreSQL', 'Redis', 'Elasticsearch',
-            'Git', 'Linux', 'API', 'REST', 'GraphQL', 'Microservices'
-        ]
-        
-        found_skills = []
-        text_lower = text.lower()
-        
-        for skill in common_skills:
-            if skill.lower() in text_lower:
-                found_skills.append(skill)
-        
-        return found_skills
-    
-    def _determine_remote_type(self, location: str) -> str:
-        """
-        Determine if job is remote, hybrid, or onsite
-        """
-        location_lower = location.lower()
-        
-        if any(word in location_lower for word in ['remote', 'anywhere', 'worldwide']):
-            return 'remote'
-        elif any(word in location_lower for word in ['hybrid', 'flexible']):
-            return 'hybrid'
-        else:
-            return 'onsite'
-    
-    def _generate_external_id(self, url: str) -> str:
-        """
-        Generate external ID from job URL
-        """
-        return f"{urlparse(url).netloc}_{hash(url)}"
 
 class JobDataManager:
     def __init__(self):
@@ -389,7 +149,7 @@ class JobDataManager:
         
     async def update_job_listings(self) -> Dict[str, Any]:
         """
-        Update job listings from all sources
+        Update job listings from all sources with deduplication
         """
         try:
             from database import get_db
@@ -397,141 +157,71 @@ class JobDataManager:
             # Crawl all jobs
             crawled_jobs = await self.crawler.crawl_all_companies()
             
-            # Save to database
-            db = get_db()
-            jobs_collection = db["jobs"]
-            
+            # Save to database with deduplication
             new_jobs = 0
             updated_jobs = 0
+            duplicates = 0
             
             for job in crawled_jobs:
-                # Check if job already exists
-                existing_job = jobs_collection.find_one({
-                    "external_id": job.external_id,
-                    "source_url": job.source_url
-                })
-                
-                job_data = {
-                    "title": job.title,
-                    "company": job.company,
-                    "location": job.location,
-                    "job_type": job.job_type,
-                    "salary": job.salary,
-                    "description": job.description,
-                    "requirements": job.requirements,
-                    "posted_date": job.posted_date,
-                    "apply_url": job.apply_url,
-                    "remote_type": job.remote_type,
-                    "skills": job.skills,
-                    "source_url": job.source_url,
-                    "external_id": job.external_id,
-                    "is_active": True,
-                    "last_updated": datetime.now()
-                }
-                
-                if existing_job:
-                    jobs_collection.update_one(
-                        {"_id": existing_job["_id"]},
-                        {"$set": job_data}
-                    )
-                    updated_jobs += 1
-                else:
-                    job_data["created_at"] = datetime.now()
-                    jobs_collection.insert_one(job_data)
-                    new_jobs += 1
+                try:
+                    # Use deduplication service
+                    job_id, dedup_result = await deduplication_service.save_job_with_deduplication(job)
+                    
+                    if dedup_result.is_duplicate:
+                        duplicates += 1
+                        if dedup_result.confidence_level in ["high", "medium"]:
+                            updated_jobs += 1
+                    else:
+                        new_jobs += 1
+                        
+                except Exception as e:
+                    logger.error(f"Error saving job {job.get('title', 'Unknown')}: {str(e)}")
+                    continue
             
-            # Deactivate old jobs
-            cutoff_date = datetime.now() - timedelta(days=30)
-            deactivated = jobs_collection.update_many(
-                {"last_updated": {"$lt": cutoff_date}},
-                {"$set": {"is_active": False}}
-            )
+            logger.info(f"💾 Database save completed: {new_jobs} new, {updated_jobs} updated, {duplicates} duplicates")
             
             return {
-                "status": "success",
                 "new_jobs": new_jobs,
                 "updated_jobs": updated_jobs,
-                "deactivated_jobs": deactivated.modified_count,
-                "total_crawled": len(crawled_jobs)
+                "duplicates": duplicates,
+                "total_processed": len(crawled_jobs)
             }
             
         except Exception as e:
-            logger.error(f"Error updating job listings: {str(e)}")
-            return {
-                "status": "error",
-                "message": str(e)
-            }
-
-    async def save_jobs_to_database(self, jobs: List[JobListing]):
-        """Save jobs to MongoDB database"""
+            logger.error(f"❌ Error updating job listings: {str(e)}")
+            raise
+    
+    async def save_jobs_with_deduplication(self, jobs: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Save jobs to database with deduplication
+        """
         try:
-            db = get_db()
-            jobs_collection = db["jobs"]
-            
             new_jobs = 0
             updated_jobs = 0
+            duplicates = 0
             
             for job in jobs:
-                # Check if job already exists using title and company
-                existing_job = jobs_collection.find_one({
-                    "title": job.title,
-                    "company": job.company
-                })
-                
-                job_data = {
-                    "title": job.title,
-                    "company": job.company,
-                    "location": job.location,
-                    "job_type": job.job_type,
-                    "salary": job.salary,
-                    "description": job.description,
-                    "requirements": job.requirements or [],
-                    "posted_date": job.posted_date,
-                    "remote_type": job.remote_type,
-                    "skills": job.skills or [],
-                    "source_url": job.source_url,
-                    "external_id": job.external_id,
-                    "is_active": True,
-                    "last_updated": datetime.now(),
-                    "source_type": "distill_crawler"
-                }
-                
-                if existing_job:
-                    # Update application URLs array
-                    application_urls = existing_job.get("application_urls", [])
-                    if job.apply_url not in application_urls:
-                        application_urls.append({
-                            "url": job.apply_url,
-                            "source": job.source_url,
-                            "added_at": datetime.now()
-                        })
+                try:
+                    # Use deduplication service
+                    job_id, dedup_result = await deduplication_service.save_job_with_deduplication(job)
                     
-                    # Update job data with new application URLs
-                    job_data["application_urls"] = application_urls
-                    
-                    # Update only if there are changes
-                    if any(job_data[key] != existing_job.get(key) for key in job_data.keys()):
-                        jobs_collection.update_one(
-                            {"_id": existing_job["_id"]},
-                            {"$set": job_data}
-                        )
-                        updated_jobs += 1
-                else:
-                    # Create new job with initial application URL
-                    job_data["application_urls"] = [{
-                        "url": job.apply_url,
-                        "source": job.source_url,
-                        "added_at": datetime.now()
-                    }]
-                    job_data["created_at"] = datetime.now()
-                    jobs_collection.insert_one(job_data)
-                    new_jobs += 1
+                    if dedup_result.is_duplicate:
+                        duplicates += 1
+                        if dedup_result.confidence_level in ["high", "medium"]:
+                            updated_jobs += 1
+                    else:
+                        new_jobs += 1
+                        
+                except Exception as e:
+                    logger.error(f"Error saving job {job.get('title', 'Unknown')}: {str(e)}")
+                    continue
             
-            logger.info(f"💾 Database save completed: {new_jobs} new, {updated_jobs} updated")
+            logger.info(f"💾 Database save completed: {new_jobs} new, {updated_jobs} updated, {duplicates} duplicates")
             
             return {
                 "new_jobs": new_jobs,
                 "updated_jobs": updated_jobs,
+                "duplicates": duplicates,
                 "total_processed": len(jobs)
             }
             

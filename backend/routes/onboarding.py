@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import httpx
 import json
+from werkzeug.utils import secure_filename
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
@@ -376,12 +377,29 @@ async def upload_cv(
 ):
     """Upload CV file."""
     try:
-        # Validate file
-        if file.content_type not in ["application/pdf", "application/msword", 
-                                   "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]:
+        # Secure file handling to prevent path traversal
+        safe_filename = secure_filename(file.filename)
+        file_extension = safe_filename.split('.')[-1] if '.' in safe_filename else 'pdf'
+        
+        # Validate file extension
+        allowed_extensions = ['pdf', 'doc', 'docx']
+        if file_extension.lower() not in allowed_extensions:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Sadece PDF, DOC ve DOCX dosyaları kabul edilir"
+                status_code=400,
+                detail="Only PDF, DOC, and DOCX files are allowed"
+            )
+        
+        unique_filename = f"{user_id}_{uuid.uuid4()}.{file_extension}"
+        
+        # Use secure base directory
+        upload_dir = os.path.abspath("backend/uploads/cv")
+        file_path = os.path.join(upload_dir, unique_filename)
+        
+        # Ensure file path is within upload directory (prevent path traversal)
+        if not file_path.startswith(upload_dir):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid file path"
             )
         
         # Check file size (max 5MB)
@@ -394,11 +412,6 @@ async def upload_cv(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Dosya boyutu 5MB'dan küçük olmalıdır"
             )
-        
-        # Generate unique filename
-        file_extension = file.filename.split('.')[-1]
-        unique_filename = f"{user_id}_{uuid.uuid4()}.{file_extension}"
-        file_path = f"backend/uploads/cv/{unique_filename}"
         
         # Save file
         os.makedirs("backend/uploads/cv", exist_ok=True)

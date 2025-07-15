@@ -387,8 +387,10 @@ const Home: React.FC = () => {
 
   const handleSearch = (positions: Position[]) => {
     if (positions.length > 0) {
-      const query = positions.map(p => p.title).join(',');
-      navigate(`/jobs/search?q=${encodeURIComponent(query)}`);
+      // Seçilen pozisyonların title'larını al ve virgülle ayır
+      const searchTerms = positions.map(p => p.title).join(',');
+      // URL'ye pozisyonları ekle
+      navigate(`/jobs/search?positions=${encodeURIComponent(searchTerms)}`);
     } else {
       navigate('/jobs/search');
     }
@@ -439,10 +441,10 @@ const Home: React.FC = () => {
           {/* Glassmorphism overlay */}
           <div className="absolute inset-0 bg-white/5 backdrop-blur-sm"></div>
           
-          <div className="relative container mx-auto px-4 py-12">
-            <div className="max-w-5xl mx-auto text-center mb-6">
+          <div className="relative container mx-auto px-4 py-6">
+            <div className="max-w-5xl mx-auto text-center mb-3">
               {/* Main heading with enhanced typography */}
-              <h1 className="text-5xl md:text-7xl font-extrabold mb-6 leading-tight">
+              <h1 className="text-5xl md:text-7xl font-extrabold mb-3 leading-tight">
                 <br />
                 Find Your Perfect 
                 <span className="block bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
@@ -450,8 +452,7 @@ const Home: React.FC = () => {
                 </span>
               </h1>
               
-              <p className="text-xl md:text-2xl opacity-95 mb-6 leading-relaxed max-w-3xl mx-auto">
-                Discover thousands of remote opportunities from top companies around the world. 
+              <p className="text-xl md:text-2xl opacity-95 mb-3 leading-relaxed max-w-3xl mx-auto">
                 Your dream job is just a buzz away!
               </p>
             </div>
@@ -477,10 +478,10 @@ const Home: React.FC = () => {
                     <button
                       onClick={() => handleSearch(selectedPositions)}
                       disabled={selectedPositions.length === 0 || selectedPositions.length > 5}
-                      className="bg-gradient-to-r from-orange-500 to-yellow-400 hover:from-orange-600 hover:to-yellow-500 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white font-semibold px-4 md:px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center space-x-2 whitespace-nowrap"
+                      className="bg-gradient-to-br from-orange-400 to-yellow-500 hover:from-orange-500 hover:to-yellow-400 disabled:from-orange-300 disabled:to-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold px-4 md:px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center space-x-2 whitespace-nowrap tracking-tight text-lg"
                     >
                       <Search className="w-5 h-5" />
-                      <span className="hidden md:inline">Find Jobs</span>
+                      <span>Search!</span>
                     </button>
                     <button
                       onClick={() => setShowOnboarding(true)}
@@ -937,61 +938,6 @@ const Home: React.FC = () => {
             </div>
           </div>
         </section>
-
-        {/* Footer */}
-        <footer className="bg-black/30 backdrop-blur-sm border-t border-white/10 py-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-              <div className="col-span-1 md:col-span-2">
-                <div className="flex items-center space-x-2 mb-4">
-                  <span className="text-2xl">🐝</span>
-                  <span className="font-bold text-xl text-white">Buzz2Remote</span>
-                </div>
-                <p className="text-white/70 mb-4">
-                  Your gateway to the best remote jobs worldwide. 
-                  Connect with top companies and build your dream career from anywhere.
-                </p>
-                <div className="flex space-x-4">
-                  <a href="#" className="text-white/60 hover:text-white transition-colors">
-                    Twitter
-                  </a>
-                  <a href="#" className="text-white/60 hover:text-white transition-colors">
-                    LinkedIn
-                  </a>
-                  <a href="#" className="text-white/60 hover:text-white transition-colors">
-                    GitHub
-                  </a>
-                </div>
-              </div>
-              
-              <div>
-                <h4 className="font-semibold text-white mb-4">For Job Seekers</h4>
-                <ul className="space-y-2">
-                  <li><a href="#" className="text-white/60 hover:text-white transition-colors">Browse Jobs</a></li>
-                  <li><a href="#" className="text-white/60 hover:text-white transition-colors">Create Profile</a></li>
-                  <li><a href="#" className="text-white/60 hover:text-white transition-colors">Career Tips</a></li>
-                  <li><a href="#" className="text-white/60 hover:text-white transition-colors">Salary Guide</a></li>
-                </ul>
-              </div>
-              
-              <div>
-                <h4 className="font-semibold text-white mb-4">For Employers</h4>
-                <ul className="space-y-2">
-                  <li><a href="#" className="text-white/60 hover:text-white transition-colors">Post a Job</a></li>
-                  <li><a href="#" className="text-white/60 hover:text-white transition-colors">Pricing</a></li>
-                  <li><a href="#" className="text-white/60 hover:text-white transition-colors">Resources</a></li>
-                  <li><a href="#" className="text-white/60 hover:text-white transition-colors">Support</a></li>
-                </ul>
-              </div>
-            </div>
-            
-            <div className="border-t border-white/10 mt-8 pt-8 text-center">
-              <p className="text-white/60">
-                © 2024 Buzz2Remote. All rights reserved. Made with 💜 for remote workers everywhere.
-              </p>
-            </div>
-          </div>
-        </footer>
       </div>
 
       {/* Modals */}

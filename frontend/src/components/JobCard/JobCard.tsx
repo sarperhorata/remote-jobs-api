@@ -1,12 +1,34 @@
 import React from 'react';
-import { MapPin, Clock, ExternalLink } from 'lucide-react';
+import { Clock, MapPin, ExternalLink, Star, Check, X } from 'lucide-react';
 import { Job } from '../../types/job';
 
 interface JobCardProps {
   job: Job;
+  onHide?: (jobId: string) => void;
 }
 
-const JobCard: React.FC<JobCardProps> = ({ job }) => {
+// HTML taglarını temizleme fonksiyonu
+const stripHtml = (html: string): string => {
+  if (!html) return '';
+  
+  // HTML entities'leri decode et
+  const decodeHtml = (text: string) => {
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
+  };
+
+  // HTML taglarını kaldır
+  const withoutTags = html.replace(/<[^>]*>/g, '');
+  
+  // HTML entities'leri decode et
+  const decoded = decodeHtml(withoutTags);
+  
+  // Çoklu boşlukları tek boşluğa çevir ve trim
+  return decoded.replace(/\s+/g, ' ').trim();
+};
+
+const JobCard: React.FC<JobCardProps> = ({ job, onHide }) => {
   // Format posted date
   const formatPostedDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -88,6 +110,20 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
       {/* Subtle gradient overlay on hover */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-purple-50/50 dark:from-blue-900/10 dark:to-purple-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl"></div>
       
+      {/* Hide Button */}
+      {onHide && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onHide(job._id || job.id || '');
+          }}
+          className="absolute top-2 right-2 z-20 p-1 rounded-full bg-gray-200/80 dark:bg-gray-700/80 text-gray-600 dark:text-gray-300 hover:bg-red-200 dark:hover:bg-red-800 hover:text-red-600 dark:hover:text-red-300 transition-all duration-200 opacity-0 group-hover:opacity-100"
+          title="Hide this job"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      )}
+      
       {/* Content */}
       <div className="relative z-10">
         {/* Header */}
@@ -127,7 +163,7 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
         {job.description && (
           <p className="text-gray-600 dark:text-gray-300 text-sm mb-3 line-clamp-3 leading-relaxed" 
              title={job.description}>
-            {job.description}
+            {stripHtml(job.description)}
           </p>
         )}
 
@@ -156,9 +192,35 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
               </span>
             )}
           </div>
-          <div className="flex items-center text-blue-600 dark:text-blue-400 text-sm font-medium group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors duration-200">
-            <span>Apply Now</span>
-            <ExternalLink className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform duration-200" />
+          <div className="flex items-center space-x-2">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleJobClick();
+              }}
+              className="bg-gradient-to-br from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white font-medium px-4 py-2 rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center space-x-2"
+            >
+              <span className="text-sm">Apply Now</span>
+              <ExternalLink className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                // Mark as Favorite logic
+              }}
+              className="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 px-3 py-2 rounded-md flex items-center space-x-1"
+            >
+              <Star className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                // Mark as Applied logic
+              }}
+              className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-800 px-3 py-2 rounded-md flex items-center space-x-1"
+            >
+              <Check className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>

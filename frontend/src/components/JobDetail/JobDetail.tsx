@@ -2,7 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { jobService } from '../../services/AllServices';
 import { Job } from '../../types/job';
-import DOMPurify from 'dompurify';
+
+// HTML taglarını temizleme fonksiyonu
+const stripHtml = (html: string): string => {
+  if (!html) return '';
+  
+  // HTML entities'leri decode et
+  const decodeHtml = (text: string) => {
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
+  };
+
+  // HTML taglarını kaldır
+  const withoutTags = html.replace(/<[^>]*>/g, '');
+  
+  // HTML entities'leri decode et
+  const decoded = decodeHtml(withoutTags);
+  
+  // Çoklu boşlukları tek boşluğa çevir ve trim
+  return decoded.replace(/\s+/g, ' ').trim();
+};
 
 // Extend the Job type to include the optional companyName property
 interface ExtendedJob extends Partial<{
@@ -113,7 +133,9 @@ const JobDetail: React.FC = () => {
 
               <div className="prose max-w-none mb-6">
                 <h2 className="text-xl font-semibold mb-4">Job Description</h2>
-                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(job.description) }} />
+                <div className="text-gray-700 whitespace-pre-line">
+                  {stripHtml(job.description)}
+                </div>
               </div>
 
               <div className="mb-6">

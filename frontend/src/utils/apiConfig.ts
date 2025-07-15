@@ -40,31 +40,19 @@ const detectBackendPort = async (): Promise<string> => {
     let apiUrl = process.env.REACT_APP_API_URL;
     logApiDetection('Found environment variable:', apiUrl);
     
-    // Port override mantığını kaldırdım - environment variable'da ne varsa onu kullan
-    // if (apiUrl.includes('localhost:8002')) {
-    //   apiUrl = apiUrl.replace('localhost:8002', 'localhost:8001');
-    //   logApiDetection('Corrected environment variable from 8002 to 8001:', apiUrl);
-    // }
-    
     // Trailing slash'i temizle
     apiUrl = apiUrl.replace(/\/$/, '');
     
-    // Eğer zaten /api/v1 ile bitiyorsa olduğu gibi döndür
-    if (apiUrl.endsWith('/api/v1')) {
-      return apiUrl;
-    }
-    // Eğer /api ile bitiyorsa sadece /v1 ekle
-    if (apiUrl.endsWith('/api')) {
-      return `${apiUrl}/v1`;
-    }
-    // Hiçbiri yoksa /api/v1 ekle
-    return `${apiUrl}/api/v1`;
+    // /api/v1 veya /api kısmını kaldır - sadece base URL döndür
+    apiUrl = apiUrl.replace(/\/api\/v1$/, '').replace(/\/api$/, '');
+    
+    return apiUrl;
   }
 
   // Test environment check - force port 8000 for tests
   if (process.env.NODE_ENV === 'test') {
     logApiDetection('Test mode - forcing port 8000');
-    return 'http://localhost:8000/api/v1';
+    return 'http://localhost:8000';
   }
 
   // Backend portlarını sırayla test et
@@ -81,7 +69,7 @@ const detectBackendPort = async (): Promise<string> => {
       if (response.ok) {
         const healthData = await response.json();
         logApiDetection(`✅ Backend detected on port ${port}`, healthData);
-        return `http://localhost:${port}/api/v1`;
+        return `http://localhost:${port}`;
       }
       logApiDetection(`❌ Port ${port} returned status ${response.status}`);
     } catch (error: any) {
@@ -91,7 +79,7 @@ const detectBackendPort = async (): Promise<string> => {
   }
 
   // Hiçbir port çalışmıyorsa varsayılan port
-  const fallbackUrl = 'http://localhost:8001/api/v1';
+  const fallbackUrl = 'http://localhost:8001';
   logApiDetection(`⚠️ No backend found, using default URL: ${fallbackUrl}`);
   return fallbackUrl;
 };
@@ -99,7 +87,7 @@ const detectBackendPort = async (): Promise<string> => {
 export const getApiUrl = async (): Promise<string> => {
   if (process.env.NODE_ENV === 'production') {
     // Production'da her zaman canlı API adresini kullan
-    return 'https://buzz2remote.com/api/v1';
+    return 'https://buzz2remote.com';
   }
 
   // Development ortamında, çalışan portu dinamik olarak bul
@@ -168,7 +156,7 @@ if (typeof window !== 'undefined') {
         console.log('🎯 API URL detected successfully:', detectedUrl);
         
         // Test API endpoint
-        const testResponse = await fetch(`${detectedUrl}/jobs/job-titles/search?q=test&limit=1`);
+        const testResponse = await fetch(`${detectedUrl}/api/v1/jobs/job-titles/search?q=test&limit=1`);
         if (testResponse.ok) {
           console.log('✅ Autocomplete API endpoint working!');
         } else {

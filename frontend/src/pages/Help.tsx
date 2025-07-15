@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Mail, MessageCircle, Book, Users, Settings, Shield, CreditCard } from '../components/icons/EmojiIcons';
+import Layout from '../components/Layout';
 
 interface FAQItem {
   question: string;
@@ -187,176 +188,174 @@ const Help: React.FC = () => {
     : { [activeSection]: faqSections[activeSection as keyof typeof faqSections] };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-extrabold text-gray-900 sm:text-5xl">
-            Help & Support Center
-          </h1>
-          <p className="mt-4 text-xl text-gray-600 max-w-3xl mx-auto">
-            Find answers to common questions, learn how to make the most of Buzz2Remote, and get the support you need for your remote career journey.
-          </p>
+    <Layout>
+      {/* Header */}
+      <div className="text-center mb-12">
+        <h1 className="text-4xl font-extrabold text-gray-900 sm:text-5xl">
+          Help & Support Center
+        </h1>
+        <p className="mt-4 text-xl text-gray-600 max-w-3xl mx-auto">
+          Find answers to common questions, learn how to make the most of Buzz2Remote, and get the support you need for your remote career journey.
+        </p>
+      </div>
+
+      {/* Search Bar */}
+      <div className="max-w-2xl mx-auto mb-8">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search for help articles, features, or common questions..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+          />
         </div>
+      </div>
 
-        {/* Search Bar */}
-        <div className="max-w-2xl mx-auto mb-8">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search for help articles, features, or common questions..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
-            />
-          </div>
-        </div>
-
-        {/* Category Navigation */}
-        {!searchTerm && (
-          <div className="mb-8 flex flex-wrap justify-center gap-4">
-            {Object.keys(faqSections).map((section) => (
-              <button
-                key={section}
-                onClick={() => setActiveSection(section)}
-                className={`flex items-center space-x-2 px-6 py-3 rounded-lg text-sm font-medium transition-colors ${
-                  activeSection === section
-                    ? 'bg-orange-600 text-white shadow-lg'
-                    : 'bg-white text-gray-700 hover:bg-orange-50 border border-gray-200'
-                }`}
-              >
-                {getSectionIcon(section)}
-                <span>{getSectionTitle(section)}</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* FAQ Content */}
-        <div className="space-y-6">
-          {Object.entries(filteredFAQs).map(([section, faqs]) => (
-            <div key={section}>
-              {searchTerm && (
-                <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center space-x-2">
-                  {getSectionIcon(section)}
-                  <span>{getSectionTitle(section)}</span>
-                </h2>
-              )}
-              <div className="space-y-4">
-                {faqs.map((faq: FAQItem, index: number) => (
-                  <div
-                    key={`${section}-${index}`}
-                    className="bg-white shadow-sm rounded-lg overflow-hidden border border-gray-200 hover:shadow-md transition-shadow"
-                  >
-                    <button
-                      onClick={() => toggleQuestion(`${section}-${index}`)}
-                      className="w-full px-6 py-4 text-left focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-inset"
-                    >
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold text-gray-900 pr-4">
-                          {faq.question}
-                        </h3>
-                        <svg
-                          className={`h-5 w-5 text-gray-500 transform transition-transform flex-shrink-0 ${
-                            expandedQuestions.has(`${section}-${index}`) ? 'rotate-180' : ''
-                          }`}
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 9l-7 7-7-7"
-                          />
-                        </svg>
-                      </div>
-                    </button>
-                    {expandedQuestions.has(`${section}-${index}`) && (
-                      <div className="px-6 pb-4 border-t border-gray-100">
-                        <p className="text-gray-700 leading-relaxed">{faq.answer}</p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
+      {/* Category Navigation */}
+      {!searchTerm && (
+        <div className="mb-8 flex flex-wrap justify-center gap-4">
+          {Object.keys(faqSections).map((section) => (
+            <button
+              key={section}
+              onClick={() => setActiveSection(section)}
+              className={`flex items-center space-x-2 px-6 py-3 rounded-lg text-sm font-medium transition-colors ${
+                activeSection === section
+                  ? 'bg-orange-600 text-white shadow-lg'
+                  : 'bg-white text-gray-700 hover:bg-orange-50 border border-gray-200'
+              }`}
+            >
+              {getSectionIcon(section)}
+              <span>{getSectionTitle(section)}</span>
+            </button>
           ))}
         </div>
+      )}
 
-        {/* Contact Support Section */}
-        <div className="mt-16 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-2xl shadow-xl overflow-hidden">
-          <div className="px-8 py-12 text-center">
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Still Need Help?
-            </h2>
-            <p className="text-xl text-orange-100 mb-8 max-w-2xl mx-auto">
-              Can't find what you're looking for? Our support team is here to help you succeed in your remote career journey.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a
-                href="mailto:support@buzz2remote.com"
-                className="inline-flex items-center justify-center space-x-2 bg-white text-orange-600 px-8 py-3 rounded-lg hover:bg-orange-50 transition-colors font-semibold shadow-lg"
-              >
-                <Mail className="w-5 h-5" />
-                <span>Email Support</span>
-              </a>
-              <a
-                href="/contact"
-                className="inline-flex items-center justify-center space-x-2 bg-orange-700 text-white px-8 py-3 rounded-lg hover:bg-orange-800 transition-colors font-semibold border border-orange-600"
-              >
-                <MessageCircle className="w-5 h-5" />
-                <span>Live Chat</span>
-              </a>
-            </div>
-            
-            {/* Support Info */}
-            <div className="mt-8 text-orange-100 text-sm">
-              <p>📧 Email response time: Within 24 hours</p>
-              <p>💬 Live chat: Monday-Friday, 9 AM - 6 PM UTC</p>
+      {/* FAQ Content */}
+      <div className="space-y-6">
+        {Object.entries(filteredFAQs).map(([section, faqs]) => (
+          <div key={section}>
+            {searchTerm && (
+              <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center space-x-2">
+                {getSectionIcon(section)}
+                <span>{getSectionTitle(section)}</span>
+              </h2>
+            )}
+            <div className="space-y-4">
+              {faqs.map((faq: FAQItem, index: number) => (
+                <div
+                  key={`${section}-${index}`}
+                  className="bg-white shadow-sm rounded-lg overflow-hidden border border-gray-200 hover:shadow-md transition-shadow"
+                >
+                  <button
+                    onClick={() => toggleQuestion(`${section}-${index}`)}
+                    className="w-full px-6 py-4 text-left focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-inset"
+                  >
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold text-gray-900 pr-4">
+                        {faq.question}
+                      </h3>
+                      <svg
+                        className={`h-5 w-5 text-gray-500 transform transition-transform flex-shrink-0 ${
+                          expandedQuestions.has(`${section}-${index}`) ? 'rotate-180' : ''
+                        }`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </div>
+                  </button>
+                  {expandedQuestions.has(`${section}-${index}`) && (
+                    <div className="px-6 pb-4 border-t border-gray-100">
+                      <p className="text-gray-700 leading-relaxed">{faq.answer}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+        ))}
+      </div>
 
-        {/* Additional Resources */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
-            <Book className="w-8 h-8 text-orange-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">User Guide</h3>
-            <p className="text-gray-600 text-sm mb-4">
-              Comprehensive documentation to help you master the platform.
-            </p>
-            <a href="/docs" className="text-orange-600 hover:text-orange-700 font-medium text-sm">
-              Browse Documentation →
+      {/* Contact Support Section */}
+      <div className="mt-16 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-2xl shadow-xl overflow-hidden">
+        <div className="px-8 py-12 text-center">
+          <h2 className="text-3xl font-bold text-white mb-4">
+            Still Need Help?
+          </h2>
+          <p className="text-xl text-orange-100 mb-8 max-w-2xl mx-auto">
+            Can't find what you're looking for? Our support team is here to help you succeed in your remote career journey.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <a
+              href="mailto:support@buzz2remote.com"
+              className="inline-flex items-center justify-center space-x-2 bg-white text-orange-600 px-8 py-3 rounded-lg hover:bg-orange-50 transition-colors font-semibold shadow-lg"
+            >
+              <Mail className="w-5 h-5" />
+              <span>Email Support</span>
+            </a>
+            <a
+              href="/contact"
+              className="inline-flex items-center justify-center space-x-2 bg-orange-700 text-white px-8 py-3 rounded-lg hover:bg-orange-800 transition-colors font-semibold border border-orange-600"
+            >
+              <MessageCircle className="w-5 h-5" />
+              <span>Live Chat</span>
             </a>
           </div>
           
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
-            <Users className="w-8 h-8 text-blue-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Community</h3>
-            <p className="text-gray-600 text-sm mb-4">
-              Connect with other remote professionals and share experiences.
-            </p>
-            <a href="/community" className="text-blue-600 hover:text-blue-700 font-medium text-sm">
-              Join Community →
-            </a>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
-            <CreditCard className="w-8 h-8 text-green-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Career Resources</h3>
-            <p className="text-gray-600 text-sm mb-4">
-              Tips, guides, and tools to advance your remote career.
-            </p>
-            <a href="/resources" className="text-green-600 hover:text-green-700 font-medium text-sm">
-              Explore Resources →
-            </a>
+          {/* Support Info */}
+          <div className="mt-8 text-orange-100 text-sm">
+            <p>📧 Email response time: Within 24 hours</p>
+            <p>💬 Live chat: Monday-Friday, 9 AM - 6 PM UTC</p>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Additional Resources */}
+      <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
+          <Book className="w-8 h-8 text-orange-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">User Guide</h3>
+          <p className="text-gray-600 text-sm mb-4">
+            Comprehensive documentation to help you master the platform.
+          </p>
+          <a href="/docs" className="text-orange-600 hover:text-orange-700 font-medium text-sm">
+            Browse Documentation →
+          </a>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
+          <Users className="w-8 h-8 text-blue-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Community</h3>
+          <p className="text-gray-600 text-sm mb-4">
+            Connect with other remote professionals and share experiences.
+          </p>
+          <a href="/community" className="text-blue-600 hover:text-blue-700 font-medium text-sm">
+            Join Community →
+          </a>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
+          <CreditCard className="w-8 h-8 text-green-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Career Resources</h3>
+          <p className="text-gray-600 text-sm mb-4">
+            Tips, guides, and tools to advance your remote career.
+          </p>
+          <a href="/resources" className="text-green-600 hover:text-green-700 font-medium text-sm">
+            Explore Resources →
+          </a>
+        </div>
+      </div>
+    </Layout>
   );
 };
 

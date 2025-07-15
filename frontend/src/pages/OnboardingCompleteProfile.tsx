@@ -209,7 +209,7 @@ const OnboardingCompleteProfile: React.FC = () => {
 
     try {
       const apiBaseUrl = await getApiUrl();
-      const response = await fetch(`${apiBaseUrl}/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=10`);
+      const response = await fetch(`${apiBaseUrl}/api/v1/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=10`);
       
       if (!response.ok) {
         throw new Error('API not available');
@@ -272,7 +272,7 @@ const OnboardingCompleteProfile: React.FC = () => {
 
     try {
       const apiBaseUrl = await getApiUrl();
-      const response = await fetch(`${apiBaseUrl}/jobs/skills/search?q=${encodeURIComponent(query)}`);
+      const response = await fetch(`${apiBaseUrl}/api/v1/jobs/skills/search?q=${encodeURIComponent(query)}`);
       
       if (!response.ok) {
         throw new Error('API not available');

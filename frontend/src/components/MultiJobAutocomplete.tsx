@@ -27,11 +27,37 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [animatedPlaceholder, setAnimatedPlaceholder] = useState('');
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Animated placeholder effect
+  useEffect(() => {
+    if (!inputValue && !showDropdown) {
+      const interval = setInterval(() => {
+        setPlaceholderIndex(prev => {
+          if (prev >= placeholder.length) {
+            // Reset to beginning after a pause
+            setTimeout(() => setPlaceholderIndex(0), 1000);
+            return 0;
+          }
+          return prev + 1;
+        });
+      }, 100);
+
+      return () => clearInterval(interval);
+    } else {
+      setPlaceholderIndex(0);
+    }
+  }, [placeholder, inputValue, showDropdown]);
+
+  useEffect(() => {
+    setAnimatedPlaceholder(placeholder.slice(0, placeholderIndex));
+  }, [placeholderIndex, placeholder]);
 
   // Debug logging
   useEffect(() => {
@@ -57,7 +83,7 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
     try {
       const finalApiUrl = await getApiUrl();
       
-      const response = await fetch(`${finalApiUrl}/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=20`, {
+      const response = await fetch(`${finalApiUrl}/api/v1/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=20`, {
         signal: AbortSignal.timeout(10000), // 10 second timeout
       });
       
@@ -93,7 +119,7 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
     try {
       const finalApiUrl = await getApiUrl();
       
-      const response = await fetch(`${finalApiUrl}/jobs/statistics`, {
+      const response = await fetch(`${finalApiUrl}/api/v1/jobs/statistics`, {
         signal: AbortSignal.timeout(10000), // 10 second timeout
       });
       
@@ -159,16 +185,16 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
     
     onSelect(position);
     
-    // Clear and reset
-    console.log('🧹 Clearing input and closing dropdown');
-    setInputValue('');
+    // Set the selected title as input value and close dropdown
+    console.log('🧹 Setting selected title and closing dropdown');
+    setInputValue(position.title);
     setAllSuggestions([]);
     setShowDropdown(false);
     
-    // Focus back to input
+    // Remove focus from input to collapse completely
     setTimeout(() => {
-      console.log('🎯 Focusing back to input');
-      inputRef.current?.focus();
+      console.log('🎯 Blurring input to collapse');
+      inputRef.current?.blur();
     }, 50);
   };
 
@@ -254,7 +280,7 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
             value={inputValue}
             onChange={handleInputChange}
             onFocus={handleInputFocus}
-            placeholder={placeholder}
+            placeholder={animatedPlaceholder}
             disabled={disabled}
             className="w-full px-4 py-3 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
           />
@@ -296,7 +322,10 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
                         <span className="text-gray-900 dark:text-white font-medium">
                           {suggestion.title}
                         </span>
-                        <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
+                        <span 
+                          className="text-sm text-gray-500 dark:text-gray-400 ml-2"
+                          title={`${suggestion.count} jobs with this exact title. Search may show more results including related positions.`}
+                        >
                           {suggestion.count} jobs
                         </span>
                       </div>

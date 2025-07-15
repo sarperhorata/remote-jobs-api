@@ -9,10 +9,12 @@ const JobDetail = lazy(() => import('../pages/JobDetail'));
 const Login = lazy(() => import('../pages/Login'));
 const Register = lazy(() => import('../pages/Register'));
 const Profile = lazy(() => import('../pages/Profile'));
+const MyProfile = lazy(() => import('../pages/MyProfile'));
 const SavedJobs = lazy(() => import('../pages/SavedJobs'));
 const Notifications = lazy(() => import('../pages/Notifications'));
 const NotFound = lazy(() => import('../pages/NotFound'));
 const SearchResults = lazy(() => import('../pages/SearchResults'));
+const LinkedInCallback = lazy(() => import('../pages/LinkedInCallback'));
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
@@ -39,6 +41,14 @@ const AppRoutes = () => {
           } 
         />
         <Route 
+          path="/my-profile" 
+          element={
+            <ProtectedRoute>
+              <MyProfile />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
           path="/saved-jobs" 
           element={
             <ProtectedRoute>
@@ -54,6 +64,7 @@ const AppRoutes = () => {
             </ProtectedRoute>
           } 
         />
+        <Route path="/auth/linkedin/callback" element={<LinkedInCallback />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>

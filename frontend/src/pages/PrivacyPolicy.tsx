@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Briefcase, ShieldCheck, ArrowLeft, ChevronDown, ChevronRight, Calendar, Mail, Globe, Eye, Lock, Database, UserCheck } from '../components/icons/EmojiIcons';
+import Layout from '../components/Layout';
 
 const PrivacyPolicy: React.FC = () => {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
@@ -468,7 +469,7 @@ const PrivacyPolicy: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <Layout>
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="bg-white shadow-sm rounded-lg p-6 mb-8">
@@ -604,7 +605,7 @@ const PrivacyPolicy: React.FC = () => {
           </p>
         </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

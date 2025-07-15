@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Heart, ExternalLink, MapPin, DollarSign, Calendar, Briefcase } from 'lucide-react';
-import Header from '../components/Header';
+import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { jobService } from '../services/jobService';
 
@@ -97,8 +97,7 @@ const Favorites: React.FC = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-        <Header />
+      <Layout>
         <div className="container mx-auto px-4 py-16 text-center">
           <div className="max-w-md mx-auto">
             <Heart className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
@@ -106,13 +105,12 @@ const Favorites: React.FC = () => {
             <p className="text-gray-600 dark:text-gray-300">You need to be logged in to view your favorite jobs.</p>
           </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-      <Header />
+    <Layout>
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
@@ -265,7 +263,7 @@ const Favorites: React.FC = () => {
           </div>
         )}
       </div>
-    </div>
+    </Layout>
   );
 };
 

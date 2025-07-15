@@ -40,10 +40,13 @@ export default function JobSearchResults() {
   // States
   const [jobs, setJobs] = useState<Job[]>([]);
   const [totalJobs, setTotalJobs] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(100); // 100'er iş ilanı per sayfa
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => 
     window.innerWidth >= 1024 ? 'grid' : 'list'
   );
   const [hiddenJobs, setHiddenJobs] = useState<Set<string>>(new Set());
+  const [showHiddenJobs, setShowHiddenJobs] = useState(false);
   
   // Job status tracking
   const [loading, setLoading] = useState(true);
@@ -102,8 +105,8 @@ export default function JobSearchResults() {
     try {
       const queryParams = new URLSearchParams({
         q: filters.query,
-        page: filters.page?.toString() || "1",
-        limit: "25",
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString(),
         sort_by: 'relevance',
         posted_age: filters.postedAge || filters.postedWithin,
         ...(filters.workType && { work_type: filters.workType }),
@@ -114,7 +117,7 @@ export default function JobSearchResults() {
         ...(filters.company && { company: filters.company }),
       });
 
-      const response = await fetch(`${await import('../utils/apiConfig').then(m => m.getApiUrl())}/jobs/search?${queryParams}`);
+      const response = await fetch(`${await import('../utils/apiConfig').then(m => m.getApiUrl())}/api/v1/jobs/search?${queryParams}`);
       const data = await response.json();
       
       setJobs(data.jobs || []);
@@ -131,33 +134,41 @@ export default function JobSearchResults() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const queryFromUrl = params.get('q') || '';
+    const positionsFromUrl = params.get('positions') || '';
     const companyFromUrl = params.get('company') || '';
+    const pageFromUrl = parseInt(params.get('page') || '1', 10);
+
+    // positions parametresi varsa onu query olarak kullan
+    const finalQuery = positionsFromUrl || queryFromUrl;
 
     setFilters(prev => {
       const newFilters = {
         ...prev,
-        query: queryFromUrl,
+        query: finalQuery,
         company: companyFromUrl,
       };
-      // Eğer filtreler değişmediyse (örneğin sadece sayfa değişti), gereksiz re-render'ı önle
+      // Eğer filtreler değişmediyse, gereksiz re-render'ı önle
       if (
         prev.query === newFilters.query &&
-        prev.company === newFilters.company &&
-        prev.page === newFilters.page
+        prev.company === newFilters.company
       ) {
         return prev;
       }
       return newFilters;
     });
+    
+    // Sayfa parametresini ayrı olarak set et
+    setCurrentPage(pageFromUrl);
   }, [location.search]);
 
-  // `filters` state'i her değiştiğinde iş ilanlarını yeniden çek
+  // `filters` veya `currentPage` state'i her değiştiğinde iş ilanlarını yeniden çek
   useEffect(() => {
     fetchJobs();
-  }, [filters]);
+  }, [filters, currentPage]);
   
   const handleFiltersChange = useCallback((newFilters: Partial<Filters>) => {
-    setFilters(prev => ({ ...prev, ...newFilters, page: 1 })); // Filtre değiştiğinde 1. sayfaya dön
+    setFilters(prev => ({ ...prev, ...newFilters }));
+    setCurrentPage(1); // Filtre değiştiğinde 1. sayfaya dön
   }, []);
 
   // Check if any filters are active
@@ -166,6 +177,19 @@ export default function JobSearchResults() {
            filters.experience_level || filters.company || filters.salaryMin || 
            filters.salaryMax || filters.postedWithin;
   }, [filters]);
+
+  // Handle hiding jobs
+  const handleHideJob = useCallback((jobId: string) => {
+    setHiddenJobs(prev => new Set([...prev, jobId]));
+  }, []);
+
+  // Filter jobs based on hidden status
+  const visibleJobs = useMemo(() => {
+    if (showHiddenJobs) {
+      return jobs; // Show all jobs including hidden ones
+    }
+    return jobs.filter(job => !hiddenJobs.has(job._id || job.id || ''));
+  }, [jobs, hiddenJobs, showHiddenJobs]);
 
   return (
     <Layout>
@@ -416,8 +440,23 @@ export default function JobSearchResults() {
               <div className="p-6">
                 {/* Enhanced View Toggle */}
                 <div className="flex items-center justify-between mb-6">
-                  <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-                    Showing {jobs.length} of {totalJobs.toLocaleString()} jobs
+                  <div className="flex items-center gap-4">
+                    <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      Showing {visibleJobs.length} of {totalJobs.toLocaleString()} jobs
+                    </div>
+                    {hiddenJobs.size > 0 && (
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={showHiddenJobs}
+                          onChange={(e) => setShowHiddenJobs(e.target.checked)}
+                          className="rounded border-gray-300"
+                        />
+                        <span className="text-gray-600 dark:text-gray-400">
+                          Show Hidden Ads ({hiddenJobs.size})
+                        </span>
+                      </label>
+                    )}
                   </div>
                   <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-xl">
                     <button
@@ -453,13 +492,72 @@ export default function JobSearchResults() {
                   ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' 
                   : 'space-y-4'
                 }>
-                  {jobs.map((job, index) => (
+                  {visibleJobs.map((job, index) => (
                     <JobCard
                       key={job._id || job.id || index}
                       job={job}
+                      onHide={handleHideJob}
                     />
                   ))}
                 </div>
+
+                {/* Pagination */}
+                {totalJobs > itemsPerPage && (
+                  <div className="mt-8 flex justify-center">
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                        className={`px-3 py-2 rounded-lg border ${
+                          currentPage === 1
+                            ? 'border-gray-200 text-gray-400 cursor-not-allowed'
+                            : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        Previous
+                      </button>
+                      
+                      {/* Page Numbers */}
+                      {(() => {
+                        const totalPages = Math.ceil(totalJobs / itemsPerPage);
+                        const maxVisiblePages = 5;
+                        const startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                        const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+                        const pages = [];
+                        
+                        for (let i = startPage; i <= endPage; i++) {
+                          pages.push(
+                            <button
+                              key={i}
+                              onClick={() => setCurrentPage(i)}
+                              className={`px-3 py-2 rounded-lg border ${
+                                i === currentPage
+                                  ? 'border-blue-500 bg-blue-500 text-white'
+                                  : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                              }`}
+                            >
+                              {i}
+                            </button>
+                          );
+                        }
+                        
+                        return pages;
+                      })()}
+                      
+                      <button
+                        onClick={() => setCurrentPage(Math.min(Math.ceil(totalJobs / itemsPerPage), currentPage + 1))}
+                        disabled={currentPage >= Math.ceil(totalJobs / itemsPerPage)}
+                        className={`px-3 py-2 rounded-lg border ${
+                          currentPage >= Math.ceil(totalJobs / itemsPerPage)
+                            ? 'border-gray-200 text-gray-400 cursor-not-allowed'
+                            : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

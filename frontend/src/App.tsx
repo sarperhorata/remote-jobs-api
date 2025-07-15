@@ -7,7 +7,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import './App.css';
 import { AuthCallback } from './pages/AuthCallback';
 import { AuthError } from './pages/AuthError';
-import { NotFound } from './pages/NotFound';
+import NotFound from './pages/NotFound';
 import PaymentSuccess from './pages/PaymentSuccess';
 import { Toaster } from 'react-hot-toast';
 import AutocompleteTest from './pages/AutocompleteTest';
@@ -34,6 +34,9 @@ const FavoritesPage = lazy(() => import('./pages/Favorites'));
 const ExternalAPIServicesPage = lazy(() => import('./pages/ExternalAPIServices'));
 const GoogleCallbackPage = lazy(() => import('./pages/GoogleCallback'));
 const LinkedInCallbackPage = lazy(() => import('./pages/LinkedInCallback'));
+const CareerTipsPage = lazy(() => import('./pages/CareerTips'));
+const SalaryGuidePage = lazy(() => import('./pages/SalaryGuide'));
+const SettingsPage = lazy(() => import('./pages/Settings'));
 
 // Onboarding Pages
 const CheckEmailPage = lazy(() => import('./pages/CheckEmail'));
@@ -108,6 +111,8 @@ const App: React.FC = () => {
                 <Route path="/privacy" element={<PrivacyPolicyPage />} />
                 <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                 <Route path="/help" element={<HelpPage />} />
+                <Route path="/career-tips" element={<CareerTipsPage />} />
+                <Route path="/salary-guide" element={<SalaryGuidePage />} />
                 <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
                 <Route path="/auth/linkedin/callback" element={<LinkedInCallbackPage />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
@@ -171,6 +176,14 @@ const App: React.FC = () => {
                   element={
                     <ProtectedRoute>
                       <MyApplicationsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route 
+                  path="/settings" 
+                  element={
+                    <ProtectedRoute>
+                      <SettingsPage />
                     </ProtectedRoute>
                   }
                 />

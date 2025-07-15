@@ -374,8 +374,8 @@ Skipping API call...""")
             description = job_data.get('description') or job_data.get('job_description') or ''
             url = job_data.get('url') or job_data.get('job_url') or job_data.get('apply_url', '')
             
-            # Generate external ID
-            external_id = job_data.get('id') or hashlib.md5(f"{title}{company}{location}".encode()).hexdigest()[:16]
+            # Generate external ID using secure hash
+            external_id = job_data.get('id') or hashlib.sha256(f"{title}{company}{location}".encode()).hexdigest()[:16]
             
             if title and company:
                 return JobData(

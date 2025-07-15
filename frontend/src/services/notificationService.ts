@@ -1,154 +1,222 @@
-interface NotificationOptions {
+import { getApiUrl } from '../utils/apiConfig';
+
+export interface Notification {
+  _id: string;
+  user_id: string;
   title: string;
-  body: string;
-  icon?: string;
-  tag?: string;
-  data?: any;
+  message: string;
+  notification_type: 'info' | 'success' | 'warning' | 'error';
+  category: string;
+  is_read: boolean;
+  is_active: boolean;
+  action_url?: string;
+  action_text?: string;
+  created_at: string;
+  read_at?: string;
+}
+
+export interface NotificationCount {
+  unread_count: number;
 }
 
 class NotificationService {
-  private permission: NotificationPermission = 'default';
-  private isSupported: boolean;
+  private listeners: ((count: number) => void)[] = [];
+  private notificationListeners: ((notification: Notification) => void)[] = [];
+  private jobCheckInterval: NodeJS.Timeout | null = null;
 
-  constructor() {
-    this.isSupported = 'Notification' in window;
-    if (this.isSupported) {
-      this.permission = Notification.permission;
-    }
-  }
-
-  async requestPermission(): Promise<NotificationPermission> {
-    if (!this.isSupported) {
-      return 'denied';
-    }
-
-    if (this.permission === 'default') {
-      this.permission = await Notification.requestPermission();
-    }
-
-    return this.permission;
-  }
-
-  async showNotification(options: NotificationOptions): Promise<boolean> {
-    await this.requestPermission();
-
-    if (this.permission !== 'granted') {
-      return false;
-    }
-
-    try {
-      const notification = new Notification(options.title, {
-        body: options.body,
-        icon: options.icon || '/favicon.ico',
-        tag: options.tag,
-        data: options.data,
-      });
-
-      // Auto close after 5 seconds
-      setTimeout(() => {
-        notification.close();
-      }, 5000);
-
-      return true;
-    } catch (error) {
-      console.error('Error showing notification:', error);
-      return false;
-    }
-  }
-
-  async showJobNotification(job: any): Promise<boolean> {
-    return this.showNotification({
-      title: `New Job: ${job.title}`,
-      body: `${job.company} in ${job.location}`,
-      tag: `job-${job.id}`,
-      data: { jobId: job.id, type: 'job_alert' }
-    });
-  }
-
-  async showMultipleJobNotifications(jobs: any[], maxNotifications = 5): Promise<void> {
-    const limitedJobs = jobs.slice(0, maxNotifications);
+  // Subscribe to notification count changes
+  onUnreadCountChange(callback: (count: number) => void) {
+    this.listeners.push(callback);
     
-    for (const job of limitedJobs) {
-      await this.showJobNotification(job);
-      // Small delay between notifications
-      await new Promise(resolve => setTimeout(resolve, 100));
+    // Return unsubscribe function
+    return () => {
+      const index = this.listeners.indexOf(callback);
+      if (index > -1) {
+        this.listeners.splice(index, 1);
+      }
+    };
+  }
+
+  // Subscribe to new notifications
+  onNewNotification(callback: (notification: Notification) => void) {
+    this.notificationListeners.push(callback);
+    
+    return () => {
+      const index = this.notificationListeners.indexOf(callback);
+      if (index > -1) {
+        this.notificationListeners.splice(index, 1);
+      }
+    };
+  }
+
+  // Request browser notification permission
+  async requestPermission(): Promise<boolean> {
+    if (!('Notification' in window)) {
+      console.warn('This browser does not support notifications');
+      return false;
     }
 
-    // If there are more jobs, show a summary notification
-    if (jobs.length > maxNotifications) {
-      await this.showNotification({
-        title: `${jobs.length} New Jobs Available`,
-        body: `${maxNotifications} shown, ${jobs.length - maxNotifications} more available`,
-        tag: 'job-summary'
-      });
+    if (Notification.permission === 'granted') {
+      return true;
+    }
+
+    if (Notification.permission !== 'denied') {
+      try {
+        const permission = await Notification.requestPermission();
+        return permission === 'granted';
+      } catch (error) {
+        console.error('Error requesting notification permission:', error);
+        return false;
+      }
+    }
+
+    return false;
+  }
+
+  // Start periodic job checking
+  startPeriodicJobCheck(intervalMinutes: number = 30) {
+    // Clear existing interval if any
+    if (this.jobCheckInterval) {
+      clearInterval(this.jobCheckInterval);
+    }
+
+    // Set up new interval
+    this.jobCheckInterval = setInterval(async () => {
+      try {
+        await this.checkForNewJobMatches();
+      } catch (error) {
+        console.error('Error during periodic job check:', error);
+      }
+    }, intervalMinutes * 60 * 1000); // Convert minutes to milliseconds
+
+    console.log(`Started periodic job check every ${intervalMinutes} minutes`);
+  }
+
+  // Stop periodic job checking
+  stopPeriodicJobCheck() {
+    if (this.jobCheckInterval) {
+      clearInterval(this.jobCheckInterval);
+      this.jobCheckInterval = null;
+      console.log('Stopped periodic job check');
     }
   }
 
-  isPermissionGranted(): boolean {
-    return this.permission === 'granted';
-  }
-
-  isNotificationSupported(): boolean {
-    return this.isSupported;
-  }
-
-  async checkForNewJobs(lastCheckTime?: string): Promise<any[]> {
+  // Check for new job matches (private implementation)
+  private async checkForNewJobMatches() {
     try {
-      const url = new URL('/api/jobs/recent', window.location.origin);
-      if (lastCheckTime) {
-        url.searchParams.set('since', lastCheckTime);
-      }
-
-      const response = await fetch(url.toString());
-      if (!response.ok) {
-        throw new Error(`Failed to fetch recent jobs: ${response.statusText}`);
-      }
-
-      const jobs = await response.json();
-      return Array.isArray(jobs) ? jobs : [];
+      // This would typically check user preferences and find matching jobs
+      // For now, it's a placeholder that could be expanded
+      console.log('Checking for new job matches...');
+      
+      // Placeholder: In the future, this could make API calls to:
+      // 1. Get user job preferences
+      // 2. Search for new jobs matching those preferences
+      // 3. Send browser notifications for relevant matches
     } catch (error) {
-      console.error('Error checking for new jobs:', error);
-      return [];
+      console.error('Error checking for new job matches:', error);
     }
   }
 
-  startPeriodicJobCheck(intervalMinutes = 30): void {
-    let lastCheckTime = new Date().toISOString();
+  // Get unread notification count
+  async getUnreadCount(): Promise<number> {
+    try {
+      const apiUrl = await getApiUrl();
+      const token = localStorage.getItem('auth_token');
+      
+      if (!token) {
+        return 0; // No auth, no notifications
+      }
 
-    const checkInterval = setInterval(async () => {
-      if (!this.isPermissionGranted()) {
-        clearInterval(checkInterval);
+      const response = await fetch(`${apiUrl}/api/v1/notifications/unread-count`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Token expired, clear it
+          localStorage.removeItem('auth_token');
+        }
+        return 0;
+      }
+
+      const data = await response.json();
+      return data.unread_count || 0;
+    } catch (error) {
+      console.error('Failed to get unread count:', error);
+      return 0;
+    }
+  }
+
+  // Refresh unread count and notify listeners
+  async refreshUnreadCount(): Promise<void> {
+    const count = await this.getUnreadCount();
+    this.notifyCountChange(count);
+  }
+
+  // Mark all notifications as read
+  async markAllAsRead(): Promise<void> {
+    try {
+      const apiUrl = await getApiUrl();
+      const token = localStorage.getItem('auth_token');
+      
+      if (!token) {
         return;
       }
 
-      try {
-        const newJobs = await this.checkForNewJobs(lastCheckTime);
-        
-        if (newJobs.length > 0) {
-          await this.showMultipleJobNotifications(newJobs);
-        }
+      const response = await fetch(`${apiUrl}/api/v1/notifications/mark-all-read`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-        lastCheckTime = new Date().toISOString();
-      } catch (error) {
-        console.error('Error in periodic job check:', error);
+      if (response.ok) {
+        this.notifyCountChange(0);
       }
-    }, intervalMinutes * 60 * 1000);
-
-    // Store interval ID for cleanup if needed
-    (window as any).jobCheckInterval = checkInterval;
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
+    }
   }
 
-  stopPeriodicJobCheck(): void {
-    if ((window as any).jobCheckInterval) {
-      clearInterval((window as any).jobCheckInterval);
-      delete (window as any).jobCheckInterval;
+  // Send browser notification
+  sendBrowserNotification(title: string, message: string, options?: NotificationOptions) {
+    if (Notification.permission === 'granted') {
+      try {
+        new Notification(title, {
+          body: message,
+          icon: '/favicon.ico',
+          badge: '/favicon.ico',
+          ...options
+        });
+      } catch (error) {
+        console.error('Error sending browser notification:', error);
+      }
     }
+  }
+
+  // Notify all listeners about count change
+  private notifyCountChange(count: number) {
+    this.listeners.forEach(callback => {
+      try {
+        callback(count);
+      } catch (error) {
+        console.error('Error in notification count listener:', error);
+      }
+    });
+  }
+
+  // Cleanup method
+  cleanup() {
+    this.stopPeriodicJobCheck();
+    this.listeners.length = 0;
+    this.notificationListeners.length = 0;
   }
 }
 
-// Create and export singleton instance
+// Export singleton instance
 export const notificationService = new NotificationService();
-
-// Export class for testing or custom instances
-export { NotificationService };
-export type { NotificationOptions }; 
+export default notificationService; 

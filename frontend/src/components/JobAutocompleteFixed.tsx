@@ -47,7 +47,7 @@ const JobAutocompleteFixed: React.FC<JobAutocompleteProps> = ({
     
     try {
       const apiBaseUrl = await getApiUrl();
-      const response = await fetch(`${apiBaseUrl}/jobs/job-titles/search?q=${encodeURIComponent(searchValue)}&limit=20`);
+      const response = await fetch(`${apiBaseUrl}/api/v1/jobs/job-titles/search?q=${encodeURIComponent(searchValue)}&limit=20`);
       
       if (!response.ok) {
         console.error('❌ Failed to fetch job titles, status:', response.status);
@@ -195,7 +195,10 @@ const JobAutocompleteFixed: React.FC<JobAutocompleteProps> = ({
                   {position.title}
                 </div>
               </div>
-              <div className="ml-3 px-2 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
+              <div 
+                className="ml-3 px-2 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full"
+                title={`${position.count} jobs with this exact title. Search may show more results including related positions.`}
+              >
                 {position.count} jobs
               </div>
             </div>

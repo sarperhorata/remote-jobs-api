@@ -5,6 +5,12 @@ import { getApiUrl } from '../utils/apiConfig';
 const APPLICATIONS_KEY = 'applications';
 const SAVED_JOBS_KEY = 'savedJobs';
 
+// Helper function to get full API URL with /api/v1 prefix
+const getFullApiUrl = async (): Promise<string> => {
+  const baseUrl = await getApiUrl();
+  return `${baseUrl}/api/v1`;
+};
+
 const getApplications = (): JobApplication[] => {
   const stored = localStorage.getItem(APPLICATIONS_KEY);
   return stored ? JSON.parse(stored) : [];
@@ -38,7 +44,7 @@ const unsaveJob = (jobId: string) => {
 // Real API functions with dynamic URL detection
 export const getJobs = async (params: any = {}): Promise<{ items?: Job[]; jobs?: Job[]; total: number; total_pages?: number; }> => {
   try {
-    const API_BASE_URL = await getApiUrl();
+    const API_BASE_URL = await getFullApiUrl();
     const searchParams = new URLSearchParams();
     
     // Use page instead of skip for consistency with backend
@@ -70,7 +76,7 @@ export const getJobs = async (params: any = {}): Promise<{ items?: Job[]; jobs?:
 
 export const getJobById = async (id: string): Promise<Job | null> => {
   try {
-    const API_BASE_URL = await getApiUrl();
+    const API_BASE_URL = await getFullApiUrl();
     const response = await fetch(`${API_BASE_URL}/jobs/${id}`);
     
     if (!response.ok) {
@@ -86,7 +92,7 @@ export const getJobById = async (id: string): Promise<Job | null> => {
 
 export const getSimilarJobs = async (jobId: string): Promise<Job[]> => {
   try {
-    const API_BASE_URL = await getApiUrl();
+    const API_BASE_URL = await getFullApiUrl();
     const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/similar`);
     
     if (!response.ok) {
@@ -102,7 +108,7 @@ export const getSimilarJobs = async (jobId: string): Promise<Job[]> => {
 
 export const searchJobs = async (query: string, params: any = {}): Promise<Job[]> => {
   try {
-    const API_BASE_URL = await getApiUrl();
+    const API_BASE_URL = await getFullApiUrl();
     const searchParams = new URLSearchParams();
     searchParams.append('query', query);
     
@@ -124,7 +130,7 @@ export const searchJobs = async (query: string, params: any = {}): Promise<Job[]
 
 export const getJobStatistics = async () => {
   try {
-    const API_BASE_URL = await getApiUrl();
+    const API_BASE_URL = await getFullApiUrl();
     const response = await fetch(`${API_BASE_URL}/jobs/statistics/`);
     
     if (!response.ok) {
@@ -188,12 +194,12 @@ export const getSavedJobsForUser = async (userId: string): Promise<Job[]> => {
 // Export a named JobServiceClass for consistency
 export class JobServiceClass {
   static async getBaseURL(): Promise<string> {
-    return await getApiUrl();
+    return await getFullApiUrl();
   }
 
   static async getJobs(page = 1, perPage = 10, filters?: any): Promise<Job[]> {
     try {
-      const API_BASE_URL = await getApiUrl();
+      const API_BASE_URL = await getFullApiUrl();
       const searchParams = new URLSearchParams();
       searchParams.append('page', page.toString());
       searchParams.append('limit', perPage.toString());
@@ -231,7 +237,7 @@ export class JobServiceClass {
 
   static async getJobById(id: string): Promise<Job | null> {
     try {
-      const API_BASE_URL = await getApiUrl();
+      const API_BASE_URL = await getFullApiUrl();
       const response = await fetch(`${API_BASE_URL}/jobs/${id}`, {
         method: 'GET',
         headers: {
@@ -252,7 +258,7 @@ export class JobServiceClass {
 
   static async getSimilarJobs(jobId: string): Promise<Job[]> {
     try {
-      const API_BASE_URL = await getApiUrl();
+      const API_BASE_URL = await getFullApiUrl();
       const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/similar`);
       
       if (!response.ok) {
@@ -268,7 +274,7 @@ export class JobServiceClass {
 
   static async searchJobs(query: string, params?: any): Promise<{ jobs: Job[]; total: number }> {
     try {
-      const API_BASE_URL = await getApiUrl();
+      const API_BASE_URL = await getFullApiUrl();
       
       // Handle empty query
       if (!query || query.trim() === '') {
@@ -306,7 +312,7 @@ export class JobServiceClass {
 
   static async getJobStatistics() {
     try {
-      const API_BASE_URL = await getApiUrl();
+      const API_BASE_URL = await getFullApiUrl();
       const response = await fetch(`${API_BASE_URL}/jobs/statistics`, {
         method: 'GET',
         headers: {
@@ -336,7 +342,7 @@ export class JobServiceClass {
 
   static async createJob(jobData: any) {
     try {
-      const API_BASE_URL = await getApiUrl();
+      const API_BASE_URL = await getFullApiUrl();
       const response = await fetch(`${API_BASE_URL}/jobs/`, {
         method: 'POST',
         headers: {
@@ -359,7 +365,7 @@ export class JobServiceClass {
 
   static async updateJob(id: string, jobData: any) {
     try {
-      const API_BASE_URL = await getApiUrl();
+      const API_BASE_URL = await getFullApiUrl();
       const response = await fetch(`${API_BASE_URL}/jobs/${id}`, {
         method: 'PUT',
         headers: {
@@ -382,7 +388,7 @@ export class JobServiceClass {
 
   static async deleteJob(id: string) {
     try {
-      const API_BASE_URL = await getApiUrl();
+      const API_BASE_URL = await getFullApiUrl();
       const response = await fetch(`${API_BASE_URL}/jobs/${id}`, {
         method: 'DELETE',
         headers: {
@@ -403,7 +409,7 @@ export class JobServiceClass {
 
   static async applyToJob(jobId: string, applicationData: any) {
     try {
-      const API_BASE_URL = await getApiUrl();
+      const API_BASE_URL = await getFullApiUrl();
       const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/apply`, {
         method: 'POST',
         headers: {
@@ -426,7 +432,7 @@ export class JobServiceClass {
 
   static async getMyApplications() {
     try {
-      const API_BASE_URL = await getApiUrl();
+      const API_BASE_URL = await getFullApiUrl();
       const response = await fetch(`${API_BASE_URL}/jobs/applications`, {
         method: 'GET',
         headers: {
@@ -464,7 +470,7 @@ export class JobServiceClass {
   // v2: Form Scraping Methods
   static async scrapeJobApplicationForm(jobId: string, url: string): Promise<any> {
     try {
-      const API_BASE_URL = await getApiUrl();
+      const API_BASE_URL = await getFullApiUrl();
       const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/scrape-form`, {
         method: 'POST',
         headers: {
@@ -487,7 +493,7 @@ export class JobServiceClass {
 
   static async submitScrapedFormApplication(jobId: string, applicationData: any): Promise<any> {
     try {
-      const API_BASE_URL = await getApiUrl();
+      const API_BASE_URL = await getFullApiUrl();
       const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/apply-scraped`, {
         method: 'POST',
         headers: {
@@ -511,7 +517,7 @@ export class JobServiceClass {
   // v3: Automated Application Methods
   static async submitAutomatedApplication(jobId: string, applicationData: any): Promise<any> {
     try {
-      const API_BASE_URL = await getApiUrl();
+      const API_BASE_URL = await getFullApiUrl();
       const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/apply-automated`, {
         method: 'POST',
         headers: {
@@ -535,7 +541,7 @@ export class JobServiceClass {
   // User Profile Methods
   static async getUserProfile(): Promise<any> {
     try {
-      const API_BASE_URL = await getApiUrl();
+      const API_BASE_URL = await getFullApiUrl();
       const response = await fetch(`${API_BASE_URL}/users/profile`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
@@ -556,7 +562,7 @@ export class JobServiceClass {
   // Analytics and Tracking
   static async trackJobInteraction(jobId: string, action: string): Promise<void> {
     try {
-      const API_BASE_URL = await getApiUrl();
+      const API_BASE_URL = await getFullApiUrl();
       await fetch(`${API_BASE_URL}/jobs/${jobId}/track`, {
         method: 'POST',
         headers: {
@@ -572,8 +578,8 @@ export class JobServiceClass {
   // Autocomplete helper for home page
   static async getJobTitleSuggestions(query: string, limit: number = 10): Promise<{ title: string; count: number; category: string }[]> {
     try {
-      const API_BASE_URL = await getApiUrl();
-      const response = await fetch(`${API_BASE_URL}/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+      const API_BASE_URL = await getFullApiUrl();
+      const response = await fetch(`${API_BASE_URL}/api/v1/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=${limit}`);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch job title suggestions: ${response.status}`);

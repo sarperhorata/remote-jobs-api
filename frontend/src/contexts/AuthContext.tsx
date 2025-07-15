@@ -27,6 +27,11 @@ interface User {
   id: string;
   name: string;
   email: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  location?: string;
+  bio?: string;
   picture?: string;
   profilePicture?: string;
   profile_picture?: string;

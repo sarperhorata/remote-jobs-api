@@ -4,14 +4,15 @@ import {
   Download, Camera, Plus, Calendar, GraduationCap,
   Linkedin, Github, Twitter, Globe
 } from 'lucide-react';
-import Header from '../components/Header';
+import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 // import { toast } from 'react-hot-toast';
 
 // Temporary toast replacement
 const toast = {
   success: (message: string) => console.log('✅', message),
-  error: (message: string) => console.error('❌', message)
+  error: (message: string) => console.error('❌', message),
+  info: (message: string) => console.log('ℹ️', message)
 };
 
 interface UserProfile {
@@ -179,7 +180,9 @@ const MyProfile: React.FC = () => {
         certificates: editForm.certificates
       };
       
-      localStorage.setItem('userPreferences', JSON.stringify(preferences));
+      // Store preferences in sessionStorage with basic encoding (not localStorage)
+      const encodedPreferences = btoa(JSON.stringify(preferences));
+      sessionStorage.setItem('userPrefs', encodedPreferences);
       
       // Update profile state
       setProfile(prev => prev ? { ...prev, ...editForm } : null);
@@ -202,6 +205,13 @@ const MyProfile: React.FC = () => {
     try {
       setImportingLinkedIn(true);
       
+      // Check if LinkedIn client ID is configured
+      if (!process.env.REACT_APP_LINKEDIN_CLIENT_ID) {
+        toast.error('LinkedIn integration is not configured. Please contact support.');
+        setImportingLinkedIn(false);
+        return;
+      }
+      
       // LinkedIn OAuth URL
       const linkedInAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?` +
         `response_type=code&` +
@@ -217,8 +227,14 @@ const MyProfile: React.FC = () => {
       const popup = window.open(
         linkedInAuthUrl,
         'linkedinAuth',
-        'width=600,height=600,scrollbars=yes,resizable=yes'
+        'width=600,height=600,scrollbars=yes,resizable=yes,status=yes,toolbar=no,menubar=no'
       );
+      
+      if (!popup) {
+        toast.error('Popup blocked! Please allow popups for this site and try again.');
+        setImportingLinkedIn(false);
+        return;
+      }
       
       // Listen for popup to close and handle the result
       const checkClosed = setInterval(() => {
@@ -226,58 +242,74 @@ const MyProfile: React.FC = () => {
           clearInterval(checkClosed);
           setImportingLinkedIn(false);
           
+          // Check for errors first
+          const authError = localStorage.getItem('linkedin_auth_error');
+          if (authError) {
+            toast.error(authError);
+            localStorage.removeItem('linkedin_auth_error');
+            return;
+          }
+          
           // Check if we received LinkedIn data
           const linkedInData = localStorage.getItem('linkedin_profile_data');
           if (linkedInData) {
-            const profileData = JSON.parse(linkedInData);
-            
-            // Verify email matches
-            if (profileData.email === user?.email) {
-              // Update profile with LinkedIn data
-              const updatedProfile = {
-                ...profile,
-                name: profileData.name || profile.name,
-                profile_picture: profileData.picture || profile.profile_picture,
-                linkedin_url: profileData.profileUrl || profile.linkedin_url,
-                bio: profileData.summary || profile.bio,
-                location: profileData.location || profile.location,
-                work_experience: [
-                  ...profile.work_experience,
-                  ...profileData.experience.map((exp: any) => ({
-                    title: exp.title,
-                    company: exp.company,
-                    location: exp.location || '',
-                    start_date: exp.startDate,
-                    end_date: exp.endDate,
-                    current: exp.isCurrent || false,
-                    description: exp.description || ''
-                  }))
-                ],
-                education: [
-                  ...profile.education,
-                  ...profileData.education.map((edu: any) => ({
-                    institution: edu.schoolName,
-                    degree: edu.degreeName,
-                    field_of_study: edu.fieldOfStudy || '',
-                    start_date: edu.startDate,
-                    end_date: edu.endDate,
-                    current: edu.isCurrent || false,
-                    gpa: ''
-                  }))
-                ]
-              };
+            try {
+              const profileData = JSON.parse(linkedInData);
               
-              setProfile(updatedProfile);
-              setEditForm(updatedProfile);
-              
-              // Clean up
-              localStorage.removeItem('linkedin_profile_data');
-              localStorage.removeItem('linkedin_auth_email');
-              
-              toast.success('LinkedIn profile imported successfully!');
-            } else {
-              toast.error('LinkedIn email does not match your account email.');
+              // Verify email matches
+              if (profileData.email === user?.email) {
+                // Update profile with LinkedIn data
+                const updatedProfile = {
+                  ...profile,
+                  name: profileData.name || profile.name,
+                  profile_picture: profileData.picture || profile.profile_picture,
+                  linkedin_url: profileData.profileUrl || profile.linkedin_url,
+                  bio: profileData.summary || profile.bio,
+                  location: profileData.location || profile.location,
+                  work_experience: [
+                    ...(profile.work_experience || []),
+                    ...(profileData.experience || []).map((exp: any) => ({
+                      title: exp.title || '',
+                      company: exp.company || '',
+                      location: exp.location || '',
+                      start_date: exp.startDate || '',
+                      end_date: exp.endDate || '',
+                      current: exp.isCurrent || false,
+                      description: exp.description || ''
+                    }))
+                  ],
+                  education: [
+                    ...(profile.education || []),
+                    ...(profileData.education || []).map((edu: any) => ({
+                      institution: edu.schoolName || '',
+                      degree: edu.degreeName || '',
+                      field_of_study: edu.fieldOfStudy || '',
+                      start_date: edu.startDate || '',
+                      end_date: edu.endDate || '',
+                      current: edu.isCurrent || false,
+                      gpa: ''
+                    }))
+                  ]
+                };
+                
+                setProfile(updatedProfile);
+                setEditForm(updatedProfile);
+                
+                // Clean up
+                localStorage.removeItem('linkedin_profile_data');
+                localStorage.removeItem('linkedin_auth_email');
+                
+                toast.success('LinkedIn profile imported successfully! Your profile has been updated.');
+              } else {
+                toast.error('LinkedIn email does not match your account email. Please use the same email address.');
+              }
+            } catch (parseError) {
+              console.error('Error parsing LinkedIn data:', parseError);
+              toast.error('Failed to parse LinkedIn profile data. Please try again.');
             }
+          } else {
+            // User closed popup without completing auth
+            toast.info('LinkedIn import was cancelled.');
           }
         }
       }, 1000);
@@ -368,8 +400,7 @@ const MyProfile: React.FC = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-        <Header />
+      <Layout>
         <div className="container mx-auto px-4 py-16 text-center">
           <div className="max-w-md mx-auto">
             <User className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
@@ -377,25 +408,23 @@ const MyProfile: React.FC = () => {
             <p className="text-gray-600 dark:text-gray-300">You need to be logged in to view your profile.</p>
           </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-        <Header />
+      <Layout>
         <div className="container mx-auto px-4 py-16 text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600 dark:text-gray-300">Loading your profile...</p>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-      <Header />
+    <Layout>
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Profile Header */}
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-600 p-6 mb-6">
@@ -497,6 +526,42 @@ const MyProfile: React.FC = () => {
               </p>
             )}
           </div>
+
+          {/* LinkedIn Import Section */}
+          {!editing && (
+            <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
+                    {profile?.linkedin_url ? 'Update Your Profile' : 'Import from LinkedIn'}
+                  </h3>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    {profile?.linkedin_url 
+                      ? 'Sync your latest LinkedIn information to keep your profile up to date'
+                      : 'Connect your LinkedIn profile to automatically import your professional information'
+                    }
+                  </p>
+                </div>
+                <button
+                  onClick={handleLinkedInImport}
+                  disabled={importingLinkedIn}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md flex items-center gap-2 transition-colors disabled:opacity-50 shadow-sm font-medium"
+                >
+                  {importingLinkedIn ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Importing...
+                    </>
+                  ) : (
+                    <>
+                      <Linkedin className="w-4 h-4" />
+                      {profile?.linkedin_url ? 'Update Profile' : 'Connect LinkedIn'}
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -658,11 +723,11 @@ const MyProfile: React.FC = () => {
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-600 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Social Links</h2>
-                {!editing && profile?.linkedin_url && (
+                {!editing && (
                   <button
                     onClick={handleLinkedInImport}
                     disabled={importingLinkedIn}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md flex items-center gap-2 transition-colors disabled:opacity-50"
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md flex items-center gap-2 transition-colors disabled:opacity-50 shadow-sm"
                   >
                     {importingLinkedIn ? (
                       <>
@@ -671,8 +736,8 @@ const MyProfile: React.FC = () => {
                       </>
                     ) : (
                       <>
-                        <Download className="w-4 h-4" />
-                        Import from LinkedIn
+                        <Linkedin className="w-4 h-4" />
+                        {profile?.linkedin_url ? 'Update from LinkedIn' : 'Connect LinkedIn'}
                       </>
                     )}
                   </button>
@@ -1003,7 +1068,7 @@ const MyProfile: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

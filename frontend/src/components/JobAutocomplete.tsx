@@ -53,7 +53,7 @@ const JobAutocomplete: React.FC<JobAutocompleteProps> = ({
     
     try {
       const apiBaseUrl = await getApiUrl();
-      const apiUrl = `${apiBaseUrl}/jobs/job-titles/search?q=${encodeURIComponent(searchValue)}&limit=${maxResults}`;
+      const apiUrl = `${apiBaseUrl}/api/v1/jobs/job-titles/search?q=${encodeURIComponent(searchValue)}&limit=${maxResults}`;
       console.log('🔍 JobAutocomplete API URL:', apiUrl);
       
       const response = await fetch(apiUrl);
@@ -263,7 +263,10 @@ const JobAutocomplete: React.FC<JobAutocompleteProps> = ({
                   </div>
                 )}
               </div>
-              <div className="ml-3 px-2 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
+              <div 
+                className="ml-3 px-2 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full"
+                title={`${position.count} jobs with this exact title. Search may show more results including related positions.`}
+              >
                 {position.count} jobs
               </div>
             </div>

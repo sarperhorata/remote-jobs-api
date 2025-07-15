@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import SearchFilters from '../components/JobSearch/SearchFilters';
 import SearchResultsList from '../components/JobSearch/SearchResultsList';
-import Header from '../components/Header';
+import Layout from '../components/Layout';
 import { Job } from '../types/job';
 
 interface Filters {
@@ -45,9 +45,8 @@ const SearchResults: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
-      <Header />
-      <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <Layout>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           <aside className="lg:col-span-1">
             <SearchFilters 
@@ -61,8 +60,8 @@ const SearchResults: React.FC = () => {
             <SearchResultsList jobs={jobs} totalResults={totalResults} />
           </section>
         </div>
-      </main>
-    </div>
+      </div>
+    </Layout>
   );
 };
 

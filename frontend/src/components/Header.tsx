@@ -2,37 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
-import { Menu, X, User, LogOut, Settings, Heart, FileText, Bell } from 'lucide-react';
-import { notificationService } from '../services/notificationService';
+import { Menu, X, User, LogOut, Settings, Heart, FileText } from 'lucide-react';
 
 const Header: React.FC = () => {
   const { user, logout } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
-
-  // Set up notification service when user logs in/out
-  useEffect(() => {
-    if (user) {
-      // Subscribe to unread count changes
-      const unsubscribeCount = notificationService.onUnreadCountChange((count) => {
-        setUnreadCount(count);
-      });
-
-      // Get initial count
-      notificationService.refreshUnreadCount();
-
-      // Cleanup on unmount or user logout
-      return () => {
-        unsubscribeCount();
-      };
-    } else {
-      // User logged out, reset count
-      setUnreadCount(0);
-    }
-  }, [user]);
 
   const navigation = [];
 
@@ -48,11 +25,6 @@ const Header: React.FC = () => {
         break;
       case 'applications':
         navigate('/applications');
-        break;
-      case 'notifications':
-        // Mark all as read when navigating to notifications
-        notificationService.markAllAsRead();
-        navigate('/notifications');
         break;
       case 'settings':
         navigate('/settings');
@@ -116,21 +88,6 @@ const Header: React.FC = () => {
             <div className="flex items-center space-x-4">
               {user ? (
                 <>
-                  {/* Notifications Icon */}
-                  <div className="relative">
-                    <button
-                      onClick={() => handleProfileAction('notifications')}
-                      className="relative p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      <Bell className="w-5 h-5" />
-                      {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
-                          {unreadCount > 99 ? '99+' : unreadCount}
-                        </span>
-                      )}
-                    </button>
-                  </div>
-
                   {/* User Profile Dropdown */}
                   <div className="relative">
                     <button
@@ -176,19 +133,6 @@ const Header: React.FC = () => {
                         >
                           <FileText className="w-4 h-4 mr-3" />
                           Applications
-                        </button>
-                        
-                        <button
-                          onClick={() => handleProfileAction('notifications')}
-                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                        >
-                          <Bell className="w-4 h-4 mr-3" />
-                          Notifications
-                          {unreadCount > 0 && (
-                            <span className="ml-auto bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
-                              {unreadCount > 99 ? '99+' : unreadCount}
-                            </span>
-                          )}
                         </button>
                         
                         <button

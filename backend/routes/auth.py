@@ -469,4 +469,132 @@ async def linkedin_profile(request: Request):
         
     except Exception as e:
         logging.error(f"LinkedIn profile fetch error: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error") 
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=6)
+
+@router.post("/change-password")
+async def change_password(
+    request: ChangePasswordRequest,
+    current_user: dict = Depends(get_current_user_dependency),
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """Change user password."""
+    try:
+        # Verify current password
+        if not verify_password(request.current_password, current_user.get("hashed_password", "")):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect"
+            )
+        
+        # Hash new password and update user
+        hashed_password = get_password_hash(request.new_password)
+        await db.users.update_one(
+            {"_id": current_user["_id"]},
+            {
+                "$set": {
+                    "hashed_password": hashed_password,
+                    "updated_at": datetime.utcnow()
+                }
+            }
+        )
+        
+        return {"message": "Password changed successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Change password error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to change password"
+        )
+
+@router.delete("/delete-account")
+async def delete_account(
+    current_user: dict = Depends(get_current_user_dependency),
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """Delete user account."""
+    try:
+        # Delete user from database
+        result = await db.users.delete_one({"_id": current_user["_id"]})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        # TODO: Clean up related data (applications, saved jobs, etc.)
+        
+        return {"message": "Account deleted successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete account error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete account"
+        )
+
+@router.get("/export-data")
+async def export_user_data(
+    current_user: dict = Depends(get_current_user_dependency),
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """Export user data."""
+    try:
+        # Get user data
+        user_data = await db.users.find_one({"_id": current_user["_id"]})
+        if not user_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        # Remove sensitive data
+        user_data.pop("hashed_password", None)
+        user_data.pop("_id", None)
+        
+        # Convert ObjectId to string
+        if "id" in user_data:
+            user_data["id"] = str(user_data["id"])
+        
+        # Get user applications
+        applications = await db.applications.find({"user_id": str(current_user["_id"])}).to_list(length=None)
+        
+        # Get user saved jobs
+        saved_jobs = await db.saved_jobs.find({"user_id": str(current_user["_id"])}).to_list(length=None)
+        
+        # Prepare export data
+        export_data = {
+            "user": user_data,
+            "applications": applications,
+            "saved_jobs": saved_jobs,
+            "exported_at": datetime.utcnow().isoformat()
+        }
+        
+        # Convert to JSON
+        import json
+        json_data = json.dumps(export_data, indent=2, default=str)
+        
+        from fastapi.responses import Response
+        return Response(
+            content=json_data,
+            media_type="application/json",
+            headers={"Content-Disposition": "attachment; filename=user-data.json"}
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Export data error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to export data"
+        ) 

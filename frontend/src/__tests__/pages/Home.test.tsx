@@ -82,11 +82,6 @@ describe('Home Page', () => {
         totalCompanies: 2456,
         totalCountries: 157,
     });
-
-    (jobService.getTopPositions as jest.Mock).mockResolvedValue([
-        { _id: 'Developer', count: 5000 },
-        { _id: 'Manager', count: 3000 },
-    ]);
   });
 
   test('renders main heading and hero section correctly', async () => {

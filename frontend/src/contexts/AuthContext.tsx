@@ -38,6 +38,17 @@ interface User {
   created_at?: string;
   profile?: UserProfile;
   role?: 'user' | 'admin';
+  // Additional fields for Settings page
+  full_name?: string;
+  company?: string;
+  position?: string;
+  skills?: string[];
+  website?: string;
+  github?: string;
+  linkedin?: string;
+  twitter?: string;
+  email_notifications?: boolean;
+  browser_notifications?: boolean;
 }
 
 export interface AuthContextType {
@@ -48,6 +59,7 @@ export interface AuthContextType {
   logout: () => void;
   signup: (name: string, email: string, password: string) => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateUser: (userData: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -294,6 +306,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateUser = (userData: Partial<User>) => {
+    if (user) {
+      setUser({ ...user, ...userData });
+    }
+  };
+
   const isAuthenticated = !!user;
 
   return (
@@ -304,7 +322,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       login,
       logout,
       signup,
-      refreshUser
+      refreshUser,
+      updateUser
     }}>
       {children}
     </AuthContext.Provider>

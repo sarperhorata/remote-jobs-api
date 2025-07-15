@@ -35,12 +35,14 @@ describe('Navigation', () => {
       logout: mockLogout,
       signup: jest.fn(),
       refreshUser: jest.fn(),
+      updateUser: jest.fn(),
       isLoading: false,
     });
 
     mockUseTheme.mockReturnValue({
       theme: 'light',
       toggleTheme: mockToggleTheme,
+      applyTheme: jest.fn(),
     });
   });
 
@@ -68,6 +70,7 @@ describe('Navigation', () => {
       logout: mockLogout,
       signup: jest.fn(),
       refreshUser: jest.fn(),
+      updateUser: jest.fn(),
       isLoading: false,
     });
 
@@ -85,6 +88,7 @@ describe('Navigation', () => {
       logout: mockLogout,
       signup: jest.fn(),
       refreshUser: jest.fn(),
+      updateUser: jest.fn(),
       isLoading: false,
     });
 
@@ -102,6 +106,7 @@ describe('Navigation', () => {
       logout: mockLogout,
       signup: jest.fn(),
       refreshUser: jest.fn(),
+      updateUser: jest.fn(),
       isLoading: false,
     });
 
@@ -118,6 +123,7 @@ describe('Navigation', () => {
       logout: mockLogout,
       signup: jest.fn(),
       refreshUser: jest.fn(),
+      updateUser: jest.fn(),
       isLoading: false,
     });
 
@@ -136,6 +142,7 @@ describe('Navigation', () => {
     mockUseTheme.mockReturnValue({
       theme: 'dark',
       toggleTheme: mockToggleTheme,
+      applyTheme: jest.fn(),
     });
 
     renderNavigation();

@@ -35,7 +35,11 @@ const mockJob: Job = {
   location: "Remote",
   work_type: "Remote",
   job_type: "Full-time",
-  salary: "$80,000 - $120,000",
+  salary: {
+    min: 80000,
+    max: 120000,
+    currency: "USD"
+  },
   posted_date: "2024-01-15T10:00:00Z",
   description: "Join our amazing team as a Senior React Developer",
   skills: ["React", "TypeScript", "Node.js"],
@@ -104,7 +108,7 @@ describe("JobCard Component", () => {
   test("renders company name from object correctly", () => {
     const jobWithObjectCompany = {
       ...mockJob,
-      company: { name: "Object Corp", logo: "logo.png" }
+      company: { id: "company-1", name: "Object Corp", logo: "logo.png" }
     };
     render(<MockWrapper><JobCard job={jobWithObjectCompany} /></MockWrapper>);
     expect(screen.getByText("Object Corp")).toBeInTheDocument();

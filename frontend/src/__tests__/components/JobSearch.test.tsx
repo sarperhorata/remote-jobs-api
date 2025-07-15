@@ -20,7 +20,7 @@ const renderWithRouter = (component: React.ReactElement) => {
 describe('JobSearch', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockJobService.getJobs.mockResolvedValue([]);
+    mockJobService.getJobs.mockResolvedValue({ jobs: [], total: 0 });
   });
 
   it('renders search form', () => {

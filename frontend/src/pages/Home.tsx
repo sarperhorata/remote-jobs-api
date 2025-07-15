@@ -45,19 +45,19 @@ const Home: React.FC = () => {
     }
   }, []);
 
-  // Auto-scroll for top row (left to right) - faster speed for visibility
+  // Auto-scroll for top row (left to right) - smooth and slow movement
   useEffect(() => {
     const interval = setInterval(() => {
       setTopRowIndex(prev => (prev + 1) % Math.max(1, featuredJobs.length - 10));
-    }, 3000); // 3 seconds for visible movement
+    }, 8000); // 8 seconds for smooth, slow movement
     return () => clearInterval(interval);
   }, [featuredJobs.length]);
 
-  // Auto-scroll for bottom row (right to left) - faster speed for visibility
+  // Auto-scroll for bottom row (right to left) - smooth and slow movement
   useEffect(() => {
     const interval = setInterval(() => {
       setBottomRowIndex(prev => (prev + 1) % Math.max(1, featuredJobs.length - 10));
-    }, 3500); // 3.5 seconds for visible movement
+    }, 10000); // 10 seconds for smooth, slow movement
     return () => clearInterval(interval);
   }, [featuredJobs.length]);
 
@@ -66,7 +66,7 @@ const Home: React.FC = () => {
     const loadFeaturedJobs = async () => {
       try {
         console.log('🔥 Loading Hot Remote Jobs from API...');
-        const response = await jobService.getJobs(1, 25); // Get more jobs for infinite scroll (10 visible + buffer)
+        const response = await jobService.getJobs(1, 50); // Get more jobs for infinite scroll (20 visible + buffer)
         console.log('API Response:', response);
         
         // API'den gelen verileri kontrol et
@@ -88,16 +88,18 @@ const Home: React.FC = () => {
             is_active: job.is_active !== false
           }));
           
-          setFeaturedJobs(formattedJobs);
-          console.log('✅ Hot Remote Jobs loaded successfully:', formattedJobs.length);
+          // Ensure we have enough jobs for smooth infinite scrolling
+          const extendedJobs = [...formattedJobs, ...formattedJobs, ...formattedJobs];
+          setFeaturedJobs(extendedJobs);
+          console.log('✅ Hot Remote Jobs loaded successfully:', extendedJobs.length);
         } else {
           console.warn('⚠️ No jobs returned from API, using fallback data');
           throw new Error('No jobs from API');
         }
       } catch (error) {
         console.error('❌ Error loading featured jobs from API:', error);
-        // Fallback to static data if API fails - 20 jobs for infinite scroll
-        setFeaturedJobs([
+        // Fallback to static data if API fails - 30 jobs for infinite scroll
+        const fallbackJobs = [
           {
             _id: '1',
             title: 'Senior Frontend Developer',
@@ -205,180 +207,45 @@ const Home: React.FC = () => {
             salary_range: '$110k - $160k',
             skills: ['Python', 'ML', 'Statistics'],
             created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-            description: 'Build machine learning models and analyze complex data.',
+            description: 'Analyze complex data sets and build predictive models.',
             company_logo: '📊',
             url: '#',
             is_active: true
           },
           {
             _id: '9',
-            title: 'Product Designer',
-            company: 'DesignHub',
-            location: 'Remote (Europe)',
-            job_type: 'Full-time',
-            salary_range: '$75k - $110k',
-            skills: ['UI/UX', 'Prototyping', 'Research'],
-            created_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
-            description: 'Create user-centered design solutions.',
-            company_logo: '🎯',
-            url: '#',
-            is_active: true
-          },
-          {
-            _id: '10',
-            title: 'Full Stack Developer',
-            company: 'WebFlow Inc.',
+            title: 'Security Engineer',
+            company: 'SecureNet',
             location: 'Remote (Global)',
             job_type: 'Full-time',
-            salary_range: '$90k - $130k',
-            skills: ['React', 'Node.js', 'MongoDB'],
-            created_at: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString(),
-            description: 'Build end-to-end web applications.',
-            company_logo: '🌐',
-            url: '#',
-            is_active: true
-          },
-          {
-            _id: '11',
-            title: 'QA Engineer',
-            company: 'QualityTech',
-            location: 'Remote (US/EU)',
-            job_type: 'Full-time',
-            salary_range: '$70k - $100k',
-            skills: ['Testing', 'Automation', 'Selenium'],
-            created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-            description: 'Ensure software quality through comprehensive testing.',
-            company_logo: '🔍',
-            url: '#',
-            is_active: true
-          },
-          {
-            _id: '12',
-            title: 'Content Writer',
-            company: 'ContentCraft',
-            location: 'Remote (Worldwide)',
-            job_type: 'Part-time',
-            salary_range: '$50k - $80k',
-            skills: ['Writing', 'SEO', 'Marketing'],
-            created_at: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000).toISOString(),
-            description: 'Create engaging content for digital platforms.',
-            company_logo: '✍️',
-            url: '#',
-            is_active: true
-          },
-          {
-            _id: '13',
-            title: 'Cybersecurity Analyst',
-            company: 'SecureNet',
-            location: 'Remote (US)',
-            job_type: 'Full-time',
             salary_range: '$100k - $150k',
-            skills: ['Security', 'Networking', 'Compliance'],
-            created_at: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
-            description: 'Protect systems and data from cyber threats.',
+            skills: ['Cybersecurity', 'Penetration Testing', 'Compliance'],
+            created_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+            description: 'Protect our systems and data from security threats.',
             company_logo: '🔒',
             url: '#',
             is_active: true
           },
           {
-            _id: '14',
-            title: 'Sales Manager',
-            company: 'SalesForce Pro',
-            location: 'Remote (US/EU)',
-            job_type: 'Full-time',
-            salary_range: '$80k - $120k',
-            skills: ['Sales', 'CRM', 'Leadership'],
-            created_at: new Date(Date.now() - 13 * 24 * 60 * 60 * 1000).toISOString(),
-            description: 'Lead sales teams and drive revenue growth.',
-            company_logo: '💼',
-            url: '#',
-            is_active: true
-          },
-          {
-            _id: '15',
-            title: 'Customer Success Manager',
-            company: 'SuccessHub',
-            location: 'Remote (Global)',
-            job_type: 'Full-time',
-            salary_range: '$70k - $100k',
-            skills: ['Customer Service', 'Onboarding', 'Retention'],
-            created_at: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-            description: 'Ensure customer satisfaction and retention.',
-            company_logo: '🤝',
-            url: '#',
-            is_active: true
-          },
-          {
-            _id: '16',
-            title: 'Business Analyst',
-            company: 'BusinessIntel',
-            location: 'Remote (US)',
-            job_type: 'Full-time',
-            salary_range: '$85k - $120k',
-            skills: ['Analysis', 'Requirements', 'Documentation'],
-            created_at: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-            description: 'Bridge business needs with technical solutions.',
-            company_logo: '📋',
-            url: '#',
-            is_active: true
-          },
-          {
-            _id: '17',
-            title: 'DevOps Engineer',
-            company: 'CloudOps',
+            _id: '10',
+            title: 'Product Manager',
+            company: 'ProductCorp',
             location: 'Remote (Europe)',
             job_type: 'Full-time',
             salary_range: '$90k - $130k',
-            skills: ['Docker', 'Kubernetes', 'CI/CD'],
-            created_at: new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).toISOString(),
-            description: 'Streamline development and deployment processes.',
-            company_logo: '⚙️',
-            url: '#',
-            is_active: true
-          },
-          {
-            _id: '18',
-            title: 'UI Developer',
-            company: 'InterfaceLab',
-            location: 'Remote (Global)',
-            job_type: 'Full-time',
-            salary_range: '$75k - $110k',
-            skills: ['HTML', 'CSS', 'JavaScript'],
-            created_at: new Date(Date.now() - 17 * 24 * 60 * 60 * 1000).toISOString(),
-            description: 'Create beautiful and functional user interfaces.',
-            company_logo: '🎨',
-            url: '#',
-            is_active: true
-          },
-          {
-            _id: '19',
-            title: 'Technical Writer',
-            company: 'DocTech',
-            location: 'Remote (US/EU)',
-            job_type: 'Part-time',
-            salary_range: '$60k - $90k',
-            skills: ['Documentation', 'Technical Writing', 'APIs'],
-            created_at: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000).toISOString(),
-            description: 'Create clear technical documentation.',
-            company_logo: '📚',
-            url: '#',
-            is_active: true
-          },
-          {
-            _id: '20',
-            title: 'Project Manager',
-            company: 'ProjectFlow',
-            location: 'Remote (Global)',
-            job_type: 'Full-time',
-            salary_range: '$90k - $130k',
-            skills: ['Agile', 'Scrum', 'Leadership'],
-            created_at: new Date(Date.now() - 19 * 24 * 60 * 60 * 1000).toISOString(),
-            description: 'Lead projects from conception to completion.',
-            company_logo: '📊',
+            skills: ['Product Strategy', 'Agile', 'User Research'],
+            created_at: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString(),
+            description: 'Lead product development from concept to launch.',
+            company_logo: '🎯',
             url: '#',
             is_active: true
           }
-        ]);
+        ];
+        
+        // Create extended array for smooth infinite scrolling
+        const extendedFallbackJobs = [...fallbackJobs, ...fallbackJobs, ...fallbackJobs];
+        setFeaturedJobs(extendedFallbackJobs);
+        console.log('✅ Fallback jobs loaded:', extendedFallbackJobs.length);
       }
     };
 
@@ -559,7 +426,7 @@ const Home: React.FC = () => {
               <div className="relative overflow-hidden">
                 <div 
                   ref={topRowRef}
-                  className="flex gap-6 transition-transform duration-2000 ease-in-out"
+                  className="flex gap-6 transition-transform duration-[8000ms] ease-in-out"
                   style={{ 
                     transform: `translateX(-${topRowIndex * 10}%)`,
                     width: `${Math.max(100, (featuredJobs.length * 10))}%`
@@ -729,7 +596,7 @@ const Home: React.FC = () => {
               <div className="relative overflow-hidden">
                 <div 
                   ref={bottomRowRef}
-                  className="flex gap-6 transition-transform duration-2000 ease-in-out"
+                  className="flex gap-6 transition-transform duration-[10000ms] ease-in-out"
                   style={{ 
                     transform: `translateX(-${bottomRowIndex * 10}%)`,
                     width: `${Math.max(100, (featuredJobs.length * 10))}%`

@@ -11,7 +11,12 @@ const Header: React.FC = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const navigate = useNavigate();
 
-  const navigation = [];
+  const navigation = [
+    {
+      name: 'Pricing',
+      href: '/pricing'
+    }
+  ];
 
   const handleProfileAction = (action: string) => {
     setShowProfileDropdown(false);
@@ -141,14 +146,6 @@ const Header: React.FC = () => {
                         >
                           <Settings className="w-4 h-4 mr-3" />
                           Settings
-                        </button>
-                        
-                        <button
-                          onClick={() => { setShowProfileDropdown(false); navigate('/pricing'); }}
-                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                        >
-                          💳
-                          <span className="ml-3">Pricing</span>
                         </button>
                         
                         <div className="border-t border-gray-200/50 dark:border-gray-600/50 mt-2 pt-2">

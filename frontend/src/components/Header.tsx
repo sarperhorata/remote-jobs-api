@@ -63,11 +63,11 @@ const Header: React.FC = () => {
             {/* Logo */}
             <div className="flex items-center">
               <Link to="/" className="flex items-center">
-                <div className="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center mr-3 shadow-lg">
+                <div className="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center mr-0.5 shadow-lg">
                   <span className="text-2xl animate-pulse hover:animate-none transition-all duration-300">🐝</span>
                 </div>
                 <div className="block">
-                  <h1 className="text-xl md:text-2xl font-extrabold bg-gradient-to-r from-yellow-400 via-orange-400 to-pink-500 bg-clip-text text-transparent drop-shadow-lg tracking-tight flex items-center gap-1 select-none">
+                  <h1 className="text-xl md:text-2xl font-extrabold bg-gradient-to-r from-yellow-400 via-orange-400 to-pink-500 bg-clip-text text-transparent drop-shadow-lg tracking-tight flex items-center gap-0.5 select-none">
                     <span className="inline-block animate-float">🐝</span>
                     Buzz2Remote
                   </h1>

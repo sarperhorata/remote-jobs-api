@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AuthModal from '../components/AuthModal';
 import Onboarding from '../components/Onboarding';
 import MultiJobAutocomplete from '../components/MultiJobAutocomplete';
-import Layout from '../components/Layout';
+
 import { jobService } from '../services/jobService';
 import { Job } from '../types/job';
 import { 
@@ -286,115 +286,113 @@ const Home: React.FC = () => {
   ];
 
   return (
-    <Layout>
-      <div className="min-h-screen">
-        {/* Hero Section with Enhanced Design */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-800 text-white">
-          {/* Video Background */}
-          <div className="absolute inset-0 w-full h-full">
-            <video
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="w-full h-full object-cover opacity-40"
-              style={{ filter: 'brightness(0.3) contrast(1.2)' }}
-            >
-              <source src="/Entry video.mp4" type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
+    <div className="min-h-screen">
+      {/* Hero Section with Enhanced Design */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-800 text-white pt-0">
+        {/* Video Background */}
+        <div className="absolute inset-0 w-full h-full">
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover opacity-40"
+            style={{ filter: 'brightness(0.3) contrast(1.2)' }}
+          >
+            <source src="/Entry video.mp4" type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+        </div>
+        
+        {/* Animated background patterns */}
+        <div 
+          className="absolute inset-0 opacity-20"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+          }}
+        ></div>
+        
+        {/* Glassmorphism overlay */}
+        <div className="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
+        
+        <div className="relative container mx-auto px-4 py-2">
+          <div className="max-w-5xl mx-auto text-center mb-3">
+            {/* Main heading with enhanced typography */}
+            <h1 className="text-5xl md:text-7xl font-extrabold mb-3 leading-tight">
+              <br />
+              Find Your Perfect 
+              <span className="block bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
+                Remote Job 🐝
+              </span>
+            </h1>
+            
+            <p className="text-xl md:text-2xl opacity-95 mb-3 leading-relaxed max-w-3xl mx-auto">
+              Your dream job is just a buzz away!
+            </p>
           </div>
-          
-          {/* Animated background patterns */}
-          <div 
-            className="absolute inset-0 opacity-20"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-            }}
-          ></div>
-          
-          {/* Glassmorphism overlay */}
-          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
-          
-          <div className="relative container mx-auto px-4 py-6">
-            <div className="max-w-5xl mx-auto text-center mb-3">
-              {/* Main heading with enhanced typography */}
-              <h1 className="text-5xl md:text-7xl font-extrabold mb-3 leading-tight">
-                <br />
-                Find Your Perfect 
-                <span className="block bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
-                  Remote Job 🐝
-                </span>
-              </h1>
-              
-              <p className="text-xl md:text-2xl opacity-95 mb-3 leading-relaxed max-w-3xl mx-auto">
-                Your dream job is just a buzz away!
-              </p>
-            </div>
 
-            {/* Enhanced Search Section */}
-            <div className="max-w-4xl mx-auto">
-              <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20 shadow-2xl">
-                <div className="space-y-6">
-                  {/* Search input with buttons side by side */}
-                  <div className="flex gap-3">
-                    <div className="flex-1">
-                      <MultiJobAutocomplete
-                        onSelect={(position) => {
-                          setSelectedPositions(prev => {
-                            const exists = prev.find(p => p.title === position.title);
-                            if (exists) return prev;
-                            return [...prev, position];
-                          });
-                        }}
-                        placeholder="Try: Frontend Developer, Product Manager, Designer..."
-                      />
-                    </div>
-                    <button
-                      onClick={() => handleSearch(selectedPositions)}
-                      disabled={selectedPositions.length === 0 || selectedPositions.length > 5}
-                      className="bg-gradient-to-br from-orange-400 to-yellow-500 hover:from-orange-500 hover:to-yellow-400 disabled:from-orange-300 disabled:to-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold px-4 md:px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center space-x-2 whitespace-nowrap tracking-tight text-lg"
-                    >
-                      <Search className="w-5 h-5" />
-                      <span>Search!</span>
-                    </button>
-                    <button
-                      onClick={() => setShowOnboarding(true)}
-                      className="hidden md:flex bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold px-6 py-3 rounded-xl hover:bg-white/20 transition-all duration-200 items-center space-x-2"
-                    >
-                      <PlayCircle className="w-5 h-5" />
-                      <span>Job Wizard</span>
-                    </button>
+          {/* Enhanced Search Section */}
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20 shadow-2xl">
+              <div className="space-y-6">
+                {/* Search input with buttons side by side */}
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <MultiJobAutocomplete
+                      onSelect={(position) => {
+                        setSelectedPositions(prev => {
+                          const exists = prev.find(p => p.title === position.title);
+                          if (exists) return prev;
+                          return [...prev, position];
+                        });
+                      }}
+                      placeholder="Try: Frontend Developer, Product Manager, Designer..."
+                    />
                   </div>
-
-                  {/* Selected Positions Display */}
-                  {selectedPositions.length > 0 && (
-                    <div className="mt-4">
-                      <div className="flex flex-wrap gap-2">
-                        {selectedPositions.map((position, index) => (
-                          <div
-                            key={index}
-                            className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg px-3 py-2 flex items-center space-x-2 text-white"
-                          >
-                            <span className="font-medium">{position.title}</span>
-                            <span className="text-white/70 text-sm">({position.count} jobs)</span>
-                            <button
-                              onClick={() => {
-                                setSelectedPositions(prev => prev.filter((_, i) => i !== index));
-                              }}
-                              className="ml-2 text-white/70 hover:text-white transition-colors"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="mt-2 text-white/70 text-sm">
-                        {selectedPositions.length} position{selectedPositions.length !== 1 ? 's' : ''} selected
-                      </div>
-                    </div>
-                  )}
+                  <button
+                    onClick={() => handleSearch(selectedPositions)}
+                    disabled={selectedPositions.length === 0 || selectedPositions.length > 5}
+                    className="bg-gradient-to-br from-orange-400 to-yellow-500 hover:from-orange-500 hover:to-yellow-400 disabled:from-orange-300 disabled:to-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold px-4 md:px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center space-x-2 whitespace-nowrap tracking-tight text-lg"
+                  >
+                    <Search className="w-5 h-5" />
+                    <span>Search!</span>
+                  </button>
+                  <button
+                    onClick={() => setShowOnboarding(true)}
+                    className="hidden md:flex bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold px-6 py-3 rounded-xl hover:bg-white/20 transition-all duration-200 items-center space-x-2"
+                  >
+                    <PlayCircle className="w-5 h-5" />
+                    <span>Job Wizard</span>
+                  </button>
                 </div>
+
+                {/* Selected Positions Display */}
+                {selectedPositions.length > 0 && (
+                  <div className="mt-4">
+                    <div className="flex flex-wrap gap-2">
+                      {selectedPositions.map((position, index) => (
+                        <div
+                          key={index}
+                          className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg px-3 py-2 flex items-center space-x-2 text-white"
+                        >
+                          <span className="font-medium">{position.title}</span>
+                          <span className="text-white/70 text-sm">({position.count} jobs)</span>
+                          <button
+                            onClick={() => {
+                              setSelectedPositions(prev => prev.filter((_, i) => i !== index));
+                            }}
+                            className="ml-2 text-white/70 hover:text-white transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-2 text-white/70 text-sm">
+                      {selectedPositions.length} position{selectedPositions.length !== 1 ? 's' : ''} selected
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -765,7 +763,7 @@ const Home: React.FC = () => {
           onComplete={handleOnboardingComplete}
         />
       )}
-    </Layout>
+    </div>
   );
 };
 

@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
-import { ThemeProvider } from './contexts/ThemeContext';
+import Layout from './components/Layout';
 import './App.css';
 import { AuthCallback } from './pages/AuthCallback';
 import { AuthError } from './pages/AuthError';
@@ -11,6 +11,7 @@ import NotFound from './pages/NotFound';
 import PaymentSuccess from './pages/PaymentSuccess';
 import { Toaster } from 'react-hot-toast';
 import AutocompleteTest from './pages/AutocompleteTest';
+import { ThemeProvider } from './contexts/theme/ThemeContext';
 // TestAutocomplete removed
 
 // Page Components (Lazy loading for better performance)
@@ -96,113 +97,115 @@ const App: React.FC = () => {
               }}
             />
             <Suspense fallback={<div className="flex justify-center items-center h-screen text-xl font-semibold">Loading Buzz2Remote...</div>}>
-              <Routes>
-                {/* Public Routes */}
-                <Route path="/" element={<HomePage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
-                
-                <Route path="/jobs/:id" element={<JobDetailPage />} />
-                <Route path="/jobs/search" element={<JobSearchResultsPage />} />
-                
-                <Route path="/pricing" element={<PricingPage />} />
-                <Route path="/terms" element={<TermsConditionsPage />} />
-                <Route path="/terms-conditions" element={<TermsConditionsPage />} />
-                <Route path="/privacy" element={<PrivacyPolicyPage />} />
-                <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-                <Route path="/help" element={<HelpPage />} />
-                <Route path="/career-tips" element={<CareerTipsPage />} />
-                <Route path="/salary-guide" element={<SalaryGuidePage />} />
-                <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
-                <Route path="/auth/linkedin/callback" element={<LinkedInCallbackPage />} />
-                <Route path="/auth/callback" element={<AuthCallback />} />
-                <Route path="/auth/error" element={<AuthError />} />
-                <Route path="/payment/success" element={<PaymentSuccess />} />
+              <Layout>
+                <Routes>
+                  {/* Public Routes */}
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/register" element={<RegisterPage />} />
+                  
+                  <Route path="/jobs/:id" element={<JobDetailPage />} />
+                  <Route path="/jobs/search" element={<JobSearchResultsPage />} />
+                  
+                  <Route path="/pricing" element={<PricingPage />} />
+                  <Route path="/terms" element={<TermsConditionsPage />} />
+                  <Route path="/terms-conditions" element={<TermsConditionsPage />} />
+                  <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+                  <Route path="/help" element={<HelpPage />} />
+                  <Route path="/career-tips" element={<CareerTipsPage />} />
+                  <Route path="/salary-guide" element={<SalaryGuidePage />} />
+                  <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
+                  <Route path="/auth/linkedin/callback" element={<LinkedInCallbackPage />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
+                  <Route path="/auth/error" element={<AuthError />} />
+                  <Route path="/payment/success" element={<PaymentSuccess />} />
 
-                {/* Auth Routes */}
-                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                  {/* Auth Routes */}
+                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                  <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-                {/* Onboarding Routes */}
-                <Route path="/onboarding/check-email" element={<CheckEmailPage />} />
-                <Route path="/onboarding/verify-email" element={<EmailVerificationPage />} />
-                <Route path="/onboarding/set-password" element={<SetPasswordPage />} />
-                <Route path="/onboarding/profile-setup" element={<OnboardingProfileSetupPage />} />
-                <Route path="/onboarding/complete-profile" element={<OnboardingCompleteProfilePage />} />
+                  {/* Onboarding Routes */}
+                  <Route path="/onboarding/check-email" element={<CheckEmailPage />} />
+                  <Route path="/onboarding/verify-email" element={<EmailVerificationPage />} />
+                  <Route path="/onboarding/set-password" element={<SetPasswordPage />} />
+                  <Route path="/onboarding/profile-setup" element={<OnboardingProfileSetupPage />} />
+                  <Route path="/onboarding/complete-profile" element={<OnboardingCompleteProfilePage />} />
 
-                {/* Protected Routes (Require Authentication) */}
-                <Route 
-                  path="/profile" 
-                  element={
-                    <ProtectedRoute>
-                      <UserProfilePage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route 
-                  path="/my-profile" 
-                  element={
-                    <ProtectedRoute>
-                      <MyProfilePage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route 
-                  path="/profile/resume-upload" 
-                  element={
-                    <ProtectedRoute>
-                      <ResumeUploadPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route 
-                  path="/favorites" 
-                  element={
-                    <ProtectedRoute>
-                      <FavoritesPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route 
-                  path="/applications" 
-                  element={
-                    <ProtectedRoute>
-                      <ApplicationsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route 
-                  path="/my-applications" 
-                  element={
-                    <ProtectedRoute>
-                      <MyApplicationsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route 
-                  path="/settings" 
-                  element={
-                    <ProtectedRoute>
-                      <SettingsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route 
-                  path="/admin/external-api-services" 
-                  element={
-                    <ProtectedRoute>
-                      <ExternalAPIServicesPage />
-                    </ProtectedRoute>
-                  }
-                />
+                  {/* Protected Routes (Require Authentication) */}
+                  <Route 
+                    path="/profile" 
+                    element={
+                      <ProtectedRoute>
+                        <UserProfilePage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route 
+                    path="/my-profile" 
+                    element={
+                      <ProtectedRoute>
+                        <MyProfilePage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route 
+                    path="/profile/resume-upload" 
+                    element={
+                      <ProtectedRoute>
+                        <ResumeUploadPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route 
+                    path="/favorites" 
+                    element={
+                      <ProtectedRoute>
+                        <FavoritesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route 
+                    path="/applications" 
+                    element={
+                      <ProtectedRoute>
+                        <ApplicationsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route 
+                    path="/my-applications" 
+                    element={
+                      <ProtectedRoute>
+                        <MyApplicationsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route 
+                    path="/settings" 
+                    element={
+                      <ProtectedRoute>
+                        <SettingsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route 
+                    path="/admin/external-api-services" 
+                    element={
+                      <ProtectedRoute>
+                        <ExternalAPIServicesPage />
+                      </ProtectedRoute>
+                    }
+                  />
 
-                {/* Testing Routes */}
-                <Route path="/autocomplete-test" element={<AutocompleteTest />} />
-                {/* TestAutocomplete route removed */}
+                  {/* Testing Routes */}
+                  <Route path="/autocomplete-test" element={<AutocompleteTest />} />
+                  {/* TestAutocomplete route removed */}
 
-                {/* Fallback for unmatched routes */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+                  {/* Fallback for unmatched routes */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Layout>
             </Suspense>
           </Router>
         </ThemeProvider>

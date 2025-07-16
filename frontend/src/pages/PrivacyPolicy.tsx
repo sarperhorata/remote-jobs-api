@@ -470,10 +470,10 @@ const PrivacyPolicy: React.FC = () => {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto px-4">
         {/* Header */}
         <div className="bg-white shadow-sm rounded-lg p-6 mb-8">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <Link to="/" className="flex items-center space-x-3 text-gray-700 hover:text-green-600 transition-colors">
               <Briefcase className="w-8 h-8 text-green-600" />
               <span className="text-2xl font-bold">Buzz2Remote</span>
@@ -488,10 +488,10 @@ const PrivacyPolicy: React.FC = () => {
           </div>
 
           <div className="text-center">
-            <div className="flex items-center justify-center mb-4">
-              <ShieldCheck className="w-16 h-16 text-green-500" />
+            <div className="flex items-center justify-center mb-2">
+              <ShieldCheck className="w-12 h-12 text-green-500" />
             </div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Privacy Policy</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Privacy Policy</h1>
             <div className="flex items-center justify-center text-gray-600 space-x-4">
               <div className="flex items-center">
                 <Calendar className="w-4 h-4 mr-2" />

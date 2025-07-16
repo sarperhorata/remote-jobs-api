@@ -38,10 +38,10 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "craco start",
-    "dev": "craco start",
-    "start:test": "PORT=3002 craco start",
-    "build": "craco build",
+    "start": "react-scripts start",
+    "dev": "react-scripts start",
+    "start:test": "PORT=3002 react-scripts start",
+    "build": "react-scripts build",
     "build:analyze": "npm run build && npx serve -s build",
     "bundle-analyzer": "npx webpack-bundle-analyzer build/static/js/*.js",
     "test": "react-scripts test",

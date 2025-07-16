@@ -52,7 +52,7 @@ interface SecuritySettings {
 }
 
 const Settings: React.FC = () => {
-  const { user, logout, updateUser } = useAuth();
+  const { user, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -241,7 +241,8 @@ const Settings: React.FC = () => {
 
       if (response.ok) {
         showMessage('success', 'Account deleted successfully');
-        logout();
+        // Redirect to home page instead of logout
+        window.location.href = '/';
       } else {
         const error = await response.json();
         showMessage('error', error.detail || 'Failed to delete account');

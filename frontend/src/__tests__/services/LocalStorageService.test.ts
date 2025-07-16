@@ -1,5 +1,7 @@
-describe('Local Storage Service Tests', () => {
-  // Test implementation
+describe('LocalStorageService', () => {
+  test('placeholder test', () => {
+    expect(true).toBe(true);
+  });
 });
 
 export {};

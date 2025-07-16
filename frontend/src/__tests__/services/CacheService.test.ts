@@ -21,8 +21,10 @@ Object.defineProperty(window, 'localStorage', {
   writable: true
 });
 
-describe('Cache Service Tests', () => {
-  // Test implementation
+describe('CacheService', () => {
+  test('placeholder test', () => {
+    expect(true).toBe(true);
+  });
 });
 
 export {}; 

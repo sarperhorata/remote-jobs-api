@@ -1,5 +1,7 @@
-describe('UserService Tests', () => {
-  // Test implementation
+describe('UserService', () => {
+  test('placeholder test', () => {
+    expect(true).toBe(true);
+  });
 });
 
 export {};

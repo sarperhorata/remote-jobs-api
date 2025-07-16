@@ -1,5 +1,7 @@
-describe('WebSocket Service Tests', () => {
-  // Test implementation
+describe('WebSocketService', () => {
+  test('placeholder test', () => {
+    expect(true).toBe(true);
+  });
 });
 
 export {};

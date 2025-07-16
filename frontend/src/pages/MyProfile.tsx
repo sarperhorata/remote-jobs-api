@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   User, Edit3, Save, X, MapPin, Mail, Briefcase, Settings, 
-  Download, Camera, Plus, Calendar, GraduationCap,
+  Camera, Plus, Calendar, GraduationCap,
   Linkedin, Github, Twitter, Globe
 } from 'lucide-react';
 import Layout from '../components/Layout';

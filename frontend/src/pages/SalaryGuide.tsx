@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Layout from '../components/Layout';
-import { DollarSign, TrendingUp, MapPin, Briefcase, Users, BarChart3, Search, Filter } from 'lucide-react';
+import { DollarSign, TrendingUp, MapPin, Briefcase, Users, BarChart3 } from 'lucide-react';
 
 const SalaryGuide: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState('all');

@@ -8,9 +8,9 @@ import time
 from bs4 import BeautifulSoup
 import re
 
-from services.job_deduplication_service import JobDeduplicationService
+from backend.services.job_deduplication_service import JobDeduplicationService
 from backend.crud.job import JobCRUD
-from models.job import JobCreate
+from backend.models.job import JobCreate
 
 logger = logging.getLogger(__name__)
 

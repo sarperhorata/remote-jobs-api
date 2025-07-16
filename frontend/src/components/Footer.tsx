@@ -17,7 +17,7 @@ const Footer: React.FC = () => {
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center mb-4">
               <div className="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center mr-3">
-                <span className="text-lg">🐝</span>
+                <span className="text-lg animate-pulse hover:animate-none transition-all duration-300">🐝</span>
               </div>
               <h3 className="text-xl font-bold bg-gradient-to-r from-yellow-400 via-orange-400 to-pink-500 bg-clip-text text-transparent">
                 Buzz2Remote

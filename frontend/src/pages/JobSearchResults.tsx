@@ -5,10 +5,8 @@ import Layout from '../components/Layout';
 import AuthModal from '../components/AuthModal';
 import SearchFilters from '../components/JobSearch/SearchFilters';
 import JobCard from '../components/JobCard/JobCard';
-import { useAuth } from '../contexts/AuthContext';
 import { Job } from '../types/job';
 import { Filter, X, Save } from 'lucide-react';
-import jobService from '../services/jobService';
 
 interface Filters {
   query: string;
@@ -26,16 +24,8 @@ interface Filters {
   page?: number;
 }
 
-interface SavedSearch {
-  id: string;
-  name: string;
-  filters: Omit<Filters, "page">;
-  createdAt: string;
-}
-
 export default function JobSearchResults() {
   const location = useLocation();
-  const { user } = useAuth();
   
   // States
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -45,8 +35,7 @@ export default function JobSearchResults() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => 
     window.innerWidth >= 1024 ? 'grid' : 'list'
   );
-  const [hiddenJobs, setHiddenJobs] = useState<Set<string>>(new Set());
-  const [showHiddenJobs, setShowHiddenJobs] = useState(false);
+
   
   // Job status tracking
   const [loading, setLoading] = useState(true);
@@ -54,11 +43,10 @@ export default function JobSearchResults() {
   
   // Save Search States
   const [searchName, setSearchName] = useState('');
-  
-  // Saved searches
-  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showSavedSearches, setShowSavedSearches] = useState(false);
+  
+
   
   // Filter Modal States
   const [showFiltersModal, setShowFiltersModal] = useState(false);
@@ -77,14 +65,12 @@ export default function JobSearchResults() {
     page: 1,
   });
   
-  // View layout state - Mobile: list, Desktop: grid
-  const [isMobile, setIsMobile] = useState(false);
+
 
   // Check for mobile screen size
   useEffect(() => {
     const checkMobile = () => {
       const mobile = window.innerWidth < 768; // md breakpoint
-      setIsMobile(mobile);
       if (mobile) {
         setViewMode('list'); // Force list view on mobile
       } else {
@@ -178,18 +164,7 @@ export default function JobSearchResults() {
            filters.salaryMax || filters.postedWithin;
   }, [filters]);
 
-  // Handle hiding jobs
-  const handleHideJob = useCallback((jobId: string) => {
-    setHiddenJobs(prev => new Set([...prev, jobId]));
-  }, []);
 
-  // Filter jobs based on hidden status
-  const visibleJobs = useMemo(() => {
-    if (showHiddenJobs) {
-      return jobs; // Show all jobs including hidden ones
-    }
-    return jobs.filter(job => !hiddenJobs.has(job._id || job.id || ''));
-  }, [jobs, hiddenJobs, showHiddenJobs]);
 
   return (
     <Layout>
@@ -442,21 +417,9 @@ export default function JobSearchResults() {
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-4">
                     <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-                      Showing {visibleJobs.length} of {totalJobs.toLocaleString()} jobs
+                      Showing {jobs.length} of {totalJobs.toLocaleString()} jobs
                     </div>
-                    {hiddenJobs.size > 0 && (
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={showHiddenJobs}
-                          onChange={(e) => setShowHiddenJobs(e.target.checked)}
-                          className="rounded border-gray-300"
-                        />
-                        <span className="text-gray-600 dark:text-gray-400">
-                          Show Hidden Ads ({hiddenJobs.size})
-                        </span>
-                      </label>
-                    )}
+                    {/* Removed hidden jobs toggle */}
                   </div>
                   <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-xl">
                     <button
@@ -492,11 +455,11 @@ export default function JobSearchResults() {
                   ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' 
                   : 'space-y-4'
                 }>
-                  {visibleJobs.map((job, index) => (
+                  {jobs.map((job, index) => (
                     <JobCard
                       key={job._id || job.id || index}
                       job={job}
-                      onHide={handleHideJob}
+                      // Removed onHide prop
                     />
                   ))}
                 </div>

@@ -3,7 +3,7 @@ services:
     name: buzz2remote-backend
     env: python
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: chmod +x build.sh && ./build.sh
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
@@ -71,7 +71,7 @@ services:
       
       # URLs
       - key: RENDER_URL
-        value: https://buzz2remote-api.onrender.com
+        value: https://buzz2remote-backend.onrender.com
       - key: FRONTEND_URL
         value: https://buzz2remote.netlify.app
       - key: ALLOWED_ORIGINS

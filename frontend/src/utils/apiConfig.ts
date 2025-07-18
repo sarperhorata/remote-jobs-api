@@ -98,8 +98,55 @@ const detectBackendPort = async (): Promise<string> => {
 
 export const getApiUrl = async (): Promise<string> => {
   if (process.env.NODE_ENV === 'production') {
-    // Production'da her zaman canlı API adresini kullan
-    return 'https://buzz2remote.com/api/v1';
+    // Production'da environment variable'dan API URL'ini al
+    const productionApiUrl = process.env.REACT_APP_API_URL;
+    if (productionApiUrl) {
+      // Trailing slash'i temizle
+      const cleanUrl = productionApiUrl.replace(/\/$/, '');
+      // Eğer zaten /api/v1 ile bitiyorsa olduğu gibi döndür
+      if (cleanUrl.endsWith('/api/v1')) {
+        return cleanUrl;
+      }
+      // Eğer /api ile bitiyorsa sadece /v1 ekle
+      if (cleanUrl.endsWith('/api')) {
+        return `${cleanUrl}/v1`;
+      }
+      // Hiçbiri yoksa /api/v1 ekle
+      return `${cleanUrl}/api/v1`;
+    }
+    
+    // Production'da bilinen backend URL'lerini dene
+    const productionBackendUrls = [
+      'https://buzz2remote-api.onrender.com',
+      'https://remote-jobs-api.onrender.com',
+      'https://buzz2remote-backend.onrender.com',
+      'https://buzz2remote-api.herokuapp.com',
+      'https://buzz2remote-backend.herokuapp.com'
+    ];
+    
+    for (const baseUrl of productionBackendUrls) {
+      try {
+        logApiDetection(`Testing production backend: ${baseUrl}`);
+        const healthCheckUrl = `${baseUrl}/health`;
+        const response = await fetch(healthCheckUrl, {
+          method: 'GET',
+          signal: AbortSignal.timeout(5000), // 5 saniye timeout
+        });
+        
+        if (response.ok) {
+          const healthData = await response.json();
+          logApiDetection(`✅ Production backend found: ${baseUrl}`, healthData);
+          return `${baseUrl}/api/v1`;
+        }
+        logApiDetection(`❌ Production backend ${baseUrl} returned status ${response.status}`);
+      } catch (error: any) {
+        logApiDetection(`❌ Production backend ${baseUrl} not accessible:`, error.message);
+      }
+    }
+    
+    // Hiçbir production backend bulunamazsa, development fallback
+    logApiDetection(`⚠️ No production backend found, using development fallback`);
+    return 'http://localhost:8001/api/v1';
   }
 
   // Development ortamında, çalışan portu dinamik olarak bul

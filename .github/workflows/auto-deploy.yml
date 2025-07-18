@@ -146,10 +146,32 @@ jobs:
       run: |
         echo "🚀 Deploying backend to Render..."
         if [ "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+          # Extract service name from deploy hook URL
+          SERVICE_NAME=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" | sed -n 's/.*\/services\/\([^\/]*\)\/deploys.*/\1/p')
+          echo "🔍 Detected service name: $SERVICE_NAME"
+          
           RESPONSE=$(curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" -w "%{http_code}")
           if [ $RESPONSE -eq 200 ]; then
             echo "✅ Backend deployment triggered successfully"
             echo "deploy_status=success" >> $GITHUB_OUTPUT
+            
+            # Generate backend URL
+            BACKEND_URL="https://$SERVICE_NAME.onrender.com"
+            echo "🌐 Backend URL: $BACKEND_URL"
+            echo "backend_url=$BACKEND_URL" >> $GITHUB_OUTPUT
+            
+            # Wait for deployment and test health
+            echo "⏳ Waiting for deployment to complete..."
+            sleep 30
+            
+            # Test backend health
+            if curl -f "$BACKEND_URL/health" > /dev/null 2>&1; then
+              echo "✅ Backend health check passed"
+              echo "health_status=success" >> $GITHUB_OUTPUT
+            else
+              echo "⚠️ Backend health check failed - may still be deploying"
+              echo "health_status=pending" >> $GITHUB_OUTPUT
+            fi
           else
             echo "❌ Backend deployment failed with status: $RESPONSE"
             echo "deploy_status=failed" >> $GITHUB_OUTPUT
@@ -194,6 +216,8 @@ jobs:
         echo "" >> deployment_report.md
         echo "### Backend (Render)" >> deployment_report.md
         echo "- **Status:** ${{ needs.deploy-backend.result }}" >> deployment_report.md
+        echo "- **Backend URL:** ${{ needs.deploy-backend.outputs.backend_url }}" >> deployment_report.md
+        echo "- **Health Status:** ${{ needs.deploy-backend.outputs.health_status }}" >> deployment_report.md
         echo "" >> deployment_report.md
         
         # Calculate success rate

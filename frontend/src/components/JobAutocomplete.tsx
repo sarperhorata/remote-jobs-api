@@ -34,11 +34,41 @@ const JobAutocomplete: React.FC<JobAutocompleteProps> = ({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [isFocused, setIsFocused] = useState(false);
+  const [animatedPlaceholder, setAnimatedPlaceholder] = useState('');
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
   
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
   const isSelectingRef = useRef(false);
+
+  // Typing animation for placeholder
+  useEffect(() => {
+    if (!isFocused && !value) {
+      const interval = setInterval(() => {
+        setPlaceholderIndex(prev => {
+          if (prev >= placeholder.length) {
+            setTimeout(() => setPlaceholderIndex(0), 2000); // Pause at end
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 100);
+
+      return () => clearInterval(interval);
+    }
+  }, [isFocused, value, placeholder]);
+
+  // Update animated placeholder
+  useEffect(() => {
+    if (!isFocused && !value) {
+      setAnimatedPlaceholder(placeholder.slice(0, placeholderIndex));
+    } else {
+      setAnimatedPlaceholder(placeholder);
+    }
+  }, [placeholderIndex, isFocused, value, placeholder]);
+
   // Stable fetch function that doesn't cause re-renders
   const fetchPositions = useCallback(async (searchValue: string) => {
     console.log('🔍 JobAutocomplete fetchPositions called with:', searchValue);
@@ -194,9 +224,14 @@ const JobAutocomplete: React.FC<JobAutocompleteProps> = ({
   }, [isDropdownOpen]);
 
   const handleInputFocus = () => {
+    setIsFocused(true);
     if (positions.length > 0 && value.length >= 2) {
       setIsDropdownOpen(true);
     }
+  };
+
+  const handleInputBlur = () => {
+    setIsFocused(false);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -214,31 +249,36 @@ const JobAutocomplete: React.FC<JobAutocompleteProps> = ({
 
   return (
     <div className="relative w-full">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+      <div className="relative group">
+        <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-all duration-300 ${
+          isFocused ? 'text-orange-500 scale-110' : 'text-gray-400'
+        }`} />
         <input
           ref={inputRef}
           type="text"
-          placeholder={placeholder}
+          placeholder={animatedPlaceholder}
           value={value}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onFocus={handleInputFocus}
-          className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+          onBlur={handleInputBlur}
+          className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm transition-all duration-300 transform hover:scale-[1.02] focus:scale-[1.02] bg-white hover:bg-gray-50 focus:bg-white shadow-sm hover:shadow-md focus:shadow-lg"
         />
         {isLoading && (
           <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-500"></div>
           </div>
         )}
-        <ChevronDown className={`absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 transition-all duration-300 ${
+          isDropdownOpen ? 'rotate-180 text-orange-500' : ''
+        } ${isFocused ? 'text-orange-500' : ''}`} />
       </div>
       
       {/* Dropdown - Show only if open and has positions */}
       {isDropdownOpen && positions.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto"
+          className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto animate-in slide-in-from-top-2 duration-300"
         >
           {positions.map((position, index) => (
             <div
@@ -249,7 +289,7 @@ const JobAutocomplete: React.FC<JobAutocompleteProps> = ({
                 handleSelect(position);
               }}
               onMouseEnter={() => setHighlightedIndex(index)}
-              className={`px-4 py-3 cursor-pointer flex justify-between items-center hover:bg-gray-50 transition-colors ${
+              className={`px-4 py-3 cursor-pointer flex justify-between items-center hover:bg-gray-50 transition-all duration-200 transform hover:scale-[1.02] ${
                 index === highlightedIndex ? 'bg-orange-50 border-l-4 border-orange-500' : ''
               } ${index === 0 ? 'rounded-t-lg' : ''} ${index === positions.length - 1 ? 'rounded-b-lg' : 'border-b border-gray-100'}`}
             >
@@ -263,7 +303,7 @@ const JobAutocomplete: React.FC<JobAutocompleteProps> = ({
                   </div>
                 )}
               </div>
-              <div className="ml-3 px-2 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
+              <div className="ml-3 px-2 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full transition-all duration-200 hover:bg-orange-200 hover:scale-105">
                 {position.count} jobs
               </div>
             </div>

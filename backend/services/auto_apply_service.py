@@ -429,11 +429,11 @@ Best regards,
             
             # Generate ID from URL hash
             import hashlib
-            return hashlib.md5(job_url.encode()).hexdigest()[:12]
+            return hashlib.md5(job_url.encode(), usedforsecurity=False).hexdigest()[:12]
             
         except Exception:
             import hashlib
-            return hashlib.md5(job_url.encode()).hexdigest()[:12]
+            return hashlib.md5(job_url.encode(), usedforsecurity=False).hexdigest()[:12]
     
     def _get_headers(self) -> Dict[str, str]:
         """Get headers for web requests"""

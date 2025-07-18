@@ -27,7 +27,7 @@ class CacheService:
     def _generate_key(self, prefix: str, params: dict) -> str:
         """Generate cache key from parameters"""
         params_str = json.dumps(params, sort_keys=True)
-        params_hash = hashlib.md5(params_str.encode()).hexdigest()[:8]
+        params_hash = hashlib.md5(params_str.encode(), usedforsecurity=False).hexdigest()[:8]
         return f"buzz2remote:{prefix}:{params_hash}"
     
     async def get(self, key: str) -> Optional[Any]:

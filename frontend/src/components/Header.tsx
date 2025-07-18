@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import AuthModal from './AuthModal';
-import { Menu, X, User, LogOut, Settings, Heart, FileText, Search as SearchIcon, Bell } from 'lucide-react';
+import { Menu, X, User, LogOut, Settings, Heart, FileText, Bell, Sun, Moon } from 'lucide-react';
 
 const Header: React.FC = () => {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -55,6 +57,8 @@ const Header: React.FC = () => {
   const navigation = [
     { name: 'Jobs', href: '/jobs' },
     { name: 'Companies', href: '/companies' },
+    { name: 'Remote Tips', href: '/remote-tips' },
+    { name: 'Career Tips', href: '/career-tips' },
     { name: 'About', href: '/about' },
     { name: 'Contact', href: '/contact' },
   ];
@@ -109,7 +113,7 @@ const Header: React.FC = () => {
               </Link>
 
               {/* Desktop Navigation */}
-              <div className="hidden md:flex items-center space-x-8">
+              <div className="hidden md:flex items-center space-x-6">
                 {navigation.map((item) => (
                   <Link
                     key={item.name}
@@ -123,6 +127,19 @@ const Header: React.FC = () => {
 
               {/* Right side */}
               <div className="flex items-center space-x-4">
+                {/* Theme Toggle */}
+                <button
+                  onClick={toggleTheme}
+                  className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200"
+                  title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                >
+                  {theme === 'dark' ? (
+                    <Sun className="w-5 h-5" />
+                  ) : (
+                    <Moon className="w-5 h-5" />
+                  )}
+                </button>
+
                 {user ? (
                   /* User Menu */
                   <div className="flex items-center space-x-3">

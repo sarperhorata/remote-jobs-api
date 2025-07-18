@@ -65,7 +65,7 @@ def analyze_product_manager_jobs():
     
     # Fetch all Product Manager jobs
     print("🔍 Fetching Product Manager jobs...")
-    response = requests.get("http://localhost:8001/api/v1/jobs/search?q=Product%20Manager&limit=5000")
+    response = requests.get("http://localhost:8001/api/v1/jobs/search?q=Product%20Manager&limit=5000", timeout=30)
     
     if response.status_code != 200:
         print(f"❌ Error fetching jobs: {response.status_code}")

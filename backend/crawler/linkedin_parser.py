@@ -124,7 +124,8 @@ class LinkedInParser:
                     if data.get('@type') == 'JobPosting':
                         json_ld = data
                         break
-                except:
+                except Exception as e:
+                    logger.debug(f"Error parsing job element: {e}")
                     pass
             
             # Build detailed job object

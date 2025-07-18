@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { MapPin, Clock, ExternalLink } from 'lucide-react';
 import { Job } from '../../types/job';
+import SalaryEstimation from '../SalaryEstimation';
 
 interface JobCardProps {
   job: Job;
 }
 
 const JobCard: React.FC<JobCardProps> = ({ job }) => {
+  const [showSalaryEstimation, setShowSalaryEstimation] = useState(false);
+
   // Format posted date
   const formatPostedDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -26,13 +29,24 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
     if (typeof salary === 'string') return salary;
     if (typeof salary === 'object') {
       if (salary.min && salary.max) {
-        return `$${salary.min.toLocaleString()} - $${salary.max.toLocaleString()}`;
+        const isEstimated = salary.is_estimated || salary.isEstimated;
+        const estimatedText = isEstimated ? ' (est.)' : '';
+        return `$${salary.min.toLocaleString()} - $${salary.max.toLocaleString()}${estimatedText}`;
       }
       if (salary.amount) {
-        return `$${salary.amount.toLocaleString()}`;
+        const isEstimated = salary.is_estimated || salary.isEstimated;
+        const estimatedText = isEstimated ? ' (est.)' : '';
+        return `$${salary.amount.toLocaleString()}${estimatedText}`;
       }
     }
     return null;
+  };
+
+  // Check if job has salary information
+  const hasSalaryInfo = (): boolean => {
+    if (job.salary) return true;
+    if (job.salary_min && job.salary_max) return true;
+    return false;
   };
 
   // Get work type display
@@ -79,6 +93,12 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
 
     // Open in new tab
     window.open(applyUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleSalaryEstimationClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowSalaryEstimation(true);
   };
 
   return (
@@ -147,14 +167,53 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
           </div>
         )}
 
+        {/* Salary Section */}
+        <div className="mb-3">
+          {hasSalaryInfo() ? (
+            <div className="text-sm font-semibold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+              {formatSalary(job.salary) || 
+               (job.salary_min && job.salary_max ? 
+                `$${job.salary_min.toLocaleString()} - $${job.salary_max.toLocaleString()}${job.is_estimated ? ' (est.)' : ''}` : 
+                'Maaş bilgisi mevcut')}
+            </div>
+          ) : (
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                Maaş bilgisi mevcut değil
+              </span>
+              {!showSalaryEstimation && (
+                <button
+                  onClick={handleSalaryEstimationClick}
+                  className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:border-blue-300 transition-colors"
+                >
+                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  Tahmin Et
+                </button>
+              )}
+            </div>
+          )}
+          
+          {/* Salary Estimation Component */}
+          {showSalaryEstimation && (
+            <div className="mt-2">
+              <SalaryEstimation
+                jobTitle={job.title}
+                location={job.location}
+                companySize={job.company_size}
+                experienceLevel={job.experience_level}
+                showDetails={false}
+                className="text-sm"
+              />
+            </div>
+          )}
+        </div>
+
         {/* Footer */}
         <div className="flex justify-between items-center pt-3 border-t border-gray-100 dark:border-slate-600">
           <div className="flex items-center text-gray-600 dark:text-gray-300">
-            {formatSalary(job.salary) && (
-              <span className="text-sm font-semibold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-                {formatSalary(job.salary)}
-              </span>
-            )}
+            {/* Salary info moved to above section */}
           </div>
           <div className="flex items-center text-blue-600 dark:text-blue-400 text-sm font-medium group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors duration-200">
             <span>Apply Now</span>

@@ -1,6 +1,9 @@
 import os
 from pymongo import MongoClient
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 def fix_linkedin_companies():
     # Use synchronous client
@@ -58,7 +61,8 @@ def fix_linkedin_companies():
                             new_company_name = "GitHub"
                         elif len(potential_name) < 3:
                             new_company_name = "Tech Company"
-            except:
+            except Exception as e:
+                logger.debug(f"Error processing company: {e}")
                 pass
         
         # Update the job with the new company name

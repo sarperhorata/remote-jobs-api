@@ -28,6 +28,8 @@ const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicy'));
 
 const PricingPage = lazy(() => import('./pages/Pricing'));
 const HelpPage = lazy(() => import('./pages/Help'));
+const RemoteTipsPage = lazy(() => import('./pages/RemoteTips'));
+const CareerTipsPage = lazy(() => import('./pages/CareerTips'));
 const ApplicationsPage = lazy(() => import('./pages/Applications'));
 const MyApplicationsPage = lazy(() => import('./pages/MyApplications'));
 const FavoritesPage = lazy(() => import('./pages/Favorites'));
@@ -108,6 +110,8 @@ const App: React.FC = () => {
                 <Route path="/privacy" element={<PrivacyPolicyPage />} />
                 <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                 <Route path="/help" element={<HelpPage />} />
+                <Route path="/remote-tips" element={<RemoteTipsPage />} />
+                <Route path="/career-tips" element={<CareerTipsPage />} />
                 <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
                 <Route path="/auth/linkedin/callback" element={<LinkedInCallbackPage />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />

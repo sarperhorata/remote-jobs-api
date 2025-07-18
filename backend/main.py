@@ -49,6 +49,7 @@ from backend.routes.fake_job_detection import router as fake_job_router
 from backend.routes.sentry_webhook import router as sentry_webhook_router
 from backend.routes.email_test import router as email_test_router
 from backend.routes.notifications import router as user_notifications_router
+from backend.routes.salary_estimation import router as salary_estimation_router
 from backend.database.db import get_async_db, close_db_connections, init_database
 from backend.utils.auth import get_current_user
 
@@ -166,6 +167,7 @@ routers_to_include = [
     (fake_job_router, "/api/v1", ["fake-job-detection"]),
     (sentry_webhook_router, "/api/v1", ["webhooks"]),
     (email_test_router, "/email-test", ["email-test"]),
+    (salary_estimation_router, "/api/v1/salary", ["salary-estimation"]),
 ]
 
 for router, prefix, tags in routers_to_include:

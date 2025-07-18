@@ -7,8 +7,7 @@ import SearchFilters from '../components/JobSearch/SearchFilters';
 import JobCard from '../components/JobCard/JobCard';
 import { useAuth } from '../contexts/AuthContext';
 import { Job } from '../types/job';
-import { Filter, X, Save } from 'lucide-react';
-import jobService from '../services/jobService';
+import { Filter, X, Save, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Filters {
   query: string;
@@ -35,7 +34,6 @@ interface SavedSearch {
 
 export default function JobSearchResults() {
   const location = useLocation();
-  const { user } = useAuth();
   
   // States
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -43,7 +41,6 @@ export default function JobSearchResults() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => 
     window.innerWidth >= 1024 ? 'grid' : 'list'
   );
-  const [hiddenJobs, setHiddenJobs] = useState<Set<string>>(new Set());
   
   // Job status tracking
   const [loading, setLoading] = useState(true);
@@ -53,7 +50,6 @@ export default function JobSearchResults() {
   const [searchName, setSearchName] = useState('');
   
   // Saved searches
-  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showSavedSearches, setShowSavedSearches] = useState(false);
   
@@ -93,9 +89,6 @@ export default function JobSearchResults() {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
-  
-  // Add missing state variables
-  // Add missing state variables if needed later
 
   const fetchJobs = async () => {
     setLoading(true);
@@ -167,6 +160,54 @@ export default function JobSearchResults() {
            filters.salaryMax || filters.postedWithin;
   }, [filters]);
 
+  // Pagination logic
+  const itemsPerPage = 25;
+  const totalPages = Math.ceil(totalJobs / itemsPerPage);
+  const currentPage = filters.page || 1;
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setFilters(prev => ({ ...prev, page }));
+      // Scroll to top when page changes
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 3; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        pages.push(1);
+        pages.push('...');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+    
+    return pages;
+  };
+
   return (
     <Layout>
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
@@ -202,75 +243,20 @@ export default function JobSearchResults() {
                 <button
                   onClick={() => {
                     handleFiltersChange({
-                      query: '',
                       location: '',
                       jobType: '',
                       workType: '',
                       experience_level: '',
                       salaryMin: '',
                       salaryMax: '',
-                      company: '',
-                      postedWithin: ''
+                      postedWithin: '',
                     });
                     setShowFiltersModal(false);
                   }}
-                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   Clear All
                 </button>
-              </div>
-            </div>
-
-            {/* Desktop Modal Layout */}
-            <div className="hidden lg:block">
-              <div className="flex items-center justify-between p-8 border-b border-gray-200/50 dark:border-gray-700/50">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Search Filters</h2>
-                <button
-                  onClick={() => setShowFiltersModal(false)}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <div className="p-8 grid grid-cols-2 gap-8">
-                <SearchFilters 
-                  filters={filters}
-                  onFiltersChange={handleFiltersChange}
-                />
-              </div>
-              <div className="flex justify-between gap-4 p-8 border-t border-gray-200 dark:border-gray-700">
-                <button
-                  onClick={() => {
-                    handleFiltersChange({
-                      query: '',
-                      location: '',
-                      jobType: '',
-                      workType: '',
-                      experience_level: '',
-                      salaryMin: '',
-                      salaryMax: '',
-                      company: '',
-                      postedWithin: ''
-                    });
-                  }}
-                  className="px-6 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                >
-                  Clear All Filters
-                </button>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowFiltersModal(false)}
-                    className="px-6 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => setShowFiltersModal(false)}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Apply Filters
-                  </button>
-                </div>
               </div>
             </div>
           </div>
@@ -338,56 +324,76 @@ export default function JobSearchResults() {
         </div>
       )}
 
-      {/* Main Content - Dark Background */}
-      <div className="flex-1 relative bg-gradient-to-br from-gray-50 to-blue-50/30 dark:from-gray-900 dark:to-blue-950/30 min-h-screen">
-        <div className="container mx-auto px-4 py-8 max-w-7xl">
-          
-          {/* Enhanced Search Header */}
-          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 dark:border-gray-700/20 mb-8 overflow-hidden">
-            {/* Gradient overlay */}
-            <div className="bg-gradient-to-r from-blue-600/5 to-purple-600/5 dark:from-blue-400/5 dark:to-purple-400/5 p-6">
-              <div className="flex items-center justify-between">
+      {/* Hero Section with Enhanced Design - Same as Home Page */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-800 text-white">
+        {/* Animated background patterns */}
+        <div 
+          className="absolute inset-0 opacity-30"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+          }}
+        ></div>
+        
+        {/* Glassmorphism overlay */}
+        <div className="absolute inset-0 bg-white/5 backdrop-blur-sm"></div>
+        
+        <div className="relative container mx-auto px-4 py-12">
+          <div className="max-w-5xl mx-auto text-center mb-6">
+            {/* Main heading with enhanced typography */}
+            <h1 className="text-5xl md:text-7xl font-extrabold mb-6 leading-tight">
+              <br />
+              Job Search 
+              <span className="block bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
+                Results 🐝
+              </span>
+            </h1>
+            
+            <p className="text-xl md:text-2xl opacity-95 mb-6 leading-relaxed max-w-3xl mx-auto">
+              Found {totalJobs.toLocaleString()} amazing remote opportunities for you. 
+              Your perfect job is just a buzz away!
+            </p>
+          </div>
+
+          {/* Enhanced Search Stats Section */}
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20 shadow-2xl">
+              <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-4">
-                  <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                      Job Search Results
-                    </h1>
-                    <div className="flex items-center gap-3">
-                      <span className="px-4 py-2 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/50 dark:to-purple-900/50 text-blue-800 dark:text-blue-200 text-sm font-medium rounded-full border border-blue-200/50 dark:border-blue-700/50">
-                        📊 {totalJobs.toLocaleString()} jobs found
-                      </span>
-                      {hasActiveFilters && (
-                        <span className="px-3 py-1 bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/50 dark:to-emerald-900/50 text-green-800 dark:text-green-200 text-xs font-medium rounded-full border border-green-200/50 dark:border-green-700/50">
-                          ✨ Filtered
-                        </span>
-                      )}
-                    </div>
+                  <div className="text-center">
+                    <div className="text-2xl md:text-3xl font-bold text-yellow-400">{totalJobs.toLocaleString()}</div>
+                    <div className="text-sm text-white/80">Jobs Found</div>
                   </div>
+                  {hasActiveFilters && (
+                    <div className="text-center">
+                      <div className="text-2xl md:text-3xl font-bold text-green-400">✨</div>
+                      <div className="text-sm text-white/80">Filtered</div>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex items-center gap-3">
                   {/* Save Search Button */}
                   <button
                     onClick={() => setShowSaveDialog(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-600/50 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-white dark:hover:bg-gray-600 transition-all duration-200 shadow-sm hover:shadow-md"
+                    className="bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold px-6 py-3 rounded-xl hover:bg-white/20 transition-all duration-200 flex items-center space-x-2"
                   >
-                    <Save className="w-4 h-4" />
-                    <span className="hidden sm:inline">Save Search</span>
+                    <Save className="w-5 h-5" />
+                    <span>Save Search</span>
                   </button>
 
                   {/* Filter Button */}
                   <button
                     onClick={() => setShowFiltersModal(true)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all duration-200 shadow-sm hover:shadow-md ${
+                    className={`flex items-center space-x-2 px-6 py-3 rounded-xl border transition-all duration-200 ${
                       hasActiveFilters 
-                        ? 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300' 
-                        : 'bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm border-gray-200/50 dark:border-gray-600/50 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-600'
+                        ? 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-blue-400' 
+                        : 'bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20'
                     }`}
                   >
-                    <Filter className="w-4 h-4" />
-                    <span className="hidden sm:inline">Filters</span>
+                    <Filter className="w-5 h-5" />
+                    <span>Filters</span>
                     {hasActiveFilters && (
-                      <span className="ml-1 px-2 py-0.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs rounded-full font-medium">
+                      <span className="ml-1 px-2 py-0.5 bg-white/20 text-white text-xs rounded-full font-medium">
                         Active
                       </span>
                     )}
@@ -396,6 +402,12 @@ export default function JobSearchResults() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="bg-gradient-to-br from-gray-50 to-blue-50/30 dark:from-gray-900 dark:to-blue-950/30 min-h-screen">
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
 
           {/* Enhanced Job Results */}
           <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 dark:border-gray-700/20 overflow-hidden">
@@ -417,7 +429,7 @@ export default function JobSearchResults() {
                 {/* Enhanced View Toggle */}
                 <div className="flex items-center justify-between mb-6">
                   <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-                    Showing {jobs.length} of {totalJobs.toLocaleString()} jobs
+                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalJobs)} of {totalJobs.toLocaleString()} jobs
                   </div>
                   <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-xl">
                     <button
@@ -460,6 +472,63 @@ export default function JobSearchResults() {
                     />
                   ))}
                 </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="mt-8 flex items-center justify-center">
+                    <div className="flex items-center gap-2 bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm rounded-xl border border-gray-200/50 dark:border-gray-600/50 p-2 shadow-sm">
+                      {/* Previous Button */}
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className={`flex items-center gap-1 px-3 py-2 rounded-lg transition-all duration-200 ${
+                          currentPage === 1
+                            ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-blue-600 dark:hover:text-blue-300'
+                        }`}
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        <span className="hidden sm:inline">Previous</span>
+                      </button>
+
+                      {/* Page Numbers */}
+                      <div className="flex items-center gap-1">
+                        {getPageNumbers().map((page, index) => (
+                          <React.Fragment key={index}>
+                            {page === '...' ? (
+                              <span className="px-3 py-2 text-gray-400 dark:text-gray-500">...</span>
+                            ) : (
+                              <button
+                                onClick={() => handlePageChange(page as number)}
+                                className={`px-3 py-2 rounded-lg transition-all duration-200 ${
+                                  currentPage === page
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-blue-600 dark:hover:text-blue-300'
+                                }`}
+                              >
+                                {page}
+                              </button>
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </div>
+
+                      {/* Next Button */}
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className={`flex items-center gap-1 px-3 py-2 rounded-lg transition-all duration-200 ${
+                          currentPage === totalPages
+                            ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-blue-600 dark:hover:text-blue-300'
+                        }`}
+                      >
+                        <span className="hidden sm:inline">Next</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

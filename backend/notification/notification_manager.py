@@ -119,7 +119,7 @@ class NotificationManager:
                 "parse_mode": "Markdown"
             }
             
-            response = requests.post(url, json=payload)
+            response = requests.post(url, json=payload, timeout=30)
             response.raise_for_status()
             
             logger.info(f"Telegram notification sent to chat_id {chat_id}")
@@ -150,7 +150,7 @@ class NotificationManager:
             }
             
             # Send POST request to webhook
-            response = requests.post(webhook_url, json=payload, headers=self.headers)
+            response = requests.post(webhook_url, json=payload, headers=self.headers, timeout=30)
             response.raise_for_status()
             
             logger.info(f"Webhook notification sent to {webhook_url}")

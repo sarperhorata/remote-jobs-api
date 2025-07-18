@@ -450,6 +450,14 @@ def auth_headers():
     }
 
 @pytest.fixture
+def admin_headers():
+    """Mock admin authentication headers for testing (admin role)."""
+    return {
+        "Authorization": "Bearer admin-token",
+        "Content-Type": "application/json"
+    }
+
+@pytest.fixture
 def sample_job_data():
     """Sample job data for testing."""
     return {

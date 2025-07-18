@@ -22,8 +22,17 @@ export interface Job {
     min?: number;
     max?: number;
     currency: string;
+    is_estimated?: boolean;
+    isEstimated?: boolean;
   };
   salary_range?: string; // Additional field for API compatibility
+  salary_min?: number; // Additional field for API compatibility
+  salary_max?: number; // Additional field for API compatibility
+  salary_currency?: string; // Additional field for API compatibility
+  salary_period?: string; // Additional field for API compatibility
+  is_estimated?: boolean; // Additional field for API compatibility
+  salary_confidence?: number; // Additional field for API compatibility
+  salary_data_points?: number; // Additional field for API compatibility
   experience?: {
     min?: number;
     max?: number;
@@ -56,6 +65,7 @@ export interface Job {
   viewsCount?: number; // Alias for views_count for backward compatibility
   applications_count?: number; // Number of applications
   updated_at?: string;
+  company_size?: string; // Additional field for salary estimation
 }
 
 export interface JobApplication {

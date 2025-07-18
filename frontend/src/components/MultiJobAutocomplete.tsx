@@ -27,11 +27,40 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [isFocused, setIsFocused] = useState(false);
+  const [animatedPlaceholder, setAnimatedPlaceholder] = useState('');
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Typing animation for placeholder
+  useEffect(() => {
+    if (!isFocused && !inputValue) {
+      const interval = setInterval(() => {
+        setPlaceholderIndex(prev => {
+          if (prev >= placeholder.length) {
+            setTimeout(() => setPlaceholderIndex(0), 2000); // Pause at end
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 100);
+
+      return () => clearInterval(interval);
+    }
+  }, [isFocused, inputValue, placeholder]);
+
+  // Update animated placeholder
+  useEffect(() => {
+    if (!isFocused && !inputValue) {
+      setAnimatedPlaceholder(placeholder.slice(0, placeholderIndex));
+    } else {
+      setAnimatedPlaceholder(placeholder);
+    }
+  }, [placeholderIndex, isFocused, inputValue, placeholder]);
 
   // Debug logging
   useEffect(() => {
@@ -125,6 +154,7 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
 
   // Handle input focus to show popular titles
   const handleInputFocus = async () => {
+    setIsFocused(true);
     if (process.env.NODE_ENV === 'development') {
       console.log('🎯 Input focused');
     }
@@ -135,6 +165,10 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
     } else if (allSuggestions.length > 0) {
       setShowDropdown(true);
     }
+  };
+
+  const handleInputBlur = () => {
+    setIsFocused(false);
   };
 
   // Handle input change
@@ -247,16 +281,17 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
     <div className={`w-full ${className || ''}`} ref={containerRef}>
       {/* Search input and button */}
       <div className="flex gap-2">
-        <div className="relative flex-1">
+        <div className="relative flex-1 group">
           <input
             ref={inputRef}
             type="text"
             value={inputValue}
             onChange={handleInputChange}
             onFocus={handleInputFocus}
-            placeholder={placeholder}
+            onBlur={handleInputBlur}
+            placeholder={animatedPlaceholder}
             disabled={disabled}
-            className="w-full px-4 py-3 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
+            className="w-full px-4 py-3 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] focus:scale-[1.02] shadow-sm hover:shadow-md focus:shadow-lg"
           />
           
           {/* Loading spinner */}
@@ -270,7 +305,7 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
           {showDropdown && createPortal(
             <div 
               ref={dropdownRef}
-              className="fixed bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xl mt-1 max-h-64 overflow-y-auto"
+              className="fixed bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xl mt-1 max-h-64 overflow-y-auto animate-in slide-in-from-top-2 duration-300"
               style={{
                 top: `${dropdownPosition.top + 4}px`,
                 left: `${dropdownPosition.left}px`,
@@ -289,14 +324,14 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
                   {allSuggestions.map((suggestion, index) => (
                     <div
                       key={index}
-                      className="px-4 py-2 hover:bg-blue-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-600 last:border-b-0"
+                      className="px-4 py-2 hover:bg-blue-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-600 last:border-b-0 transition-all duration-200 transform hover:scale-[1.02]"
                       onClick={() => selectPosition(suggestion)}
                     >
                       <div className={`flex justify-between items-center ${isRTL(suggestion.title) ? 'text-right' : 'text-left'}`}>
                         <span className="text-gray-900 dark:text-white font-medium">
                           {suggestion.title}
                         </span>
-                        <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
+                        <span className="text-sm text-gray-500 dark:text-gray-400 ml-2 transition-all duration-200 hover:scale-105">
                           {suggestion.count} jobs
                         </span>
                       </div>

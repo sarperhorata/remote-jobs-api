@@ -14,6 +14,8 @@ import uuid
 from bson import ObjectId
 import time
 import subprocess
+import shutil
+from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 # Add backend to path for imports
@@ -1500,12 +1502,18 @@ async def admin_status(request: Request, admin_auth: bool = Depends(get_admin_au
             import subprocess
             import os
             
+            # Use shutil.which to find python executable safely
+            python_executable = shutil.which("python") or shutil.which("python3")
+            if not python_executable:
+                raise Exception("Python executable not found")
+            
             backend_test_result = subprocess.run(
-                ["python", "-m", "pytest", "tests/", "--tb=short", "-q", "--maxfail=1"],
-                cwd="/Users/sarperhorata/buzz2remote/backend",
+                [python_executable, "-m", "pytest", "tests/", "--tb=short", "-q", "--maxfail=1"],
+                cwd=os.path.join(os.getcwd(), "backend"),
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=30,
+                shell=False
             )
             
             # Parse test results
@@ -2804,19 +2812,28 @@ async def restart_frontend(admin_auth: bool = Depends(get_admin_auth)):
         import subprocess
         import os
         
-        # Kill existing npm start processes
-        subprocess.run(["pkill", "-f", "react-scripts start"], capture_output=True)
-        subprocess.run(["pkill", "-f", "npm start"], capture_output=True)
+        # Use shutil.which to find pkill executable safely
+        pkill_executable = shutil.which("pkill")
+        if pkill_executable:
+            # Kill existing npm start processes
+            subprocess.run([pkill_executable, "-f", "react-scripts start"], capture_output=True, shell=False)
+            subprocess.run([pkill_executable, "-f", "npm start"], capture_output=True, shell=False)
         
-        # Wait a moment for processes to stop
-        await asyncio.sleep(2)
+        # Use shutil.which to find npm executable safely
+        npm_executable = shutil.which("npm")
+        if not npm_executable:
+            raise Exception("npm executable not found")
         
-        # Start frontend in background
-        frontend_path = "/Users/sarperhorata/buzz2remote/frontend"
+        # Get frontend path safely
+        frontend_path = os.path.join(os.getcwd(), "frontend")
+        if not os.path.exists(frontend_path):
+            raise Exception("Frontend directory not found")
+        
+        # Set environment variables
         env = os.environ.copy()
         env['PORT'] = '3001'
         process = subprocess.Popen(
-            ["npm", "start"],
+            [npm_executable, "start"],
             cwd=frontend_path,
             env=env,
             stdout=subprocess.PIPE,
@@ -2846,16 +2863,24 @@ async def restart_backend(admin_auth: bool = Depends(get_admin_auth)):
         import subprocess
         import os
         
-        # Kill existing uvicorn processes
-        subprocess.run(["pkill", "-f", "uvicorn main:app"], capture_output=True)
+        # Use shutil.which to find pkill executable safely
+        pkill_executable = shutil.which("pkill")
+        if pkill_executable:
+            # Kill existing uvicorn processes
+            subprocess.run([pkill_executable, "-f", "uvicorn main:app"], capture_output=True, shell=False)
         
-        # Wait a moment for processes to stop
-        await asyncio.sleep(2)
+        # Use shutil.which to find python executable safely
+        python_executable = shutil.which("python") or shutil.which("python3")
+        if not python_executable:
+            raise Exception("Python executable not found")
         
-        # Start backend in background
-        backend_path = "/Users/sarperhorata/buzz2remote/backend"
+        # Get backend path safely
+        backend_path = os.path.join(os.getcwd(), "backend")
+        if not os.path.exists(backend_path):
+            raise Exception("Backend directory not found")
+        
         process = subprocess.Popen(
-            ["python", "-m", "uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "8001"],
+            [python_executable, "-m", "uvicorn", "main:app", "--reload", "--host", "127.0.0.1", "--port", "8001"],
             cwd=backend_path,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

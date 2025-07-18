@@ -13,6 +13,8 @@ const SavedJobs = lazy(() => import('../pages/SavedJobs'));
 const Notifications = lazy(() => import('../pages/Notifications'));
 const NotFound = lazy(() => import('../pages/NotFound'));
 const SearchResults = lazy(() => import('../pages/SearchResults'));
+const RemoteTips = lazy(() => import('../pages/RemoteTips'));
+const CareerTips = lazy(() => import('../pages/CareerTips'));
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
@@ -30,6 +32,8 @@ const AppRoutes = () => {
         <Route path="/jobs/:id" element={<JobDetail />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/remote-tips" element={<RemoteTips />} />
+        <Route path="/career-tips" element={<CareerTips />} />
         <Route 
           path="/profile" 
           element={

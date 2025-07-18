@@ -405,7 +405,7 @@ async def linkedin_token_exchange(request: dict):
             'client_secret': os.getenv('LINKEDIN_CLIENT_SECRET')
         }
         
-        token_response = requests.post(token_url, data=token_data)
+        token_response = requests.post(token_url, data=token_data, timeout=30)
         
         if token_response.status_code != 200:
             raise HTTPException(status_code=400, detail="Failed to exchange code for token")
@@ -430,7 +430,7 @@ async def linkedin_profile(request: Request):
         profile_url = "https://api.linkedin.com/v2/people/~?projection=(id,firstName,lastName,emailAddress,profilePicture(displayImage~:playableStreams))"
         profile_headers = {'Authorization': f'Bearer {access_token}'}
         
-        profile_response = requests.get(profile_url, headers=profile_headers)
+        profile_response = requests.get(profile_url, headers=profile_headers, timeout=30)
         
         if profile_response.status_code != 200:
             raise HTTPException(status_code=400, detail="Failed to fetch LinkedIn profile")
@@ -439,7 +439,7 @@ async def linkedin_profile(request: Request):
         
         # Fetch email address
         email_url = "https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))"
-        email_response = requests.get(email_url, headers=profile_headers)
+        email_response = requests.get(email_url, headers=profile_headers, timeout=30)
         
         email_data = {}
         if email_response.status_code == 200:

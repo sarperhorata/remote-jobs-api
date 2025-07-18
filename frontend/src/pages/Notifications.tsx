@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import Header from '../components/Header';
+import Layout from '../components/Layout';
 import { 
   Bell, 
   Check, 
@@ -256,21 +256,19 @@ const Notifications: React.FC = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Header />
+      <Layout>
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Please log in to view notifications</h1>
             <p className="text-gray-600">You need to be logged in to access your notifications.</p>
           </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
+    <Layout>
       
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
@@ -442,7 +440,7 @@ const Notifications: React.FC = () => {
           )}
         </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

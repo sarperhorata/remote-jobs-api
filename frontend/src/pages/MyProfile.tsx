@@ -4,7 +4,7 @@ import {
   Download, Camera, Plus, Calendar, GraduationCap,
   Linkedin, Github, Twitter, Globe
 } from 'lucide-react';
-import Header from '../components/Header';
+import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 // import { toast } from 'react-hot-toast';
 
@@ -368,8 +368,7 @@ const MyProfile: React.FC = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-        <Header />
+      <Layout>
         <div className="container mx-auto px-4 py-16 text-center">
           <div className="max-w-md mx-auto">
             <User className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
@@ -377,25 +376,23 @@ const MyProfile: React.FC = () => {
             <p className="text-gray-600 dark:text-gray-300">You need to be logged in to view your profile.</p>
           </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-        <Header />
+      <Layout>
         <div className="container mx-auto px-4 py-16 text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600 dark:text-gray-300">Loading your profile...</p>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-      <Header />
+    <Layout>
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Profile Header */}
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-600 p-6 mb-6">
@@ -1003,7 +1000,7 @@ const MyProfile: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

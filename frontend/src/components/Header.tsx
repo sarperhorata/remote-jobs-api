@@ -59,6 +59,8 @@ const Header: React.FC = () => {
     { name: 'Companies', href: '/companies' },
     { name: 'Remote Tips', href: '/remote-tips' },
     { name: 'Career Tips', href: '/career-tips' },
+    { name: 'Remote Hints', href: '/remote-hints' },
+    { name: 'Pricing', href: '/pricing' },
     { name: 'About', href: '/about' },
     { name: 'Contact', href: '/contact' },
   ];
@@ -68,13 +70,13 @@ const Header: React.FC = () => {
     
     switch (action) {
       case 'profile':
-        navigate('/profile');
+        navigate('/my-profile');
         break;
       case 'saved':
-        navigate('/saved-jobs');
+        navigate('/favorites');
         break;
       case 'applications':
-        navigate('/applications');
+        navigate('/my-applications');
         break;
       case 'notifications':
         navigate('/notifications');
@@ -172,41 +174,41 @@ const Header: React.FC = () => {
 
                       {/* Dropdown Menu */}
                       {showProfileDropdown && (
-                        <div className="absolute right-0 mt-2 w-56 bg-white/95 backdrop-blur-lg rounded-xl shadow-xl border border-white/20 py-2 z-50">
-                          <div className="px-4 py-2 border-b border-gray-200/50">
-                            <p className="text-sm font-medium text-gray-900">{user.email}</p>
-                            <p className="text-xs text-gray-500">Free Plan</p>
+                        <div className="absolute right-0 mt-2 w-56 bg-white/95 dark:bg-gray-800/95 backdrop-blur-lg rounded-xl shadow-xl border border-white/20 dark:border-gray-700/50 py-2 z-50">
+                          <div className="px-4 py-2 border-b border-gray-200/50 dark:border-gray-600/50">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">{user.email}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Free Plan</p>
                           </div>
                           
                           <button
                             onClick={() => handleProfileAction('profile')}
-                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                           >
-                            <User className="w-4 h-4 mr-3" />
+                            <User className="w-4 h-4 mr-3 text-gray-600 dark:text-gray-300" />
                             My Profile
                           </button>
                           
                           <button
                             onClick={() => handleProfileAction('saved')}
-                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                           >
-                            <Heart className="w-4 h-4 mr-3" />
+                            <Heart className="w-4 h-4 mr-3 text-gray-600 dark:text-gray-300" />
                             Saved Jobs
                           </button>
                           
                           <button
                             onClick={() => handleProfileAction('applications')}
-                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                           >
-                            <FileText className="w-4 h-4 mr-3" />
+                            <FileText className="w-4 h-4 mr-3 text-gray-600 dark:text-gray-300" />
                             Applications
                           </button>
                           
                           <button
                             onClick={() => handleProfileAction('notifications')}
-                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                           >
-                            <Bell className="w-4 h-4 mr-3" />
+                            <Bell className="w-4 h-4 mr-3 text-gray-600 dark:text-gray-300" />
                             Notifications
                             {unreadNotifications > 0 && (
                               <span className="ml-auto bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
@@ -217,18 +219,18 @@ const Header: React.FC = () => {
                           
                           <button
                             onClick={() => handleProfileAction('settings')}
-                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                           >
-                            <Settings className="w-4 h-4 mr-3" />
+                            <Settings className="w-4 h-4 mr-3 text-gray-600 dark:text-gray-300" />
                             Settings
                           </button>
                           
-                          <div className="border-t border-gray-200/50 mt-2 pt-2">
+                          <div className="border-t border-gray-200/50 dark:border-gray-600/50 mt-2 pt-2">
                             <button
                               onClick={() => handleProfileAction('logout')}
-                              className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                              className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                             >
-                              <LogOut className="w-4 h-4 mr-3" />
+                              <LogOut className="w-4 h-4 mr-3 text-red-600 dark:text-red-400" />
                               Sign Out
                             </button>
                           </div>

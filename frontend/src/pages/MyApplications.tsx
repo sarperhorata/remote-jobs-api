@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, ExternalLink, MapPin, DollarSign, Calendar, Briefcase, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
-import Header from '../components/Header';
+import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Application {
@@ -187,8 +187,7 @@ const MyApplications: React.FC = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-        <Header />
+      <Layout>
         <div className="container mx-auto px-4 py-16 text-center">
           <div className="max-w-md mx-auto">
             <FileText className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
@@ -196,27 +195,25 @@ const MyApplications: React.FC = () => {
             <p className="text-gray-600 dark:text-gray-300">You need to be logged in to view your applications.</p>
           </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-        <Header />
+      <Layout>
         <div className="container mx-auto px-4 py-16 text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600 dark:text-gray-300">Loading your applications...</p>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   const stats = getApplicationStats();
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-      <Header />
+    <Layout>
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -431,7 +428,7 @@ const MyApplications: React.FC = () => {
           </div>
         )}
       </div>
-    </div>
+    </Layout>
   );
 };
 

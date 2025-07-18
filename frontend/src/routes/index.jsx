@@ -9,12 +9,15 @@ const JobDetail = lazy(() => import('../pages/JobDetail'));
 const Login = lazy(() => import('../pages/Login'));
 const Register = lazy(() => import('../pages/Register'));
 const Profile = lazy(() => import('../pages/Profile'));
+const Settings = lazy(() => import('../pages/Settings'));
 const SavedJobs = lazy(() => import('../pages/SavedJobs'));
 const Notifications = lazy(() => import('../pages/Notifications'));
 const NotFound = lazy(() => import('../pages/NotFound'));
 const SearchResults = lazy(() => import('../pages/SearchResults'));
 const RemoteTips = lazy(() => import('../pages/RemoteTips'));
 const CareerTips = lazy(() => import('../pages/CareerTips'));
+const RemoteHints = lazy(() => import('../pages/RemoteHints'));
+const Pricing = lazy(() => import('../pages/Pricing'));
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
@@ -34,11 +37,21 @@ const AppRoutes = () => {
         <Route path="/register" element={<Register />} />
         <Route path="/remote-tips" element={<RemoteTips />} />
         <Route path="/career-tips" element={<CareerTips />} />
+        <Route path="/remote-hints" element={<RemoteHints />} />
+        <Route path="/pricing" element={<Pricing />} />
         <Route 
           path="/profile" 
           element={
             <ProtectedRoute>
               <Profile />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/settings" 
+          element={
+            <ProtectedRoute>
+              <Settings />
             </ProtectedRoute>
           } 
         />

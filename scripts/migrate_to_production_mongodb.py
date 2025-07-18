@@ -87,15 +87,31 @@ def migrate_collection(local_db, prod_db, collection_name):
             try:
                 # Duplicate key hatalarını önlemek için upsert kullan
                 for doc in batch:
-                    # _id'yi koru ama duplicate key hatalarını önle
-                    if '_id' in doc:
-                        prod_collection.replace_one(
-                            {'_id': doc['_id']}, 
-                            doc, 
-                            upsert=True
-                        )
-                    else:
-                        prod_collection.insert_one(doc)
+                    try:
+                        # _id'yi koru ama duplicate key hatalarını önle
+                        if '_id' in doc:
+                            prod_collection.replace_one(
+                                {'_id': doc['_id']}, 
+                                doc, 
+                                upsert=True
+                            )
+                        else:
+                            # Email gibi unique field'lar için kontrol et
+                            if collection_name == 'users' and 'email' in doc:
+                                prod_collection.replace_one(
+                                    {'email': doc['email']}, 
+                                    doc, 
+                                    upsert=True
+                                )
+                            else:
+                                prod_collection.insert_one(doc)
+                    except Exception as e:
+                        # Duplicate key hatalarını logla ama devam et
+                        if 'duplicate key' in str(e).lower():
+                            logger.warning(f"⚠️ Duplicate key hatası (devam ediliyor): {e}")
+                            continue
+                        else:
+                            raise e
                 
                 total_migrated += len(batch)
                 logger.info(f"   ✅ {total_migrated}/{local_count} döküman taşındı")

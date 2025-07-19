@@ -5,8 +5,7 @@ import {
   Twitter, 
   Linkedin, 
   Github, 
-  Mail, 
-  MapPin
+  Mail
 } from 'lucide-react';
 
 const Footer: React.FC = () => {
@@ -83,10 +82,6 @@ const Footer: React.FC = () => {
           </div>
           <div className="flex items-center space-x-6 text-sm text-gray-400">
             <span>&copy; {currentYear} Buzz2Remote. All rights reserved.</span>
-            <div className="flex items-center space-x-2">
-              <MapPin className="w-4 h-4" />
-              <span>Global</span>
-            </div>
           </div>
         </div>
       </div>

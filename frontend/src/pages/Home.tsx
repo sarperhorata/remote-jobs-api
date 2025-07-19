@@ -506,8 +506,8 @@ const Home: React.FC = () => {
                   featuredJobs.map((job, index) => (
                     <div
                       key={job._id || index}
-                      className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-200 cursor-pointer transform hover:scale-105 flex-shrink-0"
-                      style={{ width: '400px', height: '280px' }}
+                      className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-200 cursor-pointer transform hover:scale-105 flex-shrink-0 min-w-[320px] max-w-[400px] w-full"
+                      style={{ minHeight: '140px', maxWidth: '400px' }}
                       onClick={() => handleJobCardClick(job._id || `job-${index}`)}
                     >
                       <div className="flex items-start justify-between mb-4">
@@ -570,8 +570,8 @@ const Home: React.FC = () => {
                     return (
                       <div
                         key={index}
-                        className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-200 cursor-pointer transform hover:scale-105 flex-shrink-0"
-                        style={{ width: '400px', height: '280px' }}
+                        className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-200 cursor-pointer transform hover:scale-105 flex-shrink-0 min-w-[320px] max-w-[400px] w-full"
+                        style={{ minHeight: '140px', maxWidth: '400px' }}
                         onClick={() => window.open('/jobs/search', '_blank')}
                       >
                         <div className="flex items-start justify-between mb-4">

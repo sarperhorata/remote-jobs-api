@@ -30,7 +30,7 @@ const Footer: React.FC = () => {
               </div>
             </div>
             <p className="text-gray-300 mb-6 max-w-md">
-              Your gateway to the best remote opportunities worldwide. Connect with top companies 
+              Connect with top companies 
               and find your perfect remote job with our advanced search and AI-powered matching.
             </p>
             <div className="flex space-x-4">

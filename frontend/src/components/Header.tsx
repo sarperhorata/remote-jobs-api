@@ -35,6 +35,8 @@ const Header: React.FC = () => {
   const loadUnreadCount = async () => {
     try {
       const token = localStorage.getItem('token');
+      if (!token) return;
+      
       const response = await fetch(
         `${process.env.REACT_APP_API_URL || 'http://localhost:8001'}/api/v1/notifications/unread-count`,
         {
@@ -50,7 +52,8 @@ const Header: React.FC = () => {
         setUnreadNotifications(data.unread_count);
       }
     } catch (error) {
-      console.error('Error loading unread count:', error);
+      // Silently handle errors to avoid console spam
+      console.debug('Notification count not available:', error);
     }
   };
 
@@ -102,10 +105,10 @@ const Header: React.FC = () => {
               {/* Logo */}
               <Link to="/" className="flex items-center space-x-2 group">
                 <div className="relative">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-200">
-                    <span className="text-white font-bold text-lg animate-pulse">🐝</span>
+                  <div className="w-10 h-10 rounded-xl border-2 border-yellow-400/80 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-200 bg-white/20 dark:bg-gray-800/20 backdrop-blur-sm">
+                    <span className="text-yellow-400 font-bold text-lg animate-pulse drop-shadow-[0_1px_4px_rgba(251,191,36,0.7)]">🐝</span>
                   </div>
-                  <div className="absolute -inset-1 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-xl blur opacity-20 group-hover:opacity-40 transition-opacity duration-200"></div>
+                  <div className="absolute -inset-1 bg-gradient-to-r from-yellow-400/40 to-orange-500/30 rounded-xl blur opacity-30 group-hover:opacity-50 transition-opacity duration-200 pointer-events-none"></div>
                 </div>
                 <div className="flex flex-col">
                   <span className="font-bold text-lg bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">

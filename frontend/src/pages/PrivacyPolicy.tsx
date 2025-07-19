@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Briefcase, ShieldCheck, ArrowLeft, ChevronDown, ChevronRight, Calendar, Mail, Globe, Eye, Lock, Database, UserCheck } from '../components/icons/EmojiIcons';
+import Layout from '../components/Layout';
+import { ShieldCheck, ArrowLeft, ChevronDown, ChevronRight, Calendar, Mail, Globe, Eye, Lock, Database, UserCheck } from '../components/icons/EmojiIcons';
 
 const PrivacyPolicy: React.FC = () => {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
@@ -468,143 +469,92 @@ const PrivacyPolicy: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="bg-white shadow-sm rounded-lg p-6 mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <Link to="/" className="flex items-center space-x-3 text-gray-700 hover:text-green-600 transition-colors">
-              <Briefcase className="w-8 h-8 text-green-600" />
-              <span className="text-2xl font-bold">Buzz2Remote</span>
-            </Link>
-            <button 
-              onClick={() => window.history.back()} 
-              className="text-sm text-green-600 hover:text-green-700 flex items-center transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4 mr-1" />
-              Go Back
-            </button>
-          </div>
-
-          <div className="text-center">
-            <div className="flex items-center justify-center mb-4">
-              <ShieldCheck className="w-16 h-16 text-green-500" />
-            </div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Privacy Policy</h1>
-            <div className="flex items-center justify-center text-gray-600 space-x-4">
-              <div className="flex items-center">
+    <Layout>
+      <div className="min-h-screen bg-white">
+        {/* Hero Section */}
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-800 text-white py-16">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mx-auto text-center">
+              <div className="flex items-center justify-center mb-6">
+                <ShieldCheck className="w-12 h-12 mr-4" />
+                <h1 className="text-4xl md:text-5xl font-bold">Privacy Policy</h1>
+              </div>
+              <p className="text-xl opacity-90 mb-4">
+                How we collect, use, and protect your personal information
+              </p>
+              <div className="flex items-center justify-center text-sm opacity-75">
                 <Calendar className="w-4 h-4 mr-2" />
                 <span>Last updated: {lastUpdated}</span>
               </div>
-              <div className="flex items-center">
-                <ShieldCheck className="w-4 h-4 mr-2" />
-                <span>GDPR & CCPA Compliant</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="container mx-auto px-4 py-12">
+          <div className="max-w-4xl mx-auto">
+            {/* Back to Home */}
+            <div className="mb-8">
+              <Link 
+                to="/" 
+                className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Home
+              </Link>
+            </div>
+
+            {/* Sections */}
+            <div className="space-y-6">
+              {sections.map((section) => (
+                <div key={section.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                  <button
+                    onClick={() => toggleSection(section.id)}
+                    className="w-full px-6 py-4 text-left bg-gray-50 hover:bg-gray-100 transition-colors flex items-center justify-between"
+                  >
+                    <div className="flex items-center">
+                      {section.icon}
+                      <h3 className="ml-3 text-lg font-semibold text-gray-900">
+                        {section.title}
+                      </h3>
+                    </div>
+                    {expandedSections.has(section.id) ? (
+                      <ChevronDown className="w-5 h-5 text-gray-500" />
+                    ) : (
+                      <ChevronRight className="w-5 h-5 text-gray-500" />
+                    )}
+                  </button>
+                  
+                  {expandedSections.has(section.id) && (
+                    <div className="px-6 py-4 border-t border-gray-200">
+                      {section.content}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Contact Information */}
+            <div className="mt-12 bg-blue-50 rounded-lg p-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">Contact Us</h3>
+              <p className="text-gray-700 mb-4">
+                If you have any questions about this Privacy Policy or our data practices, please contact us:
+              </p>
+              <div className="space-y-2">
+                <div className="flex items-center">
+                  <Mail className="w-4 h-4 mr-2 text-blue-600" />
+                  <span className="text-gray-700">Email: privacy@buzz2remote.com</span>
+                </div>
+                <div className="flex items-center">
+                  <Globe className="w-4 h-4 mr-2 text-blue-600" />
+                  <span className="text-gray-700">Website: www.buzz2remote.com</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
-
-        {/* Privacy Highlights */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-            <Lock className="w-8 h-8 text-green-600 mx-auto mb-2" />
-            <h3 className="font-semibold text-green-900">Secure by Design</h3>
-            <p className="text-sm text-green-800">End-to-end encryption and SOC 2 compliance</p>
-          </div>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
-            <UserCheck className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-            <h3 className="font-semibold text-blue-900">Your Control</h3>
-            <p className="text-sm text-blue-800">Full control over your data and privacy settings</p>
-          </div>
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 text-center">
-            <Globe className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-            <h3 className="font-semibold text-purple-900">Global Compliance</h3>
-            <p className="text-sm text-purple-800">GDPR, CCPA, and other privacy laws</p>
-          </div>
-        </div>
-
-        {/* Table of Contents */}
-        <div className="bg-white shadow-sm rounded-lg p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Table of Contents</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {sections.map((section) => (
-              <button
-                key={section.id}
-                onClick={() => toggleSection(section.id)}
-                className="text-left text-green-600 hover:text-green-700 text-sm transition-colors flex items-center"
-              >
-                {section.icon}
-                <span className="ml-2">{section.title}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Privacy Policy Content */}
-        <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-          {sections.map((section, index) => (
-            <div key={section.id} className={index > 0 ? "border-t border-gray-200" : ""}>
-              <button
-                onClick={() => toggleSection(section.id)}
-                className="w-full px-6 py-4 text-left focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-inset hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    {section.icon}
-                    <h3 className="text-lg font-semibold text-gray-900 ml-3">{section.title}</h3>
-                  </div>
-                  {expandedSections.has(section.id) ? (
-                    <ChevronDown className="w-5 h-5 text-gray-500" />
-                  ) : (
-                    <ChevronRight className="w-5 h-5 text-gray-500" />
-                  )}
-                </div>
-              </button>
-              
-              {expandedSections.has(section.id) && (
-                <div className="px-6 pb-6 text-gray-700 prose prose-green max-w-none">
-                  {section.content}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Contact and Rights Section */}
-        <div className="bg-white shadow-sm rounded-lg p-6 mt-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Exercise Your Privacy Rights</h2>
-          <p className="text-gray-600 mb-4">
-            You have important rights regarding your personal data. Contact us to exercise these rights or if you have any privacy-related questions.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <a
-              href="mailto:privacy@buzz2remote.com"
-              className="inline-flex items-center justify-center px-4 py-2 border border-green-300 rounded-md text-green-700 bg-green-50 hover:bg-green-100 transition-colors"
-            >
-              <Mail className="w-4 h-4 mr-2" />
-              privacy@buzz2remote.com
-            </a>
-            <a
-              href="mailto:dpo@buzz2remote.com"
-              className="inline-flex items-center justify-center px-4 py-2 border border-blue-300 rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
-            >
-              <ShieldCheck className="w-4 h-4 mr-2" />
-              Data Protection Officer
-            </a>
-          </div>
-        </div>
-
-        {/* Footer Note */}
-        <div className="text-center mt-8 text-sm text-gray-500">
-          <p>
-            This Privacy Policy is effective as of {lastUpdated} and applies to all users of the Buzz2Remote platform worldwide.
-          </p>
-          <p className="mt-2">
-            For translations of this policy in other languages, please contact us.
-          </p>
-        </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

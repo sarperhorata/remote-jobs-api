@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Briefcase, FileText, ArrowLeft, ChevronDown, ChevronRight, Calendar, Mail, Shield, AlertTriangle } from '../components/icons/EmojiIcons';
+import Layout from '../components/Layout';
+import { FileText, ArrowLeft, ChevronDown, ChevronRight, Calendar, Mail, Shield } from '../components/icons/EmojiIcons';
 
 const TermsConditions: React.FC = () => {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
@@ -336,129 +337,92 @@ const TermsConditions: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="bg-white shadow-sm rounded-lg p-6 mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <Link to="/" className="flex items-center space-x-3 text-gray-700 hover:text-orange-600 transition-colors">
-              <Briefcase className="w-8 h-8 text-orange-600" />
-              <span className="text-2xl font-bold">Buzz2Remote</span>
-            </Link>
-            <button 
-              onClick={() => window.history.back()} 
-              className="text-sm text-orange-600 hover:text-orange-700 flex items-center transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4 mr-1" />
-              Go Back
-            </button>
-          </div>
-
-          <div className="text-center">
-            <div className="flex items-center justify-center mb-4">
-              <FileText className="w-16 h-16 text-orange-500" />
-            </div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Terms & Conditions</h1>
-            <div className="flex items-center justify-center text-gray-600 space-x-4">
-              <div className="flex items-center">
+    <Layout>
+      <div className="min-h-screen bg-white">
+        {/* Hero Section */}
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-800 text-white py-16">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mx-auto text-center">
+              <div className="flex items-center justify-center mb-6">
+                <FileText className="w-12 h-12 mr-4" />
+                <h1 className="text-4xl md:text-5xl font-bold">Terms & Conditions</h1>
+              </div>
+              <p className="text-xl opacity-90 mb-4">
+                Our terms of service and platform usage guidelines
+              </p>
+              <div className="flex items-center justify-center text-sm opacity-75">
                 <Calendar className="w-4 h-4 mr-2" />
                 <span>Last updated: {lastUpdated}</span>
               </div>
-              <div className="flex items-center">
-                <Shield className="w-4 h-4 mr-2" />
-                <span>GDPR Compliant</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="container mx-auto px-4 py-12">
+          <div className="max-w-4xl mx-auto">
+            {/* Back to Home */}
+            <div className="mb-8">
+              <Link 
+                to="/" 
+                className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Home
+              </Link>
+            </div>
+
+            {/* Sections */}
+            <div className="space-y-6">
+              {sections.map((section) => (
+                <div key={section.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                  <button
+                    onClick={() => toggleSection(section.id)}
+                    className="w-full px-6 py-4 text-left bg-gray-50 hover:bg-gray-100 transition-colors flex items-center justify-between"
+                  >
+                    <div className="flex items-center">
+                      <FileText className="w-5 h-5 mr-3" />
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {section.title}
+                      </h3>
+                    </div>
+                    {expandedSections.has(section.id) ? (
+                      <ChevronDown className="w-5 h-5 text-gray-500" />
+                    ) : (
+                      <ChevronRight className="w-5 h-5 text-gray-500" />
+                    )}
+                  </button>
+                  
+                  {expandedSections.has(section.id) && (
+                    <div className="px-6 py-4 border-t border-gray-200">
+                      {section.content}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Contact Information */}
+            <div className="mt-12 bg-blue-50 rounded-lg p-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">Contact Us</h3>
+              <p className="text-gray-700 mb-4">
+                If you have any questions about these Terms & Conditions, please contact us:
+              </p>
+              <div className="space-y-2">
+                <div className="flex items-center">
+                  <Mail className="w-4 h-4 mr-2 text-blue-600" />
+                  <span className="text-gray-700">Email: legal@buzz2remote.com</span>
+                </div>
+                <div className="flex items-center">
+                  <Shield className="w-4 h-4 mr-2 text-blue-600" />
+                  <span className="text-gray-700">Legal Department</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
-
-        {/* Important Notice */}
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-8">
-          <div className="flex items-start">
-            <AlertTriangle className="w-6 h-6 text-orange-600 mr-3 mt-0.5" />
-            <div>
-              <h3 className="font-semibold text-orange-900 mb-2">Important Notice</h3>
-              <p className="text-orange-800 text-sm">
-                Please read these Terms and Conditions carefully before using our Platform. By accessing or using Buzz2Remote, you agree to be bound by these terms. These terms include important information about your rights and obligations, as well as limitations and exclusions that may apply to you.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Table of Contents */}
-        <div className="bg-white shadow-sm rounded-lg p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Table of Contents</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {sections.map((section) => (
-              <button
-                key={section.id}
-                onClick={() => toggleSection(section.id)}
-                className="text-left text-orange-600 hover:text-orange-700 text-sm transition-colors"
-              >
-                {section.title}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Terms Content */}
-        <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-          {sections.map((section, index) => (
-            <div key={section.id} className={index > 0 ? "border-t border-gray-200" : ""}>
-              <button
-                onClick={() => toggleSection(section.id)}
-                className="w-full px-6 py-4 text-left focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-inset hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900">{section.title}</h3>
-                  {expandedSections.has(section.id) ? (
-                    <ChevronDown className="w-5 h-5 text-gray-500" />
-                  ) : (
-                    <ChevronRight className="w-5 h-5 text-gray-500" />
-                  )}
-                </div>
-              </button>
-              
-              {expandedSections.has(section.id) && (
-                <div className="px-6 pb-6 text-gray-700 prose prose-orange max-w-none">
-                  {section.content}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Contact Information */}
-        <div className="bg-white shadow-sm rounded-lg p-6 mt-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Questions About These Terms?</h2>
-          <p className="text-gray-600 mb-4">
-            If you have any questions about these Terms and Conditions, please don't hesitate to contact us.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <a
-              href="mailto:legal@buzz2remote.com"
-              className="inline-flex items-center justify-center px-4 py-2 border border-orange-300 rounded-md text-orange-700 bg-orange-50 hover:bg-orange-100 transition-colors"
-            >
-              <Mail className="w-4 h-4 mr-2" />
-              legal@buzz2remote.com
-            </a>
-            <Link
-              to="/help"
-              className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-gray-50 hover:bg-gray-100 transition-colors"
-            >
-              Visit Help Center
-            </Link>
-          </div>
-        </div>
-
-        {/* Footer Note */}
-        <div className="text-center mt-8 text-sm text-gray-500">
-          <p>
-            These Terms and Conditions are effective as of {lastUpdated} and apply to all users of the Buzz2Remote platform.
-          </p>
-        </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

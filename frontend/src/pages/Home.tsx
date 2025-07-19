@@ -361,8 +361,29 @@ const Home: React.FC = () => {
     navigate('/jobs/search');
   };
 
-  const handleJobCardClick = (jobId: string) => {
-    window.open(`/jobs/${jobId}`, '_blank');
+  const handleJobCardClick = (job: Job) => {
+    // İş ilanının başlığını ve şirket adını kullanarak search results'a yönlendir
+    const searchParams = new URLSearchParams();
+    
+    // İş başlığını query parametresi olarak ekle
+    if (job.title) {
+      searchParams.set('q', job.title);
+    }
+    
+    // Şirket adını company parametresi olarak ekle
+    if (typeof job.company === 'string' && job.company) {
+      searchParams.set('company', job.company);
+    } else if (typeof job.company === 'object' && job.company && 'name' in job.company) {
+      searchParams.set('company', job.company.name);
+    }
+    
+    // Konum bilgisini location parametresi olarak ekle
+    if (job.location) {
+      searchParams.set('location', job.location);
+    }
+    
+    // Search results sayfasına yönlendir
+    navigate(`/jobs/search?${searchParams.toString()}`);
   };
 
   const features = [
@@ -550,14 +571,16 @@ const Home: React.FC = () => {
                       key={job._id || index}
                       className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-200 cursor-pointer transform hover:scale-105 flex-shrink-0 min-w-[320px] max-w-[400px] w-full"
                       style={{ minHeight: '140px', maxWidth: '400px' }}
-                      onClick={() => handleJobCardClick(job._id || `job-${index}`)}
+                      onClick={() => handleJobCardClick(job)}
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
                           <h3 className="font-semibold text-white text-lg mb-1 line-clamp-2">
                             {job.title}
                           </h3>
-                          <p className="text-white/70 font-medium">{typeof job.company === 'string' ? job.company : job.company?.name}</p>
+                          <p className="text-white/70 font-medium">
+                            {typeof job.company === 'string' ? job.company : job.company?.name}
+                          </p>
                         </div>
                         <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded-full text-xs font-medium">
                           NEW
@@ -590,22 +613,22 @@ const Home: React.FC = () => {
                 ) : (
                   // Fallback loading cards
                   Array.from({ length: 15 }, (_, index) => {
-                    const sampleJobs = [
-                      { title: "Senior React Developer", company: "TechCorp", location: "Remote", salary_range: "$90k - $130k", job_type: "Full-time" },
-                      { title: "Product Designer", company: "DesignStudio", location: "Remote", salary_range: "$70k - $110k", job_type: "Full-time" },
-                      { title: "Data Scientist", company: "DataLabs", location: "Remote", salary_range: "$100k - $150k", job_type: "Full-time" },
-                      { title: "DevOps Engineer", company: "CloudTech", location: "Remote", salary_range: "$95k - $135k", job_type: "Full-time" },
-                      { title: "Frontend Developer", company: "WebFlow", location: "Remote", salary_range: "$75k - $115k", job_type: "Full-time" },
-                      { title: "Backend Developer", company: "ApiWorks", location: "Remote", salary_range: "$85k - $125k", job_type: "Full-time" },
-                      { title: "Mobile Developer", company: "AppHive", location: "Remote", salary_range: "$95k - $140k", job_type: "Full-time" },
-                      { title: "UX Designer", company: "DesignHub", location: "Remote", salary_range: "$80k - $120k", job_type: "Full-time" },
-                      { title: "Product Manager", company: "ProductCorp", location: "Remote", salary_range: "$100k - $150k", job_type: "Full-time" },
-                      { title: "QA Engineer", company: "QualityTech", location: "Remote", salary_range: "$70k - $110k", job_type: "Full-time" },
-                      { title: "Full Stack Developer", company: "WebFlow Inc.", location: "Remote", salary_range: "$90k - $130k", job_type: "Full-time" },
-                      { title: "Data Engineer", company: "DataFlow", location: "Remote", salary_range: "$100k - $140k", job_type: "Full-time" },
-                      { title: "Security Engineer", company: "SecureNet", location: "Remote", salary_range: "$110k - $160k", job_type: "Full-time" },
-                      { title: "Marketing Manager", company: "GrowthBuzz", location: "Remote", salary_range: "$80k - $120k", job_type: "Full-time" },
-                      { title: "Content Strategist", company: "ContentCraft", location: "Remote", salary_range: "$70k - $100k", job_type: "Full-time" }
+                    const sampleJobs: Job[] = [
+                      { _id: 'sample-1', title: "Senior React Developer", company: "TechCorp", location: "Remote", salary_range: "$90k - $130k", job_type: "Full-time" } as Job,
+                      { _id: 'sample-2', title: "Product Designer", company: "DesignStudio", location: "Remote", salary_range: "$70k - $110k", job_type: "Full-time" } as Job,
+                      { _id: 'sample-3', title: "Data Scientist", company: "DataLabs", location: "Remote", salary_range: "$100k - $150k", job_type: "Full-time" } as Job,
+                      { _id: 'sample-4', title: "DevOps Engineer", company: "CloudTech", location: "Remote", salary_range: "$95k - $135k", job_type: "Full-time" } as Job,
+                      { _id: 'sample-5', title: "Frontend Developer", company: "WebFlow", location: "Remote", salary_range: "$75k - $115k", job_type: "Full-time" } as Job,
+                      { _id: 'sample-6', title: "Backend Developer", company: "ApiWorks", location: "Remote", salary_range: "$85k - $125k", job_type: "Full-time" } as Job,
+                      { _id: 'sample-7', title: "Mobile Developer", company: "AppHive", location: "Remote", salary_range: "$95k - $140k", job_type: "Full-time" } as Job,
+                      { _id: 'sample-8', title: "UX Designer", company: "DesignHub", location: "Remote", salary_range: "$80k - $120k", job_type: "Full-time" } as Job,
+                      { _id: 'sample-9', title: "Product Manager", company: "ProductCorp", location: "Remote", salary_range: "$100k - $150k", job_type: "Full-time" } as Job,
+                      { _id: 'sample-10', title: "QA Engineer", company: "QualityTech", location: "Remote", salary_range: "$70k - $110k", job_type: "Full-time" } as Job,
+                      { _id: 'sample-11', title: "Full Stack Developer", company: "WebFlow Inc.", location: "Remote", salary_range: "$90k - $130k", job_type: "Full-time" } as Job,
+                      { _id: 'sample-12', title: "Data Engineer", company: "DataFlow", location: "Remote", salary_range: "$100k - $140k", job_type: "Full-time" } as Job,
+                      { _id: 'sample-13', title: "Security Engineer", company: "SecureNet", location: "Remote", salary_range: "$110k - $160k", job_type: "Full-time" } as Job,
+                      { _id: 'sample-14', title: "Marketing Manager", company: "GrowthBuzz", location: "Remote", salary_range: "$80k - $120k", job_type: "Full-time" } as Job,
+                      { _id: 'sample-15', title: "Content Strategist", company: "ContentCraft", location: "Remote", salary_range: "$70k - $100k", job_type: "Full-time" } as Job
                     ];
                     
                     const job = sampleJobs[index % sampleJobs.length];
@@ -614,14 +637,16 @@ const Home: React.FC = () => {
                         key={index}
                         className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-200 cursor-pointer transform hover:scale-105 flex-shrink-0 min-w-[320px] max-w-[400px] w-full"
                         style={{ minHeight: '140px', maxWidth: '400px' }}
-                        onClick={() => window.open('/jobs/search', '_blank')}
+                        onClick={() => handleJobCardClick(job)}
                       >
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex-1">
                             <h3 className="font-semibold text-white text-lg mb-1">
                               {job.title}
                             </h3>
-                            <p className="text-white/70 font-medium">{job.company}</p>
+                            <p className="text-white/70 font-medium">
+                              {typeof job.company === 'string' ? job.company : job.company?.name}
+                            </p>
                           </div>
                           <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded-full text-xs font-medium">
                             NEW

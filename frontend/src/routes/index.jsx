@@ -1,6 +1,9 @@
 import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import LoadingScreen from '../components/common/LoadingScreen';
+import SalaryGuide from '../pages/SalaryGuide';
+import VisaSponsorship from '../pages/VisaSponsorship';
+import RelocationGuide from '../pages/RelocationGuide';
 
 // Lazy loaded components
 const Home = lazy(() => import('../pages/Home'));
@@ -39,6 +42,9 @@ const AppRoutes = () => {
         <Route path="/career-tips" element={<CareerTips />} />
         <Route path="/remote-hints" element={<RemoteHints />} />
         <Route path="/pricing" element={<Pricing />} />
+        <Route path="/salary-guide" element={<SalaryGuide />} />
+        <Route path="/visa-sponsorship" element={<VisaSponsorship />} />
+        <Route path="/relocation-guide" element={<RelocationGuide />} />
         <Route 
           path="/profile" 
           element={

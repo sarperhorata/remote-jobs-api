@@ -10,6 +10,7 @@ from pathlib import Path
 from motor.motor_asyncio import AsyncIOMotorClient
 import sys
 import os
+from utils.html_cleaner import clean_job_data
 
 # Add backend to path
 sys.path.append('/Users/sarperhorata/buzz2remote/backend')
@@ -60,11 +61,23 @@ async def import_jobs():
             imported_count = 0
             for job_data in jobs_data:
                 # Clean and normalize job data
+                raw_job_data = {
+                    "title": job_data.get("title", ""),
+                    "company": job_data.get("company", ""),
+                    "location": job_data.get("location", "Remote"),
+                    "description": job_data.get("description", ""),
+                    "requirements": job_data.get("requirements", ""),
+                    "benefits": job_data.get("benefits", "")
+                }
+                
+                # Clean HTML tags from job data
+                cleaned_data = clean_job_data(raw_job_data)
+                
                 clean_job = {
-                    "title": job_data.get("title", "").strip(),
-                    "company": job_data.get("company", "").strip(),
-                    "location": job_data.get("location", "Remote").strip(),
-                    "description": job_data.get("description", "")[:2000],  # Limit description
+                    "title": cleaned_data["title"],
+                    "company": cleaned_data["company"],
+                    "location": cleaned_data["location"],
+                    "description": cleaned_data["description"][:2000],  # Limit description
                     "url": job_data.get("url", ""),
                     "apply_url": job_data.get("url", ""),  # Use URL as apply URL if not specified
                     "job_type": job_data.get("job_type", "Full-time"),

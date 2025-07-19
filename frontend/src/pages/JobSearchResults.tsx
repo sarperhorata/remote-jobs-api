@@ -23,6 +23,7 @@ interface Filters {
   postedAge?: string;
   salaryRange?: string;
   page?: number;
+  country?: string; // eklendi
 }
 
 interface SavedSearch {
@@ -31,6 +32,10 @@ interface SavedSearch {
   filters: Omit<Filters, "page">;
   createdAt: string;
 }
+
+const countryFlags: Record<string, string> = {
+  US: '🇺🇸', GB: '🇬🇧', DE: '🇩🇪', FR: '🇫🇷', TR: '🇹🇷', NL: '🇳🇱', CA: '🇨🇦', IN: '🇮🇳', JP: '🇯🇵', REMOTE: '🌍'
+};
 
 export default function JobSearchResults() {
   const location = useLocation();
@@ -68,6 +73,7 @@ export default function JobSearchResults() {
     company: '',
     postedWithin: '',
     page: 1,
+    country: '',
   });
   
   // View layout state - Mobile: list, Desktop: grid
@@ -105,6 +111,7 @@ export default function JobSearchResults() {
         ...(filters.salaryRange && { salary_range: filters.salaryRange }),
         ...(filters.location && { location: filters.location }),
         ...(filters.company && { company: filters.company }),
+        ...(filters.country && { country: filters.country }), // eklendi
       });
 
       const response = await fetch(`${await import('../utils/apiConfig').then(m => m.getApiUrl())}/jobs/search?${queryParams}`);
@@ -125,18 +132,19 @@ export default function JobSearchResults() {
     const params = new URLSearchParams(location.search);
     const queryFromUrl = params.get('q') || '';
     const companyFromUrl = params.get('company') || '';
-
+    const countryFromUrl = params.get('country') || '';
     setFilters(prev => {
       const newFilters = {
         ...prev,
         query: queryFromUrl,
         company: companyFromUrl,
+        country: countryFromUrl,
       };
-      // Eğer filtreler değişmediyse (örneğin sadece sayfa değişti), gereksiz re-render'ı önle
       if (
         prev.query === newFilters.query &&
         prev.company === newFilters.company &&
-        prev.page === newFilters.page
+        prev.page === newFilters.page &&
+        prev.country === newFilters.country
       ) {
         return prev;
       }
@@ -147,6 +155,15 @@ export default function JobSearchResults() {
   // `filters` state'i her değiştiğinde iş ilanlarını yeniden çek
   useEffect(() => {
     fetchJobs();
+    // Sayfa yüklendiğinde search results bölümüne scroll et
+    if (filters.query || filters.company || filters.country) {
+      setTimeout(() => {
+        const searchResultsSection = document.querySelector('.search-results-section');
+        if (searchResultsSection) {
+          searchResultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    }
   }, [filters]);
   
   const handleFiltersChange = useCallback((newFilters: Partial<Filters>) => {
@@ -207,6 +224,10 @@ export default function JobSearchResults() {
     
     return pages;
   };
+
+  // Sonuç başlığında ülke adı ve bayrağı göster
+  const countryLabel = filters.country ?
+    `${countryFlags[filters.country] || ''} ${filters.country}` : '';
 
   return (
     <Layout>
@@ -410,7 +431,7 @@ export default function JobSearchResults() {
         <div className="container mx-auto px-4 py-8 max-w-7xl">
 
           {/* Enhanced Job Results */}
-          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 dark:border-gray-700/20 overflow-hidden">
+          <div className="search-results-section bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 dark:border-gray-700/20 overflow-hidden">
             {loading ? (
               <div className="flex items-center justify-center py-20">
                 <div className="text-center">

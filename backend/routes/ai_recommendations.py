@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import List, Optional, Dict, Any
-from services.ai_job_matching_service import AIJobMatchingService
-from database.db import get_async_db
+from ..services.ai_job_matching_service import AIJobMatchingService
+from ..database.db import get_async_db
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import logging
 

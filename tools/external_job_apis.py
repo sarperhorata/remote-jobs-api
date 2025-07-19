@@ -1289,18 +1289,9 @@ class RemotiveAPI:
         if not description:
             return ""
         
-        # Remove HTML tags
-        import re
-        clean_desc = re.sub(r'<[^>]+>', '', description)
-        
-        # Remove extra whitespace
-        clean_desc = re.sub(r'\s+', ' ', clean_desc).strip()
-        
-        # Limit length
-        if len(clean_desc) > 1000:
-            clean_desc = clean_desc[:1000] + "..."
-        
-        return clean_desc
+        # Import HTML cleaner utility
+        from backend.utils.html_cleaner import clean_job_description
+        return clean_job_description(description, max_length=1000)
     
     def _parse_job_type(self, job_type: str) -> str:
         """Parse job type from Remotive format"""
@@ -1498,18 +1489,9 @@ class HimalayasAPI:
         if not description:
             return ""
         
-        # Remove HTML tags if present
-        import re
-        clean_desc = re.sub(r'<[^>]+>', '', description)
-        
-        # Remove extra whitespace
-        clean_desc = re.sub(r'\s+', ' ', clean_desc).strip()
-        
-        # Limit length
-        if len(clean_desc) > 1000:
-            clean_desc = clean_desc[:1000] + "..."
-        
-        return clean_desc
+        # Import HTML cleaner utility
+        from backend.utils.html_cleaner import clean_job_description
+        return clean_job_description(description, max_length=1000)
 
 class ExternalJobAPIManager:
     """Manage all external job API integrations"""

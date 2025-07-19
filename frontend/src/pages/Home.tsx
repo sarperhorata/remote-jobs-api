@@ -20,6 +20,8 @@ interface Position {
   title: string;
   count: number;
   category?: string;
+  type?: string; // Added type for country
+  code?: string; // Added code for country
 }
 
 const Home: React.FC = () => {
@@ -308,11 +310,12 @@ const Home: React.FC = () => {
   }, []);
 
   const handleSearch = (positions: Position[]) => {
-    // Navigate to search results with selected positions
+    // Ülke seçiliyse ayrı parametre olarak ekle
+    const country = positions.find(p => p.type === 'country');
+    const titles = positions.filter(p => !p.type || p.type !== 'country').map(pos => pos.title).join(', ');
     const searchParams = new URLSearchParams();
-    positions.forEach(pos => {
-      searchParams.append('q', pos.title);
-    });
+    if (titles) searchParams.set('q', titles);
+    if (country) searchParams.set('country', country.code);
     navigate(`/jobs/search?${searchParams.toString()}`);
   };
 
@@ -387,7 +390,8 @@ const Home: React.FC = () => {
               </h1>
               
               <p className="text-xl md:text-2xl opacity-95 mb-6 leading-relaxed max-w-3xl mx-auto">
-                Discover thousands of remote opportunities from top companies around the world. 
+                Discover thousands of remote opportunities from top companies around the world.
+                <br />
                 Your dream job is just a buzz away!
               </p>
             </div>
@@ -605,7 +609,7 @@ const Home: React.FC = () => {
             </div>
 
             {/* View All Jobs Button */}
-            <div className="text-center">
+            <div className="text-center -mt-4">
               <button
                 onClick={() => navigate('/jobs/search')}
                 className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center space-x-2 mx-auto text-lg"

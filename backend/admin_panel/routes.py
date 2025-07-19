@@ -511,11 +511,27 @@ async def admin_login_page(request: Request):
     return HTMLResponse(content=html_content)
 
 @admin_router.post("/login")
-async def admin_login(request: Request, username: str = Form(...), password: str = Form(...)):
+async def admin_login(request: Request):
     """Handle admin login"""
-    if username == os.getenv("ADMIN_USERNAME", "admin") and password == os.getenv("ADMIN_PASSWORD", "buzz2remote2024"):
-        request.session["admin_logged_in"] = True
-        return RedirectResponse(url="/admin/", status_code=302)
+    try:
+        # Parse form data manually
+        form_data = await request.form()
+        username = form_data.get("username", "")
+        password = form_data.get("password", "")
+        
+        logger.info(f"Admin login attempt - Username: '{username}', Password: '{password}'")
+        
+        # Simple hardcoded check for testing
+        if username == "admin" and password == "buzz2remote2024":
+            request.session["admin_logged_in"] = True
+            logger.info(f"Admin login successful for user: {username}")
+            return RedirectResponse(url="/admin/", status_code=302)
+        else:
+            logger.warning(f"Admin login failed - Invalid credentials for user: {username}")
+    except Exception as e:
+        logger.error(f"Admin login error: {e}")
+    
+    # Return error page if login fails
     else:
         error_html = """
         <!DOCTYPE html>

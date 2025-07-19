@@ -10,6 +10,7 @@ import json
 from urllib.parse import urljoin, urlparse
 from dataclasses import dataclass
 import time
+from .html_cleaner import clean_job_data
 
 logger = logging.getLogger(__name__)
 
@@ -158,14 +159,23 @@ class JobCrawler:
                     
                     for job_data in data[1:]:  # Skip first item (metadata)
                         try:
+                            # Clean job data before creating JobListing
+                            clean_data = clean_job_data({
+                                "title": job_data.get("position", ""),
+                                "company": job_data.get("company", ""),
+                                "location": job_data.get("location", "Remote"),
+                                "description": job_data.get("description", ""),
+                                "requirements": job_data.get("description", "")
+                            })
+                            
                             job = JobListing(
-                                title=job_data.get("position", ""),
-                                company=job_data.get("company", ""),
-                                location=job_data.get("location", "Remote"),
+                                title=clean_data["title"],
+                                company=clean_data["company"],
+                                location=clean_data["location"],
                                 job_type="Full-time",
-                                salary=self._extract_salary(job_data.get("description", "")),
-                                description=job_data.get("description", ""),
-                                requirements=self._extract_requirements(job_data.get("description", "")),
+                                salary=self._extract_salary(clean_data["description"]),
+                                description=clean_data["description"],
+                                requirements=self._extract_requirements(clean_data["description"]),
                                 posted_date=datetime.fromtimestamp(job_data.get("date", 0)) if job_data.get("date") else None,
                                 apply_url=job_data.get("url", ""),
                                 remote_type="remote",
@@ -228,9 +238,10 @@ class JobCrawler:
             if not (title_elem and link_elem):
                 return None
             
-            title = title_elem.get_text(strip=True)
-            company = company_elem.get_text(strip=True) if company_elem else ""
-            location = location_elem.get_text(strip=True) if location_elem else "Remote"
+            # Clean extracted text
+            title = clean_job_data({"title": title_elem.get_text(strip=True)})["title"]
+            company = clean_job_data({"company": company_elem.get_text(strip=True) if company_elem else ""})["company"]
+            location = clean_job_data({"location": location_elem.get_text(strip=True) if location_elem else "Remote"})["location"]
             
             job_url = link_elem.get('href', '')
             if job_url and not job_url.startswith('http'):
@@ -288,7 +299,7 @@ class JobCrawler:
                     for selector in description_selectors:
                         desc_elem = soup.select_one(selector)
                         if desc_elem:
-                            details["description"] = desc_elem.get_text(strip=True)
+                            details["description"] = clean_job_data({"description": desc_elem.get_text(strip=True)})["description"]
                             break
                     
                     # Extract requirements

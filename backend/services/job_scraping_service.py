@@ -6,6 +6,7 @@ from typing import Dict, List, Any, Optional
 from urllib.parse import urljoin, urlparse
 import logging
 from dataclasses import dataclass
+from ..utils.html_cleaner import clean_job_data
 
 logger = logging.getLogger(__name__)
 

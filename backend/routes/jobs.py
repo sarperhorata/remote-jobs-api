@@ -12,6 +12,7 @@ from backend.crud import job as job_crud
 from backend.models.models import JobApplication
 from backend.services.job_scraping_service import JobScrapingService
 from backend.services.auto_application_service import AutoApplicationService
+from backend.utils.html_cleaner import clean_job_data
 import re
 import json
 from collections import defaultdict, Counter
@@ -29,6 +30,10 @@ async def create_job(
     """Create a new job."""
     # Use model_dump(mode='json') to properly serialize Pydantic models including URLs
     job_dict = job.model_dump(mode='json')
+    
+    # Clean HTML tags from job data
+    job_dict = clean_job_data(job_dict)
+    
     result = await db.jobs.insert_one(job_dict)
     created_job = await db.jobs.find_one({"_id": result.inserted_id})
     return created_job
@@ -63,6 +68,7 @@ async def search_jobs(
     posted_age: Optional[str] = Query(None, description="Posted age filter"),
     job_titles: Optional[str] = Query(None, description="Specific job titles filter"),
     salary_range: Optional[str] = Query(None, description="Salary range filter"),
+    country: Optional[str] = Query(None, description="Country filter"),
     db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
     """Advanced job search with filtering and pagination"""
@@ -73,13 +79,26 @@ async def search_jobs(
         # Start with simple query
         query = {}
         
-        # Search text query
+        # Search text query - only apply if query is not empty
         if q and q.strip():
             query["$or"] = [
                 {"title": {"$regex": q, "$options": "i"}},
                 {"description": {"$regex": q, "$options": "i"}},
                 {"company": {"$regex": q, "$options": "i"}}
             ]
+        else:
+            # If no search query, only show jobs if other filters are applied
+            if not any([work_type, job_type, location, company, experience, country, salary_range]):
+                # No filters applied, return empty result
+                return {
+                    "jobs": [],
+                    "total": 0,
+                    "page": page,
+                    "per_page": limit,
+                    "total_pages": 0,
+                    "has_next": False,
+                    "has_prev": False
+                }
         
         # Work Type Filter - Enhanced
         if work_type:
@@ -170,6 +189,15 @@ async def search_jobs(
         # Company Filter
         if company:
             query["company"] = {"$regex": company, "$options": "i"}
+        
+        # Country Filter - NEW
+        if country:
+            # Country filter can be applied to location field
+            if not location:  # Only apply if location filter is not already set
+                query["location"] = {"$regex": country, "$options": "i"}
+            else:
+                # If both location and country are set, combine them
+                query["location"] = {"$regex": f"{location}.*{country}|{country}.*{location}", "$options": "i"}
         
         # Salary Range Filter - Enhanced
         if salary_range:
@@ -402,6 +430,9 @@ async def update_job(
     if not update_data:
         raise HTTPException(status_code=400, detail="No update data provided")
 
+    # Clean HTML tags from update data
+    update_data = clean_job_data(update_data)
+
     result = await db.jobs.update_one(
         {"_id": ObjectId(job_id)}, {"$set": update_data}
     )
@@ -473,7 +504,7 @@ async def search_job_titles(
     db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
     """
-    Searches for unique job titles in the database.
+    Searches for unique job titles in the database using parsed job titles.
     This endpoint is optimized for autocomplete functionality.
     """
     if not q:
@@ -481,24 +512,16 @@ async def search_job_titles(
 
     try:
         # Create a more flexible search pattern
-        # Don't escape all regex characters, just dangerous ones
         safe_q = q.replace('\\', '\\\\').replace('$', '\\$').replace('^', '\\^')
         
-        # Multiple search strategies for better results
+        # Search in both original and parsed titles
         search_patterns = [
             {"title": {"$regex": f"^{safe_q}", "$options": "i"}},  # Starts with query
-            {"title": {"$regex": safe_q, "$options": "i"}},       # Contains query
+            {"title": {"$regex": f"\\b{safe_q}", "$options": "i"}},  # Word boundary match
+            {"title": {"$regex": safe_q, "$options": "i"}},  # Contains query
         ]
         
-        # Also search in related fields for broader results
-        if len(q) >= 3:
-            search_patterns.extend([
-                {"description": {"$regex": safe_q, "$options": "i"}},
-                {"category": {"$regex": safe_q, "$options": "i"}},
-                {"required_skills": {"$regex": safe_q, "$options": "i"}}
-            ])
-        
-        # Aggregation pipeline with multiple stages
+        # Aggregation pipeline
         pipeline = [
             {"$match": {"$or": search_patterns}},
             {"$group": {
@@ -508,11 +531,8 @@ async def search_job_titles(
                 "avg_salary": {"$avg": {"$ifNull": ["$salary_min", 0]}}
             }},
             {"$match": {"_id": {"$ne": None}}},  # Filter out null titles
-            {"$sort": {
-                "count": -1,      # Sort by job count first
-                "_id": 1          # Then alphabetically
-            }},
-            {"$limit": limit * 2},  # Get more results initially
+            {"$sort": {"count": -1}},
+            {"$limit": limit * 3},  # Get more results initially
             {"$project": {
                 "title": "$_id", 
                 "count": 1,
@@ -522,48 +542,58 @@ async def search_job_titles(
         ]
         
         cursor = db.jobs.aggregate(pipeline)
-        job_titles = await cursor.to_list(length=limit * 2)
+        job_titles = await cursor.to_list(length=limit * 3)
         
-        # Remove duplicates and filter relevant results with better normalization
-        unique_titles = {}
+        # Parse and categorize job titles
+        parsed_titles = {}
         for item in job_titles:
             title = item['title']
             if title and title.strip():
-                # Normalize title for comparison (remove case, extra spaces, punctuation)
-                normalized_title = ' '.join(title.lower().strip().split())
+                # Parse the job title
+                parsed = job_title_parser.parse_job_title(title)
+                
+                if not parsed.parsed_title or len(parsed.parsed_title) < 3:
+                    continue
+                
+                # Normalize for comparison
+                normalized = parsed.parsed_title.lower().strip()
                 query_lower = q.lower()
                 
                 # Relevance scoring
                 score = 0
-                if normalized_title.startswith(query_lower):
-                    score += 100  # Exact prefix match
-                elif query_lower in normalized_title:
+                if normalized.startswith(query_lower):
+                    score += 200  # Exact prefix match
+                elif f" {query_lower}" in f" {normalized}":  # Word boundary match
+                    score += 100  # Word boundary match
+                elif query_lower in normalized:
                     score += 50   # Contains match
                 
                 # Add count to score
-                score += min(item['count'], 50)  # Cap count influence
+                score += min(item['count'], 20)
                 
-                # Only include if reasonably relevant
-                if score > 0:
-                    # Use normalized title as key to prevent true duplicates
-                    if normalized_title not in unique_titles or unique_titles[normalized_title]['score'] < score:
-                        unique_titles[normalized_title] = {
-                            'title': title,  # Keep original title for display
+                # Only include if relevant
+                if score >= 25:
+                    # Use parsed title as key
+                    if normalized not in parsed_titles or parsed_titles[normalized]['score'] < score:
+                        parsed_titles[normalized] = {
+                            'title': parsed.parsed_title,
                             'count': item['count'],
-                            'category': item.get('category', 'Technology'),
+                            'category': parsed.category,
+                            'level': parsed.level,
                             'score': score,
-                            'normalized': normalized_title
+                            'original_title': title
                         }
         
         # Sort by relevance score and take top results
-        sorted_results = sorted(unique_titles.values(), key=lambda x: x['score'], reverse=True)
+        sorted_results = sorted(parsed_titles.values(), key=lambda x: x['score'], reverse=True)
         final_results = []
         
         for item in sorted_results[:limit]:
             final_results.append({
                 'title': item['title'],
                 'count': item['count'],
-                'category': item['category']
+                'category': item['category'],
+                'level': item['level']
             })
         
         logger.info(f"Job titles search for '{q}': found {len(final_results)} results")
@@ -1894,17 +1924,40 @@ def clean_job_title(title: str) -> str:
     if not title:
         return ""
     
-    # Remove company names and extra info that appears in some titles
-    title = re.sub(r'^[A-Z][a-zA-Z\s]+[A-Z][a-zA-Z\s]*[A-Z][a-zA-Z\s]*', '', title)  # Remove names
-    title = re.sub(r'Current Open Jobs', '', title, flags=re.IGNORECASE)
-    title = re.sub(r'Open Applications', '', title, flags=re.IGNORECASE)
-    title = re.sub(r'Customer Support', '', title, flags=re.IGNORECASE)
+    # Remove common unwanted patterns
+    unwanted_patterns = [
+        r'Current Open Jobs',
+        r'Open Applications', 
+        r'Customer Support',
+        r'On-site',
+        r'Full Time',
+        r'Part Time',
+        r'Contract',
+        r'Freelance',
+        r'Remote',
+        r'Hybrid',
+        r'Relocate to [A-Za-z\s]+',
+        r'Front Office',
+        r'Back Office',
+        r'—[A-Za-z\s]+',
+        r'-[A-Za-z\s]+',
+        r'\([^)]*\)',
+        r'\[[^\]]*\]',
+        r'[A-Z][a-z]+ [A-Z][a-z]+ [A-Z][a-z]+ [A-Z][a-z]+',  # Remove long name patterns
+    ]
+    
+    for pattern in unwanted_patterns:
+        title = re.sub(pattern, '', title, flags=re.IGNORECASE)
     
     # Remove extra whitespace and normalize
     title = re.sub(r'\s+', ' ', title).strip()
     
     # Remove leading/trailing punctuation
     title = title.strip('.,;:-_|')
+    
+    # Filter out titles that are too short or too generic
+    if len(title) < 3 or title.lower() in ['developers', 'jobs', 'positions', 'roles']:
+        return ""
     
     return title
 

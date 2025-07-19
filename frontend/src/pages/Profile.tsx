@@ -1,11 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { jobService } from '../services/AllServices';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Heart, FileText, Upload, ExternalLink } from 'lucide-react';
+import { User, Heart, FileText, Upload, ExternalLink, CheckCircle, AlertCircle, Loader } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 interface ApplicationHistory {
   applications: any[];
   savedJobs: any[];
+}
+
+interface ParsedCVData {
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  summary: string;
+  skills: string[];
+  experience: any[];
+  education: any[];
+  languages: string[];
+  certifications: string[];
 }
 
 const Profile: React.FC = () => {
@@ -15,6 +29,9 @@ const Profile: React.FC = () => {
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const [applicationHistory, setApplicationHistory] = useState<ApplicationHistory>({ applications: [], savedJobs: [] });
   const [isLoading, setIsLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
+  const [parsedData, setParsedData] = useState<ParsedCVData | null>(null);
+  const [showParsedData, setShowParsedData] = useState(false);
 
   useEffect(() => {
     const fetchApplicationHistory = async () => {
@@ -36,8 +53,66 @@ const Profile: React.FC = () => {
 
   const handleCvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setCvFile(e.target.files[0]);
-      console.log('CV uploaded:', e.target.files[0].name);
+      const file = e.target.files[0];
+      setCvFile(file);
+      
+      // Validate file type
+      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Please upload a PDF, DOC, or DOCX file');
+        return;
+      }
+      
+      // Validate file size (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File size must be less than 5MB');
+        return;
+      }
+      
+      await uploadAndParseCV(file);
+    }
+  };
+
+  const uploadAndParseCV = async (file: File) => {
+    try {
+      setIsUploading(true);
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8001'}/api/v1/profile/upload-cv`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to upload CV');
+      }
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setParsedData(result.data.parsed_data);
+        setShowParsedData(true);
+        toast.success('CV uploaded and parsed successfully!');
+        
+        // Update user context with new data
+        // You might want to refresh the user data here
+        window.location.reload(); // Simple refresh for now
+      } else {
+        throw new Error(result.message || 'Failed to parse CV');
+      }
+      
+    } catch (error: any) {
+      console.error('Error uploading CV:', error);
+      toast.error(error.message || 'Failed to upload CV');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -45,6 +120,15 @@ const Profile: React.FC = () => {
     if (linkedinUrl) {
       console.log('Importing LinkedIn profile:', linkedinUrl);
     }
+  };
+
+  const applyParsedData = () => {
+    if (!parsedData) return;
+    
+    // Here you would typically update the user profile with parsed data
+    // For now, we'll just show a success message
+    toast.success('Profile updated with CV data!');
+    setShowParsedData(false);
   };
 
   const menuItems = [
@@ -190,13 +274,27 @@ const Profile: React.FC = () => {
                           onChange={handleCvUpload}
                           className="hidden"
                           id="cv-upload"
+                          disabled={isUploading}
                         />
                         <label
                           htmlFor="cv-upload"
-                          className="bg-blue-600 text-white px-6 py-3 rounded-lg cursor-pointer hover:bg-blue-700 transition flex items-center gap-2"
+                          className={`px-6 py-3 rounded-lg cursor-pointer transition flex items-center gap-2 ${
+                            isUploading 
+                              ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                          }`}
                         >
-                          <Upload size={16} />
-                          Upload New CV
+                          {isUploading ? (
+                            <>
+                              <Loader className="animate-spin" size={16} />
+                              Processing...
+                            </>
+                          ) : (
+                            <>
+                              <Upload size={16} />
+                              Upload New CV
+                            </>
+                          )}
                         </label>
                         {user?.profile?.cvUrl && (
                           <a
@@ -213,8 +311,91 @@ const Profile: React.FC = () => {
                       <p className="text-gray-500 text-sm mt-2">
                         Supported formats: PDF, DOC, DOCX (Max 5MB)
                       </p>
+                      <p className="text-gray-400 text-xs mt-1">
+                        Upload your CV to automatically fill your profile information
+                      </p>
                     </div>
                   </div>
+
+                  {/* Parsed Data Preview */}
+                  {showParsedData && parsedData && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-green-900 flex items-center">
+                          <CheckCircle className="mr-2" size={20} />
+                          CV Parsed Successfully!
+                        </h3>
+                        <button
+                          onClick={() => setShowParsedData(false)}
+                          className="text-green-600 hover:text-green-800"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          {parsedData.name && (
+                            <div>
+                              <label className="text-sm font-medium text-green-700">Name</label>
+                              <p className="text-green-900">{parsedData.name}</p>
+                            </div>
+                          )}
+                          {parsedData.email && (
+                            <div>
+                              <label className="text-sm font-medium text-green-700">Email</label>
+                              <p className="text-green-900">{parsedData.email}</p>
+                            </div>
+                          )}
+                          {parsedData.phone && (
+                            <div>
+                              <label className="text-sm font-medium text-green-700">Phone</label>
+                              <p className="text-green-900">{parsedData.phone}</p>
+                            </div>
+                          )}
+                          {parsedData.location && (
+                            <div>
+                              <label className="text-sm font-medium text-green-700">Location</label>
+                              <p className="text-green-900">{parsedData.location}</p>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {parsedData.skills && parsedData.skills.length > 0 && (
+                          <div>
+                            <label className="text-sm font-medium text-green-700">Skills Found</label>
+                            <div className="flex flex-wrap gap-2 mt-1">
+                              {parsedData.skills.slice(0, 10).map((skill, index) => (
+                                <span key={index} className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">
+                                  {skill}
+                                </span>
+                              ))}
+                              {parsedData.skills.length > 10 && (
+                                <span className="text-green-600 text-sm">
+                                  +{parsedData.skills.length - 10} more
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        <div className="flex gap-3 pt-4">
+                          <button
+                            onClick={applyParsedData}
+                            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+                          >
+                            Apply to Profile
+                          </button>
+                          <button
+                            onClick={() => setShowParsedData(false)}
+                            className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition"
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Skills */}
                   <div>

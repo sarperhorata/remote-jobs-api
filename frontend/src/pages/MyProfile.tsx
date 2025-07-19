@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   User, Edit3, Save, X, MapPin, Mail, Briefcase, Settings, 
   Download, Camera, Plus, Calendar, GraduationCap,
@@ -86,6 +86,10 @@ const MyProfile: React.FC = () => {
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<UserProfile>>({});
   const [importingLinkedIn, setImportingLinkedIn] = useState(false);
+  const [skillInput, setSkillInput] = useState('');
+  const [skillSuggestions, setSkillSuggestions] = useState<string[]>([]);
+  const [showSkillDropdown, setShowSkillDropdown] = useState(false);
+  const skillTimeoutRef = useRef<NodeJS.Timeout>();
 
   const loadUserProfile = useCallback(async () => {
     try {
@@ -366,6 +370,45 @@ const MyProfile: React.FC = () => {
     }
   };
 
+  // Skills autocomplete
+  const searchSkills = async (query: string) => {
+    if (!query || query.length < 2) {
+      setSkillSuggestions([]);
+      return;
+    }
+    try {
+      const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8001/api';
+      const response = await fetch(`${apiBaseUrl}/skills/search?q=${encodeURIComponent(query)}`);
+      if (!response.ok) throw new Error('API not available');
+      const data = await response.json();
+      setSkillSuggestions((data || []).map((s: any) => s.name || s));
+    } catch (error) {
+      setSkillSuggestions([]);
+    }
+  };
+
+  const handleSkillInput = (value: string) => {
+    setSkillInput(value);
+    setShowSkillDropdown(true);
+    if (skillTimeoutRef.current) clearTimeout(skillTimeoutRef.current);
+    skillTimeoutRef.current = setTimeout(() => {
+      searchSkills(value);
+    }, 300);
+  };
+
+  const addSkill = (skill: string) => {
+    if ((editForm.skills?.length || 0) >= 20) return;
+    if (editForm.skills?.includes(skill)) return;
+    setEditForm(prev => ({ ...prev, skills: [...(prev.skills || []), skill] }));
+    setSkillInput('');
+    setSkillSuggestions([]);
+    setShowSkillDropdown(false);
+  };
+
+  const removeSkill = (skill: string) => {
+    setEditForm(prev => ({ ...prev, skills: (prev.skills || []).filter(s => s !== skill) }));
+  };
+
   if (!isAuthenticated) {
     return (
       <Layout>
@@ -633,13 +676,46 @@ const MyProfile: React.FC = () => {
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-600 p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Skills</h2>
               {editing ? (
-                <textarea
-                  value={editForm.skills?.join(', ') || ''}
-                  onChange={(e) => setEditForm({...editForm, skills: e.target.value.split(', ').filter(s => s.trim())})}
-                  className="w-full p-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows={3}
-                  placeholder="JavaScript, React, Node.js, Python, etc."
-                />
+                <div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={skillInput}
+                      onChange={e => handleSkillInput(e.target.value)}
+                      onFocus={() => setShowSkillDropdown(true)}
+                      className="w-full p-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Search and add skills"
+                      disabled={editForm.skills && editForm.skills.length >= 20}
+                    />
+                    {showSkillDropdown && skillSuggestions.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-slate-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        {skillSuggestions.map((skill, idx) => (
+                          <button
+                            key={skill + idx}
+                            onClick={() => addSkill(skill)}
+                            className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 text-sm"
+                          >
+                            {skill}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {/* Seçilen skill'ler */}
+                  {editForm.skills && editForm.skills.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {editForm.skills.map((skill, idx) => (
+                        <span key={skill + idx} className="inline-flex items-center px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm">
+                          {skill}
+                          <button onClick={() => removeSkill(skill)} className="ml-2 text-blue-600 hover:text-blue-800">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="mt-1 text-xs text-gray-500">{editForm.skills?.length || 0}/20 skills selected</div>
+                </div>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {profile?.skills?.map((skill, index) => (
@@ -816,7 +892,11 @@ const MyProfile: React.FC = () => {
                           placeholder="Location"
                           className="w-full p-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg"
                         />
-                        <div className="flex gap-2">
+                      </div>
+                      
+                      {/* Date fields and current checkbox in separate row */}
+                      <div className="mt-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                        <div className="flex gap-2 flex-1">
                           <input
                             type="month"
                             value={exp.start_date}
@@ -834,24 +914,24 @@ const MyProfile: React.FC = () => {
                             />
                           )}
                         </div>
-                      </div>
-                      <div className="mt-2 flex items-center justify-between">
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={exp.current}
-                            onChange={(e) => updateWorkExperience(index, 'current', e.target.checked)}
-                            className="rounded"
-                          />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">Currently working here</span>
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => removeWorkExperience(index)}
-                          className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={exp.current}
+                              onChange={(e) => updateWorkExperience(index, 'current', e.target.checked)}
+                              className="rounded"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">Currently working here</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => removeWorkExperience(index)}
+                            className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                       <textarea
                         value={exp.description || ''}
@@ -935,7 +1015,11 @@ const MyProfile: React.FC = () => {
                           placeholder="Field of Study"
                           className="w-full p-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg"
                         />
-                        <div className="flex gap-2">
+                      </div>
+                      
+                      {/* Date fields and current checkbox in separate row */}
+                      <div className="mt-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                        <div className="flex gap-2 flex-1">
                           <input
                             type="month"
                             value={edu.start_date}
@@ -953,24 +1037,24 @@ const MyProfile: React.FC = () => {
                             />
                           )}
                         </div>
-                      </div>
-                      <div className="mt-2 flex items-center justify-between">
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={edu.current}
-                            onChange={(e) => updateEducation(index, 'current', e.target.checked)}
-                            className="rounded"
-                          />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">Currently studying here</span>
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => removeEducation(index)}
-                          className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={edu.current}
+                              onChange={(e) => updateEducation(index, 'current', e.target.checked)}
+                              className="rounded"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">Currently studying here</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => removeEducation(index)}
+                            className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}

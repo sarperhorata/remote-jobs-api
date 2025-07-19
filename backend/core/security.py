@@ -3,7 +3,7 @@ from typing import Optional
 import jwt
 from jwt import InvalidTokenError as JWTError
 from passlib.context import CryptContext
-from config import get_settings
+from backend.utils.config import get_settings
 
 settings = get_settings()
 

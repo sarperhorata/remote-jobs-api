@@ -3,8 +3,8 @@ from datetime import datetime
 import logging
 from bson import ObjectId
 
-from database.db import get_db
-from models.user_application import (
+from ..database.db import get_db
+from ..models.user_application import (
     UserApplication,
     UserApplicationCreate,
     UserApplicationUpdate,

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Optional, Dict, List
 from pydantic import BaseModel
-from services.salary_estimation_service import salary_estimation_service
-from database.db import get_database
+from ..services.salary_estimation_service import salary_estimation_service
+from ..database.db import get_database
 import logging
 
 logger = logging.getLogger(__name__)

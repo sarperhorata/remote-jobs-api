@@ -4,7 +4,7 @@ from typing import Optional, Dict, List, Tuple
 from datetime import datetime, timedelta
 from statistics import mean, median
 import asyncio
-from database.db import get_database
+from ..database.db import get_database
 
 logger = logging.getLogger(__name__)
 

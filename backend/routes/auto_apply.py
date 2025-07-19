@@ -4,9 +4,9 @@ from typing import Dict, Any
 from pydantic import BaseModel, HttpUrl
 import logging
 
-from services.auto_apply_service import auto_apply_service
-from utils.auth import get_current_user
-from schemas.user import User
+from ..services.auto_apply_service import auto_apply_service
+from ..utils.auth import get_current_user
+from ..schemas.user import User
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

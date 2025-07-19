@@ -5,11 +5,11 @@ import base64
 import logging
 from datetime import datetime
 
-from services.resume_parser_service import ResumeParserService
-from services.job_matching_service import JobMatchingService
-from services.salary_prediction_service import SalaryPredictionService
-from backend.utils.auth import get_current_user
-from backend.models.models import User
+from ..services.resume_parser_service import ResumeParserService
+from ..services.job_matching_service import JobMatchingService
+from ..services.salary_prediction_service import SalaryPredictionService
+from ..utils.auth import get_current_user
+from ..models.user import UserResponse as User
 
 logger = logging.getLogger(__name__)
 

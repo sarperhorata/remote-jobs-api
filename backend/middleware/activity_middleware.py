@@ -7,7 +7,7 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from datetime import datetime
 
-from services.activity_logger import activity_logger
+from ..services.activity_logger import activity_logger
 
 logger = logging.getLogger(__name__)
 

@@ -1,0 +1,75 @@
+version: 2
+updates:
+  # Frontend dependencies
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "daily"
+      time: "03:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "sarperhorata"
+    assignees:
+      - "sarperhorata"
+    commit-message:
+      prefix: "🔧"
+      prefix-development: "🔧"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "frontend"
+    ignore:
+      # Ignore major version updates for critical packages
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+
+  # Backend dependencies
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "daily"
+      time: "04:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "sarperhorata"
+    assignees:
+      - "sarperhorata"
+    commit-message:
+      prefix: "🔧"
+      prefix-development: "🔧"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "backend"
+    ignore:
+      # Ignore major version updates for critical packages
+      - dependency-name: "fastapi"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "pydantic"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "uvicorn"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "05:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "sarperhorata"
+    assignees:
+      - "sarperhorata"
+    commit-message:
+      prefix: "🔧"
+      prefix-development: "🔧"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "github-actions" 

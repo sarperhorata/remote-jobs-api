@@ -277,6 +277,8 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
     }
   }, [showDropdown, updateDropdownPosition]);
 
+  // Country suggestions removed - implemented in separate component
+
   return (
     <div className={`w-full ${className || ''}`} ref={containerRef}>
       {/* Search input and button */}

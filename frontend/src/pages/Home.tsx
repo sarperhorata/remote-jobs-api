@@ -48,7 +48,7 @@ const Home: React.FC = () => {
     const fetchStatistics = async () => {
       try {
         // Fetch job statistics
-        const jobStatsResponse = await fetch('/api/jobs/statistics');
+        const jobStatsResponse = await fetch('/api/v1/jobs/statistics');
         if (jobStatsResponse.ok) {
           const jobStats = await jobStatsResponse.json();
           setTargetActiveJobs(jobStats.total_jobs || 38);
@@ -76,7 +76,7 @@ const Home: React.FC = () => {
         }
 
         // Fetch companies statistics
-        const companiesResponse = await fetch('/api/companies/statistics');
+        const companiesResponse = await fetch('/api/v1/companies/statistics');
         if (companiesResponse.ok) {
           const companiesStats = await companiesResponse.json();
           setTargetCompanies(companiesStats.total_companies || 0);

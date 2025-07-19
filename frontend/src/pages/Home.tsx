@@ -651,60 +651,7 @@ const Home: React.FC = () => {
           </div>
         </section>
 
-        {/* Footer */}
-        <footer className="bg-black/30 backdrop-blur-sm border-t border-white/10 py-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-              <div className="col-span-1 md:col-span-2">
-                <div className="flex items-center space-x-2 mb-4">
-                  <span className="text-2xl">🐝</span>
-                  <span className="font-bold text-xl text-white">Buzz2Remote</span>
-                </div>
-                <p className="text-white/70 mb-4">
-                  Your gateway to the best remote jobs worldwide. 
-                  Connect with top companies and build your dream career from anywhere.
-                </p>
-                <div className="flex space-x-4">
-                  <button className="text-white/60 hover:text-white transition-colors">
-                    Twitter
-                  </button>
-                  <button className="text-white/60 hover:text-white transition-colors">
-                    LinkedIn
-                  </button>
-                  <button className="text-white/60 hover:text-white transition-colors">
-                    GitHub
-                  </button>
-                </div>
-              </div>
-              
-              <div>
-                <h4 className="font-semibold text-white mb-4">For Job Seekers</h4>
-                <ul className="space-y-2">
-                  <li><button onClick={() => navigate('/jobs/search')} className="text-white/60 hover:text-white transition-colors">Browse Jobs</button></li>
-                  <li><button onClick={() => navigate('/profile')} className="text-white/60 hover:text-white transition-colors">Create Profile</button></li>
-                  <li><button onClick={() => navigate('/career-tips')} className="text-white/60 hover:text-white transition-colors">Career Tips</button></li>
-                  <li><button onClick={() => navigate('/salary-guide')} className="text-white/60 hover:text-white transition-colors">Salary Guide</button></li>
-                </ul>
-              </div>
-              
-              <div>
-                <h4 className="font-semibold text-white mb-4">For Employers</h4>
-                <ul className="space-y-2">
-                  <li><button onClick={() => navigate('/post-job')} className="text-white/60 hover:text-white transition-colors">Post a Job</button></li>
-                  <li><button onClick={() => navigate('/pricing')} className="text-white/60 hover:text-white transition-colors">Pricing</button></li>
-                  <li><button onClick={() => navigate('/resources')} className="text-white/60 hover:text-white transition-colors">Resources</button></li>
-                  <li><button onClick={() => navigate('/contact')} className="text-white/60 hover:text-white transition-colors">Support</button></li>
-                </ul>
-              </div>
-            </div>
-            
-            <div className="border-t border-white/10 mt-8 pt-8 text-center">
-              <p className="text-white/60">
-                © 2024 Buzz2Remote. All rights reserved. Made with 💜 for remote workers everywhere.
-              </p>
-            </div>
-          </div>
-        </footer>
+
       </div>
 
       {/* Modals */}

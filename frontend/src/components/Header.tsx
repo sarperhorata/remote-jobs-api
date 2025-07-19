@@ -55,12 +55,12 @@ const Header: React.FC = () => {
   };
 
   const navigation = [
-    { name: 'Jobs', href: '/jobs' },
+    { name: 'Browse Jobs', href: '/jobs/search' },
     { name: 'Companies', href: '/companies' },
+    { name: 'Pricing', href: '/pricing' },
     { name: 'Remote Tips', href: '/remote-tips' },
     { name: 'Career Tips', href: '/career-tips' },
     { name: 'Remote Hints', href: '/remote-hints' },
-    { name: 'Pricing', href: '/pricing' },
     { name: 'Salary Guide', href: '/salary-guide' },
     { name: 'About', href: '/about' },
     { name: 'Contact', href: '/contact' },

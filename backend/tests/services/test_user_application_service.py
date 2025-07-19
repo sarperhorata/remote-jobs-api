@@ -2,8 +2,8 @@ import pytest
 from unittest.mock import Mock, AsyncMock, patch
 from datetime import datetime
 from bson import ObjectId
-from services.user_application_service import UserApplicationService
-from models.user_application import (
+from backend.services.user_application_service import UserApplicationService
+from backend.models.user_application import (
     UserApplicationCreate,
     UserApplicationUpdate,
     UserApplicationResponse

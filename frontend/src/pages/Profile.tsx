@@ -122,6 +122,39 @@ const Profile: React.FC = () => {
     }
   };
 
+  const handleLinkedInCVFetch = async () => {
+    try {
+      setIsUploading(true);
+      
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8001'}/api/v1/auth/linkedin/fetch-cv`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to fetch LinkedIn CV');
+      }
+      
+      const result = await response.json();
+      
+      toast.success(`CV imported successfully! Found ${result.cv_data.experience_count} experiences, ${result.cv_data.education_count} education entries, and ${result.cv_data.skills_count} skills.`);
+      
+      // Refresh the page to show updated data
+      window.location.reload();
+      
+    } catch (error: any) {
+      console.error('Error fetching LinkedIn CV:', error);
+      toast.error(error.message || 'Failed to fetch LinkedIn CV');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const applyParsedData = () => {
     if (!parsedData) return;
     
@@ -266,6 +299,42 @@ const Profile: React.FC = () => {
                       <Upload className="mr-2" size={20} />
                       CV / Resume
                     </h3>
+                    
+                    {/* LinkedIn CV Import */}
+                    {user?.linkedin_connected && (
+                      <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-medium text-blue-900 mb-1">LinkedIn CV Import</h4>
+                            <p className="text-sm text-blue-700">
+                              Import your experience, education, and skills directly from LinkedIn
+                            </p>
+                          </div>
+                          <button
+                            onClick={handleLinkedInCVFetch}
+                            disabled={isUploading}
+                            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition ${
+                              isUploading 
+                                ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                            }`}
+                          >
+                            {isUploading ? (
+                              <>
+                                <Loader className="animate-spin" size={16} />
+                                Importing...
+                              </>
+                            ) : (
+                              <>
+                                <ExternalLink size={16} />
+                                Import from LinkedIn
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                       <div className="flex items-center justify-center gap-4">
                         <input
@@ -399,63 +468,155 @@ const Profile: React.FC = () => {
 
                   {/* Skills */}
                   <div>
-                    <h3 className="text-lg font-semibold mb-4">Skills & Expertise</h3>
-                    <div className="flex flex-wrap gap-3">
-                      {user?.profile?.skills?.map((skill) => (
-                        <span
-                          key={skill}
-                          className="bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium border border-blue-200"
-                        >
-                          {skill}
+                    <h3 className="text-lg font-semibold mb-4 flex items-center justify-between">
+                      <span>Skills & Expertise</span>
+                      {user?.cv_source === 'linkedin' && (
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                          From LinkedIn
                         </span>
-                      ))}
+                      )}
+                    </h3>
+                    <div className="flex flex-wrap gap-3">
+                      {user?.skills && user.skills.length > 0 ? (
+                        user.skills.map((skill) => (
+                          <span
+                            key={skill.id || skill.name}
+                            className="bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium border border-blue-200"
+                          >
+                            {skill.name}
+                          </span>
+                        ))
+                      ) : user?.profile?.skills && user.profile.skills.length > 0 ? (
+                        user.profile.skills.map((skill) => (
+                          <span
+                            key={skill}
+                            className="bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium border border-blue-200"
+                          >
+                            {skill}
+                          </span>
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-gray-500 w-full">
+                          <p>No skills information available</p>
+                          {user?.linkedin_connected && (
+                            <p className="text-sm mt-2">Connect your LinkedIn account to import your skills</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   {/* Experience */}
                   <div>
-                    <h3 className="text-lg font-semibold mb-4">Professional Experience</h3>
+                    <h3 className="text-lg font-semibold mb-4 flex items-center justify-between">
+                      <span>Professional Experience</span>
+                      {user?.cv_source === 'linkedin' && (
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                          From LinkedIn
+                        </span>
+                      )}
+                    </h3>
                     <div className="space-y-6">
-                      {user?.profile?.experience?.map((exp, index) => (
-                        <div key={index} className="relative pl-8 pb-6">
-                          <div className="absolute left-0 top-0 w-4 h-4 bg-blue-600 rounded-full"></div>
-                          {index < (user?.profile?.experience?.length || 0) - 1 && (
-                            <div className="absolute left-2 top-4 w-0.5 h-full bg-gray-300"></div>
-                          )}
-                          <div className="bg-gray-50 rounded-lg p-4">
-                            <h4 className="font-semibold text-gray-900">{exp.title}</h4>
-                            <p className="text-blue-600 font-medium">{exp.company}</p>
-                            <p className="text-sm text-gray-600 mb-2">
-                              {new Date(exp.startDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} -{' '}
-                              {exp.endDate
-                                ? new Date(exp.endDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-                                : 'Present'}
-                            </p>
-                            <p className="text-gray-700">{exp.description}</p>
+                      {user?.experience && user.experience.length > 0 ? (
+                        user.experience.map((exp, index) => (
+                          <div key={index} className="relative pl-8 pb-6">
+                            <div className="absolute left-0 top-0 w-4 h-4 bg-blue-600 rounded-full"></div>
+                            {index < (user.experience.length || 0) - 1 && (
+                              <div className="absolute left-2 top-4 w-0.5 h-full bg-gray-300"></div>
+                            )}
+                            <div className="bg-gray-50 rounded-lg p-4">
+                              <h4 className="font-semibold text-gray-900">{exp.title}</h4>
+                              <p className="text-blue-600 font-medium">{exp.company}</p>
+                              <p className="text-sm text-gray-600 mb-2">
+                                {new Date(exp.startDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} -{' '}
+                                {exp.endDate
+                                  ? new Date(exp.endDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                                  : 'Present'}
+                              </p>
+                              <p className="text-gray-700">{exp.description}</p>
+                            </div>
                           </div>
+                        ))
+                      ) : user?.profile?.experience && user.profile.experience.length > 0 ? (
+                        user.profile.experience.map((exp, index) => (
+                          <div key={index} className="relative pl-8 pb-6">
+                            <div className="absolute left-0 top-0 w-4 h-4 bg-blue-600 rounded-full"></div>
+                            {index < (user.profile.experience.length || 0) - 1 && (
+                              <div className="absolute left-2 top-4 w-0.5 h-full bg-gray-300"></div>
+                            )}
+                            <div className="bg-gray-50 rounded-lg p-4">
+                              <h4 className="font-semibold text-gray-900">{exp.title}</h4>
+                              <p className="text-blue-600 font-medium">{exp.company}</p>
+                              <p className="text-sm text-gray-600 mb-2">
+                                {new Date(exp.startDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} -{' '}
+                                {exp.endDate
+                                  ? new Date(exp.endDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                                  : 'Present'}
+                              </p>
+                              <p className="text-gray-700">{exp.description}</p>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <p>No experience information available</p>
+                          {user?.linkedin_connected && (
+                            <p className="text-sm mt-2">Connect your LinkedIn account to import your experience</p>
+                          )}
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
 
                   {/* Education */}
                   <div>
-                    <h3 className="text-lg font-semibold mb-4">Education</h3>
+                    <h3 className="text-lg font-semibold mb-4 flex items-center justify-between">
+                      <span>Education</span>
+                      {user?.cv_source === 'linkedin' && (
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                          From LinkedIn
+                        </span>
+                      )}
+                    </h3>
                     <div className="space-y-4">
-                      {user?.profile?.education?.map((edu, index) => (
-                        <div key={index} className="bg-gray-50 rounded-lg p-4">
-                          <h4 className="font-semibold text-gray-900">{edu.school}</h4>
-                          <p className="text-blue-600 font-medium">
-                            {edu.degree} in {edu.field}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {new Date(edu.startDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} -{' '}
-                            {edu.endDate
-                              ? new Date(edu.endDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-                              : 'Present'}
-                          </p>
+                      {user?.education && user.education.length > 0 ? (
+                        user.education.map((edu, index) => (
+                          <div key={index} className="bg-gray-50 rounded-lg p-4">
+                            <h4 className="font-semibold text-gray-900">{edu.school}</h4>
+                            <p className="text-blue-600 font-medium">
+                              {edu.degree} {edu.field && `in ${edu.field}`}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              {new Date(edu.startDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} -{' '}
+                              {edu.endDate
+                                ? new Date(edu.endDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                                : 'Present'}
+                            </p>
+                          </div>
+                        ))
+                      ) : user?.profile?.education && user.profile.education.length > 0 ? (
+                        user.profile.education.map((edu, index) => (
+                          <div key={index} className="bg-gray-50 rounded-lg p-4">
+                            <h4 className="font-semibold text-gray-900">{edu.school}</h4>
+                            <p className="text-blue-600 font-medium">
+                              {edu.degree} in {edu.field}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              {new Date(edu.startDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} -{' '}
+                              {edu.endDate
+                                ? new Date(edu.endDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                                : 'Present'}
+                            </p>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <p>No education information available</p>
+                          {user?.linkedin_connected && (
+                            <p className="text-sm mt-2">Connect your LinkedIn account to import your education</p>
+                          )}
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
                 </div>

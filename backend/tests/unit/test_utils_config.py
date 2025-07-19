@@ -3,19 +3,12 @@ import os
 from unittest.mock import patch, Mock
 from typing import Dict, Any
 
-from utils.config import (
+from backend.utils.config import (
+    get_settings,
     get_db_url,
-    get_crawler_headers,
+    get_database_url,
     get_all_config,
-    DATABASE_URL,
-    IS_PRODUCTION,
-    TELEGRAM_ENABLED,
-    API_HOST,
-    API_PORT,
-    CORS_ORIGINS,
-    JWT_SECRET,
-    EMAIL_HOST,
-    USER_AGENT
+    get_crawler_headers
 )
 
 
@@ -35,7 +28,7 @@ class TestUtilsConfig:
         assert "User-Agent" in headers
         assert "Accept-Language" in headers
         assert "Accept" in headers
-        assert headers["User-Agent"] == USER_AGENT
+        assert headers["User-Agent"] == get_settings().USER_AGENT
 
     def test_get_all_config_structure(self):
         """get_all_config doğru yapıda config döndürür"""
@@ -64,8 +57,8 @@ class TestUtilsConfig:
         assert "debug" in api_config
         assert "reload" in api_config
         
-        assert api_config["host"] == API_HOST
-        assert api_config["port"] == API_PORT
+        assert api_config["host"] == get_settings().API_HOST
+        assert api_config["port"] == get_settings().API_PORT
         assert isinstance(api_config["debug"], bool)
         assert isinstance(api_config["reload"], bool)
 
@@ -79,7 +72,7 @@ class TestUtilsConfig:
         
         assert isinstance(db_config["url"], str)
         assert isinstance(db_config["is_production"], bool)
-        assert db_config["is_production"] == IS_PRODUCTION
+        assert db_config["is_production"] == get_settings().IS_PRODUCTION
 
     def test_email_config_section(self):
         """Email config bölümü doğru değerlere sahip"""
@@ -92,7 +85,7 @@ class TestUtilsConfig:
         assert "from" in email_config
         assert "enabled" in email_config
         
-        assert email_config["host"] == EMAIL_HOST
+        assert email_config["host"] == get_settings().EMAIL_HOST
         assert isinstance(email_config["port"], int)
         assert isinstance(email_config["enabled"], bool)
 
@@ -106,7 +99,7 @@ class TestUtilsConfig:
         assert "chat_id" in telegram_config
         
         assert isinstance(telegram_config["enabled"], bool)
-        assert telegram_config["enabled"] == TELEGRAM_ENABLED
+        assert telegram_config["enabled"] == get_settings().TELEGRAM_ENABLED
 
     def test_cors_config_section(self):
         """CORS config bölümü doğru değerlere sahip"""
@@ -118,7 +111,7 @@ class TestUtilsConfig:
         
         assert isinstance(cors_config["origins"], list)
         assert isinstance(cors_config["allow_credentials"], bool)
-        assert cors_config["origins"] == CORS_ORIGINS
+        assert cors_config["origins"] == get_settings().CORS_ORIGINS
 
     def test_jwt_config_section(self):
         """JWT config bölümü doğru değerlere sahip"""
@@ -129,7 +122,7 @@ class TestUtilsConfig:
         assert "algorithm" in jwt_config
         assert "expire_minutes" in jwt_config
         
-        assert jwt_config["secret"] == JWT_SECRET
+        assert jwt_config["secret"] == get_settings().JWT_SECRET
         assert jwt_config["algorithm"] == "HS256"
         assert isinstance(jwt_config["expire_minutes"], int)
 
@@ -161,7 +154,7 @@ class TestUtilsConfig:
         
         assert isinstance(crawler_config["timeout"], int)
         assert isinstance(crawler_config["delay"], float)
-        assert crawler_config["user_agent"] == USER_AGENT
+        assert crawler_config["user_agent"] == get_settings().USER_AGENT
 
     def test_cache_config_section(self):
         """Cache config bölümü doğru değerlere sahip"""

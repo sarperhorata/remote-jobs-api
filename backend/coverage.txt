@@ -1,0 +1,365 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.12, pytest-8.4.1, pluggy-1.6.0
+rootdir: /Users/sarperhorata/buzz2remote/backend
+configfile: pytest.ini
+plugins: anyio-4.9.0, sugar-1.0.0, json-report-1.5.0, timeout-2.4.0, metadata-3.1.1, cov-4.1.0, mock-3.14.1, dotenv-0.5.2, langsmith-0.4.8, asyncio-1.0.0
+asyncio: mode=Mode.STRICT, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1443 items / 4 errors
+
+==================================== ERRORS ====================================
+_______ ERROR collecting tests/services/test_user_application_service.py _______
+ImportError while importing test module '/Users/sarperhorata/buzz2remote/backend/tests/services/test_user_application_service.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../.pyenv/versions/3.11.12/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/services/test_user_application_service.py:5: in <module>
+    from services.user_application_service import UserApplicationService
+services/user_application_service.py:6: in <module>
+    from ..database.db import get_db
+E   ImportError: attempted relative import beyond top-level package
+___________ ERROR collecting tests/unit/test_utils_comprehensive.py ____________
+ImportError while importing test module '/Users/sarperhorata/buzz2remote/backend/tests/unit/test_utils_comprehensive.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../.pyenv/versions/3.11.12/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/test_utils_comprehensive.py:6: in <module>
+    from utils.config import get_all_config
+E   ImportError: cannot import name 'get_all_config' from 'utils.config' (/Users/sarperhorata/buzz2remote/backend/utils/config.py)
+_______________ ERROR collecting tests/unit/test_utils_config.py _______________
+ImportError while importing test module '/Users/sarperhorata/buzz2remote/backend/tests/unit/test_utils_config.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../.pyenv/versions/3.11.12/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/test_utils_config.py:6: in <module>
+    from utils.config import (
+E   ImportError: cannot import name 'get_db_url' from 'utils.config' (/Users/sarperhorata/buzz2remote/backend/utils/config.py)
+____________ ERROR collecting tests/unit/test_utils_config_quick.py ____________
+ImportError while importing test module '/Users/sarperhorata/buzz2remote/backend/tests/unit/test_utils_config_quick.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../.pyenv/versions/3.11.12/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/test_utils_config_quick.py:4: in <module>
+    from utils.config import (
+E   ImportError: cannot import name 'get_db_url' from 'utils.config' (/Users/sarperhorata/buzz2remote/backend/utils/config.py)
+=============================== warnings summary ===============================
+../../.pyenv/versions/3.11.12/lib/python3.11/site-packages/mongomock/__version__.py:1
+  /Users/sarperhorata/.pyenv/versions/3.11.12/lib/python3.11/site-packages/mongomock/__version__.py:1: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+    import pkg_resources
+
+../../.pyenv/versions/3.11.12/lib/python3.11/site-packages/passlib/utils/__init__.py:854
+  /Users/sarperhorata/.pyenv/versions/3.11.12/lib/python3.11/site-packages/passlib/utils/__init__.py:854: DeprecationWarning: 'crypt' is deprecated and slated for removal in Python 3.13
+    from crypt import crypt as _crypt
+
+../../.pyenv/versions/3.11.12/lib/python3.11/site-packages/pydantic/_internal/_config.py:291: 19 warnings
+  /Users/sarperhorata/.pyenv/versions/3.11.12/lib/python3.11/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+../../.pyenv/versions/3.11.12/lib/python3.11/site-packages/PyPDF2/__init__.py:21
+  /Users/sarperhorata/.pyenv/versions/3.11.12/lib/python3.11/site-packages/PyPDF2/__init__.py:21: DeprecationWarning: PyPDF2 is deprecated. Please move to the pypdf library instead.
+    warnings.warn(
+
+../../.pyenv/versions/3.11.12/lib/python3.11/site-packages/spacy/cli/_util.py:23
+  /Users/sarperhorata/.pyenv/versions/3.11.12/lib/python3.11/site-packages/spacy/cli/_util.py:23: DeprecationWarning: Importing 'parser.split_arg_string' is deprecated, it will only be available in 'shell_completion' in Click 9.0.
+    from click.parser import split_arg_string
+
+../../.pyenv/versions/3.11.12/lib/python3.11/site-packages/weasel/util/config.py:8
+  /Users/sarperhorata/.pyenv/versions/3.11.12/lib/python3.11/site-packages/weasel/util/config.py:8: DeprecationWarning: Importing 'parser.split_arg_string' is deprecated, it will only be available in 'shell_completion' in Click 9.0.
+    from click.parser import split_arg_string
+
+../../.pyenv/versions/3.11.12/lib/python3.11/site-packages/pydantic/_internal/_generate_schema.py:831
+../../.pyenv/versions/3.11.12/lib/python3.11/site-packages/pydantic/_internal/_generate_schema.py:831
+../../.pyenv/versions/3.11.12/lib/python3.11/site-packages/pydantic/_internal/_generate_schema.py:831
+../../.pyenv/versions/3.11.12/lib/python3.11/site-packages/pydantic/_internal/_generate_schema.py:831
+  /Users/sarperhorata/.pyenv/versions/3.11.12/lib/python3.11/site-packages/pydantic/_internal/_generate_schema.py:831: PydanticDeprecatedSince20: `__get_validators__` is deprecated and will be removed, use `__get_pydantic_core_schema__` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warn(
+
+../../.pyenv/versions/3.11.12/lib/python3.11/site-packages/pydantic/_internal/_generate_schema.py:312: 18 warnings
+  /Users/sarperhorata/.pyenv/versions/3.11.12/lib/python3.11/site-packages/pydantic/_internal/_generate_schema.py:312: PydanticDeprecatedSince20: `json_encoders` is deprecated. See https://docs.pydantic.dev/2.9/concepts/serialization/#custom-serializers for alternatives. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+--------- coverage: platform darwin, python 3.11.12-final-0 ----------
+Name                                                   Stmts   Miss  Cover   Missing
+------------------------------------------------------------------------------------
+__init__.py                                                0      0   100%
+add_sample_salary_data.py                                 12     12     0%   1-155
+admin_panel/__init__.py                                    0      0   100%
+admin_panel/routes.py                                    724    629    13%   24, 37-39, 44-50, 55-59, 84-96, 100-111, 118-342, 347-511, 516-690, 695-696, 711-1136, 1141-1181, 1190-1207, 1215-1234, 1238-1264, 1268-1294, 1298-1324, 1327-1342, 1348-1363, 1369-1384, 1392-1415, 1422-1489, 1494-2076, 2080-2084, 2093-2098, 2103-2566, 2571-2586, 2591-2619, 2624-2789, 2794-2822, 2827-2869, 2878-2915, 2924-2952, 2959-3213, 3218-3261, 3273-3285
+analyze_all_errors.py                                     73     73     0%   3-118
+analyze_product_manager_titles.py                         91     91     0%   7-175
+api/__init__.py                                            0      0   100%
+api/jobs.py                                               47     47     0%   1-89
+api/monitors.py                                           55     55     0%   1-108
+api/notifications.py                                      49     49     0%   1-107
+api/websites.py                                           73     73     0%   1-149
+app.py                                                     4      4     0%   6-10
+backup_tests/test_advanced_functionality_coverage.py     248    230     7%   19-48, 53-96, 101-147, 152-203, 208-248, 253-296, 300-367, 372-446
+backup_tests/test_advanced_patterns_coverage.py          179    166     7%   13-43, 47-80, 84-127, 131-169, 173-208, 212-249
+backup_tests/test_code_analysis_coverage.py               91     81    11%   11-35, 39-60, 64-87, 91-117, 121-137
+backup_tests/test_comprehensive_coverage_final.py        177    150    15%   18-37, 41-54, 58-67, 71-84, 88-100, 104-121, 125-143, 147-157, 161-173, 177-184, 189-204, 208-224, 228-238, 242-255, 259-275, 279-290
+backup_tests/test_comprehensive_file_coverage.py         266    244     8%   13-52, 59-108, 115-159, 166-226, 231-287, 292-351, 355-395
+backup_tests/test_coverage_boost.py                      112     69    38%   18-19, 23-25, 32-35, 39-42, 46-48, 55-57, 61-63, 67-69, 76-78, 82-84, 89-92, 100-103, 107-108, 116-119, 123-124, 131-132, 136-137, 141-142, 149-150, 157-159, 163-165, 172-176, 181-182, 185
+backup_tests/test_coverage_booster.py                    180    160    11%   14-23, 27-41, 45-51, 55-75, 79-92, 96-112, 116-139, 144-163, 167-188, 193-209, 213-246, 251-281
+backup_tests/test_coverage_enhancement_fixed.py          248    219    12%   20-37, 41-57, 61-73, 78-141, 145-163, 167-186, 190-214, 218-230, 234-251, 255-280, 284-317, 321-348, 353-378, 383-401, 406-435, 440-458, 462-483
+backup_tests/test_coverage_extra.py                       16      8    50%   14-15, 19-20, 24-27
+backup_tests/test_crawler_coverage.py                     79     65    18%   16-43, 48-72, 77-91, 95-120
+backup_tests/test_data_processing_coverage.py            119    104    13%   15-44, 48-81, 85-110, 114-151, 155-185, 189-213
+backup_tests/test_enhanced_api_coverage.py               252    205    19%   16-26, 33-43, 47-56, 60-69, 76-85, 89-97, 104-113, 117-124, 128-135, 142-150, 154-162, 166-183, 190-201, 205-215, 219-228, 235-245, 249-258, 266-274, 279-287, 294-301, 305-318, 325-330, 335-336, 343-350, 354-358, 362-381, 384
+backup_tests/test_extreme_coverage_boost.py               33     24    27%   12-33, 38-56
+backup_tests/test_final_coverage_push.py                 551    486    12%   15-73, 80-102, 107-142, 147-175, 179-201, 206-248, 253-297, 305-320, 326-343, 350-369, 374-385, 393-410, 414-428, 435-459, 463-487, 495-510, 514-532, 539-567, 574-585, 589-597, 601-606, 610-615, 619-624, 632-650, 655-675, 680-710, 719-745, 752-792, 797-842, 852-901, 909-950, 955-990, 993
+backup_tests/test_massive_coverage_boost.py               52     42    19%   10-26, 30-41, 45-57, 61-71, 75-85, 89-98
+backup_tests/test_maximum_coverage_boost.py              640    588     8%   24-103, 107-140, 144-190, 194-240, 244-289, 293-323, 327-369, 373-394, 398-426, 432-501, 506-618, 623-677, 682-722, 727-776, 783-840, 847-906, 914-976, 984-1070, 1077-1161, 1171-1249, 1253-1310
+backup_tests/test_missing_areas_massive_boost.py         345    309    10%   19-49, 55-112, 121-188, 195-285, 291-332, 339-380, 385-435, 440-487, 492-551, 556-608, 613-658
+backup_tests/test_models_comprehensive.py                 16      9    44%   6-8, 11-13, 17-19
+backup_tests/test_models_coverage_boost.py               136    107    21%   19, 24-33, 40-51, 55-64, 69-86, 90-108, 112-121, 125-137, 144-151, 155-168, 172-182, 186-200, 204-230, 235-236, 241-254, 259-279, 283-297, 301-313
+backup_tests/test_modules_systematic_coverage.py         179    158    12%   14-30, 34-46, 50-62, 66-78, 82-94, 98-107, 111-134, 138-165, 169-180, 184-212, 216-243, 247-265, 269-285, 289-316, 320-342
+backup_tests/test_routes_comprehensive.py                 17      8    53%   9-10, 13-14, 17-18, 21-22
+backup_tests/test_routes_coverage_boost.py               120     72    40%   25, 30-33, 38-69, 73-81, 85-92, 96-100, 104-143, 147-153, 157-163, 171, 176-179, 184, 198, 202, 206, 210, 214, 218, 222, 226, 230, 234, 238, 242, 246, 250, 258, 263
+backup_tests/test_services_comprehensive.py                9      3    67%   6, 9, 12
+backup_tests/test_simple_coverage.py                      94     68    28%   16-17, 21-24, 28-31, 35-38, 45-57, 61-70, 77-84, 88-95, 102-108, 112-124, 131-133, 137-138, 146-148, 152-155, 159-162, 166-169
+backup_tests/test_ultimate_coverage_boost.py             105     91    13%   13-33, 37-55, 59-78, 83-114, 118-143, 147-169
+backup_tests/test_untested_areas_boost.py                313    277    12%   17-62, 67-99, 106-150, 157-204, 210-245, 252-306, 312-367, 373-409, 413-460, 468-513, 518-576, 580-612
+backup_tests/test_untested_lines_coverage.py             299    265    11%   17-45, 51-84, 90-124, 130-165, 170-210, 215-249, 254-293, 300-335, 340-385, 390-434, 439-497, 502-550
+backup_tests/test_zero_coverage_boost.py                 388    309    20%   17-33, 37-46, 50-59, 63-72, 76-81, 86-95, 99-108, 112-117, 121-126, 130-135, 139-144, 148-153, 157-166, 170-175, 179-184, 188-193, 197-202, 206-211, 215-220, 224-229, 233-238, 242-247, 255-270, 275-288, 293-307, 312-325, 330-348, 353-366, 371-385, 393-407, 412-425, 430-446, 451-465, 470-486, 491-505, 513-531, 536-553, 561-578, 583-599, 604-621, 629-647, 652-670
+check_companies.py                                        18     18     0%   2-61
+check_jobs.py                                             30     30     0%   3-52
+check_salary_data.py                                      19     19     0%   1-39
+clean_test_jobs.py                                        31     31     0%   3-66
+config.py                                                 67      4    94%   98, 102-104
+conftest.py                                              262    179    32%   28-30, 36-37, 42-77, 82-84, 89, 95-105, 111-124, 129, 146, 155, 165, 170-171, 177-194, 199-214, 220-279, 285-296, 302, 326, 357-383, 388-406, 422, 427-443, 448-464, 469, 479, 483, 488-489, 494, 503
+core/config.py                                            38      0   100%
+core/security.py                                          22      9    59%   18, 22, 25-32
+crawler/__init__.py                                        0      0   100%
+crawler/job_board_parser.py                               92     76    17%   22-26, 42-73, 77-97, 110-120, 137, 149-176, 189-212
+crawler/job_crawler.py                                   275    252     8%   21-27, 33-49, 55-97, 103-145, 151-192, 198-280, 286-376, 382-386, 392-399, 405-428, 434-462, 472-509
+crawler/jobs_from_space_parser.py                        150    133    11%   20-27, 31-72, 76-104, 108-181, 187-221, 225-266
+crawler/linkedin_parser.py                               119    103    13%   18-22, 31-95, 99-156, 161, 165-185, 189-211
+crawler/monitor_manager.py                               154    124    19%   19-23, 29-32, 38-47, 55, 62-64, 70-81, 87-97, 105-111, 117-136, 142-155, 161-187, 193-213, 221, 228-248, 256, 263-284, 294-311, 322-326, 338, 344-353
+crawler/remotive_parser.py                               153    137    10%   17-21, 27-46, 50-86, 90-138, 142-176, 180-204, 208-243
+crud/job.py                                               60     48    20%   9-17, 21-28, 40-55, 63-76, 80-84, 93-102, 106-110
+database.py                                              120    120     0%   1-175
+database/__init__.py                                       4      0   100%
+database/company_repository.py                            88     72    18%   15-19, 23-44, 60-88, 100-107, 119-126, 147-165, 177-183, 192-211
+database/db.py                                           108     80    26%   23-41, 46-51, 55-56, 60-61, 65-66, 70-71, 75-76, 80-81, 85-86, 90-91, 95-136, 141-144, 148-153, 158-159, 163-165, 169
+database/job_repository.py                               109    109     0%   1-286
+debug_admin_login.py                                      66     66     0%   6-119
+debug_salary_estimation.py                                24     24     0%   1-46
+distill_crawler.py                                       544    544     0%   3-1050
+external_api_fetcher.py                                   63     63     0%   1-131
+external_job_apis.py                                     203    203     0%   1-369
+find_linkedin_companies.py                                19     19     0%   1-39
+fix_linkedin_companies.py                                 62     62     0%   1-100
+get_crawl_errors.py                                       44     44     0%   3-77
+import_jobs.py                                            54     54     0%   6-126
+job_analyzer.py                                           65     65     0%   1-170
+main.py                                                  375    255    32%   60-61, 66-67, 82-104, 182-184, 188, 193-201, 212, 217-238, 247, 252, 258-281, 292-308, 313-338, 343-369, 377-388, 400-422, 433-448, 460-483, 496-520, 532-554, 566-578, 591-611, 622-635, 647-671, 679-723, 735-764, 769-795, 800-825, 830-856, 861-891, 899-913
+main_backup.py                                           106    106     0%   1-201
+middleware/activity_middleware.py                        114     96    16%   18-19, 26-84, 89-98, 102-120, 124-128, 143-165, 180-235
+models.py                                                  3      3     0%   2-4
+models/__init__.py                                         0      0   100%
+models/api_service_log.py                                 16     16     0%   1-19
+models/common.py                                          16      4    75%   27, 31-33
+models/company.py                                         25     25     0%   1-27
+models/job.py                                             67      6    91%   32-34, 38-40
+models/job_multilang.py                                   84     42    50%   14-16, 20, 64, 94-130, 135-141, 152-188
+models/models.py                                         416      1    99%   508
+models/profile.py                                         19      0   100%
+models/user.py                                            60      6    90%   13-15, 19-21
+models/user_activity.py                                   97      0   100%
+models/user_application.py                                36      0   100%
+notification/__init__.py                                   0      0   100%
+notification/notification_manager.py                     138    118    14%   22-32, 41-55, 61-94, 100-130, 136-161, 167-257, 263-271, 285-320
+routes/__init__.py                                         0      0   100%
+routes/admin_cleanup.py                                   59     59     0%   1-129
+routes/ads.py                                            128    100    22%   17-40, 56-98, 114-127, 137-171, 180-187, 196-204, 213-221, 230, 244-252, 261-269
+routes/ai_recommendations.py                              96     73    24%   13, 18, 30-55, 63-73, 82-118, 127-165, 175-239, 247-257
+routes/ai_services.py                                    157    123    22%   32-66, 77-106, 117-141, 154-179, 191-212, 224-248, 259-283, 295-343, 350-363
+routes/applications.py                                   153     91    41%   104-130, 184-196, 228-237, 276-292, 345-393, 461-517, 529-548, 559-576
+routes/auth.py                                           207    150    28%   31, 34, 37-44, 51-67, 71-73, 98-125, 142-159, 164, 174-192, 200-312, 324-342, 351-385, 391-417, 422-472
+routes/auto_apply.py                                      66     43    35%   28-40, 51-98, 109-164, 171-177
+routes/companies.py                                      102     76    25%   20-57, 65-72, 83-108, 123-141, 150-171, 180-187, 199-220
+routes/email_test.py                                      78     58    26%   17-34, 44-52, 64-83, 95-114, 127-143, 156-212, 226-248
+routes/fake_job_detection.py                             147    112    24%   45-76, 93-148, 164-193, 208-224, 243-302, 319-384
+routes/job_analysis.py                                    66     66     0%   1-146
+routes/jobs.py                                           699    601    14%   32-39, 46-49, 75-350, 366-411, 425-444, 449-457, 464-498, 510-625, 634-657, 666-689, 697-762, 771-799, 807-820, 837-997, 1016-1039, 1050-1064, 1075-1088, 1095-1101, 1112-1118, 1130-1137, 1148-1161, 1171-1177, 1186-1200, 1214-1277, 1287-1300, 1313-1380, 1393-1453, 1467-1489, 1502-1540, 1553-1590, 1602-1619, 1631-1680, 1696-1747, 1759-1828, 1839-1855, 1866-1892, 1898-1920, 1924-1962, 1966-1986, 1990-2016
+routes/legal.py                                           22      7    68%   21-220, 231-548, 558-969, 974
+routes/notification_routes.py                             46     27    41%   16-22, 33-44, 58-61, 69-78, 86-88, 96-101
+routes/notifications.py                                  116     89    23%   27-53, 66-80, 93-109, 123-156, 169-194, 208-236, 249-268, 281-312
+routes/onboarding.py                                     221    169    24%   36, 39-46, 61-119, 130-186, 197-245, 253-271, 281-366, 378-428, 439-499, 510-540
+routes/payment.py                                         97     66    32%   28-55, 62-95, 105-148, 158-172, 181-188, 196-198, 206-209, 219-241
+routes/profile.py                                        107     85    21%   29-125, 138-179, 191-242
+routes/salary_estimation.py                               77     43    44%   33-55, 63-77, 90-110, 118-129, 137-172
+routes/sentry_test.py                                     39     27    31%   17-53, 65-77, 87-110
+routes/sentry_webhook.py                                 106     90    15%   19-37, 44-70, 74-123, 129-149, 153-163, 169-233, 240-270
+routes/support.py                                         10     10     0%   1-41
+routes/translation.py                                    189    129    32%   61-72, 85-96, 106-117, 129-188, 201-288, 301-350, 361-418, 432-457, 470-519
+run_crawler.py                                            12     12     0%   1-15
+run_tests.py                                              52     52     0%   7-113
+schemas.py                                                 2      2     0%   2-3
+schemas/__init__.py                                        6      0   100%
+schemas/ad.py                                             43      3    93%   17-19
+schemas/common.py                                         16      4    75%   27, 31-33
+schemas/company.py                                        43      0   100%
+schemas/job.py                                            63      3    95%   74-76
+schemas/notification.py                                   25      0   100%
+schemas/payment.py                                        35      0   100%
+schemas/profile.py                                        20     20     0%   1-25
+schemas/user.py                                           88     20    77%   47-68, 74-78, 107-109
+schemas/user_activity.py                                  17     17     0%   1-21
+scripts/test_wakeup.py                                    20     11    45%   21-35, 38
+services/activity_logger.py                              193    165    15%   24-29, 33-68, 72-80, 85-104, 115-141, 150-189, 193-232, 236-250, 254-285, 297-327, 337-356, 365-418
+services/ai_job_matching_service.py                      279    254     9%   27-29, 48-77, 81-111, 115-140, 156-195, 199-232, 236-256, 260-286, 290-310, 314-335, 339-365, 373-405, 409-419, 423-458, 465-541
+services/auto_application_service.py                     329    290    12%   23-24, 30-50, 62-99, 105-138, 144-182, 196-235, 249-304, 313-353, 359-382, 393-420, 433-479, 489-502, 508-526, 532-561, 567-604, 613-626, 632-647, 653-668, 674-680, 684-685, 689, 693-694, 698-699, 704
+services/auto_apply_service.py                           231    201    13%   29-50, 61-124, 128-164, 168-191, 195-251, 255-274, 278-310, 314-333, 337-363, 373-407, 415-436, 440
+services/cache_service.py                                 43     23    47%   23-25, 29-31, 35-42, 46-56, 60-61, 65-66
+services/cv_parser_service.py                            291    254    13%   14-17, 22-25, 30-33, 41-45, 51-69, 73-84, 88-105, 109-134, 139-147, 151-153, 158-168, 173-190, 194-217, 221-257, 261-305, 309-352, 356-392, 396-432
+services/fake_job_detector.py                            202    147    27%   33, 92-93, 98-99, 103-124, 128-149, 157-211, 215-225, 229-251, 255-262, 266-285, 289-302, 306-319, 323-338, 342-355, 363-388, 402-411, 415, 428-435, 439-445, 449-494
+services/job_matching_service.py                         237    206    13%   61-91, 99-122, 126-171, 175-196, 200-210, 214-237, 241-252, 256-279, 285, 289-318, 322-338, 342-360, 380-401, 416-424, 434-453, 461-471, 476, 485-491, 496, 503-510
+services/job_scraping_service.py                         219    184    16%   30-31, 40-44, 47-48, 54-134, 143-167, 173-204, 218-239, 253-271, 285-309, 315-329, 342-411, 420-440, 446-472, 478-480
+services/mailgun_service.py                              130    102    22%   37, 294-301, 324-388, 395-468, 472-528, 532-589, 593-685, 689-727, 731-763, 770-802, 810
+services/performance_analytics_service.py                 45     33    27%   13-14, 18-28, 32-60, 64-78, 82-98
+services/resume_parser_service.py                        223    190    15%   58-74, 81-89, 93-101, 105-119, 123-154, 158-188, 192-226, 230-259, 263-297, 301-333, 337-357, 361-377, 381-386, 390-404
+services/salary_estimation_service.py                    168    143    15%   36-37, 41-79, 83-89, 93-100, 104-111, 115-122, 126-170, 175-181, 185-273, 278-297, 302-338
+services/salary_prediction_service.py                    265    229    14%   108-131, 139-144, 154-173, 177-196, 200-222, 226-237, 242-275, 279-291, 295-319, 323-333, 337-355, 359-381, 386-428, 432-441, 445-453, 457-460, 468-476, 484-501, 509-519, 536-573, 577-598, 602-623
+services/scheduler_service.py                            243    214    12%   28-30, 35-55, 59-65, 69-119, 123-168, 172-195, 199-266, 270-405, 410-447, 451-494, 498-511, 520-525, 531, 537-540, 546-547
+services/translation_service.py                          164    133    19%   15-18, 24-26, 39-46, 53, 57-69, 73-94, 98-167, 171-193, 201-296, 310-339, 343-345, 366, 370
+services/user_application_service.py                     126    105    17%   20-21, 25-28, 32-51, 55-69, 79-97, 101-117, 121-132, 140-168, 172-180, 184-195, 199-221, 229-231
+telegram_bot/__init__.py                                   0      0   100%
+telegram_bot/__main__.py                                  23     23     0%   6-38
+telegram_bot/bot.py                                      479    479     0%   1-1114
+telegram_bot/bot_manager.py                              124    100    19%   32-59, 63-78, 82-103, 109-182, 186-193, 200, 204
+telegram_bot/run.py                                       23     23     0%   2-34
+test_before_commit.py                                     38     31    18%   15-19, 23-65, 68-69
+test_company_normalization.py                             79     64    19%   19-106, 124-186, 190-217, 221-235, 238
+test_render.py                                            38     33    13%   10-42, 46-48, 51-62
+test_setup.py                                             89     81     9%   14-59, 63-79, 83-105, 109-135, 138-139
+tests/__init__.py                                          0      0   100%
+tests/api/__init__.py                                      0      0   100%
+tests/api/test_admin_cleanup.py                          158    127    20%   13, 18-21, 26-38, 43-83, 88-94, 99-109, 114-155, 160-166, 171-181, 186-212, 217-243, 248-274, 279-304
+tests/api/test_admin_routes.py                            64     40    38%   12-13, 16-20, 23-26, 29-32, 35-38, 42-47, 50-51, 54-55, 59-60, 62-63, 65-66, 68-69, 73-77, 79-80, 82-87
+tests/api/test_ads.py                                     38     26    32%   12-18, 22-26, 30-31, 35-37, 41-42, 46-56, 61-66
+tests/api/test_ai_services_routes.py                      97     70    28%   12-13, 17-18, 22-23, 27-28, 32-33, 37-43, 48-69, 74-86, 91-116, 120-132, 137-156, 161-175, 181-209, 213-222
+tests/api/test_applications.py                            23     12    48%   13-18, 23-24, 28-29, 33-34, 41-42
+tests/api/test_applications_comprehensive.py              14      7    50%   8, 12-25
+tests/api/test_applications_simple.py                     43     29    33%   13, 19-39, 45-49, 54-58, 63-67, 76, 82-101
+tests/api/test_auth.py                                    26     17    35%   14-19, 23-31, 35-38, 42-46, 50-54, 58-61, 65-68
+tests/api/test_auth_comprehensive.py                     153    108    29%   14-20, 24-28, 33-44, 49-57, 62-67, 71-84, 90-96, 100-104, 108-109, 113-115, 123-132, 136-150, 154-166, 173-181, 186-190, 194-204, 208-209, 216-225, 229-238, 242-243, 251-258, 263-271, 279-291, 296-312, 319-322, 326-327, 331-339, 343-351, 358-365, 369-377, 381-393
+tests/api/test_auth_extended.py                           71     50    30%   14-25, 30-38, 43-50, 54-67, 71-75, 79-84, 88-90, 94-99, 103-109, 113-124, 128-132, 136-146, 150-158, 162-169, 173-174, 179-185
+tests/api/test_companies.py                              120    101    16%   15-48, 53-70, 74-90, 94-99, 103-129, 133-149, 153-167, 171-181, 185-202, 206-220, 225-228, 232-250
+tests/api/test_comprehensive_analysis.py                  88     63    28%   12-13, 17-18, 22-23, 28-64, 69-103, 108-165, 169-182, 186-197, 202-224, 228-240, 245-258, 262-274, 279-302
+tests/api/test_endpoints_comprehensive.py                 51     36    29%   10-16, 19-20, 24-29, 32-33, 36-39, 42-46, 49-53, 56-60
+tests/api/test_fake_job_detection.py                      91     69    24%   12-13, 17-18, 22-23, 28-54, 58-66, 71-110, 114-122, 126-136, 140-152, 157-167, 171-177, 183-199
+tests/api/test_health.py                                  18      7    61%   9, 17-18, 22-24, 28-29
+tests/api/test_jobs.py                                    73     63    14%   8-17, 22-35, 40-49, 54-64, 69-77, 82-90, 95-118
+tests/api/test_jobs_api.py                                46     37    20%   15-25, 29-36, 40-47, 51-57, 62-69, 73-82
+tests/api/test_jobs_comprehensive.py                     336    286    15%   13-36, 40-46, 50-65, 69-82, 86-98, 102-114, 118-130, 134-146, 150-167, 171-179, 183-190, 194-201, 205-218, 222-235, 239-252, 256-269, 273-277, 281-292, 296-307, 311-323, 327-344, 348-359, 363-370, 374-385, 389-396, 400-414, 418-429, 433-444, 448-462, 466-481, 485-492, 496-501, 505-509, 513-524, 528-529, 533-534, 538-550, 554-566, 570-585, 589-598, 602-607, 611-631, 635-657
+tests/api/test_jobs_coverage.py                          335    274    18%   13-34, 38-51, 55-59, 63-73, 77-81, 85-101, 105-113, 117-125, 129-133, 137-141, 145-149, 153-157, 161-165, 169-173, 177-181, 185-197, 201-208, 212-213, 217-218, 222-226, 230-234, 238-249, 253-261, 265-273, 277-290, 294-298, 302-306, 311-314, 318-334, 338-342, 346-350, 354-358, 362-366, 370-374, 378-382, 386-390, 394-398, 402-406, 410-420, 424-434, 438-448, 452-462, 466-476, 480-490, 494-504, 508-517, 521-532, 536-552, 556-562, 566-572, 576-582, 586-592, 596-607, 611-622
+tests/api/test_jobs_simple_extended.py                   199    146    27%   12-16, 20-23, 27-32, 36-48, 52-54, 58-63, 67-71, 75-78, 82-86, 90-91, 95-99, 103-104, 108-117, 121-125, 129-133, 137-147, 151-165, 169-179, 183-187, 191-199, 203-205, 209-211, 215-216, 220-221, 225-233, 237-245, 252-253, 257-260, 264-265, 272-273, 277-280, 287-294, 301-302, 306-310, 317-318, 322-324, 331-332, 336-339, 346-347, 354-355
+tests/api/test_notifications_simple.py                    14      8    43%   9-11, 15-18, 22-30
+tests/api/test_security_comprehensive.py                 204    168    18%   15-32, 36-52, 56-73, 77-88, 92-108, 113-132, 137-142, 146-162, 166-182, 187-206, 211-225, 229-241, 246-263, 268-283, 288-301, 306-322, 326-337, 342-357, 362-373, 380-393, 397-408, 412-422, 426-440, 448-460, 464-483, 488-514
+tests/api/test_sentry_webhook.py                          77     58    25%   12-13, 17-40, 44-52, 56-62, 66-73, 77-106, 110-131, 136-154, 159-176, 180-191, 195-207, 211-230
+tests/api/test_translation_routes.py                      85     61    28%   12-13, 17-18, 23-54, 58-66, 71-110, 114-123, 127-133, 137-143, 148-165, 169-180, 185-195, 199-205, 211-238
+tests/conftest.py                                        314    210    33%   45-50, 58-59, 67-107, 115-120, 125-134, 139-147, 152-157, 163-165, 169, 173-180, 184-189, 193-200, 204-219, 223-234, 238-243, 249-253, 257-263, 267-268, 272-273, 277-293, 297-302, 308-317, 321, 326, 331, 340, 358-366, 371-381, 386-403, 408, 413, 418, 423-424, 429, 447, 455, 463, 480, 488, 496, 506-518, 522, 526-530
+tests/fixtures/test_data.py                               86     64    26%   14, 105, 147, 183, 207, 233-255, 260-280, 285-305, 310-323
+tests/integration/__init__.py                              0      0   100%
+tests/services/test_activity_logger.py                   204    156    24%   17-55, 60-62, 66-73, 79-87, 92-99, 104-124, 129-146, 152-170, 175-185, 190-207, 213-228, 233-238, 244-262, 267-283, 288-306, 311-336, 341-350, 355-362, 367-375, 379-380, 386-395, 400-409
+tests/services/test_ai_services_comprehensive.py         209    184    12%   9-13, 17-24, 28-40, 47-51, 55-62, 66-78, 85-89, 93-100, 104-116, 123-127, 131-138, 142-154, 161-165, 169-176, 180-191, 198-231, 235-281
+tests/services/test_ai_services_coverage.py              347    290    16%   11-17, 22-41, 46-63, 68-89, 97-103, 108-128, 133-155, 163-169, 174-192, 197-216, 220-231, 239-245, 250-267, 271-285, 289-305, 309-324, 328-344, 349-368, 372-386, 390-406, 410-423, 427-443, 452-472, 477-499, 504-524, 529-550, 559-573, 577-590, 595-609, 613-625, 630-653
+tests/services/test_ai_services_extended.py              360    290    19%   12-16, 21-37, 42-55, 60-76, 81-100, 105-124, 129-149, 154-170, 175-196, 204-207, 212-231, 236-258, 263-282, 287-309, 314-333, 338-358, 366-369, 374-389, 394-406, 411-429, 433-446, 451-462, 466-478, 483-493, 497-506, 511-532, 540-543, 548-565, 570-578, 582-597, 601-615, 619-636, 640-658, 663-683, 687-702, 706-719, 723-733, 737-749
+tests/services/test_analytics_service.py                 134    122     9%   12-60, 64-88, 92-129, 133-184, 188-243, 247-289
+tests/services/test_cache_service.py                     180    134    26%   13-19, 24-26, 31-33, 37-41, 45-48, 52-58, 62-68, 73-81, 86-90, 95-102, 107-113, 118-122, 127-143, 148-162, 167-182, 187-200, 205-210, 215-220, 225-234, 239-248, 252-262, 267-290, 294-312
+tests/services/test_crawler_services.py                   37     18    51%   11-14, 18-20, 24-26, 30-32, 36-38, 42-44
+tests/services/test_data_processing_service.py           124    113     9%   10-27, 31-60, 64-96, 100-118, 122-150, 154-181, 185-227
+tests/services/test_email_service.py                     123    109    11%   13-30, 34-63, 69-107, 111-159, 163-204, 208-240
+tests/services/test_fake_job_detector.py                 222    177    20%   12-14, 19-23, 28-30, 35, 52, 68-74, 78-83, 87-100, 105-120, 125-140, 145-154, 159-171, 175-183, 187-196, 201-214, 219-225, 230-239, 243-265, 269-283, 288-308, 312-321, 325-337, 341-353, 357-369, 373-387, 392-409
+tests/services/test_job_matching_service.py               47     31    34%   8-16, 20, 24-27, 32-35, 41-51, 56-62
+tests/services/test_mailgun_service.py                   176    138    22%   16-22, 26-31, 35-43, 47-53, 57-64, 69-88, 93-106, 111-120, 125-134, 138-150, 155-164, 170-181, 186-196, 201-209, 213-222, 226-229, 233-247, 251-265, 270-290, 295-311
+tests/services/test_middleware_service.py                203    189     7%   11-42, 46-81, 85-124, 128-161, 165-209, 213-251, 255-279, 283-306, 310-349
+tests/services/test_notification_service.py              112     99    12%   9-32, 36-42, 46-61, 65-83, 87-110, 115-128, 132-143, 147-169, 173-197
+tests/services/test_performance_analytics_service.py     220    167    24%   12-18, 23, 28, 39, 48-51, 56-68, 73-78, 83-95, 100-105, 110-118, 123-132, 137-146, 151-164, 169-183, 188-202, 207-221, 226-240, 246-270, 275-284, 289-297, 302-309, 314-321, 327-341, 345-365, 373-392
+tests/services/test_scheduler_service.py                 201    147    27%   13-21, 26-29, 34-47, 55-59, 64-69, 74-79, 84-89, 94-99, 104-109, 114-118, 123-127, 132-151, 156-163, 168-173, 178-183, 188-197, 202-215, 219-230, 234-236, 240-249, 254-258, 263-267, 272-276, 280-285, 289-297, 301-305, 309-329, 337-351
+tests/services/test_search_service.py                    101     93     8%   10-60, 64-97, 101-138, 142-179
+tests/services/test_security_service.py                  154    139    10%   10-19, 23-37, 41-59, 63-82, 86-99, 103-131, 135-170, 174-199, 203-222, 226-246, 250-285
+tests/services/test_translation_service.py               210    147    30%   11, 16, 29-32, 38-45, 50-53, 58-68, 75-84, 92-99, 106-107, 114-123, 129-131, 138-150, 157-166, 173-187, 191-199, 203-211, 218-234, 241-251, 257-275, 279-285, 289-302, 310-329
+tests/services/test_user_application_service.py          205    200     2%   6-350
+tests/syntax/__init__.py                                   0      0   100%
+tests/test_api_security.py                               220    198    10%   15-33, 39-78, 84-138, 144-181, 187-233, 239-274, 280-304, 310-360, 364-401
+tests/test_auto_fix_integration.py                       224    169    25%   21, 25, 29, 33, 37, 42-43, 48-79, 86-96, 100-110, 114-152, 159-163, 167-172, 176-181, 186-191, 199-200, 204-206, 213-219, 226-248, 253-261, 268-291, 299-307, 312-320, 324-340, 349-363, 368-374, 378-397, 401-415, 419-430
+tests/test_autocomplete_accuracy.py                       81     63    22%   18-43, 50-74, 81-89, 96-108, 115-133, 137-167
+tests/test_critical_functionality.py                     205    181    12%   15-42, 49-78, 85-112, 119-149, 156-191, 198-228, 234-260, 267-290, 296-347, 351-392
+tests/test_database.py                                   135     99    27%   13-17, 22-25, 30-45, 50-58, 64-65, 71-72, 77-84, 89-119, 124-139, 144-156, 162-164, 169-184, 189-194, 200-202, 209-218
+tests/test_database_comprehensive.py                      18      9    50%   9-14, 18-21
+tests/test_job_matching_service.py                       173    137    21%   9, 13, 57, 82-84, 88-105, 109-124, 128-131, 135-137, 142-163, 167-170, 174-179, 183-186, 190-195, 199-204, 208-211, 215-226, 230-236, 240-272, 276-299, 303-319, 323-345, 349-372, 376-385, 389-399, 403-409, 414-420, 424-431, 435-440, 444-448
+tests/test_main_app.py                                   140     96    31%   15-19, 23-26, 30-31, 36-37, 41-43, 47-48, 52-53, 57-61, 65-66, 70-74, 80-82, 86-91, 96-97, 101-104, 108-116, 120-121, 127-131, 135-137, 141-144, 152-161, 166-167, 171-175, 180-181, 189-190, 195-196, 201-206, 210-214, 219-220, 226-227, 232-233, 238-241, 246-247
+tests/test_payment.py                                    108     87    19%   14-25, 32-40, 46-53, 59-66, 73-82, 89-111, 118-140, 147-166, 170-209
+tests/test_realistic_data_integration.py                 121     93    23%   11-23, 29-40, 46-58, 63-74, 80-91, 97-108, 114-125, 131-143, 149-153, 158-162, 167-172, 178-189
+tests/test_resume_parser_service.py                      183    143    22%   10, 14, 52, 57, 61-65, 69-75, 79-93, 97-103, 107-113, 117-120, 124-127, 133-142, 148-157, 161-169, 173-178, 182-187, 191-196, 200-204, 208-214, 218-220, 224-244, 248-252, 256-259, 263-266, 270-273, 277-280, 284-301, 305-320, 324-341
+tests/test_salary_prediction_service.py                  242    203    16%   9, 13, 57, 82-86, 90-112, 116-127, 131-133, 138-159, 163-166, 170-175, 179-197, 202-214, 219-226, 231-255, 260-278, 282-285, 289-309, 313-318, 322-327, 331-337, 341-348, 352-356, 360-364, 368-377, 381-403, 407-431, 435-459, 464-470, 474-480, 486-494, 499-512, 516-528
+tests/test_sanity.py                                      12      6    50%   10, 14-18
+tests/test_utils_security.py                              14      6    57%   6, 9, 13-14, 17-18
+tests/unit/__init__.py                                     0      0   100%
+tests/unit/test_admin_panel_extended.py                  166    114    31%   17, 21-25, 29-35, 39-41, 45-47, 51-53, 57-59, 63-65, 69-71, 75-77, 81-83, 87-88, 94-104, 109-110, 114-116, 120-122, 126-128, 132-134, 138-140, 144-146, 150-152, 156-158, 162-164, 168-170, 174-176, 180-182, 186-188, 192-194, 199-203, 207-222, 226-240, 244-247, 251-252, 257-259, 263-264, 269-274, 279-281, 286-293, 297-301
+tests/unit/test_admin_panel_routes.py                     37     22    41%   19-22, 26-28, 32-36, 40-42, 47-54, 58-69
+tests/unit/test_applications_routes_fixed.py              17      8    53%   12-13, 17-18, 22-23, 27-28
+tests/unit/test_company_repository.py                    161    131    19%   15-18, 23-26, 30-37, 41-72, 76-96, 100-106, 110-124, 128-135, 139-145, 149-163, 167-174, 178-200, 204-213, 217-222, 226-234, 238-245, 249-254, 259-280, 284-290, 294-300
+tests/unit/test_core_security.py                         128    103    20%   23-26, 30-34, 38-43, 47-58, 62-76, 80-86, 91-96, 100-109, 113-117, 121-124, 128-141, 145-158, 162-166, 170-174, 178-190, 194-203, 207-212, 217-232
+tests/unit/test_database.py                              177    133    25%   15-16, 21-43, 48-64, 69-80, 85-99, 107-112, 116-118, 122-128, 137-152, 157-165, 174-180, 185-191, 196-202, 207-216, 221-227, 232-238, 243-253, 263-264, 269-273, 278-279, 288-300, 305-319, 324-335, 340-354, 359-373
+tests/unit/test_html_cleaner.py                           96     77    20%   10-13, 17-21, 25-40, 44-45, 49-51, 55-58, 62-65, 69-72, 76-89, 93-105, 109-118, 122-133, 137-147, 151-160, 164-168, 172-188
+tests/unit/test_models_job.py                            209    163    22%   21-24, 28-30, 34-36, 40-42, 51, 65-71, 75-88, 92-97, 101-106, 114-130, 134-152, 160-173, 177-182, 186-196, 205, 219-227, 231-249, 253-259, 263-269, 278-291, 295-308, 312-322, 326-340, 349-375, 380-390, 394-410, 418-441, 445-459, 465-487
+tests/unit/test_new_ai_features.py                        23     18    22%   6-10, 14-15, 20-36
+tests/unit/test_sanity.py                                  3      1    67%   8
+tests/unit/test_utils_auth_extended.py                   299    281     6%   16-56, 60-98, 102-145, 149-190, 194-245, 249-303, 307-346, 350-396, 400-451, 455-509
+tests/unit/test_utils_auth_quick.py                      129    100    22%   22-27, 31-36, 40-44, 48-53, 57-61, 65-70, 78-84, 88-93, 97-103, 107-115, 119-125, 129-137, 141-152, 156-168, 172-181, 187-199, 209-215, 219-227, 231-241
+tests/unit/test_utils_comprehensive.py                   124    118     5%   7-234
+tests/unit/test_utils_config.py                          202    197     2%   22-335
+tests/unit/test_utils_config_extended.py                 238    219     8%   17-49, 53-100, 104-157, 161-200, 204-238, 242-278, 282-309, 313-341, 345-382, 386-420
+tests/unit/test_utils_config_quick.py                    101     97     4%   15-170
+tests/unit/test_utils_email.py                           171    128    25%   25-27, 31-41, 45-55, 59-65, 69-71, 76-85, 90-98, 103-112, 121-129, 134-142, 147-152, 157-161, 166-170, 175-180, 185-189, 194-198, 202-208, 212-225, 229-234, 238-242, 247-251, 255-264, 268-289, 293-308, 313-319, 323-334
+tests/unit/test_utils_email_quick_fixed.py                68     47    31%   19-23, 27-31, 35-44, 48-51, 60-69, 74-82, 87-92, 97-101, 109-115, 119-133
+tests/unit/test_utils_init.py                             26     20    23%   8-12, 16-21, 25-30, 34-39
+utils/__init__.py                                         16      8    50%   7-8, 12-13, 17-18, 22-23
+utils/ads.py                                              74     74     0%   1-203
+utils/archive.py                                          37     37     0%   1-67
+utils/auth.py                                             55     33    40%   26, 30, 34-41, 45-57, 61-65, 72-74, 80-93
+utils/bot.py                                              28     28     0%   1-51
+utils/captcha.py                                          65     65     0%   1-127
+utils/chatbot.py                                          45     45     0%   1-157
+utils/config.py                                           78      7    91%   109-113, 118-120
+utils/cronjob.py                                          20     13    35%   11-25
+utils/cv_parser.py                                       198    198     0%   1-318
+utils/cv_parser_ai.py                                    111    111     0%   3-296
+utils/db.py                                              362    362     0%   1-798
+utils/email.py                                            53     37    30%   27-43, 55-66, 78-89, 101-107, 111-115, 119-123
+utils/form_filler.py                                      15     15     0%   1-25
+utils/html_cleaner.py                                     49     40    18%   16-34, 47-57, 69-79, 91-101, 113-139
+utils/job_api_integrations.py                            219    219     0%   1-539
+utils/job_archiver.py                                     69     69     0%   1-139
+utils/job_crawler.py                                     222    222     0%   1-551
+utils/linkedin.py                                        104    104     0%   1-209
+utils/notifications.py                                    11     11     0%   1-22
+utils/premium.py                                           3      3     0%   1-7
+utils/recaptcha.py                                        15     12    20%   14-31
+utils/scheduler.py                                        15     15     0%   1-38
+utils/security.py                                        109     74    32%   35-44, 51-60, 69-103, 108, 115-116, 124-125, 132-137, 144-158, 163, 174-195, 201-213
+utils/sheets.py                                           36     36     0%   1-74
+utils/telegram.py                                         51     51     0%   1-100
+wellfound_crawler.py                                     183    183     0%   1-285
+------------------------------------------------------------------------------------
+TOTAL                                                  31625  25680    19%
+
+=========================== short test summary info ============================
+ERROR tests/services/test_user_application_service.py
+ERROR tests/unit/test_utils_comprehensive.py
+ERROR tests/unit/test_utils_config.py
+ERROR tests/unit/test_utils_config_quick.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 4 errors during collection !!!!!!!!!!!!!!!!!!!!
+======================== 46 warnings, 4 errors in 3.76s ========================

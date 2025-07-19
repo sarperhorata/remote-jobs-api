@@ -111,7 +111,15 @@ const Header: React.FC = () => {
                   <span className="font-bold text-lg bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
                     Buzz2Remote
                   </span>
-                  <span className="text-xs text-white/70 -mt-1">Find Remote Jobs 🚀</span>
+                  <span
+                    className={
+                      theme === 'dark'
+                        ? 'text-white/70 -mt-1 text-xs'
+                        : 'text-gray-800 -mt-1 font-medium text-xs'
+                    }
+                  >
+                    Find Remote Jobs 🚀
+                  </span>
                 </div>
               </Link>
 

@@ -2,7 +2,7 @@ import requests
 import os
 import logging
 import json
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 import re
 from datetime import datetime
 
@@ -23,14 +23,14 @@ class LinkedInIntegration:
             "response_type": "code",
             "client_id": self.client_id,
             "redirect_uri": self.redirect_uri,
-            "scope": "r_liteprofile r_emailaddress",
+            "scope": "r_liteprofile r_emailaddress r_basicprofile w_member_social",
             "state": state or "random_state"
         }
         
         query_string = "&".join([f"{k}={v}" for k, v in params.items()])
         return f"{base_url}?{query_string}"
     
-    async def exchange_code_for_token(self, code: str) -> Optional[str]:
+    def exchange_code_for_token(self, code: str) -> Optional[str]:
         """
         Exchange authorization code for access token
         """
@@ -54,7 +54,7 @@ class LinkedInIntegration:
             logger.error(f"Error exchanging LinkedIn code: {str(e)}")
             return None
     
-    async def get_user_profile(self, access_token: str) -> Optional[Dict]:
+    def get_user_profile(self, access_token: str) -> Optional[Dict]:
         """
         Get user profile data from LinkedIn API
         """
@@ -81,6 +81,149 @@ class LinkedInIntegration:
         except Exception as e:
             logger.error(f"Error fetching LinkedIn profile: {str(e)}")
             return None
+
+    def get_user_cv_data(self, access_token: str) -> Optional[Dict]:
+        """
+        Get comprehensive CV data from LinkedIn including experience, education, skills
+        """
+        try:
+            headers = {"Authorization": f"Bearer {access_token}"}
+            
+            # Get basic profile
+            profile_data = self.get_user_profile(access_token)
+            if not profile_data:
+                return None
+            
+            # Get experience
+            experience_data = self._get_experience(access_token)
+            
+            # Get education
+            education_data = self._get_education(access_token)
+            
+            # Get skills
+            skills_data = self._get_skills(access_token)
+            
+            # Combine all data
+            cv_data = {
+                **profile_data,
+                "experience": experience_data,
+                "education": education_data,
+                "skills": skills_data,
+                "cv_source": "linkedin",
+                "cv_updated_at": datetime.now().isoformat()
+            }
+            
+            return cv_data
+            
+        except Exception as e:
+            logger.error(f"Error fetching LinkedIn CV data: {str(e)}")
+            return None
+
+    def _get_experience(self, access_token: str) -> List[Dict]:
+        """
+        Get user's work experience from LinkedIn
+        """
+        try:
+            headers = {"Authorization": f"Bearer {access_token}"}
+            
+            # LinkedIn API v2 for positions
+            positions_url = "https://api.linkedin.com/v2/people/~:(positions)?projection=(elements*(id,title,company,startDate,endDate,summary,location))"
+            response = requests.get(positions_url, headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                positions = data.get("positions", {}).get("elements", [])
+                
+                experience_list = []
+                for position in positions:
+                    exp = {
+                        "title": position.get("title", ""),
+                        "company": position.get("company", {}).get("name", ""),
+                        "start_date": position.get("startDate", {}).get("year", ""),
+                        "end_date": position.get("endDate", {}).get("year", "") if position.get("endDate") else "Present",
+                        "summary": position.get("summary", ""),
+                        "location": position.get("location", {}).get("name", "")
+                    }
+                    experience_list.append(exp)
+                
+                return experience_list
+            else:
+                logger.warning(f"Could not fetch experience: {response.status_code}")
+                return []
+                
+        except Exception as e:
+            logger.error(f"Error fetching experience: {str(e)}")
+            return []
+
+    def _get_education(self, access_token: str) -> List[Dict]:
+        """
+        Get user's education from LinkedIn
+        """
+        try:
+            headers = {"Authorization": f"Bearer {access_token}"}
+            
+            # LinkedIn API v2 for education
+            education_url = "https://api.linkedin.com/v2/people/~:(educations)?projection=(elements*(id,schoolName,degreeName,fieldOfStudy,startDate,endDate,grade,activities,description))"
+            response = requests.get(education_url, headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                educations = data.get("educations", {}).get("elements", [])
+                
+                education_list = []
+                for education in educations:
+                    edu = {
+                        "school": education.get("schoolName", ""),
+                        "degree": education.get("degreeName", ""),
+                        "field": education.get("fieldOfStudy", ""),
+                        "start_date": education.get("startDate", {}).get("year", ""),
+                        "end_date": education.get("endDate", {}).get("year", ""),
+                        "grade": education.get("grade", ""),
+                        "activities": education.get("activities", ""),
+                        "description": education.get("description", "")
+                    }
+                    education_list.append(edu)
+                
+                return education_list
+            else:
+                logger.warning(f"Could not fetch education: {response.status_code}")
+                return []
+                
+        except Exception as e:
+            logger.error(f"Error fetching education: {str(e)}")
+            return []
+
+    def _get_skills(self, access_token: str) -> List[Dict]:
+        """
+        Get user's skills from LinkedIn
+        """
+        try:
+            headers = {"Authorization": f"Bearer {access_token}"}
+            
+            # LinkedIn API v2 for skills
+            skills_url = "https://api.linkedin.com/v2/people/~:(skills)?projection=(elements*(skill~(name,id)))"
+            response = requests.get(skills_url, headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                skills = data.get("skills", {}).get("elements", [])
+                
+                skills_list = []
+                for skill in skills:
+                    skill_data = skill.get("skill", {})
+                    skills_list.append({
+                        "name": skill_data.get("name", ""),
+                        "id": skill_data.get("id", "")
+                    })
+                
+                return skills_list
+            else:
+                logger.warning(f"Could not fetch skills: {response.status_code}")
+                return []
+                
+        except Exception as e:
+            logger.error(f"Error fetching skills: {str(e)}")
+            return []
     
     def _format_profile_data(self, profile_data: Dict, email_data: Dict) -> Dict:
         """
@@ -92,9 +235,9 @@ class LinkedInIntegration:
             "linkedin_url": "",
             "title": "",
             "profile_photo_url": "",
-            "experience": "",
-            "education": "",
-            "skills": ""
+            "summary": "",
+            "location": "",
+            "industry": ""
         }
         
         # Extract name
@@ -114,6 +257,12 @@ class LinkedInIntegration:
                 largest_image = max(display_image["elements"], 
                                   key=lambda x: x.get("data", {}).get("com.linkedin.digitalmedia.mediaartifact.StillImage", {}).get("storageSize", {}).get("width", 0))
                 formatted_data["profile_photo_url"] = largest_image.get("identifiers", [{}])[0].get("identifier", "")
+        
+        # Extract other profile fields
+        formatted_data["title"] = profile_data.get("headline", "")
+        formatted_data["summary"] = profile_data.get("summary", "")
+        formatted_data["location"] = profile_data.get("location", {}).get("name", "")
+        formatted_data["industry"] = profile_data.get("industry", "")
         
         return formatted_data
 

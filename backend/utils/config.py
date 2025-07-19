@@ -125,4 +125,115 @@ def get_settings() -> Settings:
     global _settings
     if _settings is None:
         _settings = Settings()
-    return _settings 
+    return _settings
+
+# Test compatibility functions
+def get_db_url() -> str:
+    """Get database URL for testing compatibility"""
+    settings = get_settings()
+    return settings.DATABASE_URL or "mongodb://localhost:27017/buzz2remote"
+
+def get_database_url() -> str:
+    """Get database URL for testing compatibility"""
+    return get_db_url()
+
+def get_all_config() -> Dict[str, Any]:
+    """Get all configuration as dictionary for testing compatibility"""
+    settings = get_settings()
+    return {
+        "api": {
+            "host": settings.API_HOST,
+            "port": settings.API_PORT,
+            "debug": settings.API_DEBUG,
+            "reload": settings.API_RELOAD,
+        },
+        "database": {
+            "url": settings.DATABASE_URL,
+            "is_production": settings.IS_PRODUCTION,
+        },
+        "email": {
+            "host": settings.EMAIL_HOST,
+            "port": settings.EMAIL_PORT,
+            "user": settings.EMAIL_USERNAME,
+            "from": settings.EMAIL_FROM,
+            "enabled": bool(settings.EMAIL_USERNAME and settings.EMAIL_PASSWORD),
+        },
+        "telegram": {
+            "bot_token": settings.TELEGRAM_BOT_TOKEN,
+            "chat_id": settings.TELEGRAM_CHAT_ID,
+            "enabled": bool(settings.TELEGRAM_BOT_TOKEN and not settings.TELEGRAM_BOT_TOKEN.startswith("YOUR_")),
+        },
+        "monitor": {
+            "default_check_interval": settings.DEFAULT_CHECK_INTERVAL,
+            "max_check_interval": settings.MAX_CHECK_INTERVAL,
+            "min_check_interval": settings.MIN_CHECK_INTERVAL,
+        },
+        "crawler": {
+            "user_agent": settings.USER_AGENT,
+            "timeout": settings.REQUEST_TIMEOUT,
+            "delay": settings.REQUEST_DELAY,
+        },
+        "cors": {
+            "origins": settings.CORS_ORIGINS,
+            "allow_credentials": settings.CORS_ALLOW_CREDENTIALS,
+        },
+        "jwt": {
+            "secret": settings.JWT_SECRET,
+            "algorithm": settings.JWT_ALGORITHM,
+            "expire_minutes": settings.JWT_EXPIRE_MINUTES,
+        },
+        "cache": {
+            "ttl": settings.CACHE_TTL,
+            "max_size": settings.CACHE_MAX_SIZE,
+        },
+        "rate_limit": {
+            "window": settings.RATE_LIMIT_WINDOW,
+            "max_requests": settings.RATE_LIMIT_MAX_REQUESTS,
+        },
+        "file_upload": {
+            "max_size": settings.MAX_UPLOAD_SIZE,
+            "allowed_extensions": settings.ALLOWED_EXTENSIONS,
+            "upload_dir": settings.UPLOAD_DIR,
+        },
+        "premium": {
+            "price": settings.PREMIUM_PRICE,
+            "free_trial_days": settings.FREE_TRIAL_DAYS,
+            "max_free_job_views": settings.MAX_FREE_JOB_VIEWS,
+            "max_referral_days": settings.MAX_REFERRAL_DAYS,
+        },
+        "notification": {
+            "email_interval": settings.EMAIL_NOTIFICATION_INTERVAL,
+            "telegram_interval": settings.TELEGRAM_NOTIFICATION_INTERVAL,
+        },
+        "security": {
+            "password_min_length": settings.PASSWORD_MIN_LENGTH,
+            "require_uppercase": settings.PASSWORD_REQUIRE_UPPERCASE,
+            "require_lowercase": settings.PASSWORD_REQUIRE_LOWERCASE,
+            "require_numbers": settings.PASSWORD_REQUIRE_NUMBERS,
+            "require_special": settings.PASSWORD_REQUIRE_SPECIAL,
+        },
+        "admin_username": settings.ADMIN_USERNAME,
+        "admin_password": settings.ADMIN_PASSWORD,
+        "admin_panel_enabled": settings.ADMIN_PANEL_ENABLED,
+        "environment": settings.ENVIRONMENT,
+        "sentry_dsn": settings.SENTRY_DSN,
+    }
+
+def get_crawler_headers() -> Dict[str, str]:
+    """Get crawler headers for testing compatibility"""
+    settings = get_settings()
+    return {
+        "User-Agent": settings.USER_AGENT,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+    }
+
+# Test compatibility constants
+settings = get_settings()
+DATABASE_URL = settings.DATABASE_URL
+USER_AGENT = settings.USER_AGENT
+API_HOST = settings.API_HOST
+API_PORT = settings.API_PORT 

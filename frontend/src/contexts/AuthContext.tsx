@@ -24,6 +24,7 @@ interface UserProfile {
 }
 
 interface User {
+  _id?: string;
   id: string;
   name: string;
   email: string;
@@ -33,6 +34,28 @@ interface User {
   created_at?: string;
   profile?: UserProfile;
   role?: 'user' | 'admin';
+  // LinkedIn ve CV ile ilgili property'ler
+  linkedin_connected?: boolean;
+  cv_source?: string;
+  // Profile bilgileri için alternatif property'ler
+  skills?: Array<{
+    id?: string;
+    name: string;
+  }>;
+  experience?: Array<{
+    title: string;
+    company: string;
+    startDate: string;
+    endDate: string | null;
+    description: string;
+  }>;
+  education?: Array<{
+    school: string;
+    degree: string;
+    field: string;
+    startDate: string;
+    endDate: string;
+  }>;
 }
 
 export interface AuthContextType {

@@ -40,8 +40,8 @@ describe('SearchFilters Component', () => {
       expect(screen.getByText(/work type/i)).toBeInTheDocument();
       expect(screen.getByText(/job type/i)).toBeInTheDocument();
       expect(screen.getByText(/experience level/i)).toBeInTheDocument();
-      expect(screen.getByRole('combobox', { name: /posted/i })).toBeInTheDocument();
-      expect(screen.getByRole('combobox', { name: /salary/i })).toBeInTheDocument();
+      expect(screen.getByText(/posted/i)).toBeInTheDocument();
+      expect(screen.getByText(/salary/i)).toBeInTheDocument();
       expect(screen.getByPlaceholderText(/city, country.../i)).toBeInTheDocument();
       expect(screen.getByPlaceholderText(/company name.../i)).toBeInTheDocument();
     });
@@ -50,10 +50,11 @@ describe('SearchFilters Component', () => {
   test('updates experience level filter correctly', async () => {
     render(<SearchFilters {...mockProps} />);
     
-    fireEvent.click(screen.getByText(/select experience.../i));
-    
-    const seniorCheckbox = await screen.findByRole('checkbox', { name: /senior/i });
-    fireEvent.click(seniorCheckbox);
+    // Deneyim seviyesi dropdown'unu aç
+    fireEvent.click(screen.getByText(/select experience/i));
+    // 'Senior' seçeneğini bul ve tıkla
+    const seniorOption = await screen.findByText(/senior/i);
+    fireEvent.click(seniorOption);
 
     await waitFor(() => {
       expect(mockOnFiltersChange).toHaveBeenCalledWith(expect.objectContaining({

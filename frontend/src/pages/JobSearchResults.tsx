@@ -4,10 +4,10 @@ import { toast } from 'react-hot-toast';
 import Layout from '../components/Layout';
 import AuthModal from '../components/AuthModal';
 import SearchFilters from '../components/JobSearch/SearchFilters';
-import JobCard from '../components/JobCard/JobCard';
+import JobCard from '../components/JobCard';
 import { useAuth } from '../contexts/AuthContext';
 import { Job } from '../types/job';
-import { Filter, X, Save, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Filter, X, Save, ChevronLeft, ChevronRight, Grid, List } from 'lucide-react';
 
 interface Filters {
   query: string;
@@ -380,9 +380,23 @@ export default function JobSearchResults() {
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20 shadow-2xl">
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl md:text-3xl font-bold text-yellow-400">{totalJobs.toLocaleString()}</div>
-                    <div className="text-sm text-white/80">Jobs Found</div>
+                  {/* SEARCH CRITERIA SUMMARY */}
+                  <div className="text-sm text-white/80">
+                    {filters.query && (
+                      <span className="font-semibold text-yellow-300">{filters.query}</span>
+                    )}
+                    {filters.company && (
+                      <span className="ml-2 font-semibold text-blue-200">@{filters.company}</span>
+                    )}
+                    {filters.location && (
+                      <span className="ml-2 font-semibold text-green-200">in {filters.location}</span>
+                    )}
+                    {filters.country && countryFlags[filters.country] && (
+                      <span className="ml-2 text-lg">{countryFlags[filters.country]}</span>
+                    )}
+                    {!(filters.query || filters.company || filters.location || (filters.country && countryFlags[filters.country])) && (
+                      <span className="text-white/60">All jobs</span>
+                    )}
                   </div>
                   {hasActiveFilters && (
                     <div className="text-center">
@@ -455,97 +469,70 @@ export default function JobSearchResults() {
                   <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-xl">
                     <button
                       onClick={() => setViewMode('grid')}
-                      className={`p-2 rounded-lg transition-all duration-200 ${viewMode === 'grid' 
-                        ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-300 shadow-sm' 
-                        : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                      className={`
+                        p-2 rounded-lg transition-all duration-200 ${
+                          viewMode === 'grid'
+                            ? 'bg-blue-600 text-white shadow-lg'
+                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        }
+                      `}
                     >
-                      <div className="w-4 h-4 grid grid-cols-2 gap-0.5">
-                        <div className="bg-current rounded-sm"></div>
-                        <div className="bg-current rounded-sm"></div>
-                        <div className="bg-current rounded-sm"></div>
-                        <div className="bg-current rounded-sm"></div>
-                      </div>
+                      <Grid className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => setViewMode('list')}
-                      className={`p-2 rounded-lg transition-all duration-200 ${viewMode === 'list' 
-                        ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-300 shadow-sm' 
-                        : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                      className={`
+                        p-2 rounded-lg transition-all duration-200 ${
+                          viewMode === 'list'
+                            ? 'bg-blue-600 text-white shadow-lg'
+                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        }
+                      `}
                     >
-                      <div className="w-4 h-4 space-y-1">
-                        <div className="h-0.5 bg-current rounded"></div>
-                        <div className="h-0.5 bg-current rounded"></div>
-                        <div className="h-0.5 bg-current rounded"></div>
-                      </div>
+                      <List className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
 
-                {/* Jobs Grid/List */}
-                <div className={viewMode === 'grid' 
-                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' 
-                  : 'space-y-4'
-                }>
-                  {jobs.map((job, index) => (
-                    <JobCard
-                      key={job._id || job.id || index}
-                      job={job}
-                    />
+                {/* Job Results Grid/List */}
+                <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
+                  {jobs.map((job) => (
+                    <JobCard key={job._id} job={job} viewMode={viewMode} />
                   ))}
                 </div>
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="mt-8 flex items-center justify-center">
-                    <div className="flex items-center gap-2 bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm rounded-xl border border-gray-200/50 dark:border-gray-600/50 p-2 shadow-sm">
-                      {/* Previous Button */}
+                  <div className="mt-8 flex justify-center">
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage === 1}
-                        className={`flex items-center gap-1 px-3 py-2 rounded-lg transition-all duration-200 ${
-                          currentPage === 1
-                            ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-blue-600 dark:hover:text-blue-300'
-                        }`}
+                        className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                       >
-                        <ChevronLeft className="w-4 h-4" />
-                        <span className="hidden sm:inline">Previous</span>
+                        Previous
                       </button>
-
-                      {/* Page Numbers */}
-                      <div className="flex items-center gap-1">
-                        {getPageNumbers().map((page, index) => (
-                          <React.Fragment key={index}>
-                            {page === '...' ? (
-                              <span className="px-3 py-2 text-gray-400 dark:text-gray-500">...</span>
-                            ) : (
-                              <button
-                                onClick={() => handlePageChange(page as number)}
-                                className={`px-3 py-2 rounded-lg transition-all duration-200 ${
-                                  currentPage === page
-                                    ? 'bg-blue-600 text-white shadow-sm'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-blue-600 dark:hover:text-blue-300'
-                                }`}
-                              >
-                                {page}
-                              </button>
-                            )}
-                          </React.Fragment>
-                        ))}
-                      </div>
-
-                      {/* Next Button */}
+                      
+                      {getPageNumbers().map((pageNum) => (
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`px-4 py-2 rounded-lg transition-colors ${
+                            currentPage === pageNum
+                              ? 'bg-blue-600 text-white'
+                              : 'border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      ))}
+                      
                       <button
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={currentPage === totalPages}
-                        className={`flex items-center gap-1 px-3 py-2 rounded-lg transition-all duration-200 ${
-                          currentPage === totalPages
-                            ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-blue-600 dark:hover:text-blue-300'
-                        }`}
+                        className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                       >
-                        <span className="hidden sm:inline">Next</span>
-                        <ChevronRight className="w-4 h-4" />
+                        Next
                       </button>
                     </div>
                   </div>
@@ -555,14 +542,6 @@ export default function JobSearchResults() {
           </div>
         </div>
       </div>
-      
-      {/* Click outside to close saved searches dropdown */}
-      {showSavedSearches && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setShowSavedSearches(false)}
-        />
-      )}
     </Layout>
   );
-} 
+}

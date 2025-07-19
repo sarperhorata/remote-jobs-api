@@ -1,7 +1,7 @@
 import pytest
 import os
 from unittest.mock import patch
-from utils.config import (
+from backend.utils.config import (
     get_db_url, 
     get_crawler_headers, 
     get_all_config,

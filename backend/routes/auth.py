@@ -1,7 +1,7 @@
 from datetime import timedelta
 from fastapi import APIRouter, HTTPException, status, Depends, Request
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer, HTTPBearer
-from typing import Optional
+from typing import Optional, Dict
 import os
 from backend.database import get_async_db
 from backend.schemas.user import UserCreate, Token
@@ -15,6 +15,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import requests
+from backend.utils.linkedin import LinkedInIntegration
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
@@ -79,7 +80,9 @@ get_current_user_dependency = get_current_active_user
 class AuthResponse(BaseModel):
     access_token: str
     token_type: str
-    user: dict
+    user_id: str
+    email: str
+    name: str
 
 class ForgotPasswordRequest(BaseModel):
     email: str
@@ -122,15 +125,13 @@ async def register_user(
     # Create access token
     access_token = create_access_token(data={"sub": str(result.inserted_id)})
     
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": {
-            "id": str(result.inserted_id),
-            "email": user.email,
-            "full_name": user.name
-        }
-    }
+    return AuthResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user_id=str(result.inserted_id),
+        email=user.email,
+        name=user.name
+    )
 
 @router.post("/login", response_model=Token)
 async def login_for_access_token(
@@ -290,16 +291,13 @@ async def google_callback(
             # Create access token
             access_token = create_access_token(data={"sub": str(user_id)})
             
-            return {
-                "access_token": access_token,
-                "token_type": "bearer",
-                "user": {
-                    "id": str(user_id),
-                    "email": email,
-                    "full_name": name,
-                    "profile_picture": picture
-                }
-            }
+            return AuthResponse(
+                access_token=access_token,
+                token_type="bearer",
+                user_id=str(user_id),
+                email=email,
+                name=name
+            )
             
     except httpx.HTTPError as e:
         logger.error(f"Google OAuth error: {str(e)}")
@@ -469,4 +467,149 @@ async def linkedin_profile(request: Request):
         
     except Exception as e:
         logging.error(f"LinkedIn profile fetch error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error") 
+
+@router.get("/linkedin/auth-url")
+async def linkedin_auth_url():
+    """LinkedIn OAuth URL'si döner"""
+    linkedin = LinkedInIntegration()
+    url = linkedin.get_authorization_url()
+    return {"auth_url": url}
+
+@router.post("/linkedin/callback", response_model=AuthResponse)
+async def linkedin_callback(
+    code: str,
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """LinkedIn OAuth callback: code ile access_token al, profil çek, kullanıcıyı kaydet/güncelle, JWT döner"""
+    if not code:
+        raise HTTPException(status_code=400, detail="Authorization code required")
+    
+    try:
+        # Exchange code for access token
+        access_token = await linkedin.exchange_code_for_token(code)
+        if not access_token:
+            raise HTTPException(status_code=400, detail="Failed to exchange code for token")
+        
+        # Get user profile
+        profile_data = await linkedin.get_user_profile(access_token)
+        if not profile_data:
+            raise HTTPException(status_code=400, detail="Failed to fetch LinkedIn profile")
+        
+        # Check if user exists
+        existing_user = await db.users.find_one({"email": profile_data["email"]})
+        
+        if existing_user:
+            # Update existing user with LinkedIn data
+            update_data = {
+                "linkedin_url": profile_data.get("linkedin_url", ""),
+                "profile_photo_url": profile_data.get("profile_photo_url", ""),
+                "title": profile_data.get("title", ""),
+                "linkedin_connected": True,
+                "linkedin_access_token": access_token,  # Store access token for future CV fetch
+                "auth_provider": "linkedin",
+                "email_verified": True,  # LinkedIn emails are verified
+                "onboarding_completed": True,
+                "onboarding_step": 4,
+                "updated_at": datetime.utcnow()
+            }
+            
+            await db.users.update_one(
+                {"_id": existing_user["_id"]},
+                {"$set": update_data}
+            )
+            user_id = str(existing_user["_id"])
+        else:
+            # Create new user
+            user_data = {
+                "email": profile_data["email"],
+                "name": profile_data["name"],
+                "full_name": profile_data["name"],
+                "linkedin_url": profile_data.get("linkedin_url", ""),
+                "profile_photo_url": profile_data.get("profile_photo_url", ""),
+                "title": profile_data.get("title", ""),
+                "linkedin_connected": True,
+                "linkedin_access_token": access_token,  # Store access token for future CV fetch
+                "auth_provider": "linkedin",
+                "email_verified": True,  # LinkedIn emails are verified
+                "onboarding_completed": True,
+                "onboarding_step": 4,
+                "is_active": True,
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
+            }
+            
+            result = await db.users.insert_one(user_data)
+            user_id = str(result.inserted_id)
+        
+        # Generate JWT token
+        token_data = {"sub": user_id, "email": profile_data["email"]}
+        access_token_jwt = create_access_token(data=token_data)
+        
+        return AuthResponse(
+            access_token=access_token_jwt,
+            token_type="bearer",
+            user_id=user_id,
+            email=profile_data["email"],
+            name=profile_data["name"]
+        )
+        
+    except Exception as e:
+        logger.error(f"LinkedIn callback error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.post("/linkedin/fetch-cv")
+async def linkedin_fetch_cv(
+    current_user: Dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """LinkedIn'den kullanıcının CV'sini çeker ve profilini günceller"""
+    try:
+        # Check if user has LinkedIn connected
+        user = await db.users.find_one({"_id": ObjectId(current_user["_id"])})
+        if not user or not user.get("linkedin_connected"):
+            raise HTTPException(status_code=400, detail="LinkedIn account not connected")
+        
+        # Get LinkedIn access token from user's stored data or request new one
+        # Note: In a real implementation, you'd need to store the access token securely
+        # For now, we'll use a placeholder approach
+        linkedin_token = user.get("linkedin_access_token")
+        if not linkedin_token:
+            raise HTTPException(status_code=400, detail="LinkedIn access token not available")
+        
+        # Fetch comprehensive CV data
+        cv_data = await linkedin.get_user_cv_data(linkedin_token)
+        if not cv_data:
+            raise HTTPException(status_code=400, detail="Failed to fetch LinkedIn CV data")
+        
+        # Update user profile with CV data
+        update_data = {
+            "experience": cv_data.get("experience", []),
+            "education": cv_data.get("education", []),
+            "skills": cv_data.get("skills", []),
+            "summary": cv_data.get("summary", ""),
+            "location": cv_data.get("location", ""),
+            "industry": cv_data.get("industry", ""),
+            "cv_source": "linkedin",
+            "cv_updated_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        
+        await db.users.update_one(
+            {"_id": ObjectId(current_user["_id"])},
+            {"$set": update_data}
+        )
+        
+        return {
+            "message": "CV data successfully imported from LinkedIn",
+            "cv_data": {
+                "experience_count": len(cv_data.get("experience", [])),
+                "education_count": len(cv_data.get("education", [])),
+                "skills_count": len(cv_data.get("skills", [])),
+                "updated_at": update_data["cv_updated_at"]
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"LinkedIn CV fetch error: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error") 

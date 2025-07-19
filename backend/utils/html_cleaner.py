@@ -1,7 +1,7 @@
 import re
 import html
 from bs4 import BeautifulSoup
-from typing import Optional
+from typing import Optional, Dict, Any
 
 def clean_html_tags(text: Optional[str]) -> str:
     """
@@ -15,6 +15,10 @@ def clean_html_tags(text: Optional[str]) -> str:
     """
     if not text:
         return ""
+    
+    # String olduğundan emin ol
+    if not isinstance(text, str):
+        text = str(text)
     
     # HTML entities'leri decode et
     text = html.unescape(text)
@@ -48,7 +52,7 @@ def clean_job_description(description: Optional[str], max_length: int = 2000) ->
     
     # Uzunluğu sınırla
     if len(clean_desc) > max_length:
-        clean_desc = clean_desc[:max_length] + "..."
+        clean_desc = clean_desc[:max_length-3] + "..."
     
     return clean_desc
 
@@ -96,7 +100,7 @@ def clean_company_name(company: Optional[str]) -> str:
     
     return clean_company
 
-def clean_job_data(job_data: dict) -> dict:
+def clean_job_data(job_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     İş ilanı verilerini toplu olarak temizle
     
@@ -120,7 +124,16 @@ def clean_job_data(job_data: dict) -> dict:
     }
     
     for field, cleaner_func in fields_to_clean.items():
-        if field in cleaned_data and cleaned_data[field]:
-            cleaned_data[field] = cleaner_func(cleaned_data[field])
+        if field in cleaned_data:
+            # None değerleri boş string'e çevir
+            if cleaned_data[field] is None:
+                cleaned_data[field] = ""
+            elif cleaned_data[field]:  # Boş olmayan değerleri temizle
+                cleaned_data[field] = cleaner_func(cleaned_data[field])
+    
+    # İç içe dictionary'leri de temizle
+    for key, value in cleaned_data.items():
+        if isinstance(value, dict):
+            cleaned_data[key] = clean_job_data(value)
     
     return cleaned_data 

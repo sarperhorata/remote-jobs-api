@@ -47,8 +47,8 @@ interface WorkExperience {
   title: string;
   company: string;
   location?: string;
-  start_date: string;
-  end_date?: string;
+  startDate: string;
+  endDate?: string;
   current: boolean;
   description?: string;
 }
@@ -57,8 +57,8 @@ interface Education {
   degree: string;
   institution: string;
   field_of_study?: string;
-  start_date: string;
-  end_date?: string;
+  startDate: string;
+  endDate?: string;
   current: boolean;
   gpa?: string;
 }
@@ -251,8 +251,8 @@ const MyProfile: React.FC = () => {
                     title: exp.title,
                     company: exp.company,
                     location: exp.location || '',
-                    start_date: exp.startDate,
-                    end_date: exp.endDate,
+                            startDate: exp.startDate,
+        endDate: exp.endDate,
                     current: exp.isCurrent || false,
                     description: exp.description || ''
                   }))
@@ -263,8 +263,8 @@ const MyProfile: React.FC = () => {
                     institution: edu.schoolName,
                     degree: edu.degreeName,
                     field_of_study: edu.fieldOfStudy || '',
-                    start_date: edu.startDate,
-                    end_date: edu.endDate,
+                            startDate: edu.startDate,
+        endDate: edu.endDate,
                     current: edu.isCurrent || false,
                     gpa: ''
                   }))
@@ -299,8 +299,8 @@ const MyProfile: React.FC = () => {
       title: '',
       company: '',
       location: '',
-      start_date: '',
-      end_date: '',
+      startDate: '',
+      endDate: '',
       current: false,
       description: ''
     };
@@ -332,8 +332,8 @@ const MyProfile: React.FC = () => {
       institution: '',
       degree: '',
       field_of_study: '',
-      start_date: '',
-      end_date: '',
+      startDate: '',
+      endDate: '',
       current: false,
       gpa: ''
     };
@@ -899,16 +899,16 @@ const MyProfile: React.FC = () => {
                         <div className="flex gap-2 flex-1">
                           <input
                             type="month"
-                            value={exp.start_date}
-                            onChange={(e) => updateWorkExperience(index, 'start_date', e.target.value)}
+                                            value={exp.startDate}
+                onChange={(e) => updateWorkExperience(index, 'startDate', e.target.value)}
                             placeholder="Start Date"
                             className="flex-1 p-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg"
                           />
                           {!exp.current && (
                             <input
                               type="month"
-                              value={exp.end_date || ''}
-                              onChange={(e) => updateWorkExperience(index, 'end_date', e.target.value)}
+                                              value={exp.endDate || ''}
+                onChange={(e) => updateWorkExperience(index, 'endDate', e.target.value)}
                               placeholder="End Date"
                               className="flex-1 p-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg"
                             />
@@ -959,7 +959,7 @@ const MyProfile: React.FC = () => {
                       </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
                         <Calendar className="w-4 h-4" />
-                        {exp.start_date} - {exp.current ? 'Present' : exp.end_date}
+                        {exp.startDate} - {exp.current ? 'Present' : exp.endDate}
                       </p>
                       {exp.description && (
                         <p className="mt-2 text-gray-600 dark:text-gray-300">{exp.description}</p>
@@ -1022,16 +1022,16 @@ const MyProfile: React.FC = () => {
                         <div className="flex gap-2 flex-1">
                           <input
                             type="month"
-                            value={edu.start_date}
-                            onChange={(e) => updateEducation(index, 'start_date', e.target.value)}
+                                            value={edu.startDate}
+                onChange={(e) => updateEducation(index, 'startDate', e.target.value)}
                             placeholder="Start Date"
                             className="flex-1 p-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg"
                           />
                           {!edu.current && (
                             <input
                               type="month"
-                              value={edu.end_date || ''}
-                              onChange={(e) => updateEducation(index, 'end_date', e.target.value)}
+                              value={edu.endDate || ''}
+                              onChange={(e) => updateEducation(index, 'endDate', e.target.value)}
                               placeholder="End Date"
                               className="flex-1 p-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg"
                             />
@@ -1074,7 +1074,7 @@ const MyProfile: React.FC = () => {
                       </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
                         <Calendar className="w-4 h-4" />
-                        {edu.start_date} - {edu.current ? 'Present' : edu.end_date}
+                        {edu.startDate} - {edu.current ? 'Present' : edu.endDate}
                       </p>
                     </div>
                   )) || <p className="text-gray-500 dark:text-gray-400">No education added</p>}

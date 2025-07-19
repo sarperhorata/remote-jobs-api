@@ -12,15 +12,19 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
 
   // Format posted date
   const formatPostedDate = (dateString: string) => {
+    if (!dateString) return 'Unknown';
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Unknown';
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - date.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+    if (diffDays < 0 || diffDays > 3650) return 'Unknown'; // >10 years
+    if (diffDays === 0) return 'Today';
     if (diffDays === 1) return '1 day ago';
     if (diffDays < 7) return `${diffDays} days ago`;
     if (diffDays < 30) return `${Math.ceil(diffDays / 7)} weeks ago`;
-    return `${Math.ceil(diffDays / 30)} months ago`;
+    if (diffDays < 365) return `${Math.ceil(diffDays / 30)} months ago`;
+    return `${Math.ceil(diffDays / 365)} years ago`;
   };
 
   // Format salary
@@ -131,12 +135,13 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
 
         {/* Tags Row */}
         <div className="flex flex-wrap gap-2 mb-3">
-          <span className="px-3 py-1 bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 text-blue-800 dark:text-blue-200 text-xs rounded-full font-medium">
-            {job.job_type || 'Full-time'}
-          </span>
-          <span className="px-3 py-1 bg-gradient-to-r from-green-100 to-emerald-200 dark:from-green-900 dark:to-emerald-800 text-green-800 dark:text-green-200 text-xs rounded-full font-medium">
-            {getWorkTypeDisplay()}
-          </span>
+          {/* Job Type Tag - never show 'Remote' here */}
+          {job.job_type && job.job_type.toLowerCase() !== 'remote' ? (
+            <span className="px-3 py-1 bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 text-blue-800 dark:text-blue-200 text-xs rounded-full font-medium">
+              {job.job_type}
+            </span>
+          ) : null}
+          {/* Location Tag - show 'Remote' if remote, else location */}
           <span className="px-3 py-1 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 text-gray-800 dark:text-gray-200 text-xs rounded-full flex items-center font-medium">
             <MapPin className="w-3 h-3 mr-1" />
             {getLocationDisplay()}

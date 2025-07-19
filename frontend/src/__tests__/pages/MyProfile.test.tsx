@@ -1,6 +1,8 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
+import { ThemeProvider } from '../../contexts/ThemeContext';
+import { AuthProvider } from '../../contexts/AuthContext';
 import MyProfile from '../../pages/MyProfile';
 
 // Mock the auth context
@@ -30,7 +32,11 @@ jest.mock('../../services/UserProfileService', () => ({
 const renderWithRouter = (component: React.ReactElement) => {
   return render(
     <BrowserRouter>
-      {component}
+      <ThemeProvider>
+        <AuthProvider>
+          {component}
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 };

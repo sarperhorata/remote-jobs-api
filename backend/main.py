@@ -119,11 +119,14 @@ allowed_origins = [
     "http://localhost:3002",
     "https://buzz2remote.com",
     "https://www.buzz2remote.com",
-    "https://buzz2remote-api.onrender.com"
+    "https://buzz2remote-api.onrender.com",
+    "https://buzz2remote.netlify.app",
+    "https://buzz2remote-frontend.onrender.com"
 ]
 
-if os.getenv("ENVIRONMENT") == "development":
-    allowed_origins.append("*")
+# Production'da tüm origin'lere izin ver
+if os.getenv("ENVIRONMENT") == "production" or os.getenv("ENVIRONMENT") == "development":
+    allowed_origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,

@@ -1,65 +1,97 @@
 import React, { useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { getApiUrl } from '../utils/apiConfig';
 
 const LinkedInCallback: React.FC = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
   useEffect(() => {
     const handleLinkedInCallback = async () => {
       try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
-        const state = urlParams.get('state');
-        const error = urlParams.get('error');
+        const code = searchParams.get('code');
+        const error = searchParams.get('error');
 
         if (error) {
-          console.error('LinkedIn OAuth error:', error);
-          window.close();
-          return;
+          throw new Error('LinkedIn authentication cancelled or failed');
         }
 
-        if (code) {
-          // Exchange code for access token
-          const tokenResponse = await fetch('/api/auth/linkedin/token', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ code, state }),
-          });
-
-          if (tokenResponse.ok) {
-            const tokenData = await tokenResponse.json();
-            
-            // Fetch LinkedIn profile data
-            const profileResponse = await fetch('/api/auth/linkedin/profile', {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${tokenData.access_token}`,
-              },
-            });
-
-            if (profileResponse.ok) {
-              const profileData = await profileResponse.json();
-              
-              // Store profile data for parent window to pick up
-              localStorage.setItem('linkedin_profile_data', JSON.stringify(profileData));
-              
-              // Close popup
-              window.close();
-            } else {
-              throw new Error('Failed to fetch LinkedIn profile');
-            }
-          } else {
-            throw new Error('Failed to exchange code for token');
-          }
+        if (!code) {
+          throw new Error('No authorization code received from LinkedIn');
         }
+
+        console.log('🔗 Processing LinkedIn callback...');
+        const API_BASE_URL = await getApiUrl();
+
+        const response = await fetch(`${API_BASE_URL}/auth/linkedin/callback`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ code }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'LinkedIn authentication failed');
+        }
+
+        const data = await response.json();
+        console.log('✅ LinkedIn authentication successful:', data);
+
+        // Store authentication data
+        if (data.access_token) {
+          localStorage.setItem('auth_token', data.access_token);
+          localStorage.setItem('token_type', data.token_type || 'bearer');
+          localStorage.setItem('userToken', data.access_token);
+        }
+
+        // Store user data
+        const userData = {
+          id: data.user_id,
+          email: data.email,
+          name: data.name,
+          auth_provider: 'linkedin'
+        };
+        localStorage.setItem('user_data', JSON.stringify(userData));
+
+        // Redirect to home page
+        navigate('/', { replace: true });
+        window.location.reload();
+
       } catch (error) {
         console.error('LinkedIn callback error:', error);
-        localStorage.setItem('linkedin_auth_error', 'Failed to authenticate with LinkedIn');
-        window.close();
+        setError(error instanceof Error ? error.message : 'LinkedIn authentication failed');
+        setLoading(false);
       }
     };
 
     handleLinkedInCallback();
-  }, []);
+  }, [searchParams, navigate]);
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="text-red-600 mb-4">
+            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Authentication Error</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={() => navigate('/')}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            Return to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">

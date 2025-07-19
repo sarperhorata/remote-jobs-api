@@ -38,6 +38,8 @@ class SchedulerService:
             
         try:
             if not self.is_running:
+                # Configure scheduler with timezone
+                self.scheduler.configure(timezone='UTC')
                 await self._setup_jobs()
                 self.scheduler.start()
                 self.is_running = True
@@ -52,6 +54,16 @@ class SchedulerService:
             return True
         except Exception as e:
             logger.error(f"❌ Failed to start scheduler service: {e}")
+            # Try to start without timezone configuration
+            try:
+                if not self.is_running:
+                    await self._setup_jobs()
+                    self.scheduler.start()
+                    self.is_running = True
+                    logger.info("✅ Scheduler service started successfully (without timezone)")
+                    return True
+            except Exception as e2:
+                logger.error(f"❌ Failed to start scheduler service (fallback): {e2}")
             return False
     
     async def stop(self):

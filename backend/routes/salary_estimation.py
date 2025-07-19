@@ -7,7 +7,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/salary", tags=["salary-estimation"])
+router = APIRouter(tags=["salary-estimation"])
 
 class SalaryEstimationRequest(BaseModel):
     job_title: str

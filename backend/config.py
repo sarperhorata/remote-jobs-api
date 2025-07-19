@@ -27,9 +27,10 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = "test_google_client_secret"
     GOOGLE_REDIRECT_URI: str = "http://localhost:3000/auth/callback"
     
-    LINKEDIN_CLIENT_ID = os.environ.get("LINKEDIN_CLIENT_ID")
-    LINKEDIN_CLIENT_SECRET = os.environ.get("LINKEDIN_CLIENT_SECRET")
-    LINKEDIN_REDIRECT_URI = os.environ.get("LINKEDIN_REDIRECT_URI")
+    # LinkedIn OAuth
+    LINKEDIN_CLIENT_ID: Optional[str] = None
+    LINKEDIN_CLIENT_SECRET: Optional[str] = None
+    LINKEDIN_REDIRECT_URI: Optional[str] = None
     
     # Stripe
     STRIPE_SECRET_KEY: str = "sk_test_fake"

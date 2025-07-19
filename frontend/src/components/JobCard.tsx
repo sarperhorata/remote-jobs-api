@@ -3,9 +3,10 @@ import { Job } from '../types/job';
 
 interface JobCardProps {
   job: Job;
+  viewMode?: 'grid' | 'list';
 }
 
-const JobCard: React.FC<JobCardProps> = ({ job }) => {
+const JobCard: React.FC<JobCardProps> = ({ job, viewMode = 'grid' }) => {
   // Handle company field properly - it can be string or Company object
   const getCompanyName = () => {
     if (typeof job.company === 'string') {
@@ -89,6 +90,38 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
     );
   };
 
+  if (viewMode === 'list') {
+    // List view - horizontal layout
+    return (
+      <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-4 flex items-center space-x-4">
+        <div className="flex items-center space-x-3 flex-1">
+          <CompanyLogo />
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+              {job.title}
+            </h3>
+            <p className="text-gray-600">{getCompanyName()}</p>
+            <p className="text-gray-500 text-sm">{job.location}</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-4">
+          {job.salary && (
+            <div className="text-sm font-medium text-green-600">
+              ${job.salary.min?.toLocaleString()} - ${job.salary.max?.toLocaleString()}
+            </div>
+          )}
+          <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
+            {job.job_type}
+          </span>
+          <button className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 transition-colors">
+            View Details
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Grid view - vertical layout (default)
   return (
     <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
       <div className="flex justify-between items-start mb-4">

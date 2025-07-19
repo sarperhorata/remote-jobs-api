@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getApiUrl } from '../utils/apiConfig';
 
 const GoogleCallback: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
   useEffect(() => {
     const handleGoogleCallback = async () => {
@@ -48,17 +48,22 @@ const GoogleCallback: React.FC = () => {
           localStorage.setItem('userToken', data.access_token);
         }
 
-        if (data.user) {
-          localStorage.setItem('user_data', JSON.stringify(data.user));
-        }
+        // Store user data
+        const userData = {
+          id: data.user_id,
+          email: data.email,
+          name: data.name,
+          auth_provider: 'google'
+        };
+        localStorage.setItem('user_data', JSON.stringify(userData));
 
         // Redirect to home page
         navigate('/', { replace: true });
         window.location.reload();
 
-      } catch (error: any) {
-        console.error('❌ Google callback error:', error);
-        setError(error.message || 'Authentication failed');
+      } catch (error) {
+        console.error('Google callback error:', error);
+        setError(error instanceof Error ? error.message : 'Google authentication failed');
         setLoading(false);
       }
     };
@@ -66,52 +71,36 @@ const GoogleCallback: React.FC = () => {
     handleGoogleCallback();
   }, [searchParams, navigate]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-            <span className="text-2xl">🐝</span>
-          </div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            Completing Google Sign In...
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Please wait while we authenticate your account
-          </p>
-          <div className="mt-4 flex justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-4">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-2xl text-red-500">❌</span>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="text-red-600 mb-4">
+            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
           </div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            Authentication Failed
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            {error}
-          </p>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Authentication Error</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
           <button
-            onClick={() => navigate('/login')}
-            className="bg-gradient-to-r from-orange-500 to-yellow-500 text-white px-6 py-3 rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-colors font-medium"
+            onClick={() => navigate('/')}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
           >
-            Try Again
+            Return to Home
           </button>
         </div>
       </div>
     );
   }
 
-  return null;
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Authenticating with Google...</p>
+      </div>
+    </div>
+  );
 };
 
 export default GoogleCallback; 

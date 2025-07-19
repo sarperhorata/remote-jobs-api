@@ -10,7 +10,7 @@ import uuid
 from ..services.cv_parser_service import cv_parser_service
 from ..database.db import get_database
 from ..models.user import UserResponse as User
-from ..utils.auth import get_current_user
+from ..core.security import get_current_user
 from backend.utils.config import get_settings
 
 logger = logging.getLogger(__name__)

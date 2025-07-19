@@ -121,7 +121,8 @@ export const getApiUrl = async (): Promise<string> => {
       'https://remote-jobs-api.onrender.com',
       'https://buzz2remote-backend.onrender.com',
       'https://buzz2remote-api.herokuapp.com',
-      'https://buzz2remote-backend.herokuapp.com'
+      'https://buzz2remote-backend.herokuapp.com',
+      'http://localhost:8001' // Fallback for local development
     ];
     
     for (const baseUrl of productionBackendUrls) {

@@ -815,71 +815,16 @@ class RemoteJobsBot:
     
     async def send_deployment_notification(self, deployment_data: Dict[str, Any]) -> bool:
         """
-        Sends RESTRICTED notifications - ONLY deployment and cronjob notifications
+        Send deployment notification to Telegram
         
         Args:
             deployment_data: Dictionary containing deployment information
-                {
-                    'type': str,        # MUST be 'deployment' or 'cronjob' 
-                    'environment': str,  # e.g. 'production', 'staging'
-                    'status': str,      # e.g. 'success', 'failed'
-                    'commit': str,      # commit hash
-                    'message': str,     # deployment message
-                    'timestamp': str,   # ISO format timestamp
-                    'services': list,   # optional: list of services
-                    'endpoints': list,  # optional: list of endpoints
-                    'features': list,   # optional: list of features
-                    'cronjobs': list    # optional: list of cronjobs
-                }
         """
         if not self.enabled or not self.application:
             logger.warning("Cannot send deployment notification: Bot is disabled")
             return False
             
         try:
-            # RESTRICTION: Only allow deployment and cronjob notifications
-            notification_type = deployment_data.get('type', 'deployment')
-            if notification_type not in ['deployment', 'cronjob']:
-                logger.info(f"🔇 BLOCKED notification type: {notification_type} (only deployment/cronjob allowed)")
-                return False
-            
-            # Format the deployment message based on type
-            status_emoji = "✅" if deployment_data['status'] == 'success' else "❌"
-            env_emoji = "🚀" if deployment_data['environment'] == 'production' else "🧪"
-            
-            # Base message
-            message = f"{status_emoji} <b>{notification_type.upper()} UPDATE</b>\n\n"
-            message += f"{env_emoji} <b>Environment:</b> {deployment_data['environment'].upper()}\n"
-            message += f"📊 <b>Status:</b> {deployment_data['status'].upper()}\n"
-            message += f"🔗 <b>Commit:</b> <code>{deployment_data['commit']}</code>\n"
-            message += f"💬 <b>Message:</b> {deployment_data['message']}\n"
-            
-            # Add services if provided
-            if 'services' in deployment_data and deployment_data['services']:
-                message += f"\n🔧 <b>Services:</b>\n"
-                for service in deployment_data['services']:
-                    message += f"• {service}\n"
-            
-            # Add endpoints if provided
-            if 'endpoints' in deployment_data and deployment_data['endpoints']:
-                message += f"\n🌐 <b>Endpoints:</b>\n"
-                for endpoint in deployment_data['endpoints']:
-                    message += f"• {endpoint}\n"
-            
-            # Add features if provided
-            if 'features' in deployment_data and deployment_data['features']:
-                message += f"\n⚡ <b>Features:</b>\n"
-                for feature in deployment_data['features']:
-                    message += f"• {feature}\n"
-            
-            # Add cronjobs if provided
-            if 'cronjobs' in deployment_data and deployment_data['cronjobs']:
-                message += f"\n⏰ <b>Cronjobs:</b>\n"
-                for cronjob in deployment_data['cronjobs']:
-                    message += f"• {cronjob}\n"
-            
-            message += f"\n🕐 <b>Time:</b> {deployment_data['timestamp']}"
-            
             # Get notification chat ID from environment
             notification_chat_id = os.getenv('TELEGRAM_CHAT_ID')
             
@@ -893,12 +838,27 @@ class RemoteJobsBot:
                 logger.error(f"Invalid TELEGRAM_CHAT_ID format: {notification_chat_id}")
                 return False
             
+            # Format message based on notification type
+            notification_type = deployment_data.get('type', 'deployment')
+            
+            if notification_type == 'deployment':
+                message = self._format_deployment_message(deployment_data)
+            elif notification_type == 'external_api_crawl':
+                message = self._format_external_api_message(deployment_data)
+            elif notification_type == 'distill_crawl':
+                message = self._format_distill_crawl_message(deployment_data)
+            elif notification_type == 'daily_statistics':
+                message = self._format_daily_stats_message(deployment_data)
+            else:
+                message = self._format_generic_message(deployment_data)
+            
             # Send notification
             try:
                 await self.application.bot.send_message(
                     chat_id=notification_chat_id,
                     text=message,
-                    parse_mode='HTML'
+                    parse_mode='Markdown',
+                    disable_web_page_preview=True
                 )
                 logger.info(f"Deployment notification sent successfully to chat {notification_chat_id}")
                 return True
@@ -908,8 +868,99 @@ class RemoteJobsBot:
                 return False
             
         except Exception as e:
-            logger.error(f"Failed to format deployment notification: {str(e)}")
+            logger.error(f"Failed to process deployment notification: {str(e)}")
             return False
+    
+    def _format_deployment_message(self, data: Dict[str, Any]) -> str:
+        """Format deployment notification message"""
+        status_emoji = "✅" if data.get('status') == 'success' else "⚠️" if data.get('status') == 'warning' else "❌"
+        
+        message = f"{status_emoji} **DEPLOYMENT UPDATE**\n\n"
+        message += f"**Environment:** {data.get('environment', 'Unknown')}\n"
+        message += f"**Status:** {data.get('status', 'unknown').upper()}\n"
+        
+        if 'commit' in data:
+            message += f"**Commit:** {data['commit']}\n"
+        
+        if 'message' in data:
+            message += f"**Message:** {data['message']}\n"
+        
+        if 'services' in data:
+            message += f"**Services:** {', '.join(data['services'])}\n"
+        
+        message += f"\n🕐 **Time:** {data.get('timestamp', datetime.now().isoformat())}"
+        return message
+    
+    def _format_external_api_message(self, data: Dict[str, Any]) -> str:
+        """Format external API crawl notification message"""
+        status_emoji = "✅" if data.get('status') == 'success' else "❌"
+        
+        message = f"{status_emoji} **EXTERNAL API CRAWL**\n\n"
+        message += f"**Status:** {data.get('status', 'unknown').upper()}\n"
+        
+        if data.get('status') == 'success':
+            message += f"**Total Jobs:** {data.get('total_jobs', 0):,}\n"
+            
+            if 'api_results' in data:
+                message += "\n**API Results:**\n"
+                for api_name, count in data['api_results'].items():
+                    message += f"• {api_name}: {count} jobs\n"
+        else:
+            message += f"**Error:** {data.get('error', 'Unknown error')}\n"
+        
+        message += f"\n🕐 **Time:** {data.get('timestamp', datetime.now().isoformat())}"
+        return message
+    
+    def _format_distill_crawl_message(self, data: Dict[str, Any]) -> str:
+        """Format distill crawl notification message"""
+        status_emoji = "✅" if data.get('status') == 'success' else "❌"
+        
+        message = f"{status_emoji} **DISTILL CRAWL**\n\n"
+        message += f"**Status:** {data.get('status', 'unknown').upper()}\n"
+        
+        if data.get('status') == 'success':
+            message += f"**Companies Found:** {data.get('companies_found', 0):,}\n"
+            message += f"**Jobs Found:** {data.get('jobs_found', 0):,}\n"
+        else:
+            message += f"**Error:** {data.get('error', 'Unknown error')}\n"
+        
+        message += f"\n🕐 **Time:** {data.get('timestamp', datetime.now().isoformat())}"
+        return message
+    
+    def _format_daily_stats_message(self, data: Dict[str, Any]) -> str:
+        """Format daily statistics notification message"""
+        status_emoji = "✅" if data.get('status') == 'success' else "❌"
+        
+        message = f"{status_emoji} **DAILY STATISTICS**\n\n"
+        message += f"**Status:** {data.get('status', 'unknown').upper()}\n"
+        
+        if data.get('status') == 'success':
+            message += f"**Total Jobs:** {data.get('total_jobs', 0):,}\n"
+            message += f"**Active Jobs:** {data.get('active_jobs', 0):,}\n"
+            message += f"**Total Companies:** {data.get('total_companies', 0):,}\n"
+            message += f"**New Jobs Today:** {data.get('new_jobs_today', 0):,}\n"
+        else:
+            message += f"**Error:** {data.get('error', 'Unknown error')}\n"
+        
+        message += f"\n🕐 **Time:** {data.get('timestamp', datetime.now().isoformat())}"
+        return message
+    
+    def _format_generic_message(self, data: Dict[str, Any]) -> str:
+        """Format generic notification message"""
+        status_emoji = "✅" if data.get('status') == 'success' else "⚠️" if data.get('status') == 'warning' else "❌"
+        
+        message = f"{status_emoji} **NOTIFICATION**\n\n"
+        message += f"**Type:** {data.get('type', 'unknown')}\n"
+        message += f"**Status:** {data.get('status', 'unknown').upper()}\n"
+        
+        if 'message' in data:
+            message += f"**Message:** {data['message']}\n"
+        
+        if 'error' in data:
+            message += f"**Error:** {data['error']}\n"
+        
+        message += f"\n🕐 **Time:** {data.get('timestamp', datetime.now().isoformat())}"
+        return message
     
     async def send_error_notification(self, message: str, error_data: Dict[str, Any] = None) -> bool:
         """

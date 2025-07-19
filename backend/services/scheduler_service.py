@@ -207,215 +207,120 @@ class SchedulerService:
             await self._log_job_run("health_check", "error", f"Health check job error: {str(e)}")
     
     async def _external_api_crawler_job(self):
-        """External API crawler job"""
+        """External API crawler job - daily at 9 AM UTC"""
         try:
-            logger.info("🚀 Starting external API crawler job")
-            await self._log_job_run("external_api_crawler", "started", "External API crawler started")
+            await self._log_job_run("external_api_crawler", "started", "External API crawler job started")
             
-            # Import here to avoid circular imports
+            # Import external job APIs
             try:
                 from external_job_apis import ExternalJobAPIManager
-                from service_notifications import ServiceNotifier
-                
                 manager = ExternalJobAPIManager()
-                notifier = ServiceNotifier()
                 
-                # Send start notification
-                notifier._send_message(f"""🚀 <b>SCHEDULED CRAWLER STARTED</b>
-
-📅 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
-🔄 <b>Starting external API crawling...</b>
-🎯 <b>Target:</b> All available APIs""")
-                
-                # Run crawler
-                results = manager.fetch_all_jobs(max_jobs_per_api=200)
+                # Fetch jobs from external APIs
+                results = manager.fetch_all_jobs(max_jobs_per_api=50)
                 save_results = manager.save_jobs_to_database(results)
                 
-                # Calculate totals
                 total_jobs = sum(save_results.values())
                 
                 # Log success
-                await self._log_job_run("external_api_crawler", "success", f"Crawled {total_jobs} jobs from external APIs", {
+                await self._log_job_run("external_api_crawler", "success", f"External API crawler completed successfully", {
                     "total_jobs": total_jobs,
-                    "results": save_results
+                    "api_results": save_results
                 })
                 
-                # Send success notification
-                results_text = []
-                for api_name, count in save_results.items():
-                    results_text.append(f"• {api_name}: {count} jobs")
-                
-                notifier._send_message(f"""✅ <b>SCHEDULED CRAWLER COMPLETED</b>
-
-🎉 <b>Crawl successful!</b>
-📊 <b>Total jobs:</b> {total_jobs}
-
-🔧 <b>API Results:</b>
-{chr(10).join(results_text)}
-
-🕐 <b>Completed at:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC""")
-                
-                logger.info(f"✅ External API crawler completed successfully. Total jobs: {total_jobs}")
+                # Send Telegram notification if available
+                try:
+                    from backend.telegram_bot.bot_manager import bot_manager
+                    if bot_manager.bot_instance and bot_manager.bot_instance.enabled:
+                        await bot_manager.bot_instance.send_deployment_notification({
+                            'type': 'external_api_crawl',
+                            'status': 'success',
+                            'total_jobs': total_jobs,
+                            'api_results': save_results,
+                            'timestamp': datetime.now().isoformat()
+                        })
+                except Exception as telegram_error:
+                    logger.warning(f"Could not send Telegram notification: {telegram_error}")
                 
             except ImportError as e:
-                logger.error(f"Failed to import external API modules: {str(e)}")
-                await self._log_job_run("external_api_crawler", "error", f"Import error: {str(e)}")
+                error_msg = f"External job APIs module not available: {e}"
+                await self._log_job_run("external_api_crawler", "error", error_msg)
+                logger.error(error_msg)
                 
         except Exception as e:
-            logger.error(f"External API crawler job error: {str(e)}")
-            await self._log_job_run("external_api_crawler", "error", f"Crawler job error: {str(e)}")
+            error_msg = f"External API crawler job failed: {e}"
+            await self._log_job_run("external_api_crawler", "error", error_msg)
+            logger.error(error_msg)
             
-            # Send error notification
+            # Send Telegram notification if available
             try:
-                from service_notifications import ServiceNotifier
-                notifier = ServiceNotifier()
-                notifier._send_message(f"""❌ <b>SCHEDULED CRAWLER ERROR</b>
-
-🚫 <b>Crawler failed</b>
-❌ <b>Error:</b> {str(e)[:200]}...
-🕐 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC""")
-            except:
-                pass
+                from backend.telegram_bot.bot_manager import bot_manager
+                if bot_manager.bot_instance and bot_manager.bot_instance.enabled:
+                    await bot_manager.bot_instance.send_deployment_notification({
+                        'type': 'external_api_crawl',
+                        'status': 'error',
+                        'error': str(e),
+                        'timestamp': datetime.now().isoformat()
+                    })
+            except Exception as telegram_error:
+                logger.warning(f"Could not send Telegram notification: {telegram_error}")
     
     async def _distill_crawler_job(self):
-        """BUZZ2REMOTE-COMPANIES crawler job"""
-        crawler = None
-        notifier = None
-        
+        """Buzz2Remote-Companies distill crawler job - daily at 10 AM UTC"""
         try:
-            logger.info("🏢 Starting BUZZ2REMOTE-COMPANIES crawler job")
-            await self._log_job_run("distill_crawler", "started", "Buzz2Remote companies crawler started")
+            await self._log_job_run("distill_crawler", "started", "Distill crawler job started")
             
-            # Import here to avoid circular imports
+            # Import distill crawler
             try:
                 from distill_crawler import DistillCrawler
-                from service_notifications import ServiceNotifier
-                
                 crawler = DistillCrawler()
-                notifier = ServiceNotifier()
                 
-            except ImportError as e:
-                logger.error(f"Failed to import BUZZ2REMOTE-COMPANIES crawler modules: {str(e)}")
-                await self._log_job_run("distill_crawler", "error", f"Import error: {str(e)}")
-                # This is a critical error - can't proceed without modules
-                raise e
-            
-            # Send start notification
-            notifier._send_message(f"""🏢 <b>BUZZ2REMOTE-COMPANIES CRAWLER STARTED</b>
-
-📅 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
-🔄 <b>Starting company websites crawling...</b>
-🎯 <b>Target:</b> All Company Career Pages
-📋 <b>Source:</b> Distill.io Export Data""")
-            
-            # Load companies data
-            try:
-                crawler.load_companies_data()
-                total_companies = len(crawler.companies_data)
-                logger.info(f"Loaded {total_companies} companies for crawling")
-                
-            except Exception as e:
-                logger.error(f"Failed to load companies data: {str(e)}")
-                await self._log_job_run("distill_crawler", "error", f"Failed to load companies data: {str(e)}")
-                # This is a critical error - can't proceed without data
-                raise e
-            
-            # Run crawler for all companies
-            try:
-                jobs = await crawler.crawl_all_companies()
-                
-                # Save to database
-                save_results = crawler.save_jobs_to_database(jobs)
-                
-                # Calculate success metrics
-                total_companies = len(crawler.companies_data)
-                total_jobs_found = len(jobs)
-                new_jobs = save_results.get('new_jobs', 0)
-                updated_jobs = save_results.get('updated_jobs', 0)
+                # Run crawler
+                results = await crawler.run_crawler()
                 
                 # Log success
-                await self._log_job_run("distill_crawler", "success", f"Crawled {total_jobs_found} jobs from {total_companies} companies", {
-                    "total_companies": total_companies,
-                    "total_jobs": total_jobs_found,
-                    "new_jobs": new_jobs,
-                    "updated_jobs": updated_jobs
+                await self._log_job_run("distill_crawler", "success", f"Distill crawler completed successfully", {
+                    "companies_found": len(results.get('companies', [])),
+                    "jobs_found": len(results.get('jobs', [])),
+                    "errors": results.get('errors', [])
                 })
                 
-                # Send success notification with detailed stats
-                summary = getattr(crawler, 'last_crawl_summary', {})
-                total_companies = summary.get('total_companies', len(crawler.companies_data))
-                successful_companies = summary.get('successful_companies', 0)
-                companies_with_jobs = summary.get('companies_with_jobs', 0)
-                failed_companies = summary.get('failed_companies', 0)
-                top_companies = summary.get('top_companies', {})
+                # Send Telegram notification if available
+                try:
+                    from backend.telegram_bot.bot_manager import bot_manager
+                    if bot_manager.bot_instance and bot_manager.bot_instance.enabled:
+                        await bot_manager.bot_instance.send_deployment_notification({
+                            'type': 'distill_crawl',
+                            'status': 'success',
+                            'companies_found': len(results.get('companies', [])),
+                            'jobs_found': len(results.get('jobs', [])),
+                            'timestamp': datetime.now().isoformat()
+                        })
+                except Exception as telegram_error:
+                    logger.warning(f"Could not send Telegram notification: {telegram_error}")
                 
-                # Build top companies text
-                top_companies_text = ""
-                if top_companies:
-                    top_list = list(top_companies.items())[:3]  # Top 3
-                    top_companies_text = f"\n\n🏆 <b>Top Performers:</b>\n"
-                    for company, count in top_list:
-                        top_companies_text += f"• {company}: {count} jobs\n"
-                
-                notifier._send_message(f"""✅ <b>BUZZ2REMOTE-COMPANIES CRAWL COMPLETED</b>
-
-🎉 <b>Crawl successful!</b>
-📊 <b>Total jobs found:</b> {total_jobs_found:,}
-🆕 <b>New jobs:</b> {new_jobs:,}
-🔄 <b>Updated jobs:</b> {updated_jobs:,}
-
-🏢 <b>Company Stats:</b>
-• Total companies: {total_companies}
-• Successfully crawled: {successful_companies}
-• Companies with jobs: {companies_with_jobs}
-• Failed companies: {failed_companies}{top_companies_text}
-
-🕐 <b>Completed at:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
-📋 <b>Source:</b> Distill Company Export Data""")
-                
-                logger.info(f"✅ BUZZ2REMOTE-COMPANIES crawler completed successfully.")
-                logger.info(f"📊 Companies: {total_companies}, Jobs: {total_jobs_found}, New: {new_jobs}, Updated: {updated_jobs}")
-                
-            except Exception as e:
-                logger.error(f"BUZZ2REMOTE-COMPANIES crawler execution error: {str(e)}")
-                await self._log_job_run("distill_crawler", "error", f"Crawler execution error: {str(e)}")
-                
-                # Send error notification for execution failures
-                if notifier:
-                    notifier._send_message(f"""⚠️ <b>BUZZ2REMOTE-COMPANIES CRAWL ERROR</b>
-
-⚠️ <b>Crawler encountered errors during execution</b>
-❌ <b>Error:</b> {str(e)[:200]}...
-🕐 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
-🏢 <b>Source:</b> Distill Company Data
-
-💡 <i>This may be a temporary issue. Check logs for details.</i>""")
+            except ImportError as e:
+                error_msg = f"Distill crawler module not available: {e}"
+                await self._log_job_run("distill_crawler", "error", error_msg)
+                logger.error(error_msg)
                 
         except Exception as e:
-            logger.error(f"BUZZ2REMOTE-COMPANIES crawler job error: {str(e)}")
-            await self._log_job_run("distill_crawler", "error", f"Critical crawler job error: {str(e)}")
+            error_msg = f"Distill crawler job failed: {e}"
+            await self._log_job_run("distill_crawler", "error", error_msg)
+            logger.error(error_msg)
             
-            # Send error notification only for critical failures
+            # Send Telegram notification if available
             try:
-                if notifier:
-                    notifier._send_message(f"""❌ <b>BUZZ2REMOTE-COMPANIES CRITICAL ERROR</b>
-
-🚫 <b>Crawler failed to start or load data</b>
-❌ <b>Error:</b> {str(e)[:200]}...
-🕐 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
-🏢 <b>Source:</b> Distill Company Data
-
-⚠️ <i>This is a system-level failure requiring attention</i>""")
-                else:
-                    # Fallback notification without notifier
-                    logger.critical(f"CRITICAL: BUZZ2REMOTE-COMPANIES crawler failed to start: {str(e)}")
-            except Exception as notification_error:
-                logger.error(f"Failed to send error notification: {notification_error}")
-            
-            # Only re-raise critical errors that prevent scheduler from continuing
-            if "ImportError" in str(type(e)) or "Failed to load companies data" in str(e):
-                raise e
-            # For other errors, just log them but don't crash the scheduler
+                from backend.telegram_bot.bot_manager import bot_manager
+                if bot_manager.bot_instance and bot_manager.bot_instance.enabled:
+                    await bot_manager.bot_instance.send_deployment_notification({
+                        'type': 'distill_crawl',
+                        'status': 'error',
+                        'error': str(e),
+                        'timestamp': datetime.now().isoformat()
+                    })
+            except Exception as telegram_error:
+                logger.warning(f"Could not send Telegram notification: {telegram_error}")
     
     async def _database_cleanup_job(self):
         """Database cleanup job"""
@@ -459,51 +364,83 @@ class SchedulerService:
             await self._log_job_run("database_cleanup", "error", f"Database cleanup error: {str(e)}")
     
     async def _job_statistics_job(self):
-        """Daily job statistics job"""
+        """Daily job statistics job - daily at 8 AM UTC"""
         try:
-            logger.info("📊 Starting job statistics job")
             await self._log_job_run("job_statistics", "started", "Job statistics job started")
             
-            from database import get_async_db
-            
-            db = await get_async_db()
-            jobs_collection = db["jobs"]
-            
-            # Get statistics
-            total_jobs = await jobs_collection.count_documents({})
-            active_jobs = await jobs_collection.count_documents({"is_active": True})
-            
-            # Jobs added in last 24 hours
-            yesterday = datetime.now() - timedelta(days=1)
-            new_jobs_24h = await jobs_collection.count_documents({
-                "last_updated": {"$gte": yesterday.isoformat()}
-            })
-            
-            logger.info(f"📊 Job statistics: Total={total_jobs}, Active={active_jobs}, New(24h)={new_jobs_24h}")
-            await self._log_job_run("job_statistics", "success", f"Generated daily statistics", {
-                "total_jobs": total_jobs,
-                "active_jobs": active_jobs,
-                "new_jobs_24h": new_jobs_24h
-            })
-            
-            # Send notification
+            # Import database
             try:
-                from service_notifications import ServiceNotifier
-                notifier = ServiceNotifier()
-                notifier._send_message(f"""📊 <b>DAILY JOB STATISTICS</b>
-
-📈 <b>Total jobs:</b> {total_jobs:,}
-✅ <b>Active jobs:</b> {active_jobs:,}
-🆕 <b>New jobs (24h):</b> {new_jobs_24h:,}
-
-🕐 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
-🌐 <b>Platform:</b> buzz2remote.com""")
-            except:
-                pass
+                from database.db import get_async_db
+                db = await get_async_db()
+                
+                if db:
+                    # Get job statistics
+                    total_jobs = await db.jobs.count_documents({})
+                    active_jobs = await db.jobs.count_documents({"status": "active"})
+                    total_companies = await db.companies.count_documents({})
+                    
+                    # Get today's new jobs
+                    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                    new_jobs_today = await db.jobs.count_documents({"created_at": {"$gte": today}})
+                    
+                    # Get job sources distribution
+                    pipeline = [
+                        {"$group": {"_id": "$source", "count": {"$sum": 1}}},
+                        {"$sort": {"count": -1}}
+                    ]
+                    source_stats = list(await db.jobs.aggregate(pipeline))
+                    
+                    # Log success
+                    await self._log_job_run("job_statistics", "success", f"Job statistics collected successfully", {
+                        "total_jobs": total_jobs,
+                        "active_jobs": active_jobs,
+                        "total_companies": total_companies,
+                        "new_jobs_today": new_jobs_today,
+                        "source_stats": source_stats
+                    })
+                    
+                    # Send Telegram notification if available
+                    try:
+                        from backend.telegram_bot.bot_manager import bot_manager
+                        if bot_manager.bot_instance and bot_manager.bot_instance.enabled:
+                            await bot_manager.bot_instance.send_deployment_notification({
+                                'type': 'daily_statistics',
+                                'status': 'success',
+                                'total_jobs': total_jobs,
+                                'active_jobs': active_jobs,
+                                'total_companies': total_companies,
+                                'new_jobs_today': new_jobs_today,
+                                'timestamp': datetime.now().isoformat()
+                            })
+                    except Exception as telegram_error:
+                        logger.warning(f"Could not send Telegram notification: {telegram_error}")
+                else:
+                    error_msg = "Database connection not available"
+                    await self._log_job_run("job_statistics", "error", error_msg)
+                    logger.error(error_msg)
+                
+            except ImportError as e:
+                error_msg = f"Database module not available: {e}"
+                await self._log_job_run("job_statistics", "error", error_msg)
+                logger.error(error_msg)
                 
         except Exception as e:
-            logger.error(f"Job statistics job error: {str(e)}")
-            await self._log_job_run("job_statistics", "error", f"Job statistics error: {str(e)}")
+            error_msg = f"Job statistics job failed: {e}"
+            await self._log_job_run("job_statistics", "error", error_msg)
+            logger.error(error_msg)
+            
+            # Send Telegram notification if available
+            try:
+                from backend.telegram_bot.bot_manager import bot_manager
+                if bot_manager.bot_instance and bot_manager.bot_instance.enabled:
+                    await bot_manager.bot_instance.send_deployment_notification({
+                        'type': 'daily_statistics',
+                        'status': 'error',
+                        'error': str(e),
+                        'timestamp': datetime.now().isoformat()
+                    })
+            except Exception as telegram_error:
+                logger.warning(f"Could not send Telegram notification: {telegram_error}")
     
     def get_job_status(self):
         """Get status of all scheduled jobs with next run times"""

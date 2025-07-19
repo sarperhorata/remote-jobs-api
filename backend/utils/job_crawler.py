@@ -414,6 +414,7 @@ class JobDataManager:
             
             new_jobs = 0
             updated_jobs = 0
+            new_job_data = []  # Store new jobs for notifications
             
             for job in crawled_jobs:
                 # Check if job already exists
@@ -448,8 +449,12 @@ class JobDataManager:
                     updated_jobs += 1
                 else:
                     job_data["created_at"] = datetime.now()
-                    jobs_collection.insert_one(job_data)
+                    result = jobs_collection.insert_one(job_data)
                     new_jobs += 1
+                    
+                    # Add to new jobs list for notifications
+                    job_data["_id"] = result.inserted_id
+                    new_job_data.append(job_data)
             
             # Deactivate old jobs
             cutoff_date = datetime.now() - timedelta(days=30)
@@ -458,12 +463,25 @@ class JobDataManager:
                 {"$set": {"is_active": False}}
             )
             
+            # Process notifications for new jobs
+            notification_stats = {}
+            if new_job_data:
+                try:
+                    from backend.services.job_notification_service import JobNotificationService
+                    notification_service = JobNotificationService(db)
+                    notification_stats = await notification_service.process_new_jobs_for_notifications(new_job_data)
+                    logger.info(f"Notification processing completed: {notification_stats}")
+                except Exception as e:
+                    logger.error(f"Error processing notifications: {str(e)}")
+                    notification_stats = {"error": str(e)}
+            
             return {
                 "status": "success",
                 "new_jobs": new_jobs,
                 "updated_jobs": updated_jobs,
                 "deactivated_jobs": deactivated.modified_count,
-                "total_crawled": len(crawled_jobs)
+                "total_crawled": len(crawled_jobs),
+                "notifications": notification_stats
             }
             
         except Exception as e:

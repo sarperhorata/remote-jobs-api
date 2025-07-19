@@ -33,6 +33,42 @@ const Home: React.FC = () => {
   const [scrollIndex, setScrollIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Animated counter states
+  const [activeJobsCount, setActiveJobsCount] = useState(0);
+  const [companiesCount, setCompaniesCount] = useState(0);
+  const [countriesCount, setCountriesCount] = useState(0);
+
+  // Target values for animation
+  const targetActiveJobs = 38;
+  const targetCompanies = 2;
+  const targetCountries = 150;
+
+  // Animated counter effect
+  useEffect(() => {
+    const duration = 2000; // 2 seconds
+    const steps = 60; // 60 steps for smooth animation
+    const stepDuration = duration / steps;
+
+    const animateCounter = (setter: React.Dispatch<React.SetStateAction<number>>, target: number) => {
+      let current = 0;
+      const increment = target / steps;
+      
+      const timer = setInterval(() => {
+        current += increment;
+        if (current >= target) {
+          current = target;
+          clearInterval(timer);
+        }
+        setter(Math.floor(current));
+      }, stepDuration);
+    };
+
+    // Start animations with slight delays for staggered effect
+    setTimeout(() => animateCounter(setActiveJobsCount, targetActiveJobs), 500);
+    setTimeout(() => animateCounter(setCompaniesCount, targetCompanies), 800);
+    setTimeout(() => animateCounter(setCountriesCount, targetCountries), 1100);
+  }, []);
+
   // Check if user needs onboarding
   useEffect(() => {
     const onboardingCompleted = localStorage.getItem('onboardingCompleted');
@@ -478,15 +514,21 @@ const Home: React.FC = () => {
               {/* Statistics Section */}
               <div className="flex flex-wrap justify-center gap-8">
                 <div className="text-center">
-                  <div className="text-2xl md:text-3xl font-bold text-yellow-400">38K+</div>
+                  <div className="text-2xl md:text-3xl font-bold text-yellow-400 transition-all duration-300">
+                    {activeJobsCount}K+
+                  </div>
                   <div className="text-sm text-white/80">Active Jobs</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl md:text-3xl font-bold text-green-400">2K+</div>
+                  <div className="text-2xl md:text-3xl font-bold text-green-400 transition-all duration-300">
+                    {companiesCount}K+
+                  </div>
                   <div className="text-sm text-white/80">Companies</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl md:text-3xl font-bold text-purple-400">150+</div>
+                  <div className="text-2xl md:text-3xl font-bold text-purple-400 transition-all duration-300">
+                    {countriesCount}+
+                  </div>
                   <div className="text-sm text-white/80">Countries</div>
                 </div>
               </div>

@@ -41,7 +41,7 @@ const Home: React.FC = () => {
   // Target values for animation - will be updated from API
   const [targetActiveJobs, setTargetActiveJobs] = useState(38);
   const [targetCompanies, setTargetCompanies] = useState(0);
-  const [targetCountries] = useState(150);
+  const [targetCountries, setTargetCountries] = useState(0);
 
   // Fetch real statistics from API
   useEffect(() => {
@@ -52,6 +52,27 @@ const Home: React.FC = () => {
         if (jobStatsResponse.ok) {
           const jobStats = await jobStatsResponse.json();
           setTargetActiveJobs(jobStats.total_jobs || 38);
+          
+          // Calculate unique countries from location data
+          if (jobStats.jobs_by_location) {
+            const uniqueCountries = new Set();
+            jobStats.jobs_by_location.forEach((location: any) => {
+              if (location._id && location._id !== 'Remote' && location._id !== 'remote') {
+                // Extract country from location string (e.g., "New York, NY, USA" -> "USA")
+                const locationStr = location._id.toString();
+                const parts = locationStr.split(',').map((part: string) => part.trim());
+                if (parts.length > 0) {
+                  const country = parts[parts.length - 1];
+                  if (country && country.length <= 3) { // Likely a country code
+                    uniqueCountries.add(country);
+                  } else if (country && country.length > 3) { // Likely a country name
+                    uniqueCountries.add(country);
+                  }
+                }
+              }
+            });
+            setTargetCountries(uniqueCountries.size || 0);
+          }
         }
 
         // Fetch companies statistics
@@ -93,9 +114,9 @@ const Home: React.FC = () => {
     };
 
     // Start animations with slight delays for staggered effect
-    setTimeout(() => animateCounter(setActiveJobsCount, targetActiveJobs), 500);
-    setTimeout(() => animateCounter(setCompaniesCount, targetCompanies), 800);
-    setTimeout(() => animateCounter(setCountriesCount, targetCountries), 1100);
+    setTimeout(() => animateCounter(setActiveJobsCount, targetActiveJobs), 0);
+    setTimeout(() => animateCounter(setCompaniesCount, targetCompanies), 200);
+    setTimeout(() => animateCounter(setCountriesCount, targetCountries), 400);
   }, [targetActiveJobs, targetCompanies, targetCountries]);
 
   // Check if user needs onboarding

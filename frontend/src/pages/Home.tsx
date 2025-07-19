@@ -38,13 +38,42 @@ const Home: React.FC = () => {
   const [companiesCount, setCompaniesCount] = useState(0);
   const [countriesCount, setCountriesCount] = useState(0);
 
-  // Target values for animation
-  const targetActiveJobs = 38;
-  const targetCompanies = 2;
-  const targetCountries = 150;
+  // Target values for animation - will be updated from API
+  const [targetActiveJobs, setTargetActiveJobs] = useState(38);
+  const [targetCompanies, setTargetCompanies] = useState(0);
+  const [targetCountries] = useState(150);
+
+  // Fetch real statistics from API
+  useEffect(() => {
+    const fetchStatistics = async () => {
+      try {
+        // Fetch job statistics
+        const jobStatsResponse = await fetch('/api/jobs/statistics');
+        if (jobStatsResponse.ok) {
+          const jobStats = await jobStatsResponse.json();
+          setTargetActiveJobs(jobStats.total_jobs || 38);
+        }
+
+        // Fetch companies statistics
+        const companiesResponse = await fetch('/api/companies/statistics');
+        if (companiesResponse.ok) {
+          const companiesStats = await companiesResponse.json();
+          setTargetCompanies(companiesStats.total_companies || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching statistics:', error);
+        // Keep default values if API fails
+      }
+    };
+
+    fetchStatistics();
+  }, []);
 
   // Animated counter effect
   useEffect(() => {
+    // Only start animation when we have real data
+    if (targetCompanies === 0) return;
+
     const duration = 2000; // 2 seconds
     const steps = 60; // 60 steps for smooth animation
     const stepDuration = duration / steps;
@@ -67,7 +96,7 @@ const Home: React.FC = () => {
     setTimeout(() => animateCounter(setActiveJobsCount, targetActiveJobs), 500);
     setTimeout(() => animateCounter(setCompaniesCount, targetCompanies), 800);
     setTimeout(() => animateCounter(setCountriesCount, targetCountries), 1100);
-  }, []);
+  }, [targetActiveJobs, targetCompanies, targetCountries]);
 
   // Check if user needs onboarding
   useEffect(() => {
@@ -536,19 +565,19 @@ const Home: React.FC = () => {
               <div className="flex flex-wrap justify-center gap-8">
                 <div className="text-center">
                   <div className="text-2xl md:text-3xl font-bold text-yellow-400 transition-all duration-300">
-                    {activeJobsCount}K+
+                    {activeJobsCount.toLocaleString()}
                   </div>
                   <div className="text-sm text-white/80">Active Jobs</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl md:text-3xl font-bold text-green-400 transition-all duration-300">
-                    {companiesCount}K+
+                    {companiesCount.toLocaleString()}
                   </div>
                   <div className="text-sm text-white/80">Companies</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl md:text-3xl font-bold text-purple-400 transition-all duration-300">
-                    {countriesCount}+
+                    {countriesCount.toLocaleString()}
                   </div>
                   <div className="text-sm text-white/80">Countries</div>
                 </div>

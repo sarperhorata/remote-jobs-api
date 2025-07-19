@@ -25,6 +25,7 @@ const MyProfilePage = lazy(() => import('./pages/MyProfile'));
 const ResumeUploadPage = lazy(() => import('./pages/ResumeUpload'));
 const TermsConditionsPage = lazy(() => import('./pages/TermsConditions'));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicy'));
+const CookiePolicyPage = lazy(() => import('./pages/CookiePolicy'));
 
 const PricingPage = lazy(() => import('./pages/Pricing'));
 const HelpPage = lazy(() => import('./pages/Help'));
@@ -111,6 +112,7 @@ const App: React.FC = () => {
                 <Route path="/terms-conditions" element={<TermsConditionsPage />} />
                 <Route path="/privacy" element={<PrivacyPolicyPage />} />
                 <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+                <Route path="/cookie-policy" element={<CookiePolicyPage />} />
                 <Route path="/help" element={<HelpPage />} />
                 <Route path="/remote-tips" element={<RemoteTipsPage />} />
                 <Route path="/career-tips" element={<CareerTipsPage />} />

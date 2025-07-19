@@ -388,4 +388,8 @@ export const BellOff = ({ className = "", size = 16, onClick }: IconProps) => (
 
 export const Brain = ({ className = "", size = 16, onClick }: IconProps) => (
   <span className={`inline-block ${className}`} style={{ fontSize: size }} onClick={onClick}>🧠</span>
+);
+
+export const Cookie = ({ className = "", size = 16, onClick }: IconProps) => (
+  <span className={`inline-block ${className}`} style={{ fontSize: size }} onClick={onClick}>🍪</span>
 ); 

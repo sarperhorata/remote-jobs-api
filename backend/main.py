@@ -173,6 +173,14 @@ routers_to_include = [
     (salary_estimation_router, "/api/v1/salary", ["salary-estimation"]),
 ]
 
+# Include admin cleanup router
+try:
+    from backend.routes.admin_cleanup import router as admin_cleanup_router
+    routers_to_include.append((admin_cleanup_router, "", ["admin-cleanup"]))
+    logger.info("Admin cleanup router successfully included.")
+except ImportError as e:
+    logger.warning(f"Admin cleanup router not available: {str(e)}")
+
 for router, prefix, tags in routers_to_include:
     app.include_router(router, prefix=prefix, tags=tags)
     

@@ -47,15 +47,22 @@ async def cleanup_unknown_company():
             if job.get("url"):
                 url = job["url"]
                 if "greenhouse.io" in url:
+                    # Extract from greenhouse URL: https://company-name.greenhouse.io/boards/job/123
                     parts = url.split("/")
                     for i, part in enumerate(parts):
                         if part == "boards" and i > 0:
-                            new_company = parts[i-1].replace("-", " ").title()
+                            company_part = parts[i-1]
+                            # Remove .greenhouse.io suffix
+                            if ".greenhouse.io" in company_part:
+                                company_part = company_part.replace(".greenhouse.io", "")
+                            new_company = company_part.replace("-", " ").title()
                             break
                 elif "lever.co" in url:
+                    # Extract from lever URL: https://lever.co/company-name/jobs/456
                     parts = url.split("/")
-                    if len(parts) > 2:
-                        new_company = parts[2].replace("-", " ").title()
+                    if len(parts) > 3:
+                        company_part = parts[3]  # company name is at index 3
+                        new_company = company_part.replace("-", " ").title()
             
             # If still no company, try from title
             if not new_company and job.get("title"):

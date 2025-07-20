@@ -169,6 +169,14 @@ async def read_users_me(current_user: dict = Depends(get_current_user_dependency
         "is_active": current_user.get("is_active", True)
     }
 
+@router.post("/logout")
+async def logout(current_user: dict = Depends(get_current_user_dependency)):
+    """Logout user and invalidate token."""
+    # In a real implementation, you might want to blacklist the token
+    # For now, we'll just return a success message
+    # The client should remove the token from storage
+    return {"message": "Successfully logged out"}
+
 @router.get("/google/auth-url")
 async def get_google_auth_url():
     """Get Google OAuth authorization URL"""

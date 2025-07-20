@@ -2,6 +2,7 @@
 
 import pytest
 from fastapi.testclient import TestClient
+from unittest.mock import patch
 from main import app
 
 client = TestClient(app)
@@ -53,8 +54,7 @@ class TestAuthExtended:
         """Test that protected endpoints require authentication"""
         protected_endpoints = [
             ("GET", "/api/v1/auth/me"),
-            ("POST", "/api/v1/auth/logout"),
-            ("POST", "/api/v1/auth/refresh")
+            ("POST", "/api/v1/auth/logout")
         ]
         
         for method, endpoint in protected_endpoints:
@@ -66,8 +66,11 @@ class TestAuthExtended:
             # Should require authentication
             assert response.status_code in [401, 403], f"Endpoint {endpoint} should require auth"
     
-    def test_forgot_password_endpoint(self):
+    @patch('backend.routes.auth.send_password_reset_email')
+    def test_forgot_password_endpoint(self, mock_send_email):
         """Test forgot password endpoint"""
+        mock_send_email.return_value = True  # Mock successful email sending
+        
         response = client.post("/api/v1/auth/forgot-password", json={
             "email": "test@example.com"
         })

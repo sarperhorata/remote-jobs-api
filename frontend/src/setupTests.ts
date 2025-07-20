@@ -4,13 +4,7 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 
-// Global test timeout configuration
-jest.setTimeout(10000);
-
-// Mock fetch globally to prevent network timeouts
-global.fetch = jest.fn();
-
-// Mock window.matchMedia to prevent test failures
+// Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: jest.fn().mockImplementation(query => ({
@@ -25,6 +19,24 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
+// Mock localStorage
+const localStorageMock = {
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+  clear: jest.fn(),
+};
+global.localStorage = localStorageMock;
+
+// Mock sessionStorage
+const sessionStorageMock = {
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+  clear: jest.fn(),
+};
+global.sessionStorage = sessionStorageMock;
+
 // Mock IntersectionObserver
 global.IntersectionObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
@@ -38,3 +50,23 @@ global.ResizeObserver = jest.fn().mockImplementation(() => ({
   unobserve: jest.fn(),
   disconnect: jest.fn(),
 }));
+
+// Mock window.scrollTo
+Object.defineProperty(window, 'scrollTo', {
+  value: jest.fn(),
+  writable: true,
+});
+
+// Suppress console warnings for React Router deprecation warnings
+const originalWarn = console.warn;
+console.warn = (...args) => {
+  if (
+    typeof args[0] === 'string' &&
+    (args[0].includes('React Router Future Flag Warning') ||
+     args[0].includes('Warning: An update to') ||
+     args[0].includes('Warning: Each child in a list should have a unique "key" prop'))
+  ) {
+    return;
+  }
+  originalWarn.call(console, ...args);
+};

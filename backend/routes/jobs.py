@@ -43,6 +43,10 @@ async def read_jobs(
     skip: int = 0, limit: int = 100, db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
     """Retrieve all jobs with pagination."""
+    # Prevent division by zero
+    if limit <= 0:
+        limit = 100
+    
     jobs_cursor = db.jobs.find().skip(skip).limit(limit)
     total_jobs = await db.jobs.count_documents({})
     jobs = await jobs_cursor.to_list(limit)

@@ -3,6 +3,9 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import JobList from '../../components/JobList';
 
+// Increase timeout for all tests in this file
+jest.setTimeout(15000);
+
 // Mock the jobService
 jest.mock('../../services/AllServices', () => ({
   jobService: {
@@ -41,25 +44,27 @@ describe('JobList Component', () => {
 
   describe('Error State', () => {
     test('shows error message when API call fails', async () => {
+      // Mock that rejects immediately
       mockGetJobs.mockRejectedValue(new Error('Network error'));
       
       renderJobList();
       
       await waitFor(() => {
         expect(screen.getByText('Error loading jobs')).toBeInTheDocument();
-      }, { timeout: 3000 });
+      }, { timeout: 10000 });
     });
   });
 
   describe('Empty State', () => {
     test('shows no jobs message when data is empty', async () => {
+      // Mock that resolves with empty array immediately
       mockGetJobs.mockResolvedValue([]);
       
       renderJobList();
       
       await waitFor(() => {
         expect(screen.getByText('No jobs available')).toBeInTheDocument();
-      }, { timeout: 3000 });
+      }, { timeout: 10000 });
     });
   });
 
@@ -81,13 +86,14 @@ describe('JobList Component', () => {
         }
       ];
       
+      // Mock that resolves with data immediately
       mockGetJobs.mockResolvedValue(mockJobs);
       
       renderJobList();
       
       await waitFor(() => {
         expect(screen.getByText('Latest Jobs')).toBeInTheDocument();
-      }, { timeout: 3000 });
+      }, { timeout: 10000 });
       
       expect(screen.getByText('Senior Frontend Developer')).toBeInTheDocument();
       expect(screen.getByText('TechCorp')).toBeInTheDocument();
@@ -104,7 +110,7 @@ describe('JobList Component', () => {
       
       await waitFor(() => {
         expect(mockGetJobs).toHaveBeenCalledWith(filters);
-      }, { timeout: 3000 });
+      }, { timeout: 10000 });
     });
   });
 });

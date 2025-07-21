@@ -95,9 +95,19 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
       }
       
       const data = await response.json();
+      console.log('🔍 MultiJobAutocomplete API response:', data);
+      
       if (Array.isArray(data)) {
-        setAllSuggestions(data);
-        setShowDropdown(data.length > 0);
+        // Transform the data to match the expected format
+        const transformedData = data.map(item => ({
+          title: item.title || item.name || '',
+          count: item.count || 1,
+          category: item.category || 'Technology'
+        })).filter(item => item.title && item.title.trim());
+        
+        console.log('🔄 MultiJobAutocomplete transformed data:', transformedData);
+        setAllSuggestions(transformedData);
+        setShowDropdown(transformedData.length > 0);
       } else {
         console.warn('Invalid API response format:', data);
         setAllSuggestions([]);
@@ -131,10 +141,28 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
       }
       
       const data = await response.json();
-      const popularTitles = data.positions?.slice(0, 5) || []; // 5 popular positions
+      console.log('📊 MultiJobAutocomplete statistics response:', data);
       
-      setAllSuggestions(popularTitles);
-      setShowDropdown(popularTitles.length > 0);
+      // Handle different response formats
+      let popularTitles = [];
+      if (data.positions && Array.isArray(data.positions)) {
+        popularTitles = data.positions.slice(0, 5);
+      } else if (Array.isArray(data)) {
+        popularTitles = data.slice(0, 5);
+      } else if (data.job_titles && Array.isArray(data.job_titles)) {
+        popularTitles = data.job_titles.slice(0, 5);
+      }
+      
+      // Transform to expected format
+      const transformedTitles = popularTitles.map(item => ({
+        title: item.title || item.name || '',
+        count: item.count || 1,
+        category: item.category || 'Technology'
+      })).filter(item => item.title && item.title.trim());
+      
+      console.log('🔄 MultiJobAutocomplete popular titles:', transformedTitles);
+      setAllSuggestions(transformedTitles);
+      setShowDropdown(transformedTitles.length > 0);
     } catch (error: any) {
       console.error('Error fetching popular titles:', error);
       

@@ -13,6 +13,7 @@ from backend.models.models import JobApplication
 from backend.services.job_scraping_service import JobScrapingService
 from backend.services.auto_application_service import AutoApplicationService
 from backend.utils.html_cleaner import clean_job_data
+from backend.services.job_title_parser import job_title_parser
 import re
 import json
 from collections import defaultdict, Counter

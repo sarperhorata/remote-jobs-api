@@ -7,14 +7,21 @@ import MyProfile from '../../pages/MyProfile';
 
 // Mock the auth context
 jest.mock('../../contexts/AuthContext', () => ({
+  AuthContext: {
+    Provider: ({ children, value }: { children: React.ReactNode; value: any }) => children,
+  },
+  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
   useAuth: () => ({
     isAuthenticated: true,
     user: {
       id: '1',
       email: 'test@example.com',
       name: 'Test User'
-    }
-  })
+    },
+    login: jest.fn(),
+    logout: jest.fn(),
+    register: jest.fn(),
+  }),
 }));
 
 // Mock the API service

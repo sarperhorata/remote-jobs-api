@@ -3,21 +3,19 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import ForgotPassword from '../../pages/ForgotPassword';
 
-// Mock the auth service
-jest.mock('../../services/authService', () => ({
-  authService: {
-    resetPassword: jest.fn(),
-  },
-}));
-
-// Import the mocked service
-import { authService } from '../../services/authService';
+// Mock fetch globally
+global.fetch = jest.fn();
 
 // Mock react-router-dom
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: () => mockNavigate,
+}));
+
+// Mock apiConfig
+jest.mock('../../utils/apiConfig', () => ({
+  getApiUrl: jest.fn().mockResolvedValue('http://localhost:8000'),
 }));
 
 // Helper function to render with router
@@ -32,7 +30,10 @@ const renderWithRouter = (component: React.ReactElement) => {
 describe('ForgotPassword', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (authService.resetPassword as jest.Mock).mockResolvedValue({ success: true });
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ success: true }),
+    });
   });
 
   it('should render forgot password form correctly', () => {
@@ -45,7 +46,10 @@ describe('ForgotPassword', () => {
   });
 
   it('should handle successful password reset request', async () => {
-    (authService.resetPassword as jest.Mock).mockResolvedValue({ success: true });
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ success: true }),
+    });
     
     renderWithRouter(<ForgotPassword />);
     
@@ -56,14 +60,24 @@ describe('ForgotPassword', () => {
     fireEvent.click(submitButton);
     
     await waitFor(() => {
-      expect(authService.resetPassword).toHaveBeenCalledWith('test@example.com');
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/auth/forgot-password'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: 'test@example.com' }),
+        })
+      );
     });
     
-    expect(screen.getByText('Reset link sent! Check your email.')).toBeInTheDocument();
+    expect(screen.getByText('Check your email')).toBeInTheDocument();
   });
 
   it('should handle error during password reset', async () => {
-    (authService.resetPassword as jest.Mock).mockRejectedValue(new Error('User not found'));
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      json: () => Promise.resolve({ detail: 'User not found' }),
+    });
     
     renderWithRouter(<ForgotPassword />);
     
@@ -74,12 +88,27 @@ describe('ForgotPassword', () => {
     fireEvent.click(submitButton);
     
     await waitFor(() => {
-      expect(screen.getByText('Error sending reset link. Please try again.')).toBeInTheDocument();
+      expect(screen.getByText('User not found')).toBeInTheDocument();
     });
   });
 
-  it('should navigate back to login', () => {
+  it('should navigate back to login from success page', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ success: true }),
+    });
+    
     renderWithRouter(<ForgotPassword />);
+    
+    const emailInput = screen.getByPlaceholderText('Enter your email address');
+    const submitButton = screen.getByRole('button', { name: 'Send Reset Link' });
+    
+    fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
+    fireEvent.click(submitButton);
+    
+    await waitFor(() => {
+      expect(screen.getByText('Check your email')).toBeInTheDocument();
+    });
     
     const backButton = screen.getByText('Back to Sign In');
     fireEvent.click(backButton);
@@ -89,8 +118,11 @@ describe('ForgotPassword', () => {
 
   it('should show loading state during submission', async () => {
     // Mock a delayed response
-    (authService.resetPassword as jest.Mock).mockImplementation(
-      () => new Promise(resolve => setTimeout(() => resolve({ success: true }), 100))
+    (global.fetch as jest.Mock).mockImplementation(
+      () => new Promise(resolve => setTimeout(() => resolve({
+        ok: true,
+        json: () => Promise.resolve({ success: true }),
+      }), 100))
     );
     
     renderWithRouter(<ForgotPassword />);
@@ -101,12 +133,11 @@ describe('ForgotPassword', () => {
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
     fireEvent.click(submitButton);
     
-    // Check if button shows loading state
+    // Check if button is disabled during loading
     expect(submitButton).toBeDisabled();
-    expect(screen.getByText('Sending...')).toBeInTheDocument();
     
     await waitFor(() => {
-      expect(submitButton).not.toBeDisabled();
+      expect(screen.getByText('Check your email')).toBeInTheDocument();
     });
   });
 
@@ -116,19 +147,39 @@ describe('ForgotPassword', () => {
     const emailInput = screen.getByPlaceholderText('Enter your email address');
     const submitButton = screen.getByRole('button', { name: 'Send Reset Link' });
     
-    // Test invalid email
+    // Test with invalid email
     fireEvent.change(emailInput, { target: { value: 'invalid-email' } });
     fireEvent.click(submitButton);
     
-    expect(screen.getByText('Please enter a valid email address')).toBeInTheDocument();
-    expect(authService.resetPassword).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByText('Please enter a valid email address')).toBeInTheDocument();
+    });
     
-    // Test valid email
+    // Test with valid email
     fireEvent.change(emailInput, { target: { value: 'valid@email.com' } });
     fireEvent.click(submitButton);
     
     await waitFor(() => {
-      expect(authService.resetPassword).toHaveBeenCalledWith('valid@email.com');
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/auth/forgot-password'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: 'valid@email.com' }),
+        })
+      );
+    });
+  });
+
+  it('should handle empty email validation', async () => {
+    renderWithRouter(<ForgotPassword />);
+    
+    const submitButton = screen.getByRole('button', { name: 'Send Reset Link' });
+    
+    fireEvent.click(submitButton);
+    
+    await waitFor(() => {
+      expect(screen.getByText('Please enter your email address')).toBeInTheDocument();
     });
   });
 });

@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
+import { ThemeProvider } from '../../contexts/ThemeContext';
 import Notifications from '../../pages/Notifications';
 
 // Mock fetch
@@ -24,7 +25,9 @@ jest.mock('../../contexts/AuthContext', () => ({
 const renderWithProviders = (component: React.ReactElement) => {
   return render(
     <BrowserRouter>
-      {component}
+      <ThemeProvider>
+        {component}
+      </ThemeProvider>
     </BrowserRouter>
   );
 };

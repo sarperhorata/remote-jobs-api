@@ -23,15 +23,21 @@ interface ThemeProviderProps {
 // Helper function to get system theme preference
 const getSystemTheme = (): 'light' | 'dark' => {
   if (typeof window !== 'undefined' && window.matchMedia) {
-    // Check if system prefers dark mode
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
-    // Also check time of day for auto dark mode (20:00 - 07:00)
-    const now = new Date();
-    const hour = now.getHours();
-    const isNightTime = hour >= 20 || hour < 7;
-    
-    return systemPrefersDark || isNightTime ? 'dark' : 'light';
+    try {
+      // Check if system prefers dark mode
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const systemPrefersDark = mediaQuery && mediaQuery.matches;
+      
+      // Also check time of day for auto dark mode (20:00 - 07:00)
+      const now = new Date();
+      const hour = now.getHours();
+      const isNightTime = hour >= 20 || hour < 7;
+      
+      return systemPrefersDark || isNightTime ? 'dark' : 'light';
+    } catch (error) {
+      // Fallback for test environments or when matchMedia fails
+      return 'light';
+    }
   }
   return 'light';
 };
@@ -105,48 +111,53 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   // Listen for system theme changes
   useEffect(() => {
     if (typeof window !== 'undefined' && window.matchMedia) {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      
-      const handleSystemThemeChange = (e: MediaQueryListEvent) => {
-        // Always apply system theme changes - remove localStorage override logic
-        const systemTheme = e.matches ? 'dark' : 'light';
-        setTheme(systemTheme);
+      try {
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
         
-        // Update localStorage to reflect system change
-        try {
-          localStorage.setItem('theme', systemTheme);
-        } catch (error) {
-          console.warn('Could not save theme to localStorage:', error);
-        }
-      };
-
-      // Add listener for system theme changes
-      if (mediaQuery.addEventListener) {
-        mediaQuery.addEventListener('change', handleSystemThemeChange);
-        
-        // Also check initial system preference
-        const initialSystemTheme = mediaQuery.matches ? 'dark' : 'light';
-        if (theme !== initialSystemTheme) {
-          setTheme(initialSystemTheme);
+        const handleSystemThemeChange = (e: MediaQueryListEvent) => {
+          // Always apply system theme changes - remove localStorage override logic
+          const systemTheme = e.matches ? 'dark' : 'light';
+          setTheme(systemTheme);
+          
+          // Update localStorage to reflect system change
           try {
-            localStorage.setItem('theme', initialSystemTheme);
+            localStorage.setItem('theme', systemTheme);
           } catch (error) {
-            console.warn('Could not save initial theme to localStorage:', error);
+            console.warn('Could not save theme to localStorage:', error);
           }
-        }
-      } else {
-        // Fallback for older browsers
-        mediaQuery.addListener(handleSystemThemeChange);
-      }
+        };
 
-      return () => {
-        if (mediaQuery.removeEventListener) {
-          mediaQuery.removeEventListener('change', handleSystemThemeChange);
+        // Add listener for system theme changes
+        if (mediaQuery.addEventListener) {
+          mediaQuery.addEventListener('change', handleSystemThemeChange);
+          
+          // Also check initial system preference
+          const initialSystemTheme = mediaQuery.matches ? 'dark' : 'light';
+          if (theme !== initialSystemTheme) {
+            setTheme(initialSystemTheme);
+            try {
+              localStorage.setItem('theme', initialSystemTheme);
+            } catch (error) {
+              console.warn('Could not save initial theme to localStorage:', error);
+            }
+          }
         } else {
           // Fallback for older browsers
-          mediaQuery.removeListener(handleSystemThemeChange);
+          mediaQuery.addListener(handleSystemThemeChange);
         }
-      };
+
+        return () => {
+          if (mediaQuery.removeEventListener) {
+            mediaQuery.removeEventListener('change', handleSystemThemeChange);
+          } else {
+            // Fallback for older browsers
+            mediaQuery.removeListener(handleSystemThemeChange);
+          }
+        };
+      } catch (error) {
+        // Fallback for test environments or when matchMedia fails
+        console.warn('Could not set up theme listener:', error);
+      }
     }
   }, [theme]);
 

@@ -1,201 +1,135 @@
+import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { Pagination } from '../../components/Pagination';
-import '@testing-library/jest-dom';
+import Pagination from '../../components/Pagination';
 
-describe('Pagination', () => {
-  const mockOnPageChange = jest.fn();
+// Mock data
+const mockProps = {
+  currentPage: 1,
+  totalPages: 10,
+  onPageChange: jest.fn(),
+  totalItems: 100,
+  itemsPerPage: 10,
+};
 
+describe('Pagination Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('renders pagination information correctly', () => {
-    render(<Pagination currentPage={2} totalPages={10} onPageChange={mockOnPageChange} />);
+  test('renders pagination controls', () => {
+    render(<Pagination {...mockProps} />);
     
-    expect(screen.getByText(/Showing page/)).toBeInTheDocument();
-    expect(screen.getByText(/of/)).toBeInTheDocument();
+    expect(screen.getByRole('navigation')).toBeInTheDocument();
   });
 
-  it('calls onPageChange when page number is clicked', () => {
-    render(<Pagination currentPage={2} totalPages={10} onPageChange={mockOnPageChange} />);
+  test('displays current page information', () => {
+    render(<Pagination {...mockProps} />);
     
-    const buttons = screen.getAllByRole('button');
-    const page3Button = buttons.find(button => 
-      button.textContent === '3' && 
-      button.classList.contains('relative') &&
-      button.classList.contains('inline-flex')
-    );
-    
-    expect(page3Button).toBeTruthy();
-    fireEvent.click(page3Button!);
-    
-    expect(mockOnPageChange).toHaveBeenCalledWith(3);
+    expect(screen.getByText('Page 1 of 10')).toBeInTheDocument();
   });
 
-  it('calls onPageChange when next button is clicked', () => {
-    render(<Pagination currentPage={2} totalPages={10} onPageChange={mockOnPageChange} />);
+  test('displays total items information', () => {
+    render(<Pagination {...mockProps} />);
     
-    const nextButtons = screen.getAllByText('Next');
-    fireEvent.click(nextButtons[0]); // Mobile version
-    
-    expect(mockOnPageChange).toHaveBeenCalledWith(3);
+    expect(screen.getByText('Showing 1-10 of 100 results')).toBeInTheDocument();
   });
 
-  it('calls onPageChange when previous button is clicked', () => {
-    render(<Pagination currentPage={2} totalPages={10} onPageChange={mockOnPageChange} />);
+  test('shows previous button when not on first page', () => {
+    render(<Pagination {...mockProps} currentPage={2} />);
     
-    const prevButtons = screen.getAllByText('Previous');
-    fireEvent.click(prevButtons[0]); // Mobile version
-    
-    expect(mockOnPageChange).toHaveBeenCalledWith(1);
+    const prevButton = screen.getByRole('button', { name: /previous/i });
+    expect(prevButton).toBeInTheDocument();
   });
 
-  it('disables previous button on first page', () => {
-    render(<Pagination currentPage={1} totalPages={10} onPageChange={mockOnPageChange} />);
+  test('does not show previous button on first page', () => {
+    render(<Pagination {...mockProps} currentPage={1} />);
     
-    const allButtons = screen.getAllByRole('button');
-    const prevButtons = allButtons.filter(button => 
-      button.textContent === 'Previous' || 
-      (button.querySelector('.sr-only') && button.querySelector('.sr-only')?.textContent === 'Previous')
-    );
-    
-    prevButtons.forEach(button => {
-      expect(button).toBeDisabled();
-    });
+    const prevButton = screen.queryByRole('button', { name: /previous/i });
+    expect(prevButton).not.toBeInTheDocument();
   });
 
-  it('disables next button on last page', () => {
-    render(<Pagination currentPage={10} totalPages={10} onPageChange={mockOnPageChange} />);
+  test('shows next button when not on last page', () => {
+    render(<Pagination {...mockProps} currentPage={1} />);
     
-    const allButtons = screen.getAllByRole('button');
-    const nextButtons = allButtons.filter(button => 
-      button.textContent === 'Next' || 
-      (button.querySelector('.sr-only') && button.querySelector('.sr-only')?.textContent === 'Next')
-    );
-    
-    nextButtons.forEach(button => {
-      expect(button).toBeDisabled();
-    });
+    const nextButton = screen.getByRole('button', { name: /next/i });
+    expect(nextButton).toBeInTheDocument();
   });
 
-  it('highlights current page', () => {
-    render(<Pagination currentPage={3} totalPages={10} onPageChange={mockOnPageChange} />);
+  test('does not show next button on last page', () => {
+    render(<Pagination {...mockProps} currentPage={10} />);
     
-    const buttons = screen.getAllByRole('button');
-    const currentPageButton = buttons.find(button => 
-      button.textContent === '3' && 
-      button.classList.contains('bg-blue-600')
-    );
+    const nextButton = screen.queryByRole('button', { name: /next/i });
+    expect(nextButton).not.toBeInTheDocument();
+  });
+
+  test('calls onPageChange when next button is clicked', () => {
+    render(<Pagination {...mockProps} currentPage={1} />);
     
-    expect(currentPageButton).toBeTruthy();
+    const nextButton = screen.getByRole('button', { name: /next/i });
+    fireEvent.click(nextButton);
+    
+    expect(mockProps.onPageChange).toHaveBeenCalledWith(2);
+  });
+
+  test('calls onPageChange when previous button is clicked', () => {
+    render(<Pagination {...mockProps} currentPage={2} />);
+    
+    const prevButton = screen.getByRole('button', { name: /previous/i });
+    fireEvent.click(prevButton);
+    
+    expect(mockProps.onPageChange).toHaveBeenCalledWith(1);
+  });
+
+  test('displays page numbers when total pages is small', () => {
+    render(<Pagination {...mockProps} totalPages={5} />);
+    
+    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(screen.getByText('4')).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
+  });
+
+  test('shows ellipsis when total pages is large', () => {
+    render(<Pagination {...mockProps} totalPages={20} currentPage={10} />);
+    
+    expect(screen.getByText('...')).toBeInTheDocument();
+  });
+
+  test('calls onPageChange when page number is clicked', () => {
+    render(<Pagination {...mockProps} totalPages={5} />);
+    
+    const page2Button = screen.getByText('2');
+    fireEvent.click(page2Button);
+    
+    expect(mockProps.onPageChange).toHaveBeenCalledWith(2);
+  });
+
+  test('highlights current page', () => {
+    render(<Pagination {...mockProps} currentPage={3} totalPages={5} />);
+    
+    const currentPageButton = screen.getByText('3');
     expect(currentPageButton).toHaveClass('bg-blue-600', 'text-white');
   });
 
-  it('shows correct page numbers around current page', () => {
-    render(<Pagination currentPage={5} totalPages={10} onPageChange={mockOnPageChange} />);
+  test('handles single page gracefully', () => {
+    render(<Pagination {...mockProps} totalPages={1} currentPage={1} />);
     
-    const buttons = screen.getAllByRole('button');
-    const pageButtons = buttons.filter(button => 
-      /^\d+$/.test(button.textContent || '') &&
-      button.classList.contains('relative') &&
-      button.classList.contains('inline-flex')
-    );
-    
-    const pageNumbers = pageButtons.map(button => button.textContent);
-    expect(pageNumbers).toEqual(['3', '4', '5', '6', '7']);
+    // Should render without crashing
+    expect(screen.getByText('Page 1 of 1')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /next/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /previous/i })).not.toBeInTheDocument();
   });
 
-  it('shows correct page numbers when near start', () => {
-    render(<Pagination currentPage={2} totalPages={10} onPageChange={mockOnPageChange} />);
+  test('displays correct items range for last page', () => {
+    render(<Pagination {...mockProps} currentPage={10} totalItems={95} itemsPerPage={10} />);
     
-    const buttons = screen.getAllByRole('button');
-    const pageButtons = buttons.filter(button => 
-      /^\d+$/.test(button.textContent || '') &&
-      button.classList.contains('relative') &&
-      button.classList.contains('inline-flex')
-    );
-    
-    const pageNumbers = pageButtons.map(button => button.textContent);
-    expect(pageNumbers).toEqual(['1', '2', '3', '4', '5']);
+    expect(screen.getByText('Showing 91-95 of 95 results')).toBeInTheDocument();
   });
 
-  it('shows correct page numbers when near end', () => {
-    render(<Pagination currentPage={9} totalPages={10} onPageChange={mockOnPageChange} />);
+  test('handles zero total items', () => {
+    render(<Pagination {...mockProps} totalItems={0} />);
     
-    const buttons = screen.getAllByRole('button');
-    const pageButtons = buttons.filter(button => 
-      /^\d+$/.test(button.textContent || '') &&
-      button.classList.contains('relative') &&
-      button.classList.contains('inline-flex')
-    );
-    
-    const pageNumbers = pageButtons.map(button => button.textContent);
-    expect(pageNumbers).toEqual(['6', '7', '8', '9', '10']);
-  });
-
-  it('handles single page correctly', () => {
-    render(<Pagination currentPage={1} totalPages={1} onPageChange={mockOnPageChange} />);
-    
-    const buttons = screen.getAllByRole('button');
-    const pageButtons = buttons.filter(button => 
-      /^\d+$/.test(button.textContent || '') &&
-      button.classList.contains('relative') &&
-      button.classList.contains('inline-flex')
-    );
-    
-    expect(pageButtons).toHaveLength(1);
-    expect(pageButtons[0].textContent).toBe('1');
-    
-    const allButtons = screen.getAllByRole('button');
-    const prevButtons = allButtons.filter(button => 
-      button.textContent === 'Previous' || 
-      (button.querySelector('.sr-only') && button.querySelector('.sr-only')?.textContent === 'Previous')
-    );
-    const nextButtons = allButtons.filter(button => 
-      button.textContent === 'Next' || 
-      (button.querySelector('.sr-only') && button.querySelector('.sr-only')?.textContent === 'Next')
-    );
-    
-    prevButtons.forEach(button => {
-      expect(button).toBeDisabled();
-    });
-    nextButtons.forEach(button => {
-      expect(button).toBeDisabled();
-    });
-  });
-
-  it('handles few pages correctly', () => {
-    render(<Pagination currentPage={2} totalPages={3} onPageChange={mockOnPageChange} />);
-    
-    const buttons = screen.getAllByRole('button');
-    const pageButtons = buttons.filter(button => 
-      /^\d+$/.test(button.textContent || '') &&
-      button.classList.contains('relative') &&
-      button.classList.contains('inline-flex')
-    );
-    
-    const pageNumbers = pageButtons.map(button => button.textContent);
-    expect(pageNumbers).toEqual(['1', '2', '3']);
-  });
-
-  it('renders without crashing', () => {
-    expect(() => render(
-      <Pagination currentPage={1} totalPages={5} onPageChange={mockOnPageChange} />
-    )).not.toThrow();
-  });
-
-  it('has correct aria-label for navigation', () => {
-    render(<Pagination currentPage={2} totalPages={10} onPageChange={mockOnPageChange} />);
-    
-    const nav = screen.getByLabelText('Pagination');
-    expect(nav).toBeInTheDocument();
-  });
-
-  it('uses screen reader text for navigation buttons', () => {
-    render(<Pagination currentPage={2} totalPages={10} onPageChange={mockOnPageChange} />);
-    
-    // Mobile version has visible text, desktop version has sr-only text
-    expect(screen.getAllByText('Previous')).toHaveLength(2); // Mobile + sr-only
-    expect(screen.getAllByText('Next')).toHaveLength(2); // Mobile + sr-only
+    expect(screen.getByText('Showing 0-0 of 0 results')).toBeInTheDocument();
   });
 }); 

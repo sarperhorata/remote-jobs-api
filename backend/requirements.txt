@@ -125,7 +125,7 @@ PyPDF2==3.0.1
 PySocks==1.7.1
 pytest==8.4.1
 pytest-asyncio==1.0.0
-pytest-cov==4.1.0
+pytest-cov==6.2.1
 pytest-dotenv==0.5.2
 pytest-json-report==1.5.0
 pytest-metadata==3.1.1

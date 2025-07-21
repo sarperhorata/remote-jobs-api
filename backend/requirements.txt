@@ -27,7 +27,7 @@ dnspython==2.7.0
 dparse==0.6.4
 ecdsa==0.19.1
 email_validator==2.2.0
-faiss-cpu==1.7.4
+faiss-cpu==1.11.0.post1
 fake-useragent==2.2.0
 fastapi==0.116.1
 fastapi-limiter==0.1.6

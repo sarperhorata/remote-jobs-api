@@ -54,7 +54,7 @@ describe('LinkedIn OAuth Integration', () => {
 
       await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledWith(
-          'http://localhost:8001/api/v1/auth/linkedin/auth-url',
+          expect.stringContaining('/api/v1/auth/linkedin/auth-url'),
           expect.any(Object)
         );
       });

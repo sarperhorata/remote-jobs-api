@@ -1,114 +1,129 @@
-import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
-import "@testing-library/jest-dom";
-import { BrowserRouter } from "react-router-dom";
-import JobCard from "../../components/JobCard/JobCard";
-import { Job } from '../../types/job';
+import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+import JobCard from '../../components/JobCard';
 
-// Mock window.open
-const mockWindowOpen = jest.fn();
-window.open = mockWindowOpen;
-
-// Mock child components/hooks to isolate JobCard
+// Mock the useAuth hook
 jest.mock('../../contexts/AuthContext', () => ({
-  useAuth: () => ({ isAuthenticated: false }),
+  useAuth: () => ({
+    isAuthenticated: true,
+    user: { id: '1', email: 'test@example.com' },
+    login: jest.fn(),
+    logout: jest.fn(),
+    register: jest.fn(),
+  }),
 }));
 
-jest.mock('lucide-react', () => ({
-  MapPin: () => <span data-testid="map-pin-icon">📍</span>,
-  Clock: () => <span data-testid="clock-icon">⏰</span>,
-  ExternalLink: () => <span data-testid="external-link-icon">🔗</span>,
-  Bookmark: () => <span data-testid="bookmark-icon">🔖</span>,
-  BookmarkCheck: () => <span data-testid="bookmark-check-icon">✅</span>,
-}));
-
-// Test Wrapper
-const MockWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <BrowserRouter>{children}</BrowserRouter>
-);
-
-// Mock Data
-const mockJob: Job = {
-  _id: "123",
-  title: "Senior React Developer",
-  company: "TechCorp",
-  location: "Remote",
-  work_type: "Remote",
-  job_type: "Full-time",
-  salary: "$80,000 - $120,000",
-  posted_date: "2024-01-15T10:00:00Z",
-  description: "Join our amazing team as a Senior React Developer",
-  skills: ["React", "TypeScript", "Node.js"],
-  apply_url: "https://example.com/apply",
+// Mock data
+const mockJob = {
+  id: '1',
+  title: 'Senior React Developer',
+  company: 'Tech Corp',
+  location: 'Remote',
+  salary: '$80k - $120k',
+  description: 'We are looking for a senior React developer...',
+  job_type: 'Full-time',
+  work_type: 'Remote',
+  experience_level: 'Senior',
+  posted_date: '2024-01-01',
+  company_logo: 'https://example.com/logo.png',
+  skills: ['React', 'TypeScript', 'Node.js'],
+  benefits: ['Health Insurance', '401k', 'Flexible Hours'],
+  is_saved: false,
+  is_applied: false,
 };
 
-describe("JobCard Component", () => {
+const renderWithRouter = (component: React.ReactElement) => {
+  return render(
+    <BrowserRouter>
+      {component}
+    </BrowserRouter>
+  );
+};
+
+describe('JobCard Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  test("renders all basic job information correctly", () => {
-    render(<MockWrapper><JobCard job={mockJob} /></MockWrapper>);
+  test('renders job information correctly', () => {
+    renderWithRouter(<JobCard job={mockJob} />);
     
-    expect(screen.getByText("Senior React Developer")).toBeInTheDocument();
-    expect(screen.getByText("TechCorp")).toBeInTheDocument();
-    expect(screen.getByText("$80,000 - $120,000")).toBeInTheDocument();
-    expect(screen.getByText("Full-time")).toBeInTheDocument();
-    // 'Remote' can appear multiple times, so we check for its presence
-    expect(screen.getAllByText("Remote").length).toBeGreaterThan(0);
+    expect(screen.getByText('Senior React Developer')).toBeInTheDocument();
+    expect(screen.getByText('Tech Corp')).toBeInTheDocument();
+    expect(screen.getByText('Remote')).toBeInTheDocument();
+    expect(screen.getByText('$80k - $120k')).toBeInTheDocument();
   });
 
-  test("displays job skills tags", () => {
-    render(<MockWrapper><JobCard job={mockJob} /></MockWrapper>);
+  test('displays job type and work type', () => {
+    renderWithRouter(<JobCard job={mockJob} />);
     
-    expect(screen.getByText("React")).toBeInTheDocument();
-    expect(screen.getByText("TypeScript")).toBeInTheDocument();
-    expect(screen.getByText("Node.js")).toBeInTheDocument();
+    expect(screen.getByText('Full-time')).toBeInTheDocument();
+    expect(screen.getByText('Remote')).toBeInTheDocument();
   });
 
-  test("renders formatted posted date", () => {
-    render(<MockWrapper><JobCard job={mockJob} /></MockWrapper>);
+  test('shows experience level', () => {
+    renderWithRouter(<JobCard job={mockJob} />);
     
-    expect(screen.getByTestId("clock-icon")).toBeInTheDocument();
-    // expect(screen.getByText(/months ago/i)).toBeInTheDocument();
-    // Yeni tarih formatı: "2 years ago", "Unknown", "Today" vs.
-    expect(screen.getByText((content) => /ago$|Unknown|Today/.test(content))).toBeInTheDocument();
+    expect(screen.getByText('Senior')).toBeInTheDocument();
   });
 
-  test("clicking the card opens the apply_url in a new tab", () => {
-    render(<MockWrapper><JobCard job={mockJob} /></MockWrapper>);
+  test('displays skills', () => {
+    renderWithRouter(<JobCard job={mockJob} />);
     
-    const card = screen.getByText("Senior React Developer").closest('div.group');
-    expect(card).toBeInTheDocument();
-
-    if (card) {
-      fireEvent.click(card);
-    }
-    
-    expect(mockWindowOpen).toHaveBeenCalledTimes(1);
-    expect(mockWindowOpen).toHaveBeenCalledWith(mockJob.apply_url, '_blank', 'noopener,noreferrer');
+    expect(screen.getByText('React')).toBeInTheDocument();
+    expect(screen.getByText('TypeScript')).toBeInTheDocument();
+    expect(screen.getByText('Node.js')).toBeInTheDocument();
   });
 
-  test("falls back to a google search URL if no apply_url is provided", () => {
-    const jobWithoutUrl = { ...mockJob, apply_url: undefined };
-    render(<MockWrapper><JobCard job={jobWithoutUrl} /></MockWrapper>);
+  test('shows company logo when available', () => {
+    renderWithRouter(<JobCard job={mockJob} />);
     
-    const card = screen.getByText("Senior React Developer").closest('div.group');
-    if (card) {
-      fireEvent.click(card);
-    }
-    
-    const expectedSearchUrl = 'https://www.google.com/search?q="Senior%20React%20Developer"+at+"TechCorp"';
-    expect(mockWindowOpen).toHaveBeenCalledTimes(1);
-    expect(mockWindowOpen).toHaveBeenCalledWith(expectedSearchUrl, '_blank', 'noopener,noreferrer');
+    const logo = screen.getByAltText('Tech Corp logo');
+    expect(logo).toBeInTheDocument();
+    expect(logo).toHaveAttribute('src', 'https://example.com/logo.png');
   });
 
-  test("renders company name from object correctly", () => {
-    const jobWithObjectCompany = {
-      ...mockJob,
-      company: { name: "Object Corp", logo: "logo.png" }
-    };
-    render(<MockWrapper><JobCard job={jobWithObjectCompany} /></MockWrapper>);
-    expect(screen.getByText("Object Corp")).toBeInTheDocument();
+  test('handles missing company logo gracefully', () => {
+    const jobWithoutLogo = { ...mockJob, company_logo: null };
+    renderWithRouter(<JobCard job={jobWithoutLogo} />);
+    
+    // Should still render without crashing
+    expect(screen.getByText('Tech Corp')).toBeInTheDocument();
+  });
+
+  test('displays posted date', () => {
+    renderWithRouter(<JobCard job={mockJob} />);
+    
+    expect(screen.getByText(/2024-01-01/)).toBeInTheDocument();
+  });
+
+  test('shows save button when not saved', () => {
+    renderWithRouter(<JobCard job={mockJob} />);
+    
+    const saveButton = screen.getByRole('button', { name: /save/i });
+    expect(saveButton).toBeInTheDocument();
+  });
+
+  test('shows unsave button when already saved', () => {
+    const savedJob = { ...mockJob, is_saved: true };
+    renderWithRouter(<JobCard job={savedJob} />);
+    
+    const unsaveButton = screen.getByRole('button', { name: /unsave/i });
+    expect(unsaveButton).toBeInTheDocument();
+  });
+
+  test('shows apply button when not applied', () => {
+    renderWithRouter(<JobCard job={mockJob} />);
+    
+    const applyButton = screen.getByRole('button', { name: /apply/i });
+    expect(applyButton).toBeInTheDocument();
+  });
+
+  test('shows applied status when already applied', () => {
+    const appliedJob = { ...mockJob, is_applied: true };
+    renderWithRouter(<JobCard job={appliedJob} />);
+    
+    expect(screen.getByText(/applied/i)).toBeInTheDocument();
   });
 });

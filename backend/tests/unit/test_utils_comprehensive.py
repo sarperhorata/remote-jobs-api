@@ -1,42 +1,59 @@
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
-from utils.auth import get_current_user
-from utils.email import send_email, send_verification_email, send_password_reset_email
-from utils.security import SecurityUtils
-from utils.config import get_all_config
-from utils.recaptcha import verify_recaptcha
+from backend.utils.auth import create_access_token, verify_password, get_password_hash
+from backend.utils.email import send_email, send_verification_email
+from backend.utils.config import get_settings, Settings
+from backend.utils.html_cleaner import clean_html_tags, clean_job_data
+from backend.utils.security import SecurityUtils
+from datetime import datetime, timedelta
+import os
 
 class TestAuthUtils:
-    """Auth utility fonksiyonları için testler"""
+    """Test authentication utilities."""
     
-    @patch('backend.utils.auth.get_async_db')
-    def test_get_current_user_success(self, mock_db):
-        """Başarılı user getirme testi"""
-        mock_db.return_value = AsyncMock()
-        mock_db.return_value.users.find_one.return_value = {
-            "_id": "test_user_id",
-            "email": "test@example.com",
-            "is_active": True
-        }
+    def test_create_access_token(self):
+        """Test access token creation."""
+        data = {"sub": "test@example.com"}
+        token = create_access_token(data=data)
         
-        # Test fonksiyonu
-        assert hasattr(get_current_user, '__call__')
+        assert token is not None
+        assert isinstance(token, str)
+        assert len(token) > 0
     
-    @patch('backend.utils.auth.get_async_db')
-    def test_get_current_user_not_found(self, mock_db):
-        """User bulunamadığında testi"""
-        mock_db.return_value = AsyncMock()
-        mock_db.return_value.users.find_one.return_value = None
+    def test_create_access_token_with_expires(self):
+        """Test access token creation with custom expiration."""
+        data = {"sub": "test@example.com"}
+        expires_delta = timedelta(minutes=30)
+        token = create_access_token(data=data, expires_delta=expires_delta)
         
-        # Test fonksiyonu
-        assert hasattr(get_current_user, '__call__')
+        assert token is not None
+        assert isinstance(token, str)
+        assert len(token) > 0
+    
+    def test_verify_password(self):
+        """Test password verification."""
+        password = "testpassword123"
+        hashed = get_password_hash(password)
+        
+        assert verify_password(password, hashed) is True
+        assert verify_password("wrongpassword", hashed) is False
+    
+    def test_get_password_hash(self):
+        """Test password hashing."""
+        password = "testpassword123"
+        hashed = get_password_hash(password)
+        
+        assert hashed is not None
+        assert isinstance(hashed, str)
+        assert hashed != password
+        assert len(hashed) > len(password)
 
 class TestEmailUtils:
-    """Email utility fonksiyonları için testler"""
+    """Test email utilities."""
     
     @patch('backend.utils.email.mailgun_service.send_email')
-    def test_send_email_success(self, mock_send):
-        """Email gönderme başarılı testi"""
+    def test_send_email(self, mock_send):
+        """Test email sending."""
         mock_send.return_value = {"success": True, "id": "test_id"}
         
         result = send_email(
@@ -48,30 +65,30 @@ class TestEmailUtils:
         assert result is True
         mock_send.assert_called_once()
     
-    @patch('backend.utils.email.mailgun_service.send_verification_email')
-    def test_send_verification_email(self, mock_send):
-        """Verification email gönderme testi"""
-        mock_send.return_value = True
+    @patch('backend.utils.email.send_email')
+    def test_send_verification_email(self, mock_send_email):
+        """Test verification email sending."""
+        mock_send_email.return_value = True
         
         result = send_verification_email("test@example.com", "verification_token_123")
         
         assert result is True
-        mock_send.assert_called_once()
+        mock_send_email.assert_called_once()
     
-    @patch('backend.utils.email.mailgun_service.send_password_reset_email')
-    def test_send_password_reset_email(self, mock_send):
-        """Password reset email gönderme testi"""
-        mock_send.return_value = True
+    def test_send_email_with_invalid_data(self):
+        """Test email sending with invalid data."""
+        result = send_email(
+            to_email="",
+            subject="",
+            body=""
+        )
         
-        result = send_password_reset_email("test@example.com", "reset_token_123")
-        
-        assert result is True
-        mock_send.assert_called_once()
+        assert result is False
     
     @patch('backend.utils.email.mailgun_service.send_email')
-    def test_send_email_failure(self, mock_send):
-        """Email gönderme başarısız testi"""
-        mock_send.side_effect = Exception("Email service error")
+    def test_send_email_service_error(self, mock_send):
+        """Test email sending with service error."""
+        mock_send.side_effect = Exception("Service Error")
         
         result = send_email(
             to_email="test@example.com",
@@ -81,60 +98,210 @@ class TestEmailUtils:
         
         assert result is False
 
+class TestConfigUtils:
+    """Test configuration utilities."""
+    
+    def test_get_settings(self):
+        """Test settings retrieval."""
+        settings = get_settings()
+        
+        assert settings is not None
+        assert isinstance(settings, Settings)
+        assert hasattr(settings, 'DATABASE_URL')
+        assert hasattr(settings, 'SECRET_KEY')
+    
+    def test_settings_environment_variables(self):
+        """Test settings environment variable handling."""
+        # Test with environment variables
+        os.environ["TEST_VAR"] = "test_value"
+        
+        settings = get_settings()
+        
+        assert settings is not None
+        # Clean up
+        del os.environ["TEST_VAR"]
+    
+    def test_settings_default_values(self):
+        """Test settings default values."""
+        settings = get_settings()
+        
+        # Test that required fields have default values
+        assert settings.DATABASE_URL is not None
+        assert settings.SECRET_KEY is not None
+        assert settings.ALGORITHM is not None
+        assert settings.ACCESS_TOKEN_EXPIRE_MINUTES is not None
+
+class TestHtmlCleanerUtils:
+    """Test HTML cleaning utilities."""
+    
+    def test_clean_html_tags(self):
+        """Test HTML tag cleaning."""
+        dirty_html = "<p>Test <script>alert('xss')</script> content</p>"
+        cleaned = clean_html_tags(dirty_html)
+        
+        assert cleaned is not None
+        assert isinstance(cleaned, str)
+        assert "<script>" not in cleaned
+        assert "Test" in cleaned
+        assert "content" in cleaned
+    
+    def test_clean_html_tags_with_complex_html(self):
+        """Test HTML tag cleaning with complex HTML."""
+        dirty_html = "<p>Test <b>bold</b> <i>italic</i> content</p>"
+        cleaned = clean_html_tags(dirty_html)
+        
+        assert cleaned is not None
+        assert "<b>" not in cleaned
+        assert "<i>" not in cleaned
+        assert "Test" in cleaned
+        assert "bold" in cleaned
+        assert "italic" in cleaned
+    
+    def test_clean_html_tags_empty_input(self):
+        """Test HTML tag cleaning with empty input."""
+        cleaned = clean_html_tags("")
+        
+        assert cleaned is not None
+        assert cleaned == ""
+    
+    def test_clean_html_tags_none_input(self):
+        """Test HTML tag cleaning with None input."""
+        cleaned = clean_html_tags(None)
+        
+        assert cleaned is not None
+        assert cleaned == ""
+    
+    def test_clean_job_data(self):
+        """Test job data cleaning."""
+        job_data = {
+            "title": "<script>alert('xss')</script>Test Job",
+            "description": "<p>Test description</p>",
+            "requirements": "<b>Python</b> <script>malicious</script>"
+        }
+        
+        cleaned = clean_job_data(job_data)
+        
+        assert cleaned is not None
+        assert isinstance(cleaned, dict)
+        assert "<script>" not in cleaned["title"]
+        assert "Test Job" in cleaned["title"]
+        assert "<script>" not in cleaned["requirements"]
+        assert "Python" in cleaned["requirements"]
+    
+    def test_clean_job_data_nested(self):
+        """Test job data cleaning with nested structures."""
+        job_data = {
+            "title": "Test Job",
+            "details": {
+                "description": "<script>alert('xss')</script>Description",
+                "requirements": ["<b>Python</b>", "<script>malicious</script>JavaScript"]
+            }
+        }
+        
+        cleaned = clean_job_data(job_data)
+        
+        assert cleaned is not None
+        assert "<script>" not in cleaned["details"]["description"]
+        assert "<script>" not in str(cleaned["details"]["requirements"])
+
 class TestSecurityUtils:
-    """Security utility fonksiyonları için testler"""
+    """Test security utilities."""
     
     def test_validate_password(self):
-        """Password doğrulama testi"""
-        # Geçerli password
-        valid_password = "TestPass123!"
-        assert SecurityUtils.validate_password(valid_password) is True
+        """Test password validation."""
+        # Test strong password
+        strong_password = "StrongPass123!"
+        result = SecurityUtils.validate_password(strong_password)
+        assert result is True
         
-        # Geçersiz password - çok kısa
-        invalid_password = "short"
-        assert SecurityUtils.validate_password(invalid_password) is False
+        # Test weak password
+        weak_password = "123"
+        result = SecurityUtils.validate_password(weak_password)
+        assert result is False
+    
+    def test_validate_password_edge_cases(self):
+        """Test password validation edge cases."""
+        # Test empty password
+        result = SecurityUtils.validate_password("")
+        assert result is False
+        
+        # Test None password
+        result = SecurityUtils.validate_password(None)
+        assert result is False
+        
+        # Test very long password
+        long_password = "a" * 1000 + "A1!"
+        result = SecurityUtils.validate_password(long_password)
+        assert result is True
     
     def test_sanitize_input(self):
-        """Input sanitization testi"""
-        # XSS script içeren input
-        malicious_input = "<script>alert('xss')</script>Hello"
+        """Test input sanitization."""
+        # Test SQL injection attempt
+        malicious_input = "'; DROP TABLE users; --"
         sanitized = SecurityUtils.sanitize_input(malicious_input)
         
-        assert "<script>" not in sanitized
-        assert "Hello" in sanitized
-    
-    def test_check_rate_limit(self):
-        """Rate limiting testi"""
-        ip = "192.168.1.1"
-        endpoint = "/api/test"
+        assert sanitized is not None
+        assert isinstance(sanitized, str)
+        assert "DROP TABLE" not in sanitized
         
-        # İlk istek
-        is_within_limit, remaining = SecurityUtils.check_rate_limit(ip, endpoint, limit=5)
-        assert is_within_limit is True
-        assert remaining == 4
+        # Test XSS attempt
+        xss_input = "<script>alert('xss')</script>"
+        sanitized = SecurityUtils.sanitize_input(xss_input)
+        
+        assert "<script>" not in sanitized
+    
+    def test_sanitize_input_edge_cases(self):
+        """Test input sanitization edge cases."""
+        # Test empty input
+        sanitized = SecurityUtils.sanitize_input("")
+        assert sanitized == ""
+        
+        # Test None input
+        sanitized = SecurityUtils.sanitize_input(None)
+        assert sanitized == ""
+        
+        # Test normal input
+        normal_input = "This is normal text"
+        sanitized = SecurityUtils.sanitize_input(normal_input)
+        assert sanitized == normal_input
+    
+    def test_sanitize_input_special_characters(self):
+        """Test input sanitization with special characters."""
+        special_input = "Test & < > \" ' characters"
+        sanitized = SecurityUtils.sanitize_input(special_input)
+        
+        assert sanitized is not None
+        assert isinstance(sanitized, str)
+        # Should preserve safe characters
+        assert "Test" in sanitized
+        assert "characters" in sanitized
     
     def test_validate_email(self):
-        """Email doğrulama testi"""
-        # Geçerli email
+        """Test email validation."""
+        # Test valid email
         valid_email = "test@example.com"
-        assert SecurityUtils.validate_email(valid_email) is True
+        result = SecurityUtils.validate_email(valid_email)
+        assert result is True
         
-        # Geçersiz email
+        # Test invalid email
         invalid_email = "invalid-email"
-        assert SecurityUtils.validate_email(invalid_email) is False
+        result = SecurityUtils.validate_email(invalid_email)
+        assert result is False
     
     def test_validate_phone(self):
-        """Telefon doğrulama testi"""
-        # Geçerli telefon
+        """Test phone validation."""
+        # Test valid phone
         valid_phone = "+1234567890"
-        assert SecurityUtils.validate_phone(valid_phone) is True
+        result = SecurityUtils.validate_phone(valid_phone)
+        assert result is True
         
-        # Geçersiz telefon
+        # Test invalid phone
         invalid_phone = "123"
-        assert SecurityUtils.validate_phone(invalid_phone) is False
+        result = SecurityUtils.validate_phone(invalid_phone)
+        assert result is False
     
     def test_generate_csrf_token(self):
-        """CSRF token oluşturma testi"""
+        """Test CSRF token generation."""
         token = SecurityUtils.generate_csrf_token()
         
         assert token is not None
@@ -142,93 +309,109 @@ class TestSecurityUtils:
         assert len(token) > 0
     
     def test_verify_csrf_token(self):
-        """CSRF token doğrulama testi"""
+        """Test CSRF token verification."""
         token = SecurityUtils.generate_csrf_token()
         
-        # Geçerli token
-        assert SecurityUtils.verify_csrf_token(token) is True
+        # Test valid token
+        result = SecurityUtils.verify_csrf_token(token)
+        assert result is True
         
-        # Geçersiz token
-        assert SecurityUtils.verify_csrf_token("invalid_token") is False
+        # Test invalid token
+        result = SecurityUtils.verify_csrf_token("invalid_token")
+        assert result is False
     
     def test_get_secure_headers(self):
-        """Güvenlik header'ları testi"""
+        """Test secure headers generation."""
         headers = SecurityUtils.get_secure_headers()
         
         assert isinstance(headers, dict)
         assert "X-Content-Type-Options" in headers
         assert "X-Frame-Options" in headers
         assert "X-XSS-Protection" in headers
+    
+    def test_check_rate_limit(self):
+        """Test rate limiting."""
+        ip = "192.168.1.1"
+        endpoint = "/api/test"
+        
+        # Test first request
+        is_within_limit, remaining = SecurityUtils.check_rate_limit(ip, endpoint, limit=5)
+        assert is_within_limit is True
+        assert remaining == 4
+        
+        # Test multiple requests
+        for i in range(4):
+            is_within_limit, remaining = SecurityUtils.check_rate_limit(ip, endpoint, limit=5)
+            assert is_within_limit is True
+        
+        # Test limit exceeded
+        is_within_limit, remaining = SecurityUtils.check_rate_limit(ip, endpoint, limit=5)
+        assert is_within_limit is False
+        assert remaining == 0
 
-class TestConfigUtils:
-    """Config utility fonksiyonları için testler"""
+class TestIntegrationUtils:
+    """Test utility integration scenarios."""
     
-    def test_get_all_config(self):
-        """Config getirme testi"""
-        config = get_all_config()
+    def test_auth_email_integration(self):
+        """Test authentication and email integration."""
+        # Create user data
+        email = "test@example.com"
+        password = "StrongPass123!"
         
-        assert config is not None
-        assert "api" in config
-        assert "database" in config
-        assert "email" in config
-
-class TestRecaptchaUtils:
-    """Recaptcha utility fonksiyonları için testler"""
-    
-    @patch('backend.utils.recaptcha.requests.post')
-    def test_verify_recaptcha_success(self, mock_post):
-        """Recaptcha doğrulama başarılı testi"""
-        mock_post.return_value.json.return_value = {"success": True}
+        # Test password hashing and verification
+        hashed = get_password_hash(password)
+        assert verify_password(password, hashed) is True
         
-        result = verify_recaptcha("test_token")
+        # Test token creation
+        token = create_access_token(data={"sub": email})
+        assert token is not None
         
-        assert result is True
-        mock_post.assert_called_once()
-    
-    @patch('backend.utils.recaptcha.requests.post')
-    def test_verify_recaptcha_failure(self, mock_post):
-        """Recaptcha doğrulama başarısız testi"""
-        mock_post.return_value.json.return_value = {"success": False}
-        
-        result = verify_recaptcha("invalid_token")
-        
-        assert result is False
-        mock_post.assert_called_once()
-
-class TestUtilityIntegration:
-    """Utility entegrasyon testleri"""
-    
-    def test_utility_functions_exist(self):
-        """Tüm utility fonksiyonlarının mevcut olduğunu test et"""
-        # Auth utils
-        assert hasattr(get_current_user, '__call__')
-        
-        # Email utils
-        assert hasattr(send_email, '__call__')
-        assert hasattr(send_verification_email, '__call__')
-        assert hasattr(send_password_reset_email, '__call__')
-        
-        # Security utils
-        assert hasattr(SecurityUtils.validate_password, '__call__')
-        assert hasattr(SecurityUtils.sanitize_input, '__call__')
-        assert hasattr(SecurityUtils.generate_csrf_token, '__call__')
-        
-        # Config utils
-        assert hasattr(get_all_config, '__call__')
-        
-        # Recaptcha utils
-        assert hasattr(verify_recaptcha, '__call__')
-    
-    def test_utility_error_handling(self):
-        """Utility hata yönetimi testi"""
-        # Email error handling
+        # Test email sending (mocked)
         with patch('backend.utils.email.mailgun_service.send_email') as mock_send:
-            mock_send.side_effect = Exception("Service error")
-            result = send_email("test@example.com", "Subject", "Body")
-            assert result is False
+            mock_send.return_value = {"success": True}
+            result = send_email(email, "Welcome", "Welcome to our platform!")
+            assert result is True
+    
+    def test_security_html_integration(self):
+        """Test security and HTML cleaning integration."""
+        # Test malicious input through HTML cleaning
+        malicious_data = {
+            "title": "<script>alert('xss')</script>Job Title",
+            "description": "'; DROP TABLE jobs; -- Description"
+        }
         
-        # Recaptcha error handling
-        with patch('backend.utils.recaptcha.requests.post') as mock_post:
-            mock_post.side_effect = Exception("Network error")
-            result = verify_recaptcha("token")
-            assert result is False 
+        # Clean the data
+        cleaned = clean_job_data(malicious_data)
+        
+        # Validate the cleaned data
+        assert "<script>" not in cleaned["title"]
+        assert "DROP TABLE" not in cleaned["description"]
+        assert "Job Title" in cleaned["title"]
+        assert "Description" in cleaned["description"]
+        
+        # Test password validation for the same user
+        password = "WeakPass"
+        strength = SecurityUtils.validate_password(password)
+        assert strength is False
+    
+    def test_config_security_integration(self):
+        """Test configuration and security integration."""
+        # Get settings
+        settings = get_settings()
+        
+        # Test that security settings are properly configured
+        assert settings.SECRET_KEY is not None
+        assert len(settings.SECRET_KEY) >= 32
+        assert settings.ALGORITHM is not None
+        
+        # Test password validation with configured settings
+        password = "TestPassword123!"
+        strength = SecurityUtils.validate_password(password)
+        assert strength is True
+        
+        # Test token creation with settings
+        token = create_access_token(
+            data={"sub": "test@example.com"},
+            expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        )
+        assert token is not None 

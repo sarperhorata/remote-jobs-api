@@ -66,7 +66,7 @@ def db_mock():
     """
     db = MagicMock()
     
-    # Create mock collections
+    # Create mock collections with AsyncMock for async methods
     db.users = MagicMock()
     db.jobs = MagicMock()
     db.companies = MagicMock()
@@ -81,40 +81,44 @@ def db_mock():
     db.test_concurrent = MagicMock()
     
     # Default return values for common methods
-    db.users.find_one.return_value = None
-    db.jobs.find_one.return_value = None
-    db.companies.find_one.return_value = None
-    db.user_activities.find_one.return_value = None
-    db.user_sessions.find_one.return_value = None
+    db.users.find_one = AsyncMock(return_value=None)
+    db.jobs.find_one = AsyncMock(return_value=None)
+    db.companies.find_one = AsyncMock(return_value=None)
+    db.user_activities.find_one = AsyncMock(return_value=None)
+    db.user_sessions.find_one = AsyncMock(return_value=None)
     
-    # Mock collection methods
+    # Mock collection methods with AsyncMock for async operations
     for collection in [db.users, db.jobs, db.companies, db.user_activities, 
                       db.user_sessions, db.activity_summaries, db.crawl_errors,
                       db.service_logs, db.ads, db.notifications]:
-        collection.insert_one = MagicMock()
-        collection.insert_many = MagicMock()
-        collection.update_one = MagicMock()
-        collection.update_many = MagicMock()
-        collection.delete_one = MagicMock()
-        collection.delete_many = MagicMock()
+        collection.insert_one = AsyncMock()
+        collection.insert_many = AsyncMock()
+        collection.update_one = AsyncMock()
+        collection.update_many = AsyncMock()
+        collection.delete_one = AsyncMock()
+        collection.delete_many = AsyncMock()
         collection.find = MagicMock()
-        collection.find_one = MagicMock()
-        collection.count_documents = MagicMock()
+        collection.find_one = AsyncMock()
+        collection.count_documents = AsyncMock()
         collection.aggregate = MagicMock()
-        collection.create_index = MagicMock()
-        collection.drop = MagicMock()
+        collection.create_index = AsyncMock()
+        collection.drop = AsyncMock()
     
     return db
 
 @pytest.fixture(autouse=True)
 def override_db(db_mock):
     """
-    Automatically override the `get_database` dependency for all tests
+    Automatically override the database dependencies for all tests
     to use the mock database.
     """
+    async def _override_get_async_db():
+        return db_mock
+
     def _override_get_db():
         return db_mock
 
+    app.dependency_overrides[get_async_db] = _override_get_async_db
     app.dependency_overrides[get_db] = _override_get_db
     yield
     app.dependency_overrides.clear()

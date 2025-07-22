@@ -16,26 +16,46 @@ logger = logging.getLogger(__name__)
 # Global client instance
 _client: Optional[AsyncIOMotorClient] = None
 
+def is_test_environment():
+    """Check if we're in a test environment."""
+    return (
+        os.getenv("PYTEST_CURRENT_TEST") or 
+        os.getenv("TESTING") or 
+        os.getenv("ENVIRONMENT") == "test"
+    )
+
 async def get_database_client() -> AsyncIOMotorClient:
     """Get MongoDB client instance."""
     global _client
     
     if _client is None:
         try:
-            if os.getenv("PYTEST_CURRENT_TEST"):
+            if is_test_environment():
                 # Use mongomock for testing
                 try:
                     import mongomock_motor
                     _client = mongomock_motor.AsyncMongoMockClient()
-                    logger.info("Using mongomock for testing")
+                    logger.info("✅ Using mongomock for testing")
                 except ImportError:
-                    _client = AsyncIOMotorClient(MONGODB_URI)
-                    logger.info("Using real MongoDB client for testing")
+                    # Fallback to regular mongomock if mongomock_motor not available
+                    try:
+                        import mongomock
+                        _client = mongomock.MongoClient()
+                        logger.info("✅ Using mongomock fallback for testing")
+                    except ImportError:
+                        # Last resort: use real client but with shorter timeouts
+                        _client = AsyncIOMotorClient(
+                            MONGODB_URI,
+                            serverSelectionTimeoutMS=1000,
+                            connectTimeoutMS=1000,
+                            socketTimeoutMS=1000
+                        )
+                        logger.warning("⚠️ Using real MongoDB client with short timeouts for testing")
             else:
                 _client = AsyncIOMotorClient(MONGODB_URI)
-                logger.info("Using real MongoDB client")
+                logger.info("✅ Using real MongoDB client")
         except Exception as e:
-            logger.error(f"Failed to connect to MongoDB: {e}")
+            logger.error(f"❌ Failed to connect to MongoDB: {e}")
             raise
     
     return _client

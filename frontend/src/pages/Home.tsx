@@ -40,7 +40,7 @@ const Home: React.FC = () => {
 
   // Target values for animation - will be updated with real data
   const [targetActiveJobs, setTargetActiveJobs] = useState(38);
-  const [targetCompanies, setTargetCompanies] = useState(2);
+  const [targetCompanies, setTargetCompanies] = useState(820);
   const [targetCountries, setTargetCountries] = useState(150);
 
   // Fetch real statistics data

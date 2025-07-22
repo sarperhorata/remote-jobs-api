@@ -1,13 +1,4 @@
-import { 
-  searchJobs, 
-  getJobById, 
-  getJobsByCompany, 
-  getSavedJobs,
-  saveJob,
-  unsaveJob,
-  applyToJob,
-  getJobRecommendations
-} from '../../services/jobService';
+import { jobService } from '../../services/jobService';
 
 // Mock fetch
 const mockFetch = jest.fn();
@@ -61,7 +52,7 @@ describe('jobService', () => {
         workType: 'remote'
       };
 
-      const result = await searchJobs(filters, 1);
+      const result = await jobService.searchJobs(filters);
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/jobs/search'),
@@ -83,13 +74,13 @@ describe('jobService', () => {
         json: async () => ({ detail: 'Internal server error' })
       });
 
-      await expect(searchJobs({}, 1)).rejects.toThrow('Internal server error');
+      await expect(jobService.searchJobs({})).rejects.toThrow('Internal server error');
     });
 
     test('handles network error', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
-      await expect(searchJobs({}, 1)).rejects.toThrow('Network error');
+      await expect(jobService.searchJobs({})).rejects.toThrow('Network error');
     });
   });
 
@@ -111,7 +102,7 @@ describe('jobService', () => {
         json: async () => mockJob
       });
 
-      const result = await getJobById('1');
+      const result = await jobService.getJobById('1');
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/jobs/1'),
@@ -133,7 +124,7 @@ describe('jobService', () => {
         json: async () => ({ detail: 'Job not found' })
       });
 
-      await expect(getJobById('999')).rejects.toThrow('Job not found');
+      await expect(jobService.getJobById('999')).rejects.toThrow('Job not found');
     });
   });
 
@@ -162,7 +153,7 @@ describe('jobService', () => {
         json: async () => mockResponse
       });
 
-      const result = await getJobsByCompany('tech-corp');
+      const result = await jobService.getJobsByCompany('tech-corp');
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/companies/tech-corp/jobs'),
@@ -184,7 +175,7 @@ describe('jobService', () => {
         json: async () => ({ detail: 'Company not found' })
       });
 
-      await expect(getJobsByCompany('nonexistent')).rejects.toThrow('Company not found');
+      await expect(jobService.getJobsByCompany('nonexistent')).rejects.toThrow('Company not found');
     });
   });
 
@@ -209,7 +200,7 @@ describe('jobService', () => {
         json: async () => mockResponse
       });
 
-      const result = await getSavedJobs();
+      const result = await jobService.getSavedJobs();
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/jobs/saved'),
@@ -231,7 +222,7 @@ describe('jobService', () => {
         json: async () => ({ detail: 'Unauthorized' })
       });
 
-      await expect(getSavedJobs()).rejects.toThrow('Unauthorized');
+      await expect(jobService.getSavedJobs()).rejects.toThrow('Unauthorized');
     });
   });
 
@@ -247,7 +238,7 @@ describe('jobService', () => {
         json: async () => mockResponse
       });
 
-      const result = await saveJob('1');
+      const result = await jobService.saveJob('1');
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/jobs/1/save'),
@@ -269,7 +260,7 @@ describe('jobService', () => {
         json: async () => ({ detail: 'Job already saved' })
       });
 
-      await expect(saveJob('1')).rejects.toThrow('Job already saved');
+      await expect(jobService.saveJob('1')).rejects.toThrow('Job already saved');
     });
   });
 
@@ -285,7 +276,7 @@ describe('jobService', () => {
         json: async () => mockResponse
       });
 
-      const result = await unsaveJob('1');
+      const result = await jobService.unsaveJob('user1', '1');
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/jobs/1/unsave'),
@@ -307,7 +298,7 @@ describe('jobService', () => {
         json: async () => ({ detail: 'Job not found in saved jobs' })
       });
 
-      await expect(unsaveJob('1')).rejects.toThrow('Job not found in saved jobs');
+      await expect(jobService.unsaveJob('user1', '1')).rejects.toThrow('Job not found in saved jobs');
     });
   });
 
@@ -328,7 +319,7 @@ describe('jobService', () => {
         resume_url: 'https://example.com/resume.pdf'
       };
 
-      const result = await applyToJob('1', applicationData);
+      const result = await jobService.applyToJob('1', applicationData);
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/jobs/1/apply'),
@@ -352,7 +343,7 @@ describe('jobService', () => {
         json: async () => ({ detail: 'Already applied to this job' })
       });
 
-      await expect(applyToJob('1', {})).rejects.toThrow('Already applied to this job');
+      await expect(jobService.applyToJob('1', {})).rejects.toThrow('Already applied to this job');
     });
   });
 
@@ -378,7 +369,7 @@ describe('jobService', () => {
         json: async () => mockResponse
       });
 
-      const result = await getJobRecommendations();
+      const result = await jobService.getJobRecommendations();
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/jobs/recommendations'),
@@ -399,7 +390,7 @@ describe('jobService', () => {
         json: async () => ({ jobs: [], total: 0 })
       });
 
-      const result = await getJobRecommendations();
+      const result = await jobService.getJobRecommendations();
 
       expect(result.jobs).toEqual([]);
       expect(result.total).toBe(0);

@@ -183,7 +183,8 @@ def format_sentry_message(event_data: Dict[str, Any]) -> str:
         try:
             dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
             timestamp_str = dt.strftime('%Y-%m-%d %H:%M:%S UTC')
-        except:
+        except Exception as e:
+            logger.warning(f"Failed to parse timestamp '{timestamp}': {e}")
             timestamp_str = timestamp
     else:
         timestamp_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')

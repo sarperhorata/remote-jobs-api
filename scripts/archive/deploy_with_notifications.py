@@ -12,11 +12,17 @@ from service_notifications import ServiceNotifier
 def run_command(command, capture_output=True):
     """Run a shell command and return the result"""
     try:
+        # Split command into list to avoid shell=True
+        if isinstance(command, str):
+            cmd_list = command.split()
+        else:
+            cmd_list = command
+            
         if capture_output:
-            result = subprocess.run(command, shell=True, capture_output=True, text=True)
+            result = subprocess.run(cmd_list, shell=False, capture_output=True, text=True)
             return result.returncode == 0, result.stdout, result.stderr
         else:
-            result = subprocess.run(command, shell=True)
+            result = subprocess.run(cmd_list, shell=False)
             return result.returncode == 0, "", ""
     except Exception as e:
         return False, "", str(e)

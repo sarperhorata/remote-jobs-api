@@ -21,7 +21,7 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 
 # Initialize Sentry for error monitoring
 sentry_sdk.init(
-    dsn=os.getenv("SENTRY_DSN", "https://e307d92640eb7e8b60a7ebabf76db882@o4509547047616512.ingest.us.sentry.io/4509547146575872"),
+    dsn=os.getenv("SENTRY_DSN", ""),
     traces_sample_rate=0.2,  # 20% of transactions for performance monitoring
     profiles_sample_rate=0.2, # 20% of profiles for performance monitoring
     environment=os.getenv("ENVIRONMENT", "development"), # 'development' or 'production'

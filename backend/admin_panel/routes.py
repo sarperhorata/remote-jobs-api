@@ -526,8 +526,12 @@ async def admin_login(request: Request):
         
         logger.info(f"Admin login attempt - Username: '{username}', Password: '{password}'")
         
-        # Simple hardcoded check for testing
-        if username == "admin" and password == "buzz2remote2024":
+        # Get admin credentials from environment
+        admin_username = os.getenv("ADMIN_USERNAME", "admin")
+        admin_password = os.getenv("ADMIN_PASSWORD", "")
+        
+        # Check credentials
+        if username == admin_username and password == admin_password:
             request.session["admin_logged_in"] = True
             logger.info(f"Admin login successful for user: {username}")
             return RedirectResponse(url="/admin/", status_code=302)

@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block title %}Cache Management - Buzz2Remote Admin{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">Cache Management</h1>
+        <p class="text-gray-600">Monitor and manage the application cache system</p>
+    </div>
+
+    <!-- Cache Statistics -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Cache Statistics</h2>
+        <div id="cache-stats" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-blue-50 p-4 rounded-lg">
+                <div class="text-2xl font-bold text-blue-600" id="total-entries">-</div>
+                <div class="text-sm text-blue-700">Total Entries</div>
+            </div>
+            <div class="bg-green-50 p-4 rounded-lg">
+                <div class="text-2xl font-bold text-green-600" id="popular-entries">-</div>
+                <div class="text-sm text-green-700">Popular Cache</div>
+            </div>
+            <div class="bg-orange-50 p-4 rounded-lg">
+                <div class="text-2xl font-bold text-orange-600" id="regular-entries">-</div>
+                <div class="text-sm text-orange-700">Regular Cache</div>
+            </div>
+            <div class="bg-purple-50 p-4 rounded-lg">
+                <div class="text-2xl font-bold text-purple-600" id="max-size">-</div>
+                <div class="text-sm text-purple-700">Max Size</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popular Keywords -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Popular Keywords</h2>
+        <div id="popular-keywords" class="flex flex-wrap gap-2">
+            <!-- Popular keywords will be loaded here -->
+        </div>
+    </div>
+
+    <!-- Cache Actions -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Cache Actions</h2>
+        <div class="flex flex-wrap gap-4">
+            <button id="refresh-stats" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors">
+                <i class="fas fa-sync-alt mr-2"></i>Refresh Stats
+            </button>
+            <button id="clear-cache" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors">
+                <i class="fas fa-trash mr-2"></i>Clear All Cache
+            </button>
+            <button id="update-cache" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors">
+                <i class="fas fa-sync mr-2"></i>Update Cache
+            </button>
+            <button id="preload-popular" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors">
+                <i class="fas fa-download mr-2"></i>Preload Popular Keywords
+            </button>
+        </div>
+    </div>
+
+    <!-- Cache Test -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Cache Test</h2>
+        <div class="flex gap-4 mb-4">
+            <input type="text" id="test-keyword" placeholder="Enter keyword to test" 
+                   class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <button id="test-cache" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition-colors">
+                Test Cache
+            </button>
+        </div>
+        <div id="test-result" class="hidden">
+            <!-- Test results will be shown here -->
+        </div>
+    </div>
+</div>
+
+<script>
+// Cache Management JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    loadCacheStats();
+    loadPopularKeywords();
+
+    // Refresh stats button
+    document.getElementById('refresh-stats').addEventListener('click', function() {
+        loadCacheStats();
+    });
+
+    // Clear cache button
+    document.getElementById('clear-cache').addEventListener('click', function() {
+        if (confirm('Are you sure you want to clear all cache? This will remove all cached data.')) {
+            clearCache();
+        }
+    });
+
+    // Update cache button
+    document.getElementById('update-cache').addEventListener('click', function() {
+        if (confirm('Update cache? This will clear all cache and reload popular keywords with fresh data.')) {
+            updateCache();
+        }
+    });
+
+    // Preload popular keywords button
+    document.getElementById('preload-popular').addEventListener('click', function() {
+        preloadPopularKeywords();
+    });
+
+    // Test cache button
+    document.getElementById('test-cache').addEventListener('click', function() {
+        testCache();
+    });
+
+    // Auto-refresh stats every 30 seconds
+    setInterval(loadCacheStats, 30000);
+});
+
+async function loadCacheStats() {
+    try {
+        const response = await fetch('/api/v1/jobs/cache/stats');
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            const stats = data.cache_stats;
+            document.getElementById('total-entries').textContent = stats.total_entries;
+            document.getElementById('popular-entries').textContent = stats.popular_cache.size;
+            document.getElementById('regular-entries').textContent = stats.regular_cache.size;
+            document.getElementById('max-size').textContent = stats.total_max_size;
+        }
+    } catch (error) {
+        console.error('Error loading cache stats:', error);
+    }
+}
+
+async function loadPopularKeywords() {
+    try {
+        const response = await fetch('/api/v1/jobs/cache/popular-keywords');
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            const container = document.getElementById('popular-keywords');
+            container.innerHTML = '';
+            
+            data.popular_keywords.forEach(keyword => {
+                const badge = document.createElement('span');
+                badge.className = 'bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium';
+                badge.textContent = keyword;
+                container.appendChild(badge);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading popular keywords:', error);
+    }
+}
+
+async function clearCache() {
+    try {
+        const response = await fetch('/api/v1/jobs/cache/clear', {
+            method: 'POST'
+        });
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            alert('Cache cleared successfully!');
+            loadCacheStats();
+        } else {
+            alert('Failed to clear cache: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error clearing cache:', error);
+        alert('Error clearing cache');
+    }
+}
+
+async function updateCache() {
+    const button = document.getElementById('update-cache');
+    const originalText = button.innerHTML;
+    
+    button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Updating...';
+    button.disabled = true;
+    
+    try {
+        const response = await fetch('/api/v1/jobs/cache/update', {
+            method: 'POST'
+        });
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            alert('Cache updated successfully!');
+            loadCacheStats();
+        } else {
+            alert('Failed to update cache: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error updating cache:', error);
+        alert('Error updating cache');
+    } finally {
+        button.innerHTML = originalText;
+        button.disabled = false;
+    }
+}
+
+async function preloadPopularKeywords() {
+    const keywords = ['react', 'python', 'javascript', 'java', 'node', 'frontend', 'backend', 'fullstack', 'devops', 'data'];
+    const button = document.getElementById('preload-popular');
+    const originalText = button.innerHTML;
+    
+    button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Preloading...';
+    button.disabled = true;
+    
+    try {
+        for (const keyword of keywords) {
+            await fetch(`/api/v1/jobs/quick-search-count?q=${encodeURIComponent(keyword)}`);
+            await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
+        }
+        
+        alert('Popular keywords preloaded successfully!');
+        loadCacheStats();
+    } catch (error) {
+        console.error('Error preloading keywords:', error);
+        alert('Error preloading keywords');
+    } finally {
+        button.innerHTML = originalText;
+        button.disabled = false;
+    }
+}
+
+async function testCache() {
+    const keyword = document.getElementById('test-keyword').value.trim();
+    if (!keyword) {
+        alert('Please enter a keyword to test');
+        return;
+    }
+    
+    const resultDiv = document.getElementById('test-result');
+    resultDiv.className = 'bg-gray-50 p-4 rounded-lg';
+    resultDiv.innerHTML = '<div class="text-sm text-gray-600">Testing cache for: ' + keyword + '</div>';
+    resultDiv.classList.remove('hidden');
+    
+    try {
+        // First request (should be cache miss)
+        const start1 = performance.now();
+        const response1 = await fetch(`/api/v1/jobs/quick-search-count?q=${encodeURIComponent(keyword)}`);
+        const data1 = await response1.json();
+        const time1 = performance.now() - start1;
+        
+        // Second request (should be cache hit)
+        const start2 = performance.now();
+        const response2 = await fetch(`/api/v1/jobs/quick-search-count?q=${encodeURIComponent(keyword)}`);
+        const data2 = await response2.json();
+        const time2 = performance.now() - start2;
+        
+        const isCached = data1.cached_at === data2.cached_at;
+        const speedup = time1 > 0 ? (time1 / time2).toFixed(1) : 'N/A';
+        
+        resultDiv.innerHTML = `
+            <div class="space-y-2">
+                <div class="text-sm font-medium text-gray-900">Test Results for "${keyword}"</div>
+                <div class="text-sm text-gray-600">
+                    <div>First request: ${time1.toFixed(0)}ms</div>
+                    <div>Second request: ${time2.toFixed(0)}ms</div>
+                    <div>Speedup: ${speedup}x</div>
+                    <div>Cache status: ${isCached ? '<span class="text-green-600">✅ Working</span>' : '<span class="text-red-600">❌ Not working</span>'}</div>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Error testing cache:', error);
+        resultDiv.innerHTML = '<div class="text-sm text-red-600">Error testing cache</div>';
+    }
+}
+</script>
+{% endblock %} 

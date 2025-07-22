@@ -23,15 +23,20 @@ interface ThemeProviderProps {
 // Helper function to get system theme preference
 const getSystemTheme = (): 'light' | 'dark' => {
   if (typeof window !== 'undefined' && window.matchMedia) {
-    // Check if system prefers dark mode
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
-    // Also check time of day for auto dark mode (20:00 - 07:00)
-    const now = new Date();
-    const hour = now.getHours();
-    const isNightTime = hour >= 20 || hour < 7;
-    
-    return systemPrefersDark || isNightTime ? 'dark' : 'light';
+    try {
+      // Check if system prefers dark mode
+      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      
+      // Also check time of day for auto dark mode (20:00 - 07:00)
+      const now = new Date();
+      const hour = now.getHours();
+      const isNightTime = hour >= 20 || hour < 7;
+      
+      return systemPrefersDark || isNightTime ? 'dark' : 'light';
+    } catch (error) {
+      // Fallback for test environments or when matchMedia fails
+      return 'light';
+    }
   }
   return 'light';
 };

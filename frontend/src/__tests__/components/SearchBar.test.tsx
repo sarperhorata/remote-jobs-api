@@ -1,99 +1,113 @@
+import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { SearchBar } from '../../components/SearchBar';
-import '@testing-library/jest-dom';
+import SearchBar from '../../components/SearchBar';
 
-describe('SearchBar', () => {
-  const mockOnChange = jest.fn();
+// Mock data
+const mockProps = {
+  placeholder: 'Search jobs...',
+  value: '',
+  onChange: jest.fn(),
+  onSubmit: jest.fn(),
+  suggestions: [],
+  onSuggestionClick: jest.fn(),
+  isLoading: false,
+};
 
+describe('SearchBar Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('renders with default placeholder', () => {
-    render(<SearchBar value="" onChange={mockOnChange} />);
+  test('renders search input with placeholder', () => {
+    render(<SearchBar {...mockProps} />);
     
-    const input = screen.getByPlaceholderText('Search jobs...');
-    expect(input).toBeInTheDocument();
+    const searchInput = screen.getByPlaceholderText('Search jobs...');
+    expect(searchInput).toBeInTheDocument();
   });
 
-  it('renders with custom placeholder', () => {
-    render(<SearchBar value="" onChange={mockOnChange} placeholder="Find companies..." />);
+  test('calls onChange when input value changes', () => {
+    render(<SearchBar {...mockProps} />);
     
-    const input = screen.getByPlaceholderText('Find companies...');
-    expect(input).toBeInTheDocument();
+    const searchInput = screen.getByPlaceholderText('Search jobs...');
+    fireEvent.change(searchInput, { target: { value: 'react developer' } });
+    
+    expect(mockProps.onChange).toHaveBeenCalledWith('react developer');
   });
 
-  it('displays the current value', () => {
-    render(<SearchBar value="React Developer" onChange={mockOnChange} />);
+  test('calls onSubmit when form is submitted', () => {
+    render(<SearchBar {...mockProps} />);
     
-    const input = screen.getByDisplayValue('React Developer');
-    expect(input).toBeInTheDocument();
+    const searchInput = screen.getByPlaceholderText('Search jobs...');
+    fireEvent.change(searchInput, { target: { value: 'react developer' } });
+    
+    const form = searchInput.closest('form');
+    if (form) {
+      fireEvent.submit(form);
+    }
+    
+    expect(mockProps.onSubmit).toHaveBeenCalled();
   });
 
-  it('calls onChange when input changes', () => {
-    render(<SearchBar value="" onChange={mockOnChange} />);
+  test('displays loading spinner when isLoading is true', () => {
+    render(<SearchBar {...mockProps} isLoading={true} />);
     
-    const input = screen.getByPlaceholderText('Search jobs...');
-    fireEvent.change(input, { target: { value: 'JavaScript' } });
-    
-    expect(mockOnChange).toHaveBeenCalledWith('JavaScript');
-    expect(mockOnChange).toHaveBeenCalledTimes(1);
+    const loadingSpinner = screen.getByRole('status');
+    expect(loadingSpinner).toBeInTheDocument();
   });
 
-  it('calls onChange with different values', () => {
-    render(<SearchBar value="" onChange={mockOnChange} />);
+  test('does not display loading spinner when isLoading is false', () => {
+    render(<SearchBar {...mockProps} isLoading={false} />);
     
-    const input = screen.getByPlaceholderText('Search jobs...');
-    
-    fireEvent.change(input, { target: { value: 'Python' } });
-    expect(mockOnChange).toHaveBeenCalledWith('Python');
-    
-    fireEvent.change(input, { target: { value: 'React' } });
-    expect(mockOnChange).toHaveBeenCalledWith('React');
-    
-    expect(mockOnChange).toHaveBeenCalledTimes(2);
+    const loadingSpinner = screen.queryByRole('status');
+    expect(loadingSpinner).not.toBeInTheDocument();
   });
 
-  it('renders search icon', () => {
-    const { container } = render(<SearchBar value="" onChange={mockOnChange} />);
+  test('displays suggestions when provided', () => {
+    const suggestions = ['React Developer', 'React Native Developer', 'Frontend Developer'];
+    render(<SearchBar {...mockProps} suggestions={suggestions} />);
     
-    const searchIcon = container.querySelector('svg');
-    expect(searchIcon).toBeInTheDocument();
-    expect(searchIcon).toHaveClass('h-5', 'w-5', 'text-gray-400');
+    expect(screen.getByText('React Developer')).toBeInTheDocument();
+    expect(screen.getByText('React Native Developer')).toBeInTheDocument();
+    expect(screen.getByText('Frontend Developer')).toBeInTheDocument();
   });
 
-  it('has correct CSS classes', () => {
-    render(<SearchBar value="" onChange={mockOnChange} />);
+  test('calls onSuggestionClick when suggestion is clicked', () => {
+    const suggestions = ['React Developer'];
+    render(<SearchBar {...mockProps} suggestions={suggestions} />);
     
-    const input = screen.getByPlaceholderText('Search jobs...');
-    expect(input).toHaveClass(
-      'block',
-      'w-full',
-      'pl-10',
-      'pr-3',
-      'py-2',
-      'border',
-      'border-gray-300',
-      'rounded-md'
-    );
+    const suggestion = screen.getByText('React Developer');
+    fireEvent.click(suggestion);
+    
+    expect(mockProps.onSuggestionClick).toHaveBeenCalledWith('React Developer');
   });
 
-  it('has correct input type', () => {
-    render(<SearchBar value="" onChange={mockOnChange} />);
+  test('displays search button', () => {
+    render(<SearchBar {...mockProps} />);
     
-    const input = screen.getByPlaceholderText('Search jobs...');
-    expect(input).toHaveAttribute('type', 'text');
+    const searchButton = screen.getByRole('button', { name: /search/i });
+    expect(searchButton).toBeInTheDocument();
   });
 
-  it('renders without crashing', () => {
-    expect(() => render(<SearchBar value="" onChange={mockOnChange} />)).not.toThrow();
+  test('calls onSubmit when search button is clicked', () => {
+    render(<SearchBar {...mockProps} />);
+    
+    const searchButton = screen.getByRole('button', { name: /search/i });
+    fireEvent.click(searchButton);
+    
+    expect(mockProps.onSubmit).toHaveBeenCalled();
   });
 
-  it('input can receive focus', () => {
-    render(<SearchBar value="" onChange={mockOnChange} />);
+  test('handles empty suggestions gracefully', () => {
+    render(<SearchBar {...mockProps} suggestions={[]} />);
     
-    const input = screen.getByPlaceholderText('Search jobs...');
-    input.focus();
-    expect(document.activeElement).toBe(input);
+    // Should render without crashing
+    expect(screen.getByPlaceholderText('Search jobs...')).toBeInTheDocument();
+  });
+
+  test('displays current value in input', () => {
+    render(<SearchBar {...mockProps} value="react developer" />);
+    
+    const searchInput = screen.getByPlaceholderText('Search jobs...');
+    expect(searchInput).toHaveValue('react developer');
   });
 }); 

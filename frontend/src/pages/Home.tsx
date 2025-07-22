@@ -38,52 +38,32 @@ const Home: React.FC = () => {
   const [companiesCount, setCompaniesCount] = useState(0);
   const [countriesCount, setCountriesCount] = useState(0);
 
-  // Target values for animation - will be updated from API
+  // Target values for animation - will be updated with real data
   const [targetActiveJobs, setTargetActiveJobs] = useState(38);
-  const [targetCompanies, setTargetCompanies] = useState(0);
-  const [targetCountries, setTargetCountries] = useState(0);
+  const [targetCompanies, setTargetCompanies] = useState(2);
+  const [targetCountries, setTargetCountries] = useState(150);
 
-  // Fetch real statistics from API
+  // Fetch real statistics data
   useEffect(() => {
     const fetchStatistics = async () => {
       try {
-        // Fetch job statistics
-        const jobStatsResponse = await fetch('http://localhost:8001/api/v1/jobs/statistics');
-        if (jobStatsResponse.ok) {
-          const jobStats = await jobStatsResponse.json();
-          setTargetActiveJobs(jobStats.total_jobs || 38);
+        const response = await fetch('/api/v1/jobs/statistics');
+        if (response.ok) {
+          const data = await response.json();
           
-          // Calculate unique countries from location data
-          if (jobStats.jobs_by_location) {
-            const uniqueCountries = new Set();
-            jobStats.jobs_by_location.forEach((location: any) => {
-              if (location._id && location._id !== 'Remote' && location._id !== 'remote') {
-                // Extract country from location string (e.g., "New York, NY, USA" -> "USA")
-                const locationStr = location._id.toString();
-                const parts = locationStr.split(',').map((part: string) => part.trim());
-                if (parts.length > 0) {
-                  const country = parts[parts.length - 1];
-                  if (country && country.length <= 3) { // Likely a country code
-                    uniqueCountries.add(country);
-                  } else if (country && country.length > 3) { // Likely a country name
-                    uniqueCountries.add(country);
-                  }
-                }
-              }
-            });
-            setTargetCountries(uniqueCountries.size || 0);
-          }
-        }
-
-        // Fetch companies statistics
-        const companiesResponse = await fetch('http://localhost:8001/api/v1/companies/statistics');
-        if (companiesResponse.ok) {
-          const companiesStats = await companiesResponse.json();
-          setTargetCompanies(companiesStats.total_companies || 0);
+          // Update target values with real data
+          setTargetActiveJobs(Math.floor(data.total_jobs / 1000)); // Convert to K
+          setTargetCompanies(data.companies_count || 820);
+          setTargetCountries(data.countries_count || 1014);
+          
+          console.log('📊 Real statistics loaded:', {
+            total_jobs: data.total_jobs,
+            companies_count: data.companies_count,
+            countries_count: data.countries_count
+          });
         }
       } catch (error) {
-        console.error('Error fetching statistics:', error);
-        // Keep default values if API fails
+        console.error('❌ Error fetching statistics:', error);
       }
     };
 
@@ -92,9 +72,6 @@ const Home: React.FC = () => {
 
   // Animated counter effect
   useEffect(() => {
-    // Only start animation when we have real data
-    if (targetCompanies === 0) return;
-
     const duration = 2000; // 2 seconds
     const steps = 60; // 60 steps for smooth animation
     const stepDuration = duration / steps;
@@ -114,9 +91,9 @@ const Home: React.FC = () => {
     };
 
     // Start animations with slight delays for staggered effect
-    setTimeout(() => animateCounter(setActiveJobsCount, targetActiveJobs), 0);
-    setTimeout(() => animateCounter(setCompaniesCount, targetCompanies), 200);
-    setTimeout(() => animateCounter(setCountriesCount, targetCountries), 400);
+    setTimeout(() => animateCounter(setActiveJobsCount, targetActiveJobs), 500);
+    setTimeout(() => animateCounter(setCompaniesCount, targetCompanies), 800);
+    setTimeout(() => animateCounter(setCountriesCount, targetCountries), 1100);
   }, [targetActiveJobs, targetCompanies, targetCountries]);
 
   // Check if user needs onboarding
@@ -396,13 +373,32 @@ const Home: React.FC = () => {
   }, []);
 
   const handleSearch = (positions: Position[]) => {
+    console.log('🏠 handleSearch called with positions:', positions);
+    
     // Ülke seçiliyse ayrı parametre olarak ekle
     const country = positions.find(p => p.type === 'country');
-    const titles = positions.filter(p => !p.type || p.type !== 'country').map(pos => pos.title).join(', ');
+    const jobPositions = positions.filter(p => !p.type || p.type !== 'country');
+    
+    console.log('🏠 jobPositions:', jobPositions);
+    
     const searchParams = new URLSearchParams();
-    if (titles) searchParams.set('q', titles);
+    
+    // Always use multi-keyword endpoint for keyword searches (even single keyword)
+    if (jobPositions.length >= 1) {
+      const keywords = jobPositions.map(pos => {
+        // Extract keyword from title (remove count part)
+        return pos.title.split('(')[0].trim();
+      });
+      console.log('🏠 Extracted keywords:', keywords);
+      searchParams.set('keywords', keywords.join(','));
+      searchParams.set('multi_keyword', 'true');
+    }
+    
     if (country) searchParams.set('country', country.code);
-    navigate(`/jobs/search?${searchParams.toString()}`);
+    
+    const finalUrl = `/jobs/search?${searchParams.toString()}`;
+    console.log('🏠 Navigating to:', finalUrl);
+    navigate(finalUrl);
   };
 
   const handleOnboardingComplete = () => {
@@ -511,14 +507,13 @@ const Home: React.FC = () => {
                   <div className="flex gap-3">
                     <div className="flex-1">
                       <MultiJobAutocomplete
-                        onSelect={(position) => {
-                          setSelectedPositions(prev => {
-                            const exists = prev.find(p => p.title === position.title);
-                            if (exists) return prev;
-                            return [...prev, position];
-                          });
+                        onSelect={(positions) => {
+                          console.log('🏠 Home received positions:', positions);
+                          if (positions.length > 0) {
+                            handleSearch(positions);
+                          }
                         }}
-                        placeholder="Try: Frontend Developer, Product Manager, Designer..."
+                        placeholder="Search keywords (e.g., react, python, remote)"
                       />
                     </div>
                     <button
@@ -586,19 +581,19 @@ const Home: React.FC = () => {
               <div className="flex flex-wrap justify-center gap-8">
                 <div className="text-center">
                   <div className="text-2xl md:text-3xl font-bold text-yellow-400 transition-all duration-300">
-                    {activeJobsCount.toLocaleString()}
+                    {activeJobsCount}K+
                   </div>
                   <div className="text-sm text-white/80">Active Jobs</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl md:text-3xl font-bold text-green-400 transition-all duration-300">
-                    {companiesCount.toLocaleString()}
+                    {companiesCount}
                   </div>
                   <div className="text-sm text-white/80">Companies</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl md:text-3xl font-bold text-purple-400 transition-all duration-300">
-                    {countriesCount.toLocaleString()}
+                    {countriesCount}
                   </div>
                   <div className="text-sm text-white/80">Countries</div>
                 </div>

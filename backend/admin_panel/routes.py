@@ -217,6 +217,7 @@ async def admin_dashboard(request: Request):
                 <a href="/admin/jobs">Jobs</a>
                 <a href="/admin/companies">Companies</a>
                 <a href="/admin/apis">API Services</a>
+                <a href="/admin/cache">Cache</a>
                 <a href="/admin/cronjobs">Cronjobs</a>
                 <a href="/admin/status">Status</a>
                 <a href="/docs">API Docs</a>
@@ -267,6 +268,10 @@ async def admin_dashboard(request: Request):
                     <a href="/admin/apis" class="action-btn success">
                         🌐 API Services<br>
                         <small>Run and monitor APIs</small>
+                    </a>
+                    <a href="/admin/cache" class="action-btn">
+                        ⚡ Cache Management<br>
+                        <small>Monitor and manage cache</small>
                     </a>
                     <a href="/admin/status" class="action-btn">
                         📊 System Status<br>
@@ -830,6 +835,7 @@ async def admin_jobs(
                 <a href="/admin/jobs">Jobs</a>
                 <a href="/admin/companies">Companies</a>
                 <a href="/admin/apis">API Services</a>
+                <a href="/admin/cache">Cache</a>
                 <a href="/admin/cronjobs">Cronjobs</a>
                 <a href="/admin/status">Status</a>
                 <a href="/docs">API Docs</a>
@@ -1111,7 +1117,7 @@ async def admin_jobs(
         """
         
         return HTMLResponse(content=html_content)
-
+        
     except Exception as e:
         logger.error(f"Error in admin jobs: {str(e)}")
         error_html = f"""
@@ -3229,9 +3235,19 @@ async def admin_test(request: Request):
 
 @admin_router.get("/companies", response_class=HTMLResponse)
 async def admin_companies(request: Request, page: int = 1, sort_by: str = "jobs_count", sort_order: str = "desc", company_filter: Optional[str] = None):
-    """Companies management page"""
-    
-    # Check authentication first
+    """Admin companies page"""
+    # Check authentication
+    try:
+        admin_logged_in = request.session.get("admin_logged_in", False)
+        if not admin_logged_in:
+            return RedirectResponse(url="/admin/login", status_code=302)
+    except:
+        return RedirectResponse(url="/admin/login", status_code=302)
+
+@admin_router.get("/cache", response_class=HTMLResponse)
+async def admin_cache_management(request: Request):
+    """Admin cache management page"""
+    # Check authentication
     try:
         admin_logged_in = request.session.get("admin_logged_in", False)
         if not admin_logged_in:
@@ -3240,253 +3256,23 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "jobs_
         return RedirectResponse(url="/admin/login", status_code=302)
     
     try:
-        # Get database instance
-        db = await get_db()
-        if not DATABASE_AVAILABLE or db is None:
-            # Demo data when database is not available
-            demo_companies = [
-                {"name": "Demo Company 1", "jobs_count": 15, "industry": "Technology"},
-                {"name": "Demo Company 2", "jobs_count": 8, "industry": "Software"}
-            ]
-            total_companies = 2
-            companies = demo_companies
-        else:
-            # Build match criteria for filtering
-            match_criteria = {}
-            if company_filter:
-                match_criteria["company"] = {"$regex": company_filter, "$options": "i"}
-            
-            # Get companies from database
-            pipeline = [
-                {"$match": match_criteria} if match_criteria else {"$match": {}},
-                {"$group": {
-                    "_id": "$company",
-                    "jobs_count": {"$sum": 1},
-                    "latest_job": {"$max": "$last_updated"}
-                }},
-                {"$project": {
-                    "name": "$_id", 
-                    "jobs_count": 1,
-                    "latest_job": 1,
-                    "_id": 0
-                }},
-                {"$sort": {sort_by: 1 if sort_order == "asc" else -1}}
-            ]
-            
-            companies_cursor = db.jobs.aggregate(pipeline)
-            companies = await companies_cursor.to_list(None)
-            total_companies = len(companies)
-        
-        # Pagination
-        page_size = 20
-        total_pages = (total_companies + page_size - 1) // page_size
-        start_idx = (page - 1) * page_size
-        end_idx = start_idx + page_size
-        paginated_companies = companies[start_idx:end_idx]
-        
-        # Build HTML response
-        filter_message = f" (filtered by: {company_filter})" if company_filter else ""
-        html_content = f"""
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Companies - Buzz2Remote Admin</title>
-            <style>
-                body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }}
-                .nav {{ margin-bottom: 20px; }}
-                .nav a {{ display: inline-block; margin-right: 20px; color: #007bff; text-decoration: none; font-weight: 500; }}
-                .nav a:hover {{ text-decoration: underline; }}
-                .container {{ max-width: 1200px; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
-                h1 {{ color: #333; margin-bottom: 30px; border-bottom: 3px solid #007bff; padding-bottom: 10px; }}
-                table {{ width: 100%; border-collapse: collapse; margin-bottom: 20px; }}
-                th, td {{ padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6; }}
-                th {{ background: #f8f9fa; font-weight: 600; cursor: pointer; color: #495057; }}
-                th:hover {{ background: #e9ecef; }}
-                .company-link {{ color: #007bff; text-decoration: none; font-weight: 500; }}
-                .company-link:hover {{ text-decoration: underline; }}
-                .jobs-link {{ color: #28a745; text-decoration: none; font-weight: 500; }}
-                .jobs-link:hover {{ text-decoration: underline; }}
-                .sort-indicator {{ font-size: 0.8em; margin-left: 5px; }}
-                .pagination {{ text-align: center; margin: 20px 0; }}
-                .pagination a, .pagination span {{ display: inline-block; margin: 0 3px; padding: 6px 12px; border: 1px solid #dee2e6; color: #007bff; text-decoration: none; border-radius: 4px; }}
-                .pagination .current {{ background: #007bff; color: white; border-color: #007bff; }}
-                .pagination a:hover {{ background: #e9ecef; }}
-                .stats {{ background: #e3f2fd; padding: 15px; border-radius: 6px; margin-bottom: 20px; }}
-                .filters {{ margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; }}
-                .filter-input {{ padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-right: 10px; }}
-                .empty-company {{ color: #999; font-style: italic; }}
-            </style>
-        </head>
-        <body>
-            <div class="nav">
-                <a href="http://localhost:3001">🏠 Ana Sayfa</a>
-                <a href="/admin/">Dashboard</a>
-                <a href="/admin/jobs">Jobs</a>
-                <a href="/admin/companies">Companies</a>
-                <a href="/admin/apis">API Services</a>
-                <a href="/admin/cronjobs">Cronjobs</a>
-                <a href="/admin/status">Status</a>
-                <a href="/docs">API Docs</a>
-                <a href="/admin/logout">🚪 Logout</a>
-            </div>
-            
-            <div class="container">
-                <h1>🏢 Companies Management</h1>
-                
-                <div class="filters">
-                    <input type="text" id="companyFilter" class="filter-input" placeholder="Filter by company name..." value="{company_filter or ''}" onkeypress="if(event.key==='Enter') applyFilters()">
-                    <button onclick="applyFilters()" style="padding: 8px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Apply Filter</button>
-                    <button onclick="clearFilters()" style="padding: 8px 15px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 5px;">Clear Filter</button>
-                </div>
-                
-                <div class="stats">
-                    📊 <strong>{total_companies}</strong> total companies{filter_message} • Page {page} of {total_pages} • Showing {len(paginated_companies)} companies
-                </div>
-                
-                <table>
-                    <thead>
-                        <tr>
-                            <th onclick="sortBy('name')">Company Name <span class="sort-indicator">{get_sort_indicator('name', sort_by, sort_order)}</span></th>
-                            <th onclick="sortBy('jobs_count')">Job Count <span class="sort-indicator">{get_sort_indicator('jobs_count', sort_by, sort_order)}</span></th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>"""
-        
-        for company in paginated_companies:
-            company_name = company.get("name", "Unknown")
-            jobs_count = company.get("jobs_count", 0)
-            
-            # Handle empty company names
-            if not company_name or company_name.strip() == "":
-                company_name_display = '<span class="empty-company">(Empty Company Name)</span>'
-                company_link_name = ""
-            else:
-                company_name_display = company_name
-                company_link_name = company_name
-            
-            # Create URLs
-            jobs_url = f"/admin/jobs?company_filter={company_link_name}"
-            company_detail_url = f"/admin/jobs?company_filter={company_link_name}"
-            
-            html_content += f"""
-                        <tr>
-                            <td><a href="{company_detail_url}" class="company-link">{company_name_display}</a></td>
-                            <td><strong>{jobs_count}</strong></td>
-                            <td>
-                                <a href="{jobs_url}" class="jobs-link">View Jobs</a>
-                            </td>
-                        </tr>"""
-        
-        # Add pagination
-        html_content += """
-                    </tbody>
-                </table>"""
-        
-        if total_pages > 1:
-            html_content += '<div class="pagination">'
-            
-            # Previous button
-            if page > 1:
-                prev_url = f"/admin/companies?page={page-1}&sort_by={sort_by}&sort_order={sort_order}"
-                if company_filter:
-                    prev_url += f"&company_filter={company_filter}"
-                html_content += f'<a href="{prev_url}">‹ Prev</a>'
-            
-            # Page numbers (compact)
-            start_page = max(1, page - 2)
-            end_page = min(total_pages, page + 2)
-            
-            if start_page > 1:
-                page_url = f"/admin/companies?page=1&sort_by={sort_by}&sort_order={sort_order}"
-                if company_filter:
-                    page_url += f"&company_filter={company_filter}"
-                html_content += f'<a href="{page_url}">1</a>'
-                if start_page > 2:
-                    html_content += '<span>...</span>'
-            
-            for p in range(start_page, end_page + 1):
-                page_url = f"/admin/companies?page={p}&sort_by={sort_by}&sort_order={sort_order}"
-                if company_filter:
-                    page_url += f"&company_filter={company_filter}"
-                if p == page:
-                    html_content += f'<span class="current">{p}</span>'
-                else:
-                    html_content += f'<a href="{page_url}">{p}</a>'
-            
-            if end_page < total_pages:
-                if end_page < total_pages - 1:
-                    html_content += '<span>...</span>'
-                page_url = f"/admin/companies?page={total_pages}&sort_by={sort_by}&sort_order={sort_order}"
-                if company_filter:
-                    page_url += f"&company_filter={company_filter}"
-                html_content += f'<a href="{page_url}">{total_pages}</a>'
-            
-            # Next button
-            if page < total_pages:
-                next_url = f"/admin/companies?page={page+1}&sort_by={sort_by}&sort_order={sort_order}"
-                if company_filter:
-                    next_url += f"&company_filter={company_filter}"
-                html_content += f'<a href="{next_url}">Next ›</a>'
-            
-            html_content += '</div>'
-        
-        html_content += """
-            </div>
-            
-            <script>
-                function sortBy(column) {""" + f"""
-                    const currentSort = '{sort_by}';
-                    const currentOrder = '{sort_order}';
-                    const companyFilter = '{company_filter or ''}';""" + """
-                    
-                    let newOrder = 'asc';
-                    if (column === currentSort && currentOrder === 'asc') {
-                        newOrder = 'desc';
-                    }
-                    
-                    let url = '/admin/companies?sort_by=' + column + '&sort_order=' + newOrder;
-                    if (companyFilter) {
-                        url += '&company_filter=' + encodeURIComponent(companyFilter);
-                    }
-                    window.location.href = url;
-                }
-                
-                function applyFilters() {
-                    const companyFilter = document.getElementById('companyFilter').value;
-                    let url = '/admin/companies?page=1';
-                    if (companyFilter) {
-                        url += '&company_filter=' + encodeURIComponent(companyFilter);
-                    }
-                    window.location.href = url;
-                }
-                
-                function clearFilters() {
-                    window.location.href = '/admin/companies';
-                }
-            </script>
-        </body>
-        </html>
-        """
-        
-        return HTMLResponse(content=html_content)
-        
+        # Render cache management template
+        return templates.TemplateResponse("cache_management.html", {
+            "request": request,
+            "title": "Cache Management"
+        })
     except Exception as e:
-        logger.error(f"Error in companies page: {e}")
-        error_html = f"""
-        <!DOCTYPE html>
+        logger.error(f"Error rendering cache management page: {e}")
+        return HTMLResponse(content=f"""
         <html>
-        <head><title>Companies Error</title></head>
+        <head><title>Cache Management - Error</title></head>
         <body>
-            <h1>Companies Error</h1>
-            <p>Error: {str(e)}</p>
-            <a href="/admin/">Back to Dashboard</a>
+            <h1>Cache Management</h1>
+            <p>Error loading cache management page: {str(e)}</p>
+            <a href="/admin/dashboard">Back to Dashboard</a>
         </body>
         </html>
-        """
-        return HTMLResponse(content=error_html, status_code=500)
+        """, status_code=500)
 
 @admin_router.get("/crawler-progress/{process_id}")
 async def get_crawler_progress(process_id: str, admin_auth: bool = Depends(get_admin_auth)):

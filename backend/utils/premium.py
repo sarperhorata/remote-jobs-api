@@ -1,4 +1,4 @@
-from models.user import User
+from ..models.user import UserResponse as User
 
 def is_premium_user(user: User) -> bool:
     """

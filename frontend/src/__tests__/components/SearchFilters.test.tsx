@@ -31,20 +31,18 @@ describe('SearchFilters Component', () => {
     jest.clearAllMocks();
   });
 
-  test('renders all filter sections with associated controls', async () => {
+  test('renders all filter sections with associated controls', () => {
     render(<SearchFilters {...mockProps} />);
     
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /filters/i })).toBeInTheDocument();
-      expect(screen.getByPlaceholderText(/job title, keywords.../i)).toBeInTheDocument();
-      expect(screen.getByText(/work type/i)).toBeInTheDocument();
-      expect(screen.getByText(/job type/i)).toBeInTheDocument();
-      expect(screen.getByText(/experience level/i)).toBeInTheDocument();
-      expect(screen.getByText(/posted/i)).toBeInTheDocument();
-      expect(screen.getByText(/salary/i)).toBeInTheDocument();
-      expect(screen.getByPlaceholderText(/city, country.../i)).toBeInTheDocument();
-      expect(screen.getByPlaceholderText(/company name.../i)).toBeInTheDocument();
-    });
+    expect(screen.getByRole('heading', { name: /filters/i })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/job title, keywords.../i)).toBeInTheDocument();
+    expect(screen.getByText(/work type/i)).toBeInTheDocument();
+    expect(screen.getByText(/job type/i)).toBeInTheDocument();
+    expect(screen.getByText(/experience level/i)).toBeInTheDocument();
+    expect(screen.getByText(/posted/i)).toBeInTheDocument();
+    expect(screen.getByText(/salary/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/city, country.../i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/company name.../i)).toBeInTheDocument();
   });
 
   test('updates experience level filter correctly', async () => {

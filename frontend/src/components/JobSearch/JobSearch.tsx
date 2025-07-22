@@ -3,6 +3,7 @@ import { Search, Filter, MapPin, Clock, DollarSign, Building2, ExternalLink, Boo
 import { Job } from '../../types/job';
 import { jobService } from '../../services/jobService';
 import JobApplicationModal from './JobApplicationModal';
+import LocationDropdown from '../LocationDropdown';
 
 interface JobSearchFilters {
   location: string;
@@ -29,7 +30,7 @@ const JobSearch: React.FC<JobSearchProps> = ({ onJobSelect }) => {
   const [savedJobs, setSavedJobs] = useState<Set<string>>(new Set());
 
   const [filters, setFilters] = useState<JobSearchFilters>({
-    location: '',
+    location: 'worldwide',
     jobType: '',
     experience_level: '',
     salaryRange: '',
@@ -78,8 +79,45 @@ const JobSearch: React.FC<JobSearchProps> = ({ onJobSelect }) => {
       }
 
       // Location filter
-      if (filters.location && !job.location.toLowerCase().includes(filters.location.toLowerCase())) {
-        return false;
+      if (filters.location && filters.location !== 'worldwide') {
+        const jobLocation = job.location.toLowerCase();
+        const filterLocation = filters.location.toLowerCase();
+        
+        // Check if it's a continent filter
+        const continents = ['europe', 'america', 'africa', 'asia', 'australia'];
+        if (continents.includes(filterLocation)) {
+          // Simple continent matching logic
+          const continentMap: { [key: string]: string[] } = {
+            europe: ['germany', 'france', 'uk', 'netherlands', 'sweden', 'norway', 'denmark', 'finland', 'switzerland', 'austria', 'belgium', 'ireland', 'spain', 'italy', 'portugal', 'poland', 'czech', 'hungary', 'romania', 'bulgaria', 'croatia', 'slovenia', 'slovakia', 'lithuania', 'latvia', 'estonia'],
+            america: ['united states', 'canada', 'brazil', 'mexico', 'argentina', 'chile', 'colombia', 'peru', 'uruguay'],
+            africa: ['south africa', 'nigeria', 'kenya', 'ghana', 'uganda', 'tanzania', 'ethiopia', 'morocco', 'egypt', 'tunisia', 'algeria'],
+            asia: ['japan', 'south korea', 'singapore', 'india', 'china', 'thailand', 'vietnam', 'malaysia', 'indonesia', 'philippines'],
+            australia: ['australia', 'new zealand']
+          };
+          
+          const continentCountries = continentMap[filterLocation] || [];
+          if (!continentCountries.some(country => jobLocation.includes(country))) {
+            return false;
+          }
+        } else {
+          // Country-specific filter
+          const countryMap: { [key: string]: string } = {
+            us: 'united states', uk: 'united kingdom', ca: 'canada', de: 'germany', fr: 'france',
+            nl: 'netherlands', se: 'sweden', no: 'norway', dk: 'denmark', fi: 'finland',
+            ch: 'switzerland', at: 'austria', be: 'belgium', ie: 'ireland', es: 'spain',
+            it: 'italy', pt: 'portugal', pl: 'poland', cz: 'czech', hu: 'hungary',
+            ro: 'romania', bg: 'bulgaria', hr: 'croatia', si: 'slovenia', sk: 'slovakia',
+            lt: 'lithuania', lv: 'latvia', ee: 'estonia', au: 'australia', nz: 'new zealand',
+            jp: 'japan', kr: 'south korea', sg: 'singapore', in: 'india', br: 'brazil',
+            mx: 'mexico', ar: 'argentina', cl: 'chile', co: 'colombia', pe: 'peru',
+            uy: 'uruguay', za: 'south africa', ng: 'nigeria', ke: 'kenya', gh: 'ghana'
+          };
+          
+          const countryName = countryMap[filterLocation] || filterLocation;
+          if (!jobLocation.includes(countryName)) {
+            return false;
+          }
+        }
       }
 
       // Job type filter
@@ -174,7 +212,7 @@ const JobSearch: React.FC<JobSearchProps> = ({ onJobSelect }) => {
 
   const resetFilters = () => {
     setFilters({
-      location: '',
+      location: 'worldwide',
       jobType: '',
       experience_level: '',
       salaryRange: '',
@@ -213,14 +251,11 @@ const JobSearch: React.FC<JobSearchProps> = ({ onJobSelect }) => {
           </div>
 
           {/* Location Filter */}
-          <div className="relative lg:w-64">
-            <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-            <input
-              type="text"
-              placeholder="Location"
+          <div className="lg:w-64">
+            <LocationDropdown
               value={filters.location}
-              onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              onChange={(location) => setFilters(prev => ({ ...prev, location }))}
+              className="w-full"
             />
           </div>
 

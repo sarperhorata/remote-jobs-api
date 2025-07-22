@@ -1,13 +1,22 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import Layout from '../components/Layout';
 import AuthModal from '../components/AuthModal';
 import SearchFilters from '../components/JobSearch/SearchFilters';
+import LocationAutocomplete from '../components/LocationAutocomplete';
 import JobCard from '../components/JobCard';
 import { useAuth } from '../contexts/AuthContext';
 import { Job } from '../types/job';
 import { Filter, X, Save, ChevronLeft, ChevronRight, Grid, List } from 'lucide-react';
+
+interface Location {
+  name: string;
+  country?: string;
+  type?: 'city' | 'country' | 'continent' | 'remote' | 'worldwide';
+  cached_at?: string;
+  flag?: string;
+}
 
 interface Filters {
   query: string;
@@ -39,6 +48,7 @@ const countryFlags: Record<string, string> = {
 
 export default function JobSearchResults() {
   const location = useLocation();
+  const navigate = useNavigate();
   
   // States
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -61,6 +71,12 @@ export default function JobSearchResults() {
   // Filter Modal States
   const [showFiltersModal, setShowFiltersModal] = useState(false);
   
+  // Location state
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>({
+    name: 'Worldwide',
+    type: 'worldwide'
+  });
+  
   // Filters
   const [filters, setFilters] = useState<Filters>({
     query: '',
@@ -76,7 +92,7 @@ export default function JobSearchResults() {
     country: '',
   });
   
-  // View layout state - Mobile: list, Desktop: grid
+  // View layout state - Mobile: grid, Desktop: grid
   const [isMobile, setIsMobile] = useState(false);
 
   // Check for mobile screen size
@@ -84,11 +100,8 @@ export default function JobSearchResults() {
     const checkMobile = () => {
       const mobile = window.innerWidth < 768; // md breakpoint
       setIsMobile(mobile);
-      if (mobile) {
-        setViewMode('list'); // Force list view on mobile
-      } else {
-        setViewMode('grid'); // Default grid on desktop
-      }
+      // Always default to grid view on both mobile and desktop
+      setViewMode('grid');
     };
     
     checkMobile();
@@ -99,28 +112,66 @@ export default function JobSearchResults() {
   const fetchJobs = async () => {
     setLoading(true);
     try {
-      const queryParams = new URLSearchParams({
-        q: filters.query,
-        page: filters.page?.toString() || "1",
-        limit: "25",
-        sort_by: 'relevance',
-        posted_age: filters.postedAge || filters.postedWithin,
-        ...(filters.workType && { work_type: filters.workType }),
-        ...(filters.jobType && { job_type: filters.jobType }),
-        ...(filters.experience_level && { experience: filters.experience_level }),
-        ...(filters.salaryRange && { salary_range: filters.salaryRange }),
-        ...(filters.location && { location: filters.location }),
-        ...(filters.company && { company: filters.company }),
-        ...(filters.country && { country: filters.country }), // eklendi
-      });
-
-      const response = await fetch(`${await import('../utils/apiConfig').then(m => m.getApiUrl())}/jobs/search?${queryParams}`);
-      const data = await response.json();
+      console.log('🔍 fetchJobs called with filters:', filters);
       
-      setJobs(data.jobs || []);
-      setTotalJobs(data.total || 0);
+      // Check if this is a multi-keyword search
+      const multiKeywordFromUrl = new URLSearchParams(location.search).get('multi_keyword');
+      const keywordsFromUrl = new URLSearchParams(location.search).get('keywords');
+      
+      if (multiKeywordFromUrl && keywordsFromUrl) {
+        // Use multi-keyword endpoint for OR logic
+        const queryParams = new URLSearchParams({
+          keywords: keywordsFromUrl,
+          page: filters.page?.toString() || "1",
+          limit: "25",
+          sort_by: 'relevance',
+        });
+
+        console.log('🔍 Fetching multi-keyword jobs with params:', Object.fromEntries(queryParams));
+        
+        const response = await fetch(`${await import('../utils/apiConfig').then(m => m.getApiUrl())}/jobs/multi-keyword-search?${queryParams}`);
+        const data = await response.json();
+        
+        console.log('📊 Multi-keyword jobs found:', data.jobs?.length || 0, 'Total:', data.total || 0);
+        
+        setJobs(data.jobs || []);
+        setTotalJobs(data.total || 0);
+      } else {
+        // Use regular search endpoint
+        const queryParams = new URLSearchParams({
+          page: filters.page?.toString() || "1",
+          limit: "25",
+          sort_by: 'relevance',
+          posted_age: filters.postedAge || filters.postedWithin,
+          ...(filters.workType && { work_type: filters.workType }),
+          ...(filters.jobType && { job_type: filters.jobType }),
+          ...(filters.experience_level && { experience: filters.experience_level }),
+          ...(filters.salaryRange && { salary_range: filters.salaryRange }),
+          ...(filters.location && { location: filters.location }),
+          ...(filters.company && { company: filters.company }),
+          ...(filters.country && { country: filters.country }),
+        });
+
+        // Add exact_title or query parameter
+        const exactTitleFromUrl = new URLSearchParams(location.search).get('exact_title');
+        if (exactTitleFromUrl) {
+          queryParams.set('exact_title', exactTitleFromUrl);
+        } else if (filters.query) {
+          queryParams.set('q', filters.query);
+        }
+
+        console.log('🔍 Fetching regular jobs with query params:', Object.fromEntries(queryParams));
+        
+        const response = await fetch(`${await import('../utils/apiConfig').then(m => m.getApiUrl())}/jobs/search?${queryParams}`);
+        const data = await response.json();
+        
+        console.log('📊 Regular jobs found:', data.jobs?.length || 0, 'Total:', data.total || 0);
+        
+        setJobs(data.jobs || []);
+        setTotalJobs(data.total || 0);
+      }
     } catch (e: any) {
-      console.error(e.message);
+      console.error('❌ Error fetching jobs:', e.message);
       setJobs([]);
       setTotalJobs(0);
     } finally {
@@ -131,24 +182,37 @@ export default function JobSearchResults() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const queryFromUrl = params.get('q') || '';
+    const exactTitleFromUrl = params.get('exact_title') || '';
+    const keywordsFromUrl = params.get('keywords') || '';
+    const multiKeywordFromUrl = params.get('multi_keyword') || '';
     const companyFromUrl = params.get('company') || '';
+    const locationFromUrl = params.get('location') || '';
     const countryFromUrl = params.get('country') || '';
+    
+    console.log('🔍 URL params:', { queryFromUrl, exactTitleFromUrl, keywordsFromUrl, multiKeywordFromUrl, companyFromUrl, locationFromUrl, countryFromUrl });
+    
     setFilters(prev => {
       const newFilters = {
         ...prev,
-        query: queryFromUrl,
+        query: exactTitleFromUrl || queryFromUrl, // exact_title varsa onu kullan, yoksa query'yi kullan
         company: companyFromUrl,
+        location: locationFromUrl,
         country: countryFromUrl,
+        page: 1, // URL'den geldiğinde 1. sayfaya dön
       };
+      
+      console.log('🔍 Setting filters:', newFilters);
+      
+      // Sadece gerçekten değişiklik varsa güncelle
       if (
-        prev.query === newFilters.query &&
-        prev.company === newFilters.company &&
-        prev.page === newFilters.page &&
-        prev.country === newFilters.country
+        prev.query !== newFilters.query ||
+        prev.company !== newFilters.company ||
+        prev.location !== newFilters.location ||
+        prev.country !== newFilters.country
       ) {
-        return prev;
+        return newFilters;
       }
-      return newFilters;
+      return prev;
     });
   }, [location.search]);
 
@@ -229,6 +293,10 @@ export default function JobSearchResults() {
   const countryLabel = filters.country ?
     `${countryFlags[filters.country] || ''} ${filters.country}` : '';
 
+  const handleResetSearch = () => {
+    navigate('/');
+  };
+
   return (
     <Layout>
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
@@ -252,6 +320,19 @@ export default function JobSearchResults() {
                 <SearchFilters 
                   filters={filters}
                   onFiltersChange={handleFiltersChange}
+                  selectedLocation={selectedLocation}
+                  onLocationChange={(location) => {
+                    setSelectedLocation(location);
+                    if (location) {
+                      if (location.type === 'remote') {
+                        handleFiltersChange({ workType: 'remote', location: '' });
+                      } else {
+                        handleFiltersChange({ location: location.name, workType: '' });
+                      }
+                    } else {
+                      handleFiltersChange({ location: '', workType: '' });
+                    }
+                  }}
                 />
               </div>
               <div className="flex gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
@@ -370,8 +451,7 @@ export default function JobSearchResults() {
             </h1>
             
             <p className="text-xl md:text-2xl opacity-95 mb-6 leading-relaxed max-w-3xl mx-auto">
-              Found {totalJobs.toLocaleString()} amazing remote opportunities for you. 
-              Your perfect job is just a buzz away!
+              Found {totalJobs.toLocaleString()} remote opportunities for you.
             </p>
           </div>
 
@@ -381,21 +461,48 @@ export default function JobSearchResults() {
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-4">
                   {/* SEARCH CRITERIA SUMMARY */}
-                  <div className="text-sm text-white/80">
+                  <div className="text-sm text-white/80 font-semibold">
                     {filters.query && (
-                      <span className="font-semibold text-yellow-300">{filters.query}</span>
+                      <span className="text-yellow-300">{filters.query}</span>
                     )}
                     {filters.company && (
-                      <span className="ml-2 font-semibold text-blue-200">@{filters.company}</span>
+                      <span className="ml-2 text-blue-200">@{filters.company}</span>
                     )}
                     {filters.location && (
-                      <span className="ml-2 font-semibold text-green-200">in {filters.location}</span>
+                      <span className="ml-2 text-green-200">in {filters.location}</span>
                     )}
                     {filters.country && countryFlags[filters.country] && (
                       <span className="ml-2 text-lg">{countryFlags[filters.country]}</span>
                     )}
                     {!(filters.query || filters.company || filters.location || (filters.country && countryFlags[filters.country])) && (
-                      <span className="text-white/60">All jobs</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white/60 text-lg md:text-xl font-medium">
+                          {(() => {
+                            const params = new URLSearchParams(location.search);
+                            const keywords = params.get('keywords');
+                            if (keywords) {
+                              return `arama kriteri (${keywords.split(',').join(', ')})`;
+                            }
+                            return 'All Jobs';
+                          })()}
+                        </span>
+                        {(() => {
+                          const params = new URLSearchParams(location.search);
+                          const keywords = params.get('keywords');
+                          if (keywords) {
+                            return (
+                              <button
+                                onClick={handleResetSearch}
+                                className="text-white/60 hover:text-white/80 transition-colors p-1 hover:bg-white/10 rounded-full"
+                                title="Reset search"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
                     )}
                   </div>
                   {hasActiveFilters && (
@@ -410,25 +517,25 @@ export default function JobSearchResults() {
                   {/* Save Search Button */}
                   <button
                     onClick={() => setShowSaveDialog(true)}
-                    className="bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold px-6 py-3 rounded-xl hover:bg-white/20 transition-all duration-200 flex items-center space-x-2"
+                    className="bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold px-3 md:px-6 py-3 rounded-xl hover:bg-white/20 transition-all duration-200 flex items-center space-x-2"
                   >
                     <Save className="w-5 h-5" />
-                    <span>Save Search</span>
+                    <span className="hidden md:inline">Save Search</span>
                   </button>
 
                   {/* Filter Button */}
                   <button
                     onClick={() => setShowFiltersModal(true)}
-                    className={`flex items-center space-x-2 px-6 py-3 rounded-xl border transition-all duration-200 ${
+                    className={`flex items-center space-x-2 px-3 md:px-6 py-3 rounded-xl border transition-all duration-200 ${
                       hasActiveFilters 
                         ? 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-blue-400' 
                         : 'bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20'
                     }`}
                   >
                     <Filter className="w-5 h-5" />
-                    <span>Filters</span>
+                    <span className="hidden md:inline">Filters</span>
                     {hasActiveFilters && (
-                      <span className="ml-1 px-2 py-0.5 bg-white/20 text-white text-xs rounded-full font-medium">
+                      <span className="hidden md:inline ml-1 px-2 py-0.5 bg-white/20 text-white text-xs rounded-full font-medium">
                         Active
                       </span>
                     )}
@@ -495,7 +602,7 @@ export default function JobSearchResults() {
                 </div>
 
                 {/* Job Results Grid/List */}
-                <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
+                <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6' : 'space-y-4'}>
                   {jobs.map((job) => (
                     <JobCard key={job._id} job={job} viewMode={viewMode} />
                   ))}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getApiUrl } from '../utils/apiConfig';
-import { X, Eye, EyeOff, Check } from 'lucide-react';
+import { X, Eye, EyeOff, Check, ExternalLink } from 'lucide-react';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -18,8 +18,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'login' | 'register'>(defaultTab);
   const [showPassword, setShowPassword] = useState(false);
-  const [showTermsModal, setShowTermsModal] = useState(false);
-  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   
   // Login form state
   const [loginEmail, setLoginEmail] = useState('');
@@ -238,90 +236,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
     }
   };
 
-  const openTermsModal = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setShowTermsModal(true);
-  };
 
-  const openPrivacyModal = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setShowPrivacyModal(true);
-  };
-
-  const closeTermsModal = () => setShowTermsModal(false);
-  const closePrivacyModal = () => setShowPrivacyModal(false);
-
-  // Terms of Service Modal Component
-  const TermsModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Terms of Service</h2>
-          <button 
-            onClick={closeTermsModal} 
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-2xl font-light"
-          >
-            ×
-          </button>
-        </div>
-        <div className="overflow-y-auto p-6 flex-1">
-          <div className="prose max-w-none">
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-              Welcome to Buzz2Remote. By using our service, you agree to these terms.
-            </p>
-            <h3 className="text-lg font-semibold mt-4 mb-2">1. Service Description</h3>
-            <p className="text-gray-700 dark:text-gray-300">
-              Buzz2Remote is a job search platform that connects remote job seekers with employers.
-            </p>
-            <h3 className="text-lg font-semibold mt-4 mb-2">2. User Responsibilities</h3>
-            <p className="text-gray-700 dark:text-gray-300">
-              Users must provide accurate information and use the platform responsibly.
-            </p>
-            <h3 className="text-lg font-semibold mt-4 mb-2">3. Privacy</h3>
-            <p className="text-gray-700 dark:text-gray-300">
-              We respect your privacy and handle your data according to our Privacy Policy.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Privacy Policy Modal Component
-  const PrivacyModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Privacy Policy</h2>
-          <button 
-            onClick={closePrivacyModal} 
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-2xl font-light"
-          >
-            ×
-          </button>
-        </div>
-        <div className="overflow-y-auto p-6 flex-1">
-          <div className="prose max-w-none">
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-              This Privacy Policy describes how we collect, use, and protect your information.
-            </p>
-            <h3 className="text-lg font-semibold mt-4 mb-2">Information We Collect</h3>
-            <p className="text-gray-700 dark:text-gray-300">
-              We collect information you provide directly to us, such as when you create an account.
-            </p>
-            <h3 className="text-lg font-semibold mt-4 mb-2">How We Use Information</h3>
-            <p className="text-gray-700 dark:text-gray-300">
-              We use your information to provide and improve our services.
-            </p>
-            <h3 className="text-lg font-semibold mt-4 mb-2">Data Security</h3>
-            <p className="text-gray-700 dark:text-gray-300">
-              We implement appropriate security measures to protect your personal information.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <>
@@ -538,13 +453,34 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
                   <div>
                     <label htmlFor="registerPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Password
-                      {!isPasswordValid && registerPassword.length > 0 && (
-                        <div className="relative inline-block ml-2">
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="registerPassword"
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        value={registerPassword}
+                        onChange={(e) => setRegisterPassword(e.target.value)}
+                        className="w-full px-3 py-2 pr-20 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                        placeholder="Create a strong password"
+                      />
+                      
+                      {/* Password Policy Icon */}
+                      {registerPassword.length > 0 && (
+                        <div className="absolute right-12 top-2.5">
                           <div className="group cursor-help">
-                            <span className="w-4 h-4 text-red-500 inline-flex items-center justify-center">
-                              <X />
-                            </span>
-                            <div className="absolute z-50 left-0 mt-2 w-64 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                            <div className="w-4 h-4 flex items-center justify-center">
+                              {isPasswordValid ? (
+                                <span className="text-green-500">
+                                  <Check />
+                                </span>
+                              ) : (
+                                <span className="text-red-500">
+                                  <X />
+                                </span>
+                              )}
+                            </div>
+                            <div className="absolute z-50 right-0 mt-2 w-64 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                               <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Password Requirements:
                               </div>
@@ -570,17 +506,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
                           </div>
                         </div>
                       )}
-                    </label>
-                    <div className="relative">
-                      <input
-                        id="registerPassword"
-                        type={showPassword ? 'text' : 'password'}
-                        required
-                        value={registerPassword}
-                        onChange={(e) => setRegisterPassword(e.target.value)}
-                        className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                        placeholder="Create a strong password"
-                      />
+                      
+                      {/* Show/Hide Password Button */}
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
@@ -605,21 +532,25 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
                   />
                   <label htmlFor="agreedToTerms" className="ml-2 text-sm text-gray-600 dark:text-gray-400">
                     I agree to the{' '}
-                    <button 
-                      type="button" 
-                      onClick={openTermsModal}
-                      className="text-orange-600 hover:text-orange-500 underline"
+                    <a 
+                      href="/terms-conditions" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-orange-600 hover:text-orange-500 underline inline-flex items-center gap-1"
                     >
                       Terms of Service
-                    </button>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
                     {' '}and{' '}
-                    <button 
-                      type="button" 
-                      onClick={openPrivacyModal}
-                      className="text-orange-600 hover:text-orange-500 underline"
+                    <a 
+                      href="/privacy-policy" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-orange-600 hover:text-orange-500 underline inline-flex items-center gap-1"
                     >
                       Privacy Policy
-                    </button>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
                   </label>
                 </div>
 
@@ -670,9 +601,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
         </div>
       </div>
 
-      {/* Modals */}
-      {showTermsModal && <TermsModal />}
-      {showPrivacyModal && <PrivacyModal />}
     </>
   );
 };

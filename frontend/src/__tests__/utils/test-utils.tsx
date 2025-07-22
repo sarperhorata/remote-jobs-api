@@ -1,8 +1,8 @@
 import React from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { ThemeProvider } from '../contexts/ThemeContext';
-import { AuthProvider } from '../contexts/AuthContext';
+import { ThemeProvider } from '../../contexts/ThemeContext';
+import { AuthProvider } from '../../contexts/AuthContext';
 
 // Custom render function that includes providers
 const AllTheProviders: React.FC<{ children: React.ReactNode }> = ({ children }) => {

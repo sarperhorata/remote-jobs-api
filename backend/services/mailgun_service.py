@@ -322,6 +322,20 @@ class MailgunService:
             Dict with success status and message
         """
         try:
+            # Check if Mailgun API key is configured
+            if not self.api_key:
+                logger.warning(f"Mailgun API key not configured. Logging email instead of sending: {to_email} - {subject}")
+                logger.info(f"Email content (HTML): {html_content[:500]}...")
+                if text_content:
+                    logger.info(f"Email content (Text): {text_content[:500]}...")
+                
+                # Return success for development/testing purposes
+                return {
+                    "success": True,
+                    "message": "Email logged (Mailgun not configured)",
+                    "warning": "Mailgun API key not configured - email was logged instead of sent"
+                }
+            
             # Check daily limit
             if not self._check_daily_limit():
                 logger.error(f"Daily email limit ({self.daily_limit}) reached")

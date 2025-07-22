@@ -472,8 +472,8 @@ const Home: React.FC = () => {
       {/* CTA Section */}
       <div className="py-16 bg-gradient-to-r from-blue-600 to-indigo-800 text-white">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-4">Ready to Find Your Dream Remote Job?</h2>
-          <p className="text-xl opacity-90 mb-8 max-w-2xl mx-auto">
+          <h2 className="text-3xl font-bold mb-2">Ready to Find Your Dream Remote Job?</h2>
+          <p className="text-xl opacity-90 mb-6 max-w-2xl mx-auto">
             Create your profile today and start applying to thousands of remote positions
           </p>
           <button 

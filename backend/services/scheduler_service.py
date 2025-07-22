@@ -38,8 +38,7 @@ class SchedulerService:
             
         try:
             if not self.is_running:
-                # Configure scheduler with timezone
-                self.scheduler.configure(timezone='UTC')
+                # Configure scheduler without timezone to avoid issues
                 await self._setup_jobs()
                 self.scheduler.start()
                 self.is_running = True
@@ -54,16 +53,6 @@ class SchedulerService:
             return True
         except Exception as e:
             logger.error(f"❌ Failed to start scheduler service: {e}")
-            # Try to start without timezone configuration
-            try:
-                if not self.is_running:
-                    await self._setup_jobs()
-                    self.scheduler.start()
-                    self.is_running = True
-                    logger.info("✅ Scheduler service started successfully (without timezone)")
-                    return True
-            except Exception as e2:
-                logger.error(f"❌ Failed to start scheduler service (fallback): {e2}")
             return False
     
     async def stop(self):
@@ -91,7 +80,7 @@ class SchedulerService:
             # External API crawler - daily at 9 AM UTC
             self.scheduler.add_job(
                 self._external_api_crawler_job,
-                CronTrigger(hour=9, minute=0),
+                CronTrigger(hour=9, minute=0, timezone=None),
                 id="external_api_crawler", 
                 name="External API Crawler",
                 replace_existing=True
@@ -100,7 +89,7 @@ class SchedulerService:
             # Buzz2Remote-Companies distill crawler - daily at 10 AM UTC
             self.scheduler.add_job(
                 self._distill_crawler_job,
-                CronTrigger(hour=10, minute=0),
+                CronTrigger(hour=10, minute=0, timezone=None),
                 id="distill_crawler",
                 name="Buzz2Remote-Companies Distill Crawler", 
                 replace_existing=True
@@ -109,7 +98,7 @@ class SchedulerService:
             # Database cleanup - weekly on Sunday at 2 AM UTC
             self.scheduler.add_job(
                 self._database_cleanup_job,
-                CronTrigger(day_of_week=6, hour=2, minute=0),
+                CronTrigger(day_of_week=6, hour=2, minute=0, timezone=None),
                 id="database_cleanup",
                 name="Database Cleanup",
                 replace_existing=True
@@ -118,7 +107,7 @@ class SchedulerService:
             # Daily job statistics - daily at 8 AM UTC
             self.scheduler.add_job(
                 self._job_statistics_job,
-                CronTrigger(hour=8, minute=0),
+                CronTrigger(hour=8, minute=0, timezone=None),
                 id="job_statistics",
                 name="Daily Job Statistics",
                 replace_existing=True
@@ -188,7 +177,7 @@ class SchedulerService:
             if os.getenv('RENDER'):
                 try:
                     async with httpx.AsyncClient() as client:
-                        response = await client.get("https://buzz2remote-api.onrender.com/health", timeout=30)
+                        response = await client.get("https://buzz2remote-api.onrender.com/api/v1/health", timeout=30)
                         if response.status_code == 200:
                             await self._log_job_run("health_check", "success", "Health check successful", {
                                 "response_time": response.elapsed.total_seconds(),
@@ -223,24 +212,17 @@ class SchedulerService:
                 total_jobs = sum(save_results.values())
                 
                 # Log success
-                await self._log_job_run("external_api_crawler", "success", f"External API crawler completed successfully", {
+                await self._log_job_run("external_api_crawler", "success", f"External API crawler completed: {total_jobs} jobs processed", {
                     "total_jobs": total_jobs,
-                    "api_results": save_results
+                    "new_jobs": new_jobs,
+                    "updated_jobs": updated_jobs,
+                    "errors": errors
                 })
                 
-                # Send Telegram notification if available
-                try:
-                    from backend.telegram_bot.bot_manager import bot_manager
-                    if bot_manager.bot_instance and bot_manager.bot_instance.enabled:
-                        await bot_manager.bot_instance.send_deployment_notification({
-                            'type': 'external_api_crawl',
-                            'status': 'success',
-                            'total_jobs': total_jobs,
-                            'api_results': save_results,
-                            'timestamp': datetime.now().isoformat()
-                        })
-                except Exception as telegram_error:
-                    logger.warning(f"Could not send Telegram notification: {telegram_error}")
+                # Update cache after external API crawler
+                await self._update_cache_after_cronjob()
+                
+                logger.info(f"✅ External API crawler completed: {total_jobs} jobs processed")
                 
             except ImportError as e:
                 error_msg = f"External job APIs module not available: {e}"
@@ -285,6 +267,9 @@ class SchedulerService:
                     "errors": results.get('errors', [])
                 })
                 
+                # Update cache after distill crawler
+                await self._update_cache_after_cronjob()
+                
                 # Send Telegram notification if available
                 try:
                     from backend.telegram_bot.bot_manager import bot_manager
@@ -296,6 +281,33 @@ class SchedulerService:
                             'jobs_found': len(results.get('jobs', [])),
                             'timestamp': datetime.now().isoformat()
                         })
+                        
+                        # Send new job notifications for each new job found
+                        jobs_found = len(results.get('jobs', []))
+                        if jobs_found > 0:
+                            # Get the latest jobs from database
+                            from database.db import get_async_db
+                            db = await get_async_db()
+                            latest_jobs = await db.jobs.find().sort("created_at", -1).limit(min(jobs_found, 10)).to_list(length=min(jobs_found, 10))
+                            
+                            for job in latest_jobs:
+                                try:
+                                    await bot_manager.bot_instance.send_new_job_notification({
+                                        "type": "new_job",
+                                        "job_title": job.get("title", "Unknown"),
+                                        "company": job.get("company", "Unknown"),
+                                        "location": job.get("location", "Unknown"),
+                                        "job_type": job.get("job_type", "Unknown"),
+                                        "is_remote": job.get("isRemote", False),
+                                        "salary": job.get("salary", "Not specified"),
+                                        "job_id": str(job.get("_id", "Unknown")),
+                                        "timestamp": datetime.now().isoformat()
+                                    })
+                                    # Small delay to avoid rate limiting
+                                    import asyncio
+                                    await asyncio.sleep(1)
+                                except Exception as job_notification_error:
+                                    logger.warning(f"Could not send new job notification: {job_notification_error}")
                 except Exception as telegram_error:
                     logger.warning(f"Could not send Telegram notification: {telegram_error}")
                 
@@ -366,81 +378,120 @@ class SchedulerService:
     async def _job_statistics_job(self):
         """Daily job statistics job - daily at 8 AM UTC"""
         try:
-            await self._log_job_run("job_statistics", "started", "Job statistics job started")
+            logger.info("📊 Starting daily job statistics job...")
             
-            # Import database
-            try:
-                from database.db import get_async_db
-                db = await get_async_db()
-                
-                if db:
-                    # Get job statistics
-                    total_jobs = await db.jobs.count_documents({})
-                    active_jobs = await db.jobs.count_documents({"status": "active"})
-                    total_companies = await db.companies.count_documents({})
-                    
-                    # Get today's new jobs
-                    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-                    new_jobs_today = await db.jobs.count_documents({"created_at": {"$gte": today}})
-                    
-                    # Get job sources distribution
-                    pipeline = [
-                        {"$group": {"_id": "$source", "count": {"$sum": 1}}},
-                        {"$sort": {"count": -1}}
-                    ]
-                    source_stats = list(await db.jobs.aggregate(pipeline))
-                    
-                    # Log success
-                    await self._log_job_run("job_statistics", "success", f"Job statistics collected successfully", {
-                        "total_jobs": total_jobs,
-                        "active_jobs": active_jobs,
-                        "total_companies": total_companies,
-                        "new_jobs_today": new_jobs_today,
-                        "source_stats": source_stats
-                    })
-                    
-                    # Send Telegram notification if available
-                    try:
-                        from backend.telegram_bot.bot_manager import bot_manager
-                        if bot_manager.bot_instance and bot_manager.bot_instance.enabled:
-                            await bot_manager.bot_instance.send_deployment_notification({
-                                'type': 'daily_statistics',
-                                'status': 'success',
-                                'total_jobs': total_jobs,
-                                'active_jobs': active_jobs,
-                                'total_companies': total_companies,
-                                'new_jobs_today': new_jobs_today,
-                                'timestamp': datetime.now().isoformat()
-                            })
-                    except Exception as telegram_error:
-                        logger.warning(f"Could not send Telegram notification: {telegram_error}")
-                else:
-                    error_msg = "Database connection not available"
-                    await self._log_job_run("job_statistics", "error", error_msg)
-                    logger.error(error_msg)
-                
-            except ImportError as e:
-                error_msg = f"Database module not available: {e}"
-                await self._log_job_run("job_statistics", "error", error_msg)
-                logger.error(error_msg)
-                
+            # Get database connection
+            from database.db import get_async_db
+            db = await get_async_db()
+            
+            if not db:
+                await self._log_job_run("job_statistics", "error", "Database connection failed")
+                return
+            
+            # Get job statistics
+            total_jobs = await db.jobs.count_documents({})
+            active_jobs = await db.jobs.count_documents({"is_active": True})
+            
+            # Get jobs added in last 24 hours
+            yesterday = datetime.now() - timedelta(days=1)
+            new_jobs_24h = await db.jobs.count_documents({
+                "$or": [
+                    {"created_at": {"$gte": yesterday}},
+                    {"created_at": {"$gte": yesterday.isoformat()}},
+                    {"last_updated": {"$gte": yesterday.isoformat()}},
+                    {"posted_date": {"$gte": yesterday.isoformat()}}
+                ]
+            })
+            
+            # Get top job categories
+            pipeline = [
+                {"$match": {"is_active": True}},
+                {"$group": {"_id": "$job_type", "count": {"$sum": 1}}},
+                {"$sort": {"count": -1}},
+                {"$limit": 10}
+            ]
+            top_categories = await db.jobs.aggregate(pipeline).to_list(10)
+            
+            # Log statistics
+            stats_data = {
+                "total_jobs": total_jobs,
+                "active_jobs": active_jobs,
+                "new_jobs_24h": new_jobs_24h,
+                "top_categories": top_categories
+            }
+            
+            await self._log_job_run("job_statistics", "success", "Job statistics updated", stats_data)
+            
+            # Update cache after job statistics
+            await self._update_cache_after_cronjob()
+            
+            logger.info(f"✅ Job statistics completed: {total_jobs} total, {active_jobs} active, {new_jobs_24h} new")
+            
         except Exception as e:
-            error_msg = f"Job statistics job failed: {e}"
-            await self._log_job_run("job_statistics", "error", error_msg)
-            logger.error(error_msg)
+            logger.error(f"❌ Job statistics job error: {str(e)}")
+            await self._log_job_run("job_statistics", "error", f"Job statistics job error: {str(e)}")
+    
+    async def _update_cache_after_cronjob(self):
+        """Update cache after cronjob completion"""
+        try:
+            logger.info("🔄 Starting cache update after cronjob...")
             
-            # Send Telegram notification if available
-            try:
-                from backend.telegram_bot.bot_manager import bot_manager
-                if bot_manager.bot_instance and bot_manager.bot_instance.enabled:
-                    await bot_manager.bot_instance.send_deployment_notification({
-                        'type': 'daily_statistics',
-                        'status': 'error',
-                        'error': str(e),
-                        'timestamp': datetime.now().isoformat()
-                    })
-            except Exception as telegram_error:
-                logger.warning(f"Could not send Telegram notification: {telegram_error}")
+            # Import cache service
+            from services.cache_service import get_cache_service
+            cache_service = get_cache_service()
+            
+            # Clear all cache
+            await cache_service.clear()
+            logger.info("🧹 Cache cleared successfully")
+            
+            # Preload popular keywords
+            popular_keywords = await cache_service.get_popular_keywords()
+            
+            # Get database connection for job counts
+            from database.db import get_async_db
+            db = await get_async_db()
+            
+            if db:
+                for keyword in popular_keywords:
+                    try:
+                        # Create search query
+                        safe_q = keyword.replace('\\', '\\\\').replace('$', '\\$').replace('^', '\\^')
+                        search_query = {
+                            "$or": [
+                                {"title": {"$regex": safe_q, "$options": "i"}},
+                                {"description": {"$regex": safe_q, "$options": "i"}},
+                                {"company": {"$regex": safe_q, "$options": "i"}}
+                            ],
+                            "is_active": True
+                        }
+                        
+                        # Get count
+                        count = await db.jobs.count_documents(search_query)
+                        
+                        # Cache the result
+                        cache_key = f"quick_search_count:{keyword.lower().strip()}"
+                        result = {
+                            "count": count,
+                            "query": keyword,
+                            "cached_at": datetime.utcnow().isoformat()
+                        }
+                        
+                        await cache_service.set(cache_key, result)
+                        logger.info(f"💾 Cached {keyword}: {count} jobs")
+                        
+                    except Exception as e:
+                        logger.error(f"Error caching keyword {keyword}: {e}")
+            
+            await self._log_job_run("cache_update", "success", "Cache updated after cronjob", {
+                "keywords_processed": len(popular_keywords),
+                "cache_cleared": True
+            })
+            
+            logger.info("✅ Cache update completed successfully")
+            
+        except Exception as e:
+            logger.error(f"❌ Cache update error: {str(e)}")
+            await self._log_job_run("cache_update", "error", f"Cache update error: {str(e)}")
     
     def get_job_status(self):
         """Get status of all scheduled jobs with next run times"""

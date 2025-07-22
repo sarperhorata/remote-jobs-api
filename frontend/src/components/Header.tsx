@@ -58,15 +58,9 @@ const Header: React.FC = () => {
   };
 
   const navigation = [
-    { name: 'Browse Jobs', href: '/jobs/search' },
-    { name: 'Companies', href: '/companies' },
-    { name: 'Pricing', href: '/pricing' },
     { name: 'Remote Tips', href: '/remote-tips' },
-    { name: 'Career Tips', href: '/career-tips' },
-    { name: 'Remote Hints', href: '/remote-hints' },
     { name: 'Salary Guide', href: '/salary-guide' },
-    { name: 'About', href: '/about' },
-    { name: 'Contact', href: '/contact' },
+    { name: 'Pricing', href: '/pricing' },
   ];
 
   const handleProfileAction = (action: string) => {
@@ -99,13 +93,13 @@ const Header: React.FC = () => {
     <>
       <header className="relative z-50">
         {/* Glassmorphism navbar */}
-        <nav className="fixed top-0 left-0 right-0 z-50 bg-white/10 backdrop-blur-md border-b border-white/20 shadow-lg">
+        <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-900/90 backdrop-blur-md border-b border-white/30 dark:border-gray-700/50 shadow-lg">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               {/* Logo */}
               <Link to="/" className="flex items-center space-x-2 group">
                 <div className="relative">
-                  <div className="w-10 h-10 rounded-xl border-2 border-yellow-400/80 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-200 bg-white/20 dark:bg-gray-800/20 backdrop-blur-sm">
+                  <div className="w-10 h-10 rounded-xl border-2 border-yellow-400/80 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-200 backdrop-blur-sm">
                     <span className="text-yellow-400 font-bold text-lg animate-pulse drop-shadow-[0_1px_4px_rgba(251,191,36,0.7)]">🐝</span>
                   </div>
                   <div className="absolute -inset-1 bg-gradient-to-r from-yellow-400/40 to-orange-500/30 rounded-xl blur opacity-30 group-hover:opacity-50 transition-opacity duration-200 pointer-events-none"></div>
@@ -117,8 +111,8 @@ const Header: React.FC = () => {
                   <span
                     className={
                       theme === 'dark'
-                        ? 'text-white/70 -mt-1 text-xs'
-                        : 'text-gray-800 -mt-1 font-medium text-xs'
+                        ? 'text-white/80 -mt-1 text-xs'
+                        : 'text-gray-700 -mt-1 font-medium text-xs'
                     }
                   >
                     Find Remote Jobs 🚀
@@ -127,12 +121,12 @@ const Header: React.FC = () => {
               </Link>
 
               {/* Desktop Navigation */}
-              <div className="hidden md:flex items-center space-x-6">
+              <div className="hidden md:flex items-center space-x-4 lg:space-x-6">
                 {navigation.map((item) => (
                   <Link
                     key={item.name}
                     to={item.href}
-                    className="text-white/90 hover:text-white hover:bg-white/10 px-3 py-2 rounded-lg transition-all duration-200 font-medium"
+                    className="text-gray-800 dark:text-white/90 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 px-3 py-2 rounded-lg transition-all duration-200 font-semibold text-sm lg:text-base border border-transparent hover:border-gray-300 dark:hover:border-gray-600 bg-white/50 dark:bg-gray-800/50"
                   >
                     {item.name}
                   </Link>
@@ -144,7 +138,7 @@ const Header: React.FC = () => {
                 {/* Theme Toggle */}
                 <button
                   onClick={toggleTheme}
-                  className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200"
+                  className="p-2 text-gray-800 dark:text-white/90 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-all duration-200"
                   title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
                 >
                   {theme === 'dark' ? (
@@ -157,19 +151,6 @@ const Header: React.FC = () => {
                 {user ? (
                   /* User Menu */
                   <div className="flex items-center space-x-3">
-                    {/* Notifications */}
-                    <Link
-                      to="/notifications"
-                      className="relative p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200"
-                    >
-                      <Bell className="w-5 h-5" />
-                      {unreadNotifications > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
-                          {unreadNotifications > 99 ? '99+' : unreadNotifications}
-                        </span>
-                      )}
-                    </Link>
-
                     <div className="relative">
                       <button
                         onClick={(e) => {
@@ -274,7 +255,7 @@ const Header: React.FC = () => {
                     e.stopPropagation();
                     setIsMobileMenuOpen(!isMobileMenuOpen);
                   }}
-                  className="md:hidden text-white p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  className="md:hidden text-gray-800 dark:text-white/90 p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors"
                 >
                   {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                 </button>
@@ -284,35 +265,18 @@ const Header: React.FC = () => {
 
           {/* Mobile Navigation */}
           {isMobileMenuOpen && (
-            <div className="md:hidden bg-white/10 backdrop-blur-lg border-t border-white/20">
+            <div className="md:hidden bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg border-t border-gray-200 dark:border-gray-700">
               <div className="px-4 py-3 space-y-2">
                 {navigation.map((item) => (
                   <Link
                     key={item.name}
                     to={item.href}
-                    className="block text-white/90 hover:text-white hover:bg-white/10 px-3 py-2 rounded-lg transition-colors"
+                    className="block text-gray-800 dark:text-white/90 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 px-4 py-3 rounded-lg transition-colors font-semibold text-base border border-transparent hover:border-gray-300 dark:hover:border-gray-600"
+                    onClick={() => setIsMobileMenuOpen(false)}
                   >
                     {item.name}
                   </Link>
                 ))}
-                
-                {user && (
-                  <>
-                    <div className="border-t border-white/20 pt-2 mt-2">
-                      <Link
-                        to="/notifications"
-                        className="flex items-center justify-between text-white/90 hover:text-white hover:bg-white/10 px-3 py-2 rounded-lg transition-colors"
-                      >
-                        <span>Notifications</span>
-                        {unreadNotifications > 0 && (
-                          <span className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
-                            {unreadNotifications > 99 ? '99+' : unreadNotifications}
-                          </span>
-                        )}
-                      </Link>
-                    </div>
-                  </>
-                )}
               </div>
             </div>
           )}

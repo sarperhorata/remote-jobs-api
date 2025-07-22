@@ -11,6 +11,7 @@ const Register: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [marketingConsent, setMarketingConsent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +25,7 @@ const Register: React.FC = () => {
     setIsLoading(true);
     
     try {
-      await signup(fullName, email, password);
+      await signup(fullName, email, password, { marketingConsent });
       // Redirect to the page they tried to visit or to dashboard
       navigate('/login', { replace: true });
     } catch (err) {
@@ -113,6 +114,21 @@ const Register: React.FC = () => {
                 placeholder="Confirm password"
               />
             </div>
+          </div>
+
+          {/* Marketing Consent Checkbox */}
+          <div className="flex items-start mt-4">
+            <input
+              id="marketing-consent"
+              name="marketing-consent"
+              type="checkbox"
+              checked={marketingConsent}
+              onChange={e => setMarketingConsent(e.target.checked)}
+              className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+            />
+            <label htmlFor="marketing-consent" className="ml-2 block text-sm text-gray-700 select-none">
+              E-posta adresime yeni ürünler, kampanyalar ve güncellemeler hakkında bilgilendirici ve pazarlama içerikleri gönderilmesini kabul ediyorum. İstediğim zaman bu izni geri alabilirim.
+            </label>
           </div>
 
           <div>

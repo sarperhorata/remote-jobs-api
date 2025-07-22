@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { ShieldCheck, ArrowLeft, ChevronDown, ChevronRight, Calendar, Mail, Globe, Eye, Lock, Database, UserCheck } from '../components/icons/EmojiIcons';
+// import { ShieldCheck, ArrowLeft, ChevronDown, ChevronRight, Calendar, Mail, Globe, Eye, Lock, Database, UserCheck } from '../components/icons/EmojiIcons';
 
 const PrivacyPolicy: React.FC = () => {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
@@ -22,7 +22,6 @@ const PrivacyPolicy: React.FC = () => {
     {
       id: "overview",
       title: "1. Overview and Data Controller",
-      icon: <Globe className="w-5 h-5" />,
       content: (
         <div className="space-y-4">
           <p>
@@ -51,7 +50,6 @@ const PrivacyPolicy: React.FC = () => {
     {
       id: "information-collection",
       title: "2. Information We Collect",
-      icon: <Database className="w-5 h-5" />,
       content: (
         <div className="space-y-4">
           <h4 className="font-semibold">2.1 Information You Provide Directly</h4>
@@ -91,7 +89,6 @@ const PrivacyPolicy: React.FC = () => {
     {
       id: "how-we-use",
       title: "3. How We Use Your Information",
-      icon: <UserCheck className="w-5 h-5" />,
       content: (
         <div className="space-y-4">
           <h4 className="font-semibold">3.1 Service Provision</h4>
@@ -142,7 +139,6 @@ const PrivacyPolicy: React.FC = () => {
     {
       id: "sharing-disclosure",
       title: "4. Information Sharing and Disclosure",
-      icon: <Eye className="w-5 h-5" />,
       content: (
         <div className="space-y-4">
           <h4 className="font-semibold">4.1 With Your Consent</h4>
@@ -188,7 +184,6 @@ const PrivacyPolicy: React.FC = () => {
     {
       id: "data-security",
       title: "5. Data Security and Protection",
-      icon: <Lock className="w-5 h-5" />,
       content: (
         <div className="space-y-4">
           <h4 className="font-semibold">5.1 Security Measures</h4>
@@ -227,7 +222,6 @@ const PrivacyPolicy: React.FC = () => {
     {
       id: "your-rights",
       title: "6. Your Privacy Rights",
-      icon: <ShieldCheck className="w-5 h-5" />,
       content: (
         <div className="space-y-4">
           <h4 className="font-semibold">6.1 GDPR Rights (EU Residents)</h4>
@@ -286,7 +280,6 @@ const PrivacyPolicy: React.FC = () => {
     {
       id: "data-retention",
       title: "7. Data Retention and Deletion",
-      icon: <Database className="w-5 h-5" />,
       content: (
         <div className="space-y-4">
           <h4 className="font-semibold">7.1 Retention Periods</h4>
@@ -334,7 +327,6 @@ const PrivacyPolicy: React.FC = () => {
     {
       id: "international-transfers",
       title: "8. International Data Transfers",
-      icon: <Globe className="w-5 h-5" />,
       content: (
         <div className="space-y-4">
           <h4 className="font-semibold">8.1 Data Transfer Mechanisms</h4>
@@ -366,7 +358,6 @@ const PrivacyPolicy: React.FC = () => {
     {
       id: "cookies-tracking",
       title: "9. Cookies and Tracking Technologies",
-      icon: <Eye className="w-5 h-5" />,
       content: (
         <div className="space-y-4">
           <h4 className="font-semibold">9.1 Types of Cookies We Use</h4>
@@ -411,7 +402,6 @@ const PrivacyPolicy: React.FC = () => {
     {
       id: "children-privacy",
       title: "10. Children's Privacy",
-      icon: <UserCheck className="w-5 h-5" />,
       content: (
         <div className="space-y-4">
           <h4 className="font-semibold">10.1 Age Restrictions</h4>
@@ -437,7 +427,6 @@ const PrivacyPolicy: React.FC = () => {
     {
       id: "policy-updates",
       title: "11. Policy Updates and Contact",
-      icon: <Mail className="w-5 h-5" />,
       content: (
         <div className="space-y-4">
           <h4 className="font-semibold">11.1 Policy Updates</h4>
@@ -470,86 +459,64 @@ const PrivacyPolicy: React.FC = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         {/* Hero Section */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-800 text-white py-16">
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-16">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto text-center">
-              <div className="flex items-center justify-center mb-6">
-                <ShieldCheck className="w-12 h-12 mr-4" />
-                <h1 className="text-4xl md:text-5xl font-bold">Privacy Policy</h1>
-              </div>
-              <p className="text-xl opacity-90 mb-4">
-                How we collect, use, and protect your personal information
+              <h1 className="text-4xl md:text-5xl font-bold mb-4">
+                Privacy Policy
+              </h1>
+              <p className="text-xl text-blue-100 mb-6">
+                Learn how we protect your privacy and data at Buzz2Remote
               </p>
-              <div className="flex items-center justify-center text-sm opacity-75">
-                <Calendar className="w-4 h-4 mr-2" />
-                <span>Last updated: {lastUpdated}</span>
+              <div className="flex items-center justify-center text-sm text-blue-200">
+                Last updated: {lastUpdated}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Content */}
+        {/* Content Section */}
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-4xl mx-auto">
-            {/* Back to Home */}
-            <div className="mb-8">
-              <Link 
-                to="/" 
-                className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Home
-              </Link>
+            {/* Introduction */}
+            <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                Our Commitment to Your Privacy
+              </h2>
+              <p className="text-gray-600 leading-relaxed">
+                At Buzz2Remote, we are committed to protecting your privacy and ensuring transparency in how we handle your personal data. This Privacy Policy explains what information we collect, how we use it, and your rights regarding your data.
+              </p>
             </div>
 
             {/* Sections */}
             <div className="space-y-6">
-              {sections.map((section) => (
-                <div key={section.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                  <button
-                    onClick={() => toggleSection(section.id)}
-                    className="w-full px-6 py-4 text-left bg-gray-50 hover:bg-gray-100 transition-colors flex items-center justify-between"
-                  >
-                    <div className="flex items-center">
-                      {section.icon}
-                      <h3 className="ml-3 text-lg font-semibold text-gray-900">
+              {sections.map((section) => {
+                const isExpanded = expandedSections.has(section.id);
+                return (
+                  <div key={section.id} className="bg-white rounded-xl shadow-lg overflow-hidden">
+                    <button
+                      onClick={() => toggleSection(section.id)}
+                      className="w-full px-8 py-6 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+                    >
+                      <h3 className="text-xl font-semibold text-gray-800">
                         {section.title}
                       </h3>
-                    </div>
-                    {expandedSections.has(section.id) ? (
-                      <ChevronDown className="w-5 h-5 text-gray-500" />
-                    ) : (
-                      <ChevronRight className="w-5 h-5 text-gray-500" />
+                      <span>{isExpanded ? '-' : '+'}</span>
+                    </button>
+                    {isExpanded && (
+                      <div className="px-8 pb-6">
+                        <div className="border-t border-gray-200 pt-6">
+                          <div className="text-gray-600 leading-relaxed whitespace-pre-line">
+                            {section.content}
+                          </div>
+                        </div>
+                      </div>
                     )}
-                  </button>
-                  
-                  {expandedSections.has(section.id) && (
-                    <div className="px-6 py-4 border-t border-gray-200">
-                      {section.content}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Contact Information */}
-            <div className="mt-12 bg-blue-50 rounded-lg p-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Contact Us</h3>
-              <p className="text-gray-700 mb-4">
-                If you have any questions about this Privacy Policy or our data practices, please contact us:
-              </p>
-              <div className="space-y-2">
-                <div className="flex items-center">
-                  <Mail className="w-4 h-4 mr-2 text-blue-600" />
-                  <span className="text-gray-700">Email: privacy@buzz2remote.com</span>
-                </div>
-                <div className="flex items-center">
-                  <Globe className="w-4 h-4 mr-2 text-blue-600" />
-                  <span className="text-gray-700">Website: www.buzz2remote.com</span>
-                </div>
-              </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

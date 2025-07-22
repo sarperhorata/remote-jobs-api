@@ -44,6 +44,9 @@ from backend.routes import auth, profile, jobs, ads, notification_routes, compan
 from backend.routes.auto_apply import router as auto_apply_router
 from backend.routes.ai_recommendations import router as ai_router
 from backend.routes.ai_services import router as ai_services_router
+from backend.routes.ai_cv_analysis import router as ai_cv_analysis_router
+from backend.routes.skills_extraction import router as skills_extraction_router
+from backend.routes.profile_auto_fill import router as profile_auto_fill_router
 from backend.routes.legal import router as legal_router
 from backend.routes.fake_job_detection import router as fake_job_router
 from backend.routes.sentry_webhook import router as sentry_webhook_router
@@ -83,6 +86,14 @@ async def lifespan(app: FastAPI):
     
     await init_database()
     
+    # Initialize cache service
+    try:
+        from backend.services.cache_service import init_cache_service
+        await init_cache_service(max_size=200, ttl_hours=24)
+        logger.info("✅ Cache service initialized successfully")
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize cache service: {e}")
+    
     # Disable bot and scheduler in test environment
     is_testing = os.getenv("TESTING", "false").lower() == "true"
     
@@ -117,6 +128,11 @@ allowed_origins = [
     "http://localhost:3000",
     "http://localhost:3001", 
     "http://localhost:3002",
+    "http://localhost:3003",
+    "http://localhost:3004",
+    "http://localhost:5000",
+    "http://localhost:5001",
+    "http://localhost:5173",
     "https://buzz2remote.com",
     "https://www.buzz2remote.com",
     "https://buzz2remote-api.onrender.com",
@@ -124,8 +140,8 @@ allowed_origins = [
     "https://buzz2remote-frontend.onrender.com"
 ]
 
-# Production'da tüm origin'lere izin ver
-if os.getenv("ENVIRONMENT") == "production" or os.getenv("ENVIRONMENT") == "development":
+# Development ortamında tüm origin'lere izin ver
+if os.getenv("ENVIRONMENT") == "production" or os.getenv("ENVIRONMENT") == "development" or os.getenv("NODE_ENV") == "development":
     allowed_origins = ["*"]
 
 app.add_middleware(
@@ -167,11 +183,22 @@ routers_to_include = [
     (translation.router, "/api/v1", ["translation"]),
     (ai_router, "/api/v1", ["ai"]),
     (ai_services_router, "/api/v1", ["ai-services"]),
+    (ai_cv_analysis_router, "/api/v1", ["ai-cv-analysis"]),
+    (skills_extraction_router, "/api/v1", ["skills-extraction"]),
+    (profile_auto_fill_router, "/api/v1", ["profile-auto-fill"]),
     (fake_job_router, "/api/v1", ["fake-job-detection"]),
     (sentry_webhook_router, "/api/v1", ["webhooks"]),
     (email_test_router, "/email-test", ["email-test"]),
     (salary_estimation_router, "/api/v1/salary", ["salary-estimation"]),
 ]
+
+# Include admin cleanup router
+try:
+    from backend.routes.admin_cleanup import router as admin_cleanup_router
+    routers_to_include.append((admin_cleanup_router, "", ["admin-cleanup"]))
+    logger.info("Admin cleanup router successfully included.")
+except ImportError as e:
+    logger.warning(f"Admin cleanup router not available: {str(e)}")
 
 for router, prefix, tags in routers_to_include:
     app.include_router(router, prefix=prefix, tags=tags)
@@ -309,6 +336,56 @@ async def get_featured_jobs():
     except Exception as e:
         logger.error(f"Error getting featured jobs: {e}")
         return {"jobs": [], "total": 0}
+
+@app.get("/api/companies/statistics", tags=["Companies"])
+async def get_companies_statistics():
+    """Get companies statistics for frontend dashboard."""
+    try:
+        db = await get_async_db()
+        companies_col = db["companies"]
+        
+        # Total companies count
+        total_companies = await companies_col.count_documents({})
+        
+        # Active companies count
+        active_companies = await companies_col.count_documents({"is_active": {"$ne": False}})
+        
+        # Companies with jobs
+        companies_with_jobs = await companies_col.aggregate([
+            {
+                "$lookup": {
+                    "from": "jobs",
+                    "localField": "name",
+                    "foreignField": "company",
+                    "as": "jobs"
+                }
+            },
+            {
+                "$match": {
+                    "jobs": {"$ne": []}
+                }
+            },
+            {
+                "$count": "total"
+            }
+        ]).to_list(length=None)
+        
+        companies_with_jobs_count = companies_with_jobs[0]["total"] if companies_with_jobs else 0
+        
+        return {
+            "total_companies": total_companies,
+            "active_companies": active_companies,
+            "companies_with_jobs": companies_with_jobs_count
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting companies statistics: {e}")
+        return {
+            "total_companies": 0,
+            "active_companies": 0,
+            "companies_with_jobs": 0,
+            "error": str(e)
+        }
 
 @app.get("/api/companies/featured", tags=["Companies"])
 async def get_featured_companies():
@@ -896,6 +973,28 @@ async def get_skills_autocomplete(q: str = "", limit: int = 10):
 # Stripe webhook (ensure it's configured securely)
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+
+@app.post("/api/admin/trigger-job-statistics", tags=["Admin"])
+async def trigger_job_statistics():
+    """Manually trigger job statistics job for testing"""
+    try:
+        from backend.services.scheduler_service import get_scheduler
+        scheduler = get_scheduler()
+        
+        if not scheduler:
+            raise HTTPException(status_code=500, detail="Scheduler not available")
+        
+        # Trigger the job statistics job
+        await scheduler._job_statistics_job()
+        
+        return {
+            "status": "success",
+            "message": "Job statistics job triggered successfully",
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error triggering job statistics: {e}")
+        raise HTTPException(status_code=500, detail=f"Error triggering job: {str(e)}")
 
 @app.post("/webhook/stripe", include_in_schema=False)
 async def stripe_webhook(request: Request):

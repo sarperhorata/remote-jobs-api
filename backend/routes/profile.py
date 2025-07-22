@@ -6,9 +6,11 @@ from typing import Optional
 import aiofiles
 from datetime import datetime
 import uuid
+from bson import ObjectId
+from fastapi import status
 
 from ..services.cv_parser_service import cv_parser_service
-from ..database.db import get_database
+from ..database.db import get_database, get_async_db
 from ..models.user import UserResponse as User
 from ..core.security import get_current_user
 from backend.utils.config import get_settings
@@ -242,4 +244,195 @@ async def delete_cv(
         raise HTTPException(
             status_code=500,
             detail="An error occurred while deleting the CV"
+        ) 
+
+@router.post("/cover-letter")
+async def upload_cover_letter(
+    file: UploadFile = File(None),
+    cover_letter_text: str = Form(None),
+    current_user: User = Depends(get_current_user),
+    db = Depends(get_async_db)
+):
+    """
+    Upload cover letter file or save cover letter text
+    """
+    try:
+        user_id = ObjectId(current_user.id)
+        
+        update_data = {
+            "updated_at": datetime.now()
+        }
+        
+        if file:
+            # Validate file type
+            allowed_extensions = ['.pdf', '.doc', '.docx', '.txt']
+            file_extension = '.' + file.filename.split('.')[-1].lower()
+            
+            if file_extension not in allowed_extensions:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Unsupported file format. Allowed formats: {', '.join(allowed_extensions)}"
+                )
+            
+            # Save file to storage (implement your file storage logic here)
+            # For now, we'll store the file info
+            file_url = f"/uploads/cover-letters/{user_id}/{file.filename}"
+            
+            update_data["profile.cover_letter_file"] = {
+                "url": file_url,
+                "filename": file.filename,
+                "uploaded_at": datetime.now()
+            }
+        
+        if cover_letter_text:
+            update_data["profile.cover_letter_text"] = cover_letter_text
+        
+        # Update user profile
+        result = await db.users.update_one(
+            {"_id": user_id},
+            {"$set": update_data}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to update cover letter"
+            )
+        
+        return {
+            "success": True,
+            "message": "Cover letter updated successfully",
+            "updated_at": datetime.now().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error uploading cover letter: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while uploading cover letter"
+        )
+
+@router.get("/cover-letter")
+async def get_cover_letter(
+    current_user: User = Depends(get_current_user),
+    db = Depends(get_async_db)
+):
+    """
+    Get user's cover letter
+    """
+    try:
+        user = await db.users.find_one({"_id": ObjectId(current_user.id)})
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        cover_letter_data = {
+            "text": user.get("profile", {}).get("cover_letter_text"),
+            "file": user.get("profile", {}).get("cover_letter_file")
+        }
+        
+        return {
+            "success": True,
+            "data": cover_letter_data
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting cover letter: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while getting cover letter"
+        )
+
+@router.put("/cover-letter")
+async def update_cover_letter_text(
+    cover_letter_text: str,
+    current_user: User = Depends(get_current_user),
+    db = Depends(get_async_db)
+):
+    """
+    Update cover letter text
+    """
+    try:
+        user_id = ObjectId(current_user.id)
+        
+        result = await db.users.update_one(
+            {"_id": user_id},
+            {
+                "$set": {
+                    "profile.cover_letter_text": cover_letter_text,
+                    "updated_at": datetime.now()
+                }
+            }
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to update cover letter text"
+            )
+        
+        return {
+            "success": True,
+            "message": "Cover letter text updated successfully",
+            "updated_at": datetime.now().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating cover letter text: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while updating cover letter text"
+        )
+
+@router.delete("/cover-letter")
+async def delete_cover_letter(
+    current_user: User = Depends(get_current_user),
+    db = Depends(get_async_db)
+):
+    """
+    Delete user's cover letter (both file and text)
+    """
+    try:
+        user_id = ObjectId(current_user.id)
+        
+        result = await db.users.update_one(
+            {"_id": user_id},
+            {
+                "$unset": {
+                    "profile.cover_letter_file": "",
+                    "profile.cover_letter_text": ""
+                },
+                "$set": {
+                    "updated_at": datetime.now()
+                }
+            }
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to delete cover letter"
+            )
+        
+        return {
+            "success": True,
+            "message": "Cover letter deleted successfully",
+            "updated_at": datetime.now().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting cover letter: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while deleting cover letter"
         ) 

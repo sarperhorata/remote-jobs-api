@@ -23,11 +23,16 @@ interface UserProfile {
   cvUrl: string;
 }
 
-interface User {
+export interface User {
   _id?: string;
   id: string;
   name: string;
   email: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  location?: string;
+  bio?: string;
   picture?: string;
   profilePicture?: string;
   profile_picture?: string;
@@ -56,6 +61,9 @@ interface User {
     startDate: string;
     endDate: string;
   }>;
+  subscription_type?: string;
+  subscription_status?: string;
+  subscription_end_date?: string;
 }
 
 export interface AuthContextType {
@@ -64,7 +72,7 @@ export interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  signup: (name: string, email: string, password: string) => Promise<void>;
+  signup: (name: string, email: string, password: string, options?: { marketingConsent?: boolean }) => Promise<void>;
   refreshUser: () => Promise<void>;
 }
 
@@ -233,13 +241,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signup = async (name: string, email: string, password: string) => {
+  const signup = async (name: string, email: string, password: string, options?: { marketingConsent?: boolean }) => {
     if (process.env.NODE_ENV === 'test') {
       // Mock signup for tests
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password })
+        body: JSON.stringify({ name, email, password, marketingConsent: options?.marketingConsent })
       });
 
       const data = await response.json();
@@ -257,7 +265,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password })
+        body: JSON.stringify({ name, email, password, marketingConsent: options?.marketingConsent })
       });
 
       const data = await response.json();

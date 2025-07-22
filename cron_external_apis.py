@@ -8,6 +8,12 @@ import os
 import sys
 import time
 from datetime import datetime, timedelta
+import sys
+import os
+
+# Add tools directory to path
+sys.path.append(os.path.join(os.path.dirname(__file__), 'tools'))
+
 from external_job_apis import ExternalJobAPIManager, run_external_api_crawler
 from service_notifications import ServiceNotifier
 

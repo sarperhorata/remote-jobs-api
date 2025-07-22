@@ -18,17 +18,17 @@ check_endpoint() {
 
 # Check local endpoints first
 echo "$TIMESTAMP - Checking local endpoints..." >> $LOG_FILE
-check_endpoint "http://localhost:5001"
-check_endpoint "http://localhost:5001/health"
+check_endpoint "http://localhost:8001"
+check_endpoint "http://localhost:8001/api/v1/health"
 check_endpoint "http://localhost:3000"
-check_endpoint "http://localhost:3000/health"
+check_endpoint "http://localhost:3002"
 
 # Check remote endpoints
 echo "$TIMESTAMP - Checking remote endpoints..." >> $LOG_FILE
-check_endpoint "https://remote-jobs-api-k9v1.onrender.com"
-check_endpoint "https://remote-jobs-api-k9v1.onrender.com/health"
+check_endpoint "https://buzz2remote-api.onrender.com"
+check_endpoint "https://buzz2remote-api.onrender.com/api/v1/health"
 check_endpoint "https://buzz2remote.netlify.app"
-check_endpoint "https://buzz2remote.netlify.app/health"
+check_endpoint "https://buzz2remote-frontend.onrender.com"
 
 # Log completion
 echo "$TIMESTAMP - Health check completed" >> $LOG_FILE

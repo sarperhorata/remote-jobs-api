@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Search, MapPin, Briefcase } from 'lucide-react';
+import LocationAutocomplete from '../LocationAutocomplete';
+
+interface Location {
+  name: string;
+  country?: string;
+  type?: 'city' | 'country' | 'continent' | 'remote' | 'worldwide';
+  cached_at?: string;
+  flag?: string;
+}
 
 interface Filters {
   query: string;
@@ -22,13 +31,17 @@ interface SearchFiltersProps {
   onFiltersChange: (filters: Partial<Filters>) => void;
   availableCompanies?: Array<{name: string; count: number}>;
   availableLocations?: Array<{name: string; count: number}>;
+  selectedLocation?: Location | null;
+  onLocationChange?: (location: Location | null) => void;
 }
 
 const SearchFilters: React.FC<SearchFiltersProps> = ({ 
   filters, 
   onFiltersChange,
   availableCompanies = [],
-  availableLocations = []
+  availableLocations = [],
+  selectedLocation,
+  onLocationChange
 }) => {
   const [localSearchQuery, setLocalSearchQuery] = useState(filters.query);
   const [showWorkTypeDropdown, setShowWorkTypeDropdown] = useState(false);
@@ -272,16 +285,10 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
       {/* Location */}
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Location</label>
-        <div className="relative">
-          <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-          <input
-            type="text"
-            value={filters.location}
-            onChange={(e) => onFiltersChange({ ...filters, location: e.target.value })}
-            placeholder="City, country..."
-            className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded text-sm focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
+        <LocationAutocomplete
+          selectedLocation={selectedLocation}
+          onLocationChange={onLocationChange}
+        />
       </div>
 
       {/* Company */}

@@ -109,14 +109,14 @@ class NotificationManager:
                 return False
             
             # Create notification content
-            _, text = self._create_notification_content(change_type, data, is_html=False)
+            _, text = self._create_notification_content(change_type, data, is_html=True)
             
             # Send request to Telegram API
             url = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendMessage"
             payload = {
                 "chat_id": chat_id,
                 "text": text,
-                "parse_mode": "Markdown"
+                "parse_mode": "HTML"
             }
             
             response = requests.post(url, json=payload, timeout=30)
@@ -173,13 +173,13 @@ class NotificationManager:
             subject = f"New Job: {title} at {company}"
             
             if is_html:
-                body = f"""
-                <h1>New Job Listing Found!</h1>
-                <p><strong>Job Title:</strong> {title}</p>
-                <p><strong>Company:</strong> {company}</p>
-                <p><strong>Location:</strong> {location}</p>
-                <p><a href="{url}" target="_blank">View Job Listing</a></p>
-                """
+                body = f"""🆕 <b>YENİ İŞ İLANI BULUNDU!</b>
+
+💼 <b>Pozisyon:</b> {title}
+🏢 <b>Şirket:</b> {company}
+📍 <b>Konum:</b> {location}
+
+🔗 <a href="{url}">İş İlanını Görüntüle</a>"""
             else:
                 body = f"""
                 *New Job Listing Found!*
@@ -195,13 +195,13 @@ class NotificationManager:
             subject = f"Updated Job: {title} at {company}"
             
             if is_html:
-                body = f"""
-                <h1>Job Listing Updated!</h1>
-                <p><strong>Job Title:</strong> {title}</p>
-                <p><strong>Company:</strong> {company}</p>
-                <p><strong>Location:</strong> {location}</p>
-                <p><a href="{url}" target="_blank">View Updated Job Listing</a></p>
-                """
+                body = f"""🔄 <b>İŞ İLANI GÜNCELLENDİ!</b>
+
+💼 <b>Pozisyon:</b> {title}
+🏢 <b>Şirket:</b> {company}
+📍 <b>Konum:</b> {location}
+
+🔗 <a href="{url}">Güncellenmiş İş İlanını Görüntüle</a>"""
             else:
                 body = f"""
                 *Job Listing Updated!*
@@ -217,12 +217,11 @@ class NotificationManager:
             subject = f"Removed Job: {title} at {company}"
             
             if is_html:
-                body = f"""
-                <h1>Job Listing Removed!</h1>
-                <p><strong>Job Title:</strong> {title}</p>
-                <p><strong>Company:</strong> {company}</p>
-                <p><strong>URL:</strong> <a href="{url}" target="_blank">{url}</a></p>
-                """
+                body = f"""❌ <b>İŞ İLANI KALDIRILDI!</b>
+
+💼 <b>Pozisyon:</b> {title}
+🏢 <b>Şirket:</b> {company}
+🔗 <b>URL:</b> <a href="{url}">{url}</a>"""
             else:
                 body = f"""
                 *Job Listing Removed!*
@@ -236,13 +235,13 @@ class NotificationManager:
             subject = f"Job Alert: {title} at {company}"
             
             if is_html:
-                body = f"""
-                <h1>Job Alert</h1>
-                <p><strong>Job Title:</strong> {title}</p>
-                <p><strong>Company:</strong> {company}</p>
-                <p><strong>Location:</strong> {location}</p>
-                <p><a href="{url}" target="_blank">View Job Listing</a></p>
-                """
+                body = f"""📢 <b>İŞ UYARISI</b>
+
+💼 <b>Pozisyon:</b> {title}
+🏢 <b>Şirket:</b> {company}
+📍 <b>Konum:</b> {location}
+
+🔗 <a href="{url}">İş İlanını Görüntüle</a>"""
             else:
                 body = f"""
                 *Job Alert*

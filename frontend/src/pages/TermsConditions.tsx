@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { FileText, ArrowLeft, ChevronDown, ChevronRight, Calendar, Mail, Shield } from '../components/icons/EmojiIcons';
+// import { FileText, ArrowLeft, ChevronDown, ChevronRight, Calendar, Mail, Shield } from '../components/icons/EmojiIcons';
 
 const TermsConditions: React.FC = () => {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
@@ -338,86 +338,64 @@ const TermsConditions: React.FC = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         {/* Hero Section */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-800 text-white py-16">
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-16">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto text-center">
-              <div className="flex items-center justify-center mb-6">
-                <FileText className="w-12 h-12 mr-4" />
-                <h1 className="text-4xl md:text-5xl font-bold">Terms & Conditions</h1>
-              </div>
-              <p className="text-xl opacity-90 mb-4">
-                Our terms of service and platform usage guidelines
+              <h1 className="text-4xl md:text-5xl font-bold mb-4">
+                Terms & Conditions
+              </h1>
+              <p className="text-xl text-blue-100 mb-6">
+                Please read our terms and conditions before using Buzz2Remote
               </p>
-              <div className="flex items-center justify-center text-sm opacity-75">
-                <Calendar className="w-4 h-4 mr-2" />
-                <span>Last updated: {lastUpdated}</span>
+              <div className="flex items-center justify-center text-sm text-blue-200">
+                Last updated: {lastUpdated}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Content */}
+        {/* Content Section */}
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-4xl mx-auto">
-            {/* Back to Home */}
-            <div className="mb-8">
-              <Link 
-                to="/" 
-                className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Home
-              </Link>
+            {/* Introduction */}
+            <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                Welcome to Buzz2Remote
+              </h2>
+              <p className="text-gray-600 leading-relaxed">
+                These Terms and Conditions govern your use of the Buzz2Remote platform. Please read them carefully before using our services.
+              </p>
             </div>
 
             {/* Sections */}
             <div className="space-y-6">
-              {sections.map((section) => (
-                <div key={section.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                  <button
-                    onClick={() => toggleSection(section.id)}
-                    className="w-full px-6 py-4 text-left bg-gray-50 hover:bg-gray-100 transition-colors flex items-center justify-between"
-                  >
-                    <div className="flex items-center">
-                      <FileText className="w-5 h-5 mr-3" />
-                      <h3 className="text-lg font-semibold text-gray-900">
+              {sections.map((section) => {
+                const isExpanded = expandedSections.has(section.id);
+                return (
+                  <div key={section.id} className="bg-white rounded-xl shadow-lg overflow-hidden">
+                    <button
+                      onClick={() => toggleSection(section.id)}
+                      className="w-full px-8 py-6 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+                    >
+                      <h3 className="text-xl font-semibold text-gray-800">
                         {section.title}
                       </h3>
-                    </div>
-                    {expandedSections.has(section.id) ? (
-                      <ChevronDown className="w-5 h-5 text-gray-500" />
-                    ) : (
-                      <ChevronRight className="w-5 h-5 text-gray-500" />
+                      <span>{isExpanded ? '-' : '+'}</span>
+                    </button>
+                    {isExpanded && (
+                      <div className="px-8 pb-6">
+                        <div className="border-t border-gray-200 pt-6">
+                          <div className="text-gray-600 leading-relaxed whitespace-pre-line">
+                            {section.content}
+                          </div>
+                        </div>
+                      </div>
                     )}
-                  </button>
-                  
-                  {expandedSections.has(section.id) && (
-                    <div className="px-6 py-4 border-t border-gray-200">
-                      {section.content}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Contact Information */}
-            <div className="mt-12 bg-blue-50 rounded-lg p-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Contact Us</h3>
-              <p className="text-gray-700 mb-4">
-                If you have any questions about these Terms & Conditions, please contact us:
-              </p>
-              <div className="space-y-2">
-                <div className="flex items-center">
-                  <Mail className="w-4 h-4 mr-2 text-blue-600" />
-                  <span className="text-gray-700">Email: legal@buzz2remote.com</span>
-                </div>
-                <div className="flex items-center">
-                  <Shield className="w-4 h-4 mr-2 text-blue-600" />
-                  <span className="text-gray-700">Legal Department</span>
-                </div>
-              </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

@@ -13,6 +13,7 @@ from backend.models.models import JobApplication
 from backend.services.job_scraping_service import JobScrapingService
 from backend.services.auto_application_service import AutoApplicationService
 from backend.utils.html_cleaner import clean_job_data
+from backend.services.job_title_parser import job_title_parser
 import re
 import json
 from collections import defaultdict, Counter
@@ -36,6 +37,28 @@ async def create_job(
     
     result = await db.jobs.insert_one(job_dict)
     created_job = await db.jobs.find_one({"_id": result.inserted_id})
+    
+    # Send Telegram notification for new job
+    if TELEGRAM_ENABLED:
+        try:
+            from backend.telegram_bot.bot_manager import telegram_bot_manager
+            if telegram_bot_manager and telegram_bot_manager.bot:
+                notification_data = {
+                    "type": "new_job",
+                    "job_title": job_dict.get("title", "Unknown"),
+                    "company": job_dict.get("company", "Unknown"),
+                    "location": job_dict.get("location", "Unknown"),
+                    "job_type": job_dict.get("job_type", "Unknown"),
+                    "is_remote": job_dict.get("isRemote", False),
+                    "salary": job_dict.get("salary", "Not specified"),
+                    "job_id": str(result.inserted_id),
+                    "timestamp": datetime.now().isoformat()
+                }
+                await telegram_bot_manager.bot.send_new_job_notification(notification_data)
+                logger.info(f"✅ Telegram notification sent for new job: {job_dict.get('title', 'Unknown')}")
+        except Exception as e:
+            logger.error(f"❌ Failed to send Telegram notification for new job: {e}")
+    
     return created_job
 
 @router.get("/", response_model=JobListResponse)
@@ -69,6 +92,8 @@ async def search_jobs(
     job_titles: Optional[str] = Query(None, description="Specific job titles filter"),
     salary_range: Optional[str] = Query(None, description="Salary range filter"),
     country: Optional[str] = Query(None, description="Country filter"),
+    exact_title: Optional[str] = Query(None, description="Exact job title to search for"),
+    keyword_search: Optional[bool] = Query(False, description="Whether this is a keyword search"),
     db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
     """Advanced job search with filtering and pagination"""
@@ -79,26 +104,68 @@ async def search_jobs(
         # Start with simple query
         query = {}
         
-        # Search text query - only apply if query is not empty
-        if q and q.strip():
-            query["$or"] = [
-                {"title": {"$regex": q, "$options": "i"}},
-                {"description": {"$regex": q, "$options": "i"}},
-                {"company": {"$regex": q, "$options": "i"}}
-            ]
+        # Exact title search (highest priority)
+        if exact_title and exact_title.strip():
+            # Search for exact job title match
+            query["title"] = {"$regex": f"^{exact_title}$", "$options": "i"}
+        # Search text query - only apply if query is not empty and no exact title
+        elif q and q.strip():
+            # Enhanced search with better title matching
+            search_terms = q.strip().split()
+            title_queries = []
+            
+            # Exact title match (highest priority)
+            title_queries.append({"title": {"$regex": f"^{q}$", "$options": "i"}})
+            
+            # Contains all search terms in title
+            if len(search_terms) > 1:
+                title_queries.append({
+                    "title": {
+                        "$regex": ".*".join(search_terms),
+                        "$options": "i"
+                    }
+                })
+            
+            # Individual term matches in title
+            for term in search_terms:
+                title_queries.append({"title": {"$regex": term, "$options": "i"}})
+            
+            # Special handling for Product Manager search
+            if q.lower() == "product manager":
+                # Prioritize exact "Product Manager" matches
+                title_queries.insert(0, {"title": {"$regex": "^Product Manager", "$options": "i"}})
+                title_queries.insert(1, {"title": {"$regex": "Product Manager$", "$options": "i"}})
+                title_queries.insert(2, {"title": {"$regex": "Product Manager\\b", "$options": "i"}})
+                # Exclude engineering roles that contain "Product" but are not Product Manager
+                query["$and"] = query.get("$and", []) + [
+                    {"title": {"$not": {"$regex": "Engineer|Developer|Programmer|Coder", "$options": "i"}}}
+                ]
+            
+            # For keyword searches, prioritize title matches and be more restrictive
+            if keyword_search:
+                # For multiple keywords, search for each keyword individually with OR logic
+                if len(search_terms) > 1:
+                    keyword_queries = []
+                    for term in search_terms:
+                        keyword_queries.extend([
+                            {"title": {"$regex": term, "$options": "i"}},
+                            {"description": {"$regex": term, "$options": "i"}}
+                        ])
+                    query["$or"] = keyword_queries
+                else:
+                    # Single keyword - only search in title and description, not company
+                    query["$or"] = title_queries + [
+                        {"description": {"$regex": q, "$options": "i"}}
+                    ]
+            else:
+                # Regular search - include company as well
+                query["$or"] = title_queries + [
+                    {"description": {"$regex": q, "$options": "i"}},
+                    {"company": {"$regex": q, "$options": "i"}}
+                ]
         else:
-            # If no search query, only show jobs if other filters are applied
-            if not any([work_type, job_type, location, company, experience, country, salary_range]):
-                # No filters applied, return empty result
-                return {
-                    "jobs": [],
-                    "total": 0,
-                    "page": page,
-                    "per_page": limit,
-                    "total_pages": 0,
-                    "has_next": False,
-                    "has_prev": False
-                }
+            # If no search query, show all jobs (for browsing)
+            pass
         
         # Work Type Filter - Enhanced
         if work_type:
@@ -464,6 +531,22 @@ async def get_job_statistics(
     try:
         total_jobs = await db.jobs.count_documents({})
         
+        # Get unique companies count from company field
+        unique_companies = await db.jobs.aggregate([
+            {"$match": {"company": {"$ne": None, "$ne": "", "$exists": True}}},
+            {"$group": {"_id": "$company"}},
+            {"$count": "total"}
+        ]).to_list(length=None)
+        companies_count = unique_companies[0]["total"] if unique_companies else 0
+        
+        # Get unique countries count from location field (since country field might be empty)
+        unique_countries = await db.jobs.aggregate([
+            {"$match": {"location": {"$ne": None, "$ne": "", "$exists": True}}},
+            {"$group": {"_id": "$location"}},
+            {"$count": "total"}
+        ]).to_list(length=None)
+        countries_count = unique_countries[0]["total"] if unique_countries else 0
+        
         jobs_by_company = await db.jobs.aggregate([
             {"$group": {"_id": "$company", "count": {"$sum": 1}}}
         ]).to_list(length=None)
@@ -472,23 +555,43 @@ async def get_job_statistics(
             {"$group": {"_id": "$location", "count": {"$sum": 1}}}
         ]).to_list(length=None)
         
-        # Add jobs by position/title for autocomplete
+        # Add jobs by position/title for autocomplete - en popüler 8 pozisyon
         jobs_by_position = await db.jobs.aggregate([
             {"$group": {"_id": "$title", "count": {"$sum": 1}}},
             {"$sort": {"count": -1}},
-            {"$limit": 50}  # Top 50 most common positions
+            {"$limit": 8}  # Top 8 most common positions for autocomplete
         ]).to_list(length=None)
         
-        # Format positions for frontend autocomplete
-        positions = [
-            {"title": item["_id"], "count": item["count"]} 
-            for item in jobs_by_position 
-            if item["_id"]  # Filter out null/empty titles
-        ]
+        # Format positions for frontend autocomplete with categories
+        positions = []
+        for item in jobs_by_position:
+            if item["_id"]:  # Filter out null/empty titles
+                # Determine category based on title
+                title_lower = item["_id"].lower()
+                category = "Technology"  # Default
+                
+                if any(keyword in title_lower for keyword in ["manager", "director", "lead", "head"]):
+                    category = "Management"
+                elif any(keyword in title_lower for keyword in ["design", "ui", "ux", "graphic"]):
+                    category = "Design"
+                elif any(keyword in title_lower for keyword in ["marketing", "sales", "business"]):
+                    category = "Marketing"
+                elif any(keyword in title_lower for keyword in ["data", "analyst", "scientist"]):
+                    category = "Data"
+                elif any(keyword in title_lower for keyword in ["devops", "infrastructure", "cloud"]):
+                    category = "Infrastructure"
+                
+                positions.append({
+                    "title": item["_id"], 
+                    "count": item["count"],
+                    "category": category
+                })
         
         return {
             "total_jobs": total_jobs,
             "active_jobs": total_jobs,  # Assuming all jobs are active for now
+            "companies_count": companies_count,
+            "countries_count": countries_count,
             "jobs_by_company": jobs_by_company,
             "jobs_by_location": jobs_by_location,
             "positions": positions  # New field for position autocomplete
@@ -496,6 +599,94 @@ async def get_job_statistics(
     except Exception as e:
         logging.error(f"Error getting job statistics: {str(e)}")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Statistics not available")
+
+@router.get("/popular-titles")
+async def get_popular_job_titles(
+    limit: int = Query(4, description="Number of popular titles to return"),
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """
+    Get the most popular job titles for autocomplete suggestions.
+    Returns the top job titles by count for quick access.
+    """
+    try:
+        # Import cache service
+        from backend.services.cache_service import get_cache_service
+        cache_service = get_cache_service()
+        
+        # Create cache key
+        cache_key = f"popular_job_titles:{limit}"
+        
+        # Try to get from cache first
+        cached_result = await cache_service.get(cache_key)
+        if cached_result:
+            logger.info(f"✅ Cache hit for popular job titles: {len(cached_result)} results")
+            return cached_result
+        
+        # If not in cache, query database
+        logger.info(f"🔍 Cache miss for popular job titles, querying database...")
+        
+        # Aggregation pipeline to get most popular job titles
+        pipeline = [
+            {"$match": {"is_active": True}},
+            {"$group": {
+                "_id": "$title", 
+                "count": {"$sum": 1}
+            }},
+            {"$match": {"_id": {"$ne": None}}},  # Filter out null titles
+            {"$sort": {"count": -1}},
+            {"$limit": limit * 2},  # Get more results initially
+            {"$project": {
+                "title": "$_id", 
+                "count": 1,
+                "_id": 0
+            }}
+        ]
+        
+        cursor = db.jobs.aggregate(pipeline)
+        job_titles = await cursor.to_list(length=limit * 2)
+        
+        # Parse and normalize job titles
+        parsed_titles = {}
+        for item in job_titles:
+            title = item['title']
+            if title and title.strip():
+                # Parse the job title
+                parsed = job_title_parser.parse_job_title(title)
+                
+                if not parsed.parsed_title or len(parsed.parsed_title) < 3:
+                    continue
+                
+                # Normalize for comparison
+                normalized = parsed.parsed_title.lower().strip()
+                
+                # Use parsed title as key, keep the one with highest count
+                if normalized not in parsed_titles or parsed_titles[normalized]['count'] < item['count']:
+                    parsed_titles[normalized] = {
+                        'title': parsed.parsed_title,
+                        'count': item['count']
+                    }
+        
+        # Sort by count and take top results
+        sorted_results = sorted(parsed_titles.values(), key=lambda x: x['count'], reverse=True)
+        final_results = sorted_results[:limit]
+        
+        # Cache the result
+        await cache_service.set(cache_key, final_results)
+        
+        logger.info(f"💾 Cached popular job titles: {len(final_results)} results")
+        
+        return final_results
+        
+    except Exception as e:
+        logger.error(f"Error getting popular job titles: {e}")
+        # Fallback with common job titles
+        return [
+            {"title": "Software Engineer", "count": 1500},
+            {"title": "Frontend Developer", "count": 800},
+            {"title": "Backend Developer", "count": 700},
+            {"title": "Full Stack Developer", "count": 600}
+        ]
 
 @router.get("/job-titles/search")
 async def search_job_titles(
@@ -506,11 +697,28 @@ async def search_job_titles(
     """
     Searches for unique job titles in the database using parsed job titles.
     This endpoint is optimized for autocomplete functionality.
+    Uses caching for popular keywords to improve performance.
     """
     if not q:
         return []
 
     try:
+        # Import cache service
+        from backend.services.cache_service import get_cache_service
+        cache_service = get_cache_service()
+        
+        # Create cache key
+        cache_key = f"job_titles_search:{q.lower().strip()}:{limit}"
+        
+        # Try to get from cache first
+        cached_result = await cache_service.get(cache_key)
+        if cached_result:
+            logger.info(f"✅ Cache hit for job titles search: {q} -> {len(cached_result.get('suggestions', []))} results")
+            return cached_result
+        
+        # If not in cache, query database
+        logger.info(f"🔍 Cache miss for job titles search: {q}, querying database...")
+        
         # Create a more flexible search pattern
         safe_q = q.replace('\\', '\\\\').replace('$', '\\$').replace('^', '\\^')
         
@@ -596,8 +804,19 @@ async def search_job_titles(
                 'level': item['level']
             })
         
+        # Prepare result with cache timestamp
+        result = {
+            'suggestions': final_results,
+            'cached_at': datetime.utcnow().isoformat()
+        }
+        
+        # Cache the result
+        await cache_service.set(cache_key, result)
+        
+        logger.info(f"💾 Cached job titles search result: {q} -> {len(final_results)} results")
         logger.info(f"Job titles search for '{q}': found {len(final_results)} results")
-        return final_results
+        
+        return result
         
     except Exception as e:
         logger.error(f"Error searching job titles: {e}, full error: {e.args}")
@@ -622,7 +841,150 @@ async def search_job_titles(
             if q.lower() in title.lower()
         ]
         
-        return matching_titles[:limit]
+        return {
+            'suggestions': matching_titles[:limit],
+            'cached_at': datetime.utcnow().isoformat()
+        }
+
+@router.get("/quick-search-count")
+async def quick_search_count(
+    q: str = Query(..., description="Search query for quick count"),
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """
+    Quick search that returns only the total count of jobs matching the query.
+    This is optimized for autocomplete to show total results count.
+    Uses caching for popular keywords to improve performance.
+    """
+    if not q or len(q) < 2:
+        return {"count": 0, "query": q}
+
+    try:
+        # Import cache service
+        from backend.services.cache_service import get_cache_service
+        cache_service = get_cache_service()
+        
+        # Create cache key
+        cache_key = f"quick_search_count:{q.lower().strip()}"
+        
+        # Try to get from cache first
+        cached_result = await cache_service.get(cache_key)
+        if cached_result:
+            logger.info(f"✅ Cache hit for quick search: {q} -> {cached_result['count']} jobs")
+            return cached_result
+        
+        # If not in cache, query database
+        logger.info(f"🔍 Cache miss for quick search: {q}, querying database...")
+        
+        # Create a simple search pattern for quick counting
+        safe_q = q.replace('\\', '\\\\').replace('$', '\\$').replace('^', '\\^')
+        
+        # Search in title, description, and company
+        search_query = {
+            "$or": [
+                {"title": {"$regex": safe_q, "$options": "i"}},
+                {"description": {"$regex": safe_q, "$options": "i"}},
+                {"company": {"$regex": safe_q, "$options": "i"}}
+            ],
+            "is_active": True
+        }
+        
+        # Get count from database
+        count = await db.jobs.count_documents(search_query)
+        
+        # Prepare result
+        result = {
+            "count": count,
+            "query": q,
+            "cached_at": datetime.utcnow().isoformat()
+        }
+        
+        # Cache the result (popular keywords get longer TTL)
+        await cache_service.set(cache_key, result)
+        
+        logger.info(f"💾 Cached quick search result: {q} -> {count} jobs")
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error in quick search count: {e}")
+        return {"count": 0, "query": q, "error": str(e)}
+
+@router.get("/multi-keyword-search")
+async def multi_keyword_search(
+    keywords: str = Query(..., description="Comma-separated keywords for OR search"),
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(20, ge=1, le=5000, description="Number of results per page"),
+    sort_by: str = Query("newest", description="Sort by: newest, relevance, salary"),
+    db: AsyncIOMotorDatabase = Depends(get_async_db)
+):
+    """
+    Search jobs with multiple keywords using OR logic.
+    Each keyword is searched independently and results are combined.
+    """
+    try:
+        # Parse keywords
+        keyword_list = [k.strip() for k in keywords.split(',') if k.strip()]
+        if not keyword_list:
+            return {"jobs": [], "total": 0, "page": page, "limit": limit, "pages": 0}
+        
+        # Build OR query for each keyword
+        keyword_queries = []
+        for keyword in keyword_list:
+            keyword_queries.extend([
+                {"title": {"$regex": keyword, "$options": "i"}},
+                {"description": {"$regex": keyword, "$options": "i"}}
+            ])
+        
+        # Create the main query
+        query = {"$or": keyword_queries}
+        
+        # Get total count
+        total = await db.jobs.count_documents(query)
+        
+        # Calculate pagination
+        skip = (page - 1) * limit
+        pages = (total + limit - 1) // limit
+        
+        # Get jobs with pagination
+        cursor = db.jobs.find(query)
+        
+        # Apply sorting
+        if sort_by == "newest":
+            cursor = cursor.sort("posted_date", -1)
+        elif sort_by == "oldest":
+            cursor = cursor.sort("posted_date", 1)
+        elif sort_by == "relevance":
+            # For relevance, we could implement scoring based on keyword frequency
+            cursor = cursor.sort("posted_date", -1)
+        elif sort_by == "salary":
+            cursor = cursor.sort("salary_max", -1)
+        
+        # Apply pagination
+        cursor = cursor.skip(skip).limit(limit)
+        
+        # Convert to list
+        jobs = await cursor.to_list(length=limit)
+        
+        # Convert ObjectId to string for JSON serialization
+        for job in jobs:
+            job["_id"] = str(job["_id"])
+            if "posted_date" in job and isinstance(job["posted_date"], datetime):
+                job["posted_date"] = job["posted_date"].isoformat()
+        
+        return {
+            "jobs": jobs,
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "pages": pages,
+            "keywords": keyword_list,
+            "query_type": "OR"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in multi-keyword search: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/companies/search")
 async def search_companies(
@@ -662,11 +1024,30 @@ async def search_locations(
     limit: int = Query(10, description="Number of results to return"),
     db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
-    """Search for locations in job listings"""
+    """
+    Search for locations in job listings.
+    Uses caching for popular locations to improve performance.
+    """
     if not q:
         return []
 
     try:
+        # Import cache service
+        from backend.services.cache_service import get_cache_service
+        cache_service = get_cache_service()
+        
+        # Create cache key
+        cache_key = f"locations_search:{q.lower().strip()}:{limit}"
+        
+        # Try to get from cache first
+        cached_result = await cache_service.get(cache_key)
+        if cached_result:
+            logger.info(f"✅ Cache hit for locations search: {q} -> {len(cached_result.get('suggestions', []))} results")
+            return cached_result
+        
+        # If not in cache, query database
+        logger.info(f"🔍 Cache miss for locations search: {q}, querying database...")
+        
         # Escape special characters in the query to prevent regex errors
         safe_q = re.escape(q)
         
@@ -682,11 +1063,108 @@ async def search_locations(
         cursor = db.jobs.aggregate(pipeline)
         locations = await cursor.to_list(length=limit)
         
-        return locations
+        # Add flag emojis to locations
+        country_flags = {
+            'united states': '🇺🇸', 'usa': '🇺🇸', 'us': '🇺🇸',
+            'united kingdom': '🇬🇧', 'uk': '🇬🇧',
+            'germany': '🇩🇪', 'deutschland': '🇩🇪',
+            'canada': '🇨🇦', 'france': '🇫🇷', 'spain': '🇪🇸',
+            'italy': '🇮🇹', 'netherlands': '🇳🇱', 'sweden': '🇸🇪',
+            'norway': '🇳🇴', 'denmark': '🇩🇰', 'finland': '🇫🇮',
+            'switzerland': '🇨🇭', 'austria': '🇦🇹', 'belgium': '🇧🇪',
+            'poland': '🇵🇱', 'czech republic': '🇨🇿', 'hungary': '🇭🇺',
+            'romania': '🇷🇴', 'bulgaria': '🇧🇬', 'greece': '🇬🇷',
+            'portugal': '🇵🇹', 'ireland': '🇮🇪', 'australia': '🇦🇺',
+            'new zealand': '🇳🇿', 'japan': '🇯🇵', 'south korea': '🇰🇷',
+            'singapore': '🇸🇬', 'india': '🇮🇳', 'brazil': '🇧🇷',
+            'mexico': '🇲🇽', 'argentina': '🇦🇷', 'chile': '🇨🇱',
+            'colombia': '🇨🇴', 'peru': '🇵🇪', 'venezuela': '🇻🇪',
+            'uruguay': '🇺🇾', 'paraguay': '🇵🇾', 'bolivia': '🇧🇴',
+            'ecuador': '🇪🇨', 'guyana': '🇬🇾', 'suriname': '🇸🇷',
+            'russia': '🇷🇺', 'ukraine': '🇺🇦', 'belarus': '🇧🇾',
+            'moldova': '🇲🇩', 'latvia': '🇱🇻', 'lithuania': '🇱🇹',
+            'estonia': '🇪🇪', 'georgia': '🇬🇪', 'armenia': '🇦🇲',
+            'azerbaijan': '🇦🇿', 'kazakhstan': '🇰🇿', 'uzbekistan': '🇺🇿',
+            'turkmenistan': '🇹🇲', 'kyrgyzstan': '🇰🇬', 'tajikistan': '🇹🇯',
+            'china': '🇨🇳', 'taiwan': '🇹🇼', 'hong kong': '🇭🇰',
+            'macau': '🇲🇴', 'mongolia': '🇲🇳', 'north korea': '🇰🇵',
+            'vietnam': '🇻🇳', 'thailand': '🇹🇭', 'malaysia': '🇲🇾',
+            'indonesia': '🇮🇩', 'philippines': '🇵🇭', 'cambodia': '🇰🇭',
+            'laos': '🇱🇦', 'myanmar': '🇲🇲', 'brunei': '🇧🇳',
+            'east timor': '🇹🇱', 'pakistan': '🇵🇰', 'bangladesh': '🇧🇩',
+            'sri lanka': '🇱🇰', 'nepal': '🇳🇵', 'bhutan': '🇧🇹',
+            'maldives': '🇲🇻', 'afghanistan': '🇦🇫', 'iran': '🇮🇷',
+            'iraq': '🇮🇶', 'syria': '🇸🇾', 'lebanon': '🇱🇧',
+            'jordan': '🇯🇴', 'israel': '🇮🇱', 'palestine': '🇵🇸',
+            'saudi arabia': '🇸🇦', 'yemen': '🇾🇪', 'oman': '🇴🇲',
+            'uae': '🇦🇪', 'united arab emirates': '🇦🇪', 'qatar': '🇶🇦',
+            'kuwait': '🇰🇼', 'bahrain': '🇧🇭', 'egypt': '🇪🇬',
+            'libya': '🇱🇾', 'tunisia': '🇹🇳', 'algeria': '🇩🇿',
+            'morocco': '🇲🇦', 'sudan': '🇸🇩', 'south sudan': '🇸🇸',
+            'ethiopia': '🇪🇹', 'somalia': '🇸🇴', 'djibouti': '🇩🇯',
+            'eritrea': '🇪🇷', 'kenya': '🇰🇪', 'tanzania': '🇹🇿',
+            'uganda': '🇺🇬', 'rwanda': '🇷🇼', 'burundi': '🇧🇮',
+            'congo': '🇨🇬', 'dr congo': '🇨🇩', 'democratic republic of the congo': '🇨🇩',
+            'central african republic': '🇨🇫', 'chad': '🇹🇩', 'cameroon': '🇨🇲',
+            'gabon': '🇬🇦', 'equatorial guinea': '🇬🇶', 'sao tome and principe': '🇸🇹',
+            'nigeria': '🇳🇬', 'niger': '🇳🇪', 'mali': '🇲🇱',
+            'burkina faso': '🇧🇫', 'senegal': '🇸🇳', 'gambia': '🇬🇲',
+            'guinea-bissau': '🇬🇼', 'guinea': '🇬🇳', 'sierra leone': '🇸🇱',
+            'liberia': '🇱🇷', 'ivory coast': '🇨🇮', 'cote d\'ivoire': '🇨🇮',
+            'ghana': '🇬🇭', 'togo': '🇹🇬', 'benin': '🇧🇯',
+            'angola': '🇦🇴', 'namibia': '🇳🇦', 'botswana': '🇧🇼',
+            'zimbabwe': '🇿🇼', 'zambia': '🇿🇲', 'malawi': '🇲🇼',
+            'mozambique': '🇲🇿', 'madagascar': '🇲🇬', 'mauritius': '🇲🇺',
+            'seychelles': '🇸🇨', 'comoros': '🇰🇲', 'mayotte': '🇾🇹',
+            'reunion': '🇷🇪', 'south africa': '🇿🇦', 'lesotho': '🇱🇸',
+            'eswatini': '🇸🇿', 'swaziland': '🇸🇿', 'turkey': '🇹🇷', 'türkiye': '🇹🇷'
+        }
+        
+        def get_flag_emoji(location_name: str) -> str:
+            name = location_name.lower()
+            
+            # Check exact match first
+            if name in country_flags:
+                return country_flags[name]
+            
+            # Check partial matches
+            for country, flag in country_flags.items():
+                if name in country or country in name:
+                    return flag
+            
+            # Default flags for continents/regions
+            if 'europe' in name: return '🇪🇺'
+            if 'asia' in name: return '🌏'
+            if 'africa' in name: return '🌍'
+            if 'america' in name: return '🌎'
+            if 'oceania' in name: return '🌏'
+            
+            # Default for cities
+            return '🏙️'
+        
+        # Add flag to each location
+        for location in locations:
+            location['flag'] = get_flag_emoji(location['name'])
+        
+        # Prepare result with cache timestamp
+        result = {
+            'suggestions': locations,
+            'cached_at': datetime.utcnow().isoformat()
+        }
+        
+        # Cache the result
+        await cache_service.set(cache_key, result)
+        
+        logger.info(f"💾 Cached locations search result: {q} -> {len(locations)} results")
+        
+        return result
         
     except Exception as e:
         logger.error(f"Error searching locations: {e}")
-        return []
+        return {
+            'suggestions': [],
+            'cached_at': datetime.utcnow().isoformat()
+        }
 
 @router.get("/skills/search")
 async def search_skills(
@@ -2013,4 +2491,130 @@ def group_job_titles(jobs: list) -> dict:
             'job_ids': [job['job_id'] for job in job_list]
         }
     
-    return grouped_results 
+    return grouped_results
+
+@router.get("/cache/stats", tags=["Admin"])
+async def get_cache_stats():
+    """Get cache statistics for monitoring."""
+    try:
+        from backend.services.cache_service import get_cache_service
+        cache_service = get_cache_service()
+        stats = await cache_service.get_stats()
+        return {
+            "status": "success",
+            "cache_stats": stats,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting cache stats: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+@router.post("/cache/clear", tags=["Admin"])
+async def clear_cache():
+    """Clear all cache entries."""
+    try:
+        from backend.services.cache_service import get_cache_service
+        cache_service = get_cache_service()
+        success = await cache_service.clear()
+        
+        if success:
+            return {
+                "status": "success",
+                "message": "All cache cleared successfully",
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        else:
+            return {
+                "status": "error",
+                "message": "Failed to clear cache",
+                "timestamp": datetime.utcnow().isoformat()
+            }
+    except Exception as e:
+        logger.error(f"Error clearing cache: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+@router.get("/cache/popular-keywords", tags=["Admin"])
+async def get_popular_keywords():
+    """Get list of popular keywords that are cached with longer TTL."""
+    try:
+        from backend.services.cache_service import get_cache_service
+        cache_service = get_cache_service()
+        keywords = await cache_service.get_popular_keywords()
+        return {
+            "status": "success",
+            "popular_keywords": keywords,
+            "count": len(keywords),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting popular keywords: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+@router.delete("/cache/{keyword}", tags=["Admin"])
+async def delete_cache_entry(keyword: str):
+    """Delete specific cache entry by keyword."""
+    try:
+        from backend.services.cache_service import get_cache_service
+        cache_service = get_cache_service()
+        
+        # Create cache key
+        cache_key = f"quick_search_count:{keyword.lower().strip()}"
+        success = await cache_service.delete(cache_key)
+        
+        if success:
+            return {
+                "status": "success",
+                "message": f"Cache entry for '{keyword}' deleted successfully",
+                "keyword": keyword,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        else:
+            return {
+                "status": "error",
+                "message": f"Failed to delete cache entry for '{keyword}'",
+                "keyword": keyword,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+    except Exception as e:
+        logger.error(f"Error deleting cache entry: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "keyword": keyword,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+@router.post("/cache/update", tags=["Admin"])
+async def update_cache():
+    """Manually trigger cache update (same as cronjob cache update)."""
+    try:
+        from backend.services.scheduler_service import get_scheduler
+        scheduler = get_scheduler()
+        
+        if not scheduler:
+            raise HTTPException(status_code=500, detail="Scheduler not available")
+        
+        # Trigger cache update
+        await scheduler._update_cache_after_cronjob()
+        
+        return {
+            "status": "success",
+            "message": "Cache updated successfully",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error updating cache: {e}")
+        raise HTTPException(status_code=500, detail=f"Error updating cache: {str(e)}")
+

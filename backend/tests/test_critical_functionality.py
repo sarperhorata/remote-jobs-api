@@ -3,9 +3,14 @@ Critical functionality tests - testing core business logic and data validation
 """
 import pytest
 import asyncio
+import os
+import sys
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 import json
+
+# Add project root to path for cronjob imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 @pytest.mark.asyncio
 async def test_job_data_validation():
@@ -387,6 +392,52 @@ if __name__ == "__main__":
         await test_business_rules()
         print("✓ Business rules passed")
         
+        print("\n10. Testing cronjob integration...")
+        await test_cronjob_integration()
+        print("✓ Cronjob integration passed")
+        
         print("\nAll critical functionality tests completed successfully!")
     
     asyncio.run(run_tests())
+
+@pytest.mark.asyncio
+async def test_cronjob_integration():
+    """Test cronjob integration with critical functionality"""
+    
+    try:
+        # Import cronjob-related modules
+        from backend.services.scheduler_service import start_scheduler, stop_scheduler
+        from backend.utils.cronjob import wake_up_render
+        
+        # Test scheduler startup
+        scheduler = await start_scheduler()
+        assert scheduler is not None, "Scheduler should start successfully"
+        assert scheduler.running, "Scheduler should be running"
+        
+        # Test job configuration
+        jobs = scheduler.get_jobs()
+        required_jobs = ['health_check_job', 'external_api_crawler_job', 'job_statistics_job']
+        
+        job_names = [job.name for job in jobs]
+        for job_name in required_jobs:
+            assert job_name in job_names, f"Required job {job_name} not found"
+        
+        # Test wake up render function
+        with patch('requests.get') as mock_get:
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {"status": "healthy"}
+            mock_get.return_value = mock_response
+            
+            result = wake_up_render()
+            assert result is True, "Wake up render should return True"
+        
+        # Test scheduler shutdown
+        await stop_scheduler()
+        assert not scheduler.running, "Scheduler should be stopped"
+        
+        print("✅ Cronjob integration test: PASSED")
+        
+    except Exception as e:
+        print(f"❌ Cronjob integration test: FAILED - {str(e)}")
+        raise

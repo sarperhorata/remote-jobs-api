@@ -1,26 +1,33 @@
 // Test file for utility functions
-import { cn } from '../../lib/utils';
+import { cn } from '../../utils/cn';
 
 describe('Utility Functions', () => {
   describe('cn (className utility)', () => {
     it('should combine class names correctly', () => {
       expect(cn('class1', 'class2')).toBe('class1 class2');
+      expect(cn('class1', null, 'class2')).toBe('class1 class2');
+      expect(cn('class1', undefined, 'class2')).toBe('class1 class2');
+      expect(cn('class1', false, 'class2')).toBe('class1 class2');
+      expect(cn('class1', true && 'class2')).toBe('class1 class2');
     });
 
     it('should handle conditional classes', () => {
-      expect(cn('base', true && 'conditional', false && 'hidden')).toBe('base conditional');
+      const isActive = true;
+      const isDisabled = false;
+      
+      expect(cn('base-class', isActive && 'active', isDisabled && 'disabled'))
+        .toBe('base-class active');
     });
 
-    it('should handle undefined and null values', () => {
-      expect(cn('class1', undefined, null, 'class2')).toBe('class1 class2');
+    it('should handle arrays and objects', () => {
+      expect(cn(['class1', 'class2'])).toBe('class1 class2');
+      expect(cn({ 'class1': true, 'class2': false, 'class3': true }))
+        .toBe('class1 class3');
     });
 
-    it('should handle empty strings', () => {
-      expect(cn('class1', '', 'class2')).toBe('class1 class2');
-    });
-
-    it('should handle no arguments', () => {
-      expect(cn()).toBe('');
+    it('should handle mixed inputs', () => {
+      expect(cn('base', ['class1', 'class2'], { 'class3': true, 'class4': false }))
+        .toBe('base class1 class2 class3');
     });
   });
 

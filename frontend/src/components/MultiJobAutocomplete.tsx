@@ -1,6 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-// Unused imports removed for cleaner code
 import { getApiUrl } from '../utils/apiConfig';
 
 interface Position {
@@ -10,7 +9,7 @@ interface Position {
 }
 
 interface MultiJobAutocompleteProps {
-  onSelect: (position: Position) => void;
+  onSelect: (positions: Position[]) => void;
   placeholder?: string;
   className?: string;
   disabled?: boolean;
@@ -18,45 +17,38 @@ interface MultiJobAutocompleteProps {
 
 const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
   onSelect,
-  placeholder = "Search and select job titles (up to 10)",
+  placeholder = "Search keywords (e.g., react, python, remote)",
   className,
   disabled = false
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [allSuggestions, setAllSuggestions] = useState<Position[]>([]);
+  const [selectedKeywords, setSelectedKeywords] = useState<Position[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const [isFocused, setIsFocused] = useState(false);
-  const [animatedPlaceholder, setAnimatedPlaceholder] = useState('');
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [animatedPlaceholder, setAnimatedPlaceholder] = useState(placeholder);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
-  
+
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Typing animation for placeholder
+  const placeholders = [
+    "Search keywords (e.g., react, python, remote)",
+    "Add multiple keywords to narrow results",
+    "Type and select keywords to search"
+  ];
+
+  // Animated placeholder
   useEffect(() => {
-    if (!isFocused && !inputValue) {
+    if (isFocused && !inputValue) {
       const interval = setInterval(() => {
-        setPlaceholderIndex(prev => {
-          if (prev >= placeholder.length) {
-            setTimeout(() => setPlaceholderIndex(0), 2000); // Pause at end
-            return prev;
-          }
-          return prev + 1;
-        });
-      }, 100);
-
+        setPlaceholderIndex((prev) => (prev + 1) % placeholders.length);
+      }, 3000);
       return () => clearInterval(interval);
-    }
-  }, [isFocused, inputValue, placeholder]);
-
-  // Update animated placeholder
-  useEffect(() => {
-    if (!isFocused && !inputValue) {
-      setAnimatedPlaceholder(placeholder.slice(0, placeholderIndex));
     } else {
       setAnimatedPlaceholder(placeholder);
     }
@@ -68,107 +60,40 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
       console.log('🔄 MultiJobAutocomplete State:', {
         inputValue,
         suggestionsCount: allSuggestions.length,
+        selectedKeywordsCount: selectedKeywords.length,
         showDropdown,
         isLoading,
       });
     }
-  }, [inputValue, allSuggestions.length, showDropdown, isLoading]);
+  }, [inputValue, allSuggestions.length, selectedKeywords.length, showDropdown, isLoading]);
 
-  // Fetch suggestions when user types
-  const fetchSuggestions = useCallback(async (query: string) => {
-    if (!query.trim() || query.length < 2) {
-      setAllSuggestions([]);
-      setShowDropdown(false);
-      return;
-    }
-
-    setIsLoading(true);
+  // Fetch keyword count
+  const fetchKeywordCount = useCallback(async (query: string) => {
+    if (!query.trim()) return null;
+    
     try {
       const finalApiUrl = await getApiUrl();
-      
-      const response = await fetch(`${finalApiUrl}/jobs/job-titles/search?q=${encodeURIComponent(query)}&limit=20`, {
-        signal: AbortSignal.timeout(10000), // 10 second timeout
-      });
-      
-      if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
+      const response = await fetch(`${finalApiUrl}/jobs/quick-search-count?q=${encodeURIComponent(query)}`);
+      if (response.ok) {
+        const data = await response.json();
+        return data;
       }
-      
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        setAllSuggestions(data);
-        setShowDropdown(data.length > 0);
-      } else {
-        console.warn('Invalid API response format:', data);
-        setAllSuggestions([]);
-        setShowDropdown(false);
-      }
-    } catch (error: any) {
-      console.error('Error fetching job title suggestions:', error);
-      setAllSuggestions([]);
-      setShowDropdown(false);
-      
-      // Don't show error to user for network timeouts
-      if (!error.message?.includes('timeout') && !error.message?.includes('Failed to fetch')) {
-        console.warn('API temporarily unavailable');
-      }
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      console.error('Error fetching keyword count:', error);
     }
+    return null;
   }, []);
 
-  // Fetch popular job titles
-  const fetchPopularTitles = useCallback(async () => {
-    try {
-      const finalApiUrl = await getApiUrl();
-      
-      const response = await fetch(`${finalApiUrl}/jobs/statistics`, {
-        signal: AbortSignal.timeout(10000), // 10 second timeout
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Statistics API failed with status ${response.status}`);
-      }
-      
-      const data = await response.json();
-      const popularTitles = data.positions?.slice(0, 5) || []; // 5 popular positions
-      
-      setAllSuggestions(popularTitles);
-      setShowDropdown(popularTitles.length > 0);
-    } catch (error: any) {
-      console.error('Error fetching popular titles:', error);
-      
-      // Fallback popular titles
-      const fallbackTitles = [
-        { title: "Software Engineer", count: 100, category: "Technology" },
-        { title: "Product Manager", count: 80, category: "Management" },
-        { title: "Data Scientist", count: 60, category: "Technology" },
-        { title: "DevOps Engineer", count: 50, category: "Technology" },
-        { title: "UX Designer", count: 40, category: "Design" }
-      ];
-      
-      setAllSuggestions(fallbackTitles);
-      setShowDropdown(true);
-    }
-  }, []);
-
-  // Handle input focus to show popular titles
+  // Handle input focus
   const handleInputFocus = async () => {
     setIsFocused(true);
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🎯 Input focused');
-    }
-    if (!inputValue.trim() && allSuggestions.length === 0) {
-      setIsLoading(true);
-      await fetchPopularTitles();
-      setIsLoading(false);
-    } else if (allSuggestions.length > 0) {
-      setShowDropdown(true);
-    }
+    updateDropdownPosition();
   };
 
+  // Handle input blur
   const handleInputBlur = () => {
-    setIsFocused(false);
+    // Don't close dropdown on blur - let the click outside handler manage this
+    // This prevents the dropdown from closing when clicking on suggestions
   };
 
   // Handle input change
@@ -176,12 +101,30 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
     const value = e.target.value;
     setInputValue(value);
     
-    if (value.trim().length >= 2) {
-      fetchSuggestions(value);
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    if (value.trim().length >= 1) {
+      // For keyword search, show single line result
+      searchTimeoutRef.current = setTimeout(async () => {
+        const keywordResult = await fetchKeywordCount(value);
+        if (keywordResult && keywordResult.count > 0) {
+          const suggestion = {
+            title: `${value} (${keywordResult.count} jobs)`,
+            count: keywordResult.count,
+            category: 'keyword'
+          };
+          console.log('🔍 Setting keyword suggestion:', suggestion);
+          setAllSuggestions([suggestion]);
+          setShowDropdown(true);
+        } else {
+          setAllSuggestions([]);
+          setShowDropdown(false);
+        }
+      }, 300);
     } else {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🧹 Input empty, clearing suggestions');
-      }
       setAllSuggestions([]);
       setShowDropdown(false);
     }
@@ -190,170 +133,223 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
   // Select a position
   const selectPosition = (position: Position) => {
     console.log('🎯 selectPosition called with:', position);
+    console.log('🎯 position.category:', position.category);
+    console.log('🎯 position.title:', position.title);
     
-    onSelect(position);
+    // For keyword searches, add to selected keywords
+    if (position.category === 'keyword') {
+      console.log('🔍 Keyword search detected, adding to selection...');
+      const keyword = position.title.split('(')[0].trim();
+      const newKeyword = {
+        title: keyword,
+        count: position.count,
+        category: 'keyword'
+      };
+      
+                  // Check if keyword already selected
+            const exists = selectedKeywords.find(k => k.title === keyword);
+            if (!exists) {
+              const updatedKeywords = [...selectedKeywords, newKeyword];
+              setSelectedKeywords(updatedKeywords);
+              console.log('✅ Added keyword:', keyword, 'Total selected:', updatedKeywords.length);
+
+              // Automatically search when keyword is selected
+              onSelect(updatedKeywords);
+            } else {
+              console.log('⚠️ Keyword already selected:', keyword);
+            }
+      
+      // Clear input and suggestions
+      setInputValue('');
+      setAllSuggestions([]);
+      setShowDropdown(false);
+      return;
+    }
     
-    // Clear and reset
-    console.log('🧹 Clearing input and closing dropdown');
+    // For regular job titles, use the normal flow
+    console.log('📝 Regular job title selected, calling onSelect...');
+    onSelect([position]);
     setInputValue('');
     setAllSuggestions([]);
     setShowDropdown(false);
-    
-    // Focus back to input
-    setTimeout(() => {
-      console.log('🎯 Focusing back to input');
-      inputRef.current?.focus();
-    }, 50);
   };
 
-  // Handle click outside
+  // Remove selected keyword
+  const removeKeyword = (keywordToRemove: string) => {
+    const updatedKeywords = selectedKeywords.filter(k => k.title !== keywordToRemove);
+    setSelectedKeywords(updatedKeywords);
+    console.log('🗑️ Removed keyword:', keywordToRemove, 'Total selected:', updatedKeywords.length);
+    
+    // Call onSelect with updated keywords
+    onSelect(updatedKeywords);
+  };
+
+  // Clear all selected keywords
+  const clearAllKeywords = () => {
+    setSelectedKeywords([]);
+    console.log('🧹 Cleared all keywords');
+    onSelect([]);
+  };
+
+  // Update dropdown position
+  const updateDropdownPosition = useCallback(() => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom,
+        left: rect.left,
+        width: rect.width
+      });
+    }
+  }, []);
+
+  // Handle clicks outside dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // Check if click is outside both the container and the dropdown
-      if (
-        containerRef.current && 
-        !containerRef.current.contains(event.target as Node) &&
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        console.log('👆 Click outside detected, closing dropdown');
-        setShowDropdown(false);
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        // Only close dropdown if there are no suggestions
+        if (allSuggestions.length === 0) {
+          setShowDropdown(false);
+        }
       }
     };
 
-    if (showDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
-    }
-  }, [showDropdown]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [allSuggestions.length]);
 
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Add helper function for RTL detection
-  const isRTL = (text: string): boolean => {
-    const rtlChars = /[\u0590-\u083F]|[\u08A0-\u08FF]|[\uFB1D-\uFDFF]|[\uFE70-\uFEFF]/mg;
-    return rtlChars.test(text);
-  };
-
-  // Calculate dropdown position
-  const updateDropdownPosition = useCallback(() => {
-    if (!inputRef.current) return;
-
-    const inputRect = inputRef.current.getBoundingClientRect();
-    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-
-    setDropdownPosition({
-      top: inputRect.bottom + scrollTop,
-      left: inputRect.left + scrollLeft,
-      width: inputRect.width
-    });
-  }, []);
-
-  // Update position when dropdown opens or window resizes
+  // Update dropdown position on scroll and resize
   useEffect(() => {
     if (showDropdown) {
-      updateDropdownPosition();
-      
       const handleScroll = () => updateDropdownPosition();
       const handleResize = () => updateDropdownPosition();
       
-      window.addEventListener('scroll', handleScroll, true);
+      window.addEventListener('scroll', handleScroll);
       window.addEventListener('resize', handleResize);
       
       return () => {
-        window.removeEventListener('scroll', handleScroll, true);
+        window.removeEventListener('scroll', handleScroll);
         window.removeEventListener('resize', handleResize);
       };
     }
   }, [showDropdown, updateDropdownPosition]);
 
-  // Country suggestions removed - implemented in separate component
+  // RTL text detection
+  const isRTL = (text: string): boolean => {
+    const rtlRegex = /[\u0591-\u07FF\uFB1D-\uFDFD\uFE70-\uFEFC]/;
+    return rtlRegex.test(text);
+  };
+
+  // Handle Enter key
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && allSuggestions.length > 0) {
+      e.preventDefault();
+      selectPosition(allSuggestions[0]);
+    }
+  };
 
   return (
-    <div className={`w-full ${className || ''}`} ref={containerRef}>
-      {/* Search input and button */}
-      <div className="flex gap-2">
-        <div className="relative flex-1 group">
-          <input
-            ref={inputRef}
-            type="text"
-            value={inputValue}
-            onChange={handleInputChange}
-            onFocus={handleInputFocus}
-            onBlur={handleInputBlur}
-            placeholder={animatedPlaceholder}
-            disabled={disabled}
-            className="w-full px-4 py-3 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] focus:scale-[1.02] shadow-sm hover:shadow-md focus:shadow-lg"
-          />
-          
-          {/* Loading spinner */}
-          {isLoading && (
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-              <div className="w-5 h-5 border-2 border-blue-500 dark:border-blue-400 border-t-transparent rounded-full animate-spin" />
+    <div 
+      ref={containerRef}
+      className={`relative ${className || ''}`}
+      style={{ direction: isRTL(inputValue) ? 'rtl' : 'ltr' }}
+    >
+              {/* Selected Keywords Display */}
+        {selectedKeywords.length > 0 && (
+          <div className="mb-3">
+            <div className="flex flex-wrap gap-2 mb-3">
+              {selectedKeywords.map((keyword, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium"
+                >
+                  <span>{keyword.title} ({keyword.count})</span>
+                  <button
+                    onClick={() => removeKeyword(keyword.title)}
+                    className="text-blue-600 hover:text-blue-800 font-bold text-lg leading-none"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={clearAllKeywords}
+                className="text-gray-500 hover:text-gray-700 text-sm underline"
+              >
+                Clear all
+              </button>
             </div>
-          )}
+            
+            {/* Selected Keywords Summary */}
+            <div className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
+              <span className="text-sm text-gray-600">
+                {selectedKeywords.length} keyword{selectedKeywords.length > 1 ? 's' : ''} selected ({selectedKeywords.reduce((sum, k) => sum + k.count, 0)} jobs)
+              </span>
+            </div>
+          </div>
+        )}
 
-          {/* Dropdown Portal */}
-          {showDropdown && createPortal(
-            <div 
-              ref={dropdownRef}
-              className="fixed bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xl mt-1 max-h-64 overflow-y-auto animate-in slide-in-from-top-2 duration-300"
-              style={{
-                top: `${dropdownPosition.top + 4}px`,
-                left: `${dropdownPosition.left}px`,
-                width: `${dropdownPosition.width}px`,
-                zIndex: 999999,
-                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+      <div className="relative">
+        <input
+          ref={inputRef}
+          type="text"
+          value={inputValue}
+          onChange={handleInputChange}
+          onFocus={handleInputFocus}
+          onBlur={handleInputBlur}
+          onKeyDown={handleKeyDown}
+          placeholder={animatedPlaceholder}
+          disabled={disabled}
+          className={`
+            w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg
+            focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200
+            transition-all duration-200 ease-in-out
+            ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}
+            ${isRTL(inputValue) ? 'text-right' : 'text-left'}
+          `}
+        />
+        
+        {isLoading && (
+          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+          </div>
+        )}
+      </div>
+
+      {/* Dropdown */}
+      {showDropdown && allSuggestions.length > 0 && createPortal(
+        <div
+          ref={dropdownRef}
+          className="absolute z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+          style={{
+            top: dropdownPosition.top + 5,
+            left: dropdownPosition.left,
+            width: dropdownPosition.width,
+            minWidth: '200px'
+          }}
+        >
+          {allSuggestions.map((suggestion, index) => (
+            <div
+              key={index}
+              className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors duration-150"
+              onClick={() => {
+                console.log('🖱️ Clicked on suggestion:', suggestion);
+                selectPosition(suggestion);
               }}
             >
-              {isLoading ? (
-                <div className="p-3 text-center text-gray-500 dark:text-gray-400">
-                  <div className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full mr-2"></div>
-                  Searching...
-                </div>
-              ) : allSuggestions.length > 0 ? (
-                <>
-                  {allSuggestions.map((suggestion, index) => (
-                    <div
-                      key={index}
-                      className="px-4 py-2 hover:bg-blue-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-600 last:border-b-0 transition-all duration-200 transform hover:scale-[1.02]"
-                      onClick={() => selectPosition(suggestion)}
-                    >
-                      <div className={`flex justify-between items-center ${isRTL(suggestion.title) ? 'text-right' : 'text-left'}`}>
-                        <span className="text-gray-900 dark:text-white font-medium">
-                          {suggestion.title}
-                        </span>
-                        <span className="text-sm text-gray-500 dark:text-gray-400 ml-2 transition-all duration-200 hover:scale-105">
-                          {suggestion.count} jobs
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </>
-              ) : inputValue.length >= 2 ? (
-                <div className="p-3 text-center text-gray-500 dark:text-gray-400">
-                  No job titles found
-                </div>
-              ) : (
-                <div className="p-3 text-center text-gray-500 dark:text-gray-400">
-                  Type for more relevant job ads
-                </div>
-              )}
-            </div>,
-            document.body
-          )}
-        </div>
-      </div>
+              <div className="flex justify-between items-center">
+                <span className="font-medium text-gray-800">
+                  {suggestion.title}
+                </span>
+                <span className="text-sm text-gray-500">
+                  {suggestion.count} jobs
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

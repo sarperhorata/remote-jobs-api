@@ -5,7 +5,7 @@ from typing import Optional, Dict
 import os
 from backend.database import get_async_db
 from backend.schemas.user import UserCreate, Token
-from backend.utils.email import create_password_reset_token, verify_token, send_password_reset_email
+from backend.utils.email import create_password_reset_token, verify_token, send_password_reset_email, send_verification_email
 import logging
 from bson import ObjectId
 import jwt
@@ -122,6 +122,14 @@ async def register_user(
     
     result = await db.users.insert_one(user_dict)
     
+    # Send welcome email
+    try:
+        from backend.services.mailgun_service import mailgun_service
+        mailgun_service.send_welcome_email(user.email, user.name)
+        logger.info(f"Welcome email sent to {user.email}")
+    except Exception as e:
+        logger.warning(f"Failed to send welcome email to {user.email}: {str(e)}")
+    
     # Create access token
     access_token = create_access_token(data={"sub": str(result.inserted_id)})
     
@@ -168,6 +176,14 @@ async def read_users_me(current_user: dict = Depends(get_current_user_dependency
         "full_name": current_user.get("full_name", ""),
         "is_active": current_user.get("is_active", True)
     }
+
+@router.post("/logout")
+async def logout(current_user: dict = Depends(get_current_user_dependency)):
+    """Logout user and invalidate token."""
+    # In a real implementation, you might want to blacklist the token
+    # For now, we'll just return a success message
+    # The client should remove the token from storage
+    return {"message": "Successfully logged out"}
 
 @router.get("/google/auth-url")
 async def get_google_auth_url():

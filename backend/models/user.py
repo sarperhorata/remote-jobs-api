@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from bson import ObjectId
 
@@ -20,6 +20,25 @@ class PyObjectId(ObjectId):
         schema.update(type="string")
         return schema
 
+class UserProfile(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    location: Optional[str] = None
+    title: Optional[str] = None
+    summary: Optional[str] = None
+    skills: Optional[List[str]] = None
+    experience: Optional[List[Dict[str, Any]]] = None
+    education: Optional[List[Dict[str, Any]]] = None
+    languages: Optional[List[str]] = None
+    certifications: Optional[List[str]] = None
+    linkedin_url: Optional[str] = None
+    github_url: Optional[str] = None
+    portfolio_url: Optional[str] = None
+    cvUrl: Optional[str] = None
+    cover_letter_text: Optional[str] = None
+    cover_letter_file: Optional[Dict[str, Any]] = None
+
 class UserBase(BaseModel):
     email: EmailStr
     full_name: str
@@ -36,6 +55,8 @@ class UserBase(BaseModel):
     github: Optional[str] = None
     linkedin: Optional[str] = None
     twitter: Optional[str] = None
+    profile: Optional[UserProfile] = None
+    subscription_type: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str

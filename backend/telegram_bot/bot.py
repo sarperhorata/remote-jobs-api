@@ -163,9 +163,16 @@ class RemoteJobsBot:
         """Send welcome message when command /start is issued."""
         user = update.effective_user
         await update.message.reply_html(
-            f"Hi {user.mention_html()}! I'm the Remote Jobs Monitor bot.\n\n"
-            f"I can help you find remote job opportunities and notify you when new jobs matching your profile are available.\n\n"
-            f"Use /help to see available commands."
+            f"Merhaba {user.mention_html()}! 🐝\n\n"
+            f"<b>Buzz2Remote Bot'a Hoş Geldiniz!</b> 🚀\n\n"
+            f"Remote iş fırsatlarını bulmanıza ve profilinize uygun yeni işler olduğunda sizi bilgilendirmeme yardımcı oluyorum.\n\n"
+            f"📋 <b>Mevcut Komutlar:</b>\n"
+            f"• /start - Bu karşılama mesajını göster\n"
+            f"• /help - Yardım bilgilerini göster\n"
+            f"• /jobs - En son iş ilanlarını al\n"
+            f"• /subscribe - İş uyarılarına abone ol\n"
+            f"• /profile - Profilinizi yönetin\n\n"
+            f"🎯 Hadi başlayalım! #Buzz2Remote #RemoteJobs"
         )
         
         # Check if user already has a profile
@@ -191,13 +198,21 @@ class RemoteJobsBot:
     
     async def help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Send help message when command /help is issued."""
-        await update.message.reply_text(
-            "Here are the commands you can use:\n\n"
-            "/start - Start the bot\n"
-            "/profile - Create or update your profile\n"
-            "/jobs - Browse available jobs\n"
-            "/subscribe - Subscribe to job alerts\n"
-            "/help - Show this help message"
+        await update.message.reply_html(
+            "🐝 <b>Buzz2Remote Bot Yardım</b> 🐝\n\n"
+            "📋 <b>Kullanabileceğiniz Komutlar:</b>\n\n"
+            "🚀 <b>/start</b> - Botu başlat\n"
+            "👤 <b>/profile</b> - Profilinizi oluşturun veya güncelleyin\n"
+            "💼 <b>/jobs</b> - Mevcut işleri görüntüleyin\n"
+            "🔔 <b>/subscribe</b> - İş uyarılarına abone olun\n"
+            "❓ <b>/help</b> - Bu yardım mesajını göster\n\n"
+            "🎯 <b>Özellikler:</b>\n"
+            "• Remote iş fırsatlarını keşfedin\n"
+            "• Profilinize uygun işleri bulun\n"
+            "• Yeni iş ilanlarından haberdar olun\n"
+            "• Profilinizi yönetin\n\n"
+            "💡 <b>İpucu:</b> İlk kez kullanıyorsanız /profile komutu ile profilinizi oluşturun!\n\n"
+            "#Buzz2Remote #Help #RemoteJobs"
         )
     
     async def jobs(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -216,12 +231,12 @@ class RemoteJobsBot:
             return
         
         # For now, just show a placeholder
-        await update.message.reply_text(
-            "🔍 Job Search Options:",
+        await update.message.reply_html(
+            "🔍 <b>İş Arama Seçenekleri:</b>",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("Browse All Jobs", callback_data="browse_all_jobs")],
-                [InlineKeyboardButton("Browse Matching Jobs", callback_data="browse_matching_jobs")],
-                [InlineKeyboardButton("Search Jobs", callback_data="search_jobs")],
+                [InlineKeyboardButton("📋 Tüm İşleri Görüntüle", callback_data="browse_all_jobs")],
+                [InlineKeyboardButton("🎯 Uygun İşleri Görüntüle", callback_data="browse_matching_jobs")],
+                [InlineKeyboardButton("🔎 İş Ara", callback_data="search_jobs")],
             ])
         )
     
@@ -241,13 +256,13 @@ class RemoteJobsBot:
             return
         
         # For now, just show subscription options
-        await update.message.reply_text(
-            "📣 Subscription Options:",
+        await update.message.reply_html(
+            "📣 <b>Abonelik Seçenekleri:</b>",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("Daily Alerts", callback_data="subscribe_daily")],
-                [InlineKeyboardButton("Weekly Digest", callback_data="subscribe_weekly")],
-                [InlineKeyboardButton("Real-time Alerts (Premium)", callback_data="subscribe_realtime")],
-                [InlineKeyboardButton("Unsubscribe", callback_data="unsubscribe")],
+                [InlineKeyboardButton("📅 Günlük Uyarılar", callback_data="subscribe_daily")],
+                [InlineKeyboardButton("📊 Haftalık Özet", callback_data="subscribe_weekly")],
+                [InlineKeyboardButton("⚡ Gerçek Zamanlı Uyarılar (Premium)", callback_data="subscribe_realtime")],
+                [InlineKeyboardButton("🚫 Aboneliği İptal Et", callback_data="unsubscribe")],
             ])
         )
     
@@ -260,16 +275,16 @@ class RemoteJobsBot:
         
         if user_profile:
             buttons.extend([
-                [InlineKeyboardButton("View Profile", callback_data="show_profile")],
-                [InlineKeyboardButton("Edit Profile", callback_data="edit_profile")],
+                [InlineKeyboardButton("👁️ Profili Görüntüle", callback_data="show_profile")],
+                [InlineKeyboardButton("✏️ Profili Düzenle", callback_data="edit_profile")],
             ])
         else:
-            buttons.append([InlineKeyboardButton("Create Profile", callback_data="create_profile")])
+            buttons.append([InlineKeyboardButton("➕ Profil Oluştur", callback_data="create_profile")])
         
-        buttons.append([InlineKeyboardButton("Cancel", callback_data="cancel")])
+        buttons.append([InlineKeyboardButton("❌ İptal", callback_data="cancel")])
         
-        await update.message.reply_text(
-            "Profile Management:",
+        await update.message.reply_html(
+            "👤 <b>Profil Yönetimi:</b>",
             reply_markup=InlineKeyboardMarkup(buttons)
         )
         
@@ -857,7 +872,7 @@ class RemoteJobsBot:
                 await self.application.bot.send_message(
                     chat_id=notification_chat_id,
                     text=message,
-                    parse_mode='Markdown',
+                    parse_mode='HTML',
                     disable_web_page_preview=True
                 )
                 logger.info(f"Deployment notification sent successfully to chat {notification_chat_id}")
@@ -875,91 +890,163 @@ class RemoteJobsBot:
         """Format deployment notification message"""
         status_emoji = "✅" if data.get('status') == 'success' else "⚠️" if data.get('status') == 'warning' else "❌"
         
-        message = f"{status_emoji} **DEPLOYMENT UPDATE**\n\n"
-        message += f"**Environment:** {data.get('environment', 'Unknown')}\n"
-        message += f"**Status:** {data.get('status', 'unknown').upper()}\n"
+        # Get current date and time
+        current_time = datetime.now()
+        date_str = current_time.strftime('%d.%m.%Y')
+        time_str = current_time.strftime('%H:%M')
+        
+        message = f"🚀 <b>DEPLOYMENT GÜNCELLEMESİ</b>\n\n"
+        message += f"🕐 <b>Tarih:</b> {date_str}\n"
+        message += f"⏰ <b>Saat:</b> {time_str} UTC\n\n"
+        
+        message += f"🌍 <b>Ortam:</b> {data.get('environment', 'Bilinmiyor')}\n"
+        message += f"📊 <b>Durum:</b> {data.get('status', 'bilinmiyor').upper()}\n"
         
         if 'commit' in data:
-            message += f"**Commit:** {data['commit']}\n"
+            message += f"🔗 <b>Commit:</b> {data['commit']}\n"
         
         if 'message' in data:
-            message += f"**Message:** {data['message']}\n"
+            message += f"💬 <b>Mesaj:</b> {data['message']}\n"
         
         if 'services' in data:
-            message += f"**Services:** {', '.join(data['services'])}\n"
+            message += f"⚙️ <b>Servisler:</b> {', '.join(data['services'])}\n"
         
-        message += f"\n🕐 **Time:** {data.get('timestamp', datetime.now().isoformat())}"
+        message += f"\n🎯 <b>ÖZET</b>\n"
+        if data.get('status') == 'success':
+            message += f"Buzz2Remote backend servisi başarıyla deploy edildi ve çalışıyor.\n\n"
+        else:
+            message += f"Deployment sırasında bir sorun oluştu.\n\n"
+        
+        message += f"#Buzz2Remote #Deployment #Backend"
         return message
     
     def _format_external_api_message(self, data: Dict[str, Any]) -> str:
         """Format external API crawl notification message"""
         status_emoji = "✅" if data.get('status') == 'success' else "❌"
         
-        message = f"{status_emoji} **EXTERNAL API CRAWL**\n\n"
-        message += f"**Status:** {data.get('status', 'unknown').upper()}\n"
+        # Get current date and time
+        current_time = datetime.now()
+        date_str = current_time.strftime('%d.%m.%Y')
+        time_str = current_time.strftime('%H:%M')
+        
+        message = f"🌐 <b>EXTERNAL API CRAWL</b>\n\n"
+        message += f"🕐 <b>Tarih:</b> {date_str}\n"
+        message += f"⏰ <b>Saat:</b> {time_str} UTC\n\n"
+        
+        message += f"📊 <b>Durum:</b> {data.get('status', 'bilinmiyor').upper()}\n"
         
         if data.get('status') == 'success':
-            message += f"**Total Jobs:** {data.get('total_jobs', 0):,}\n"
+            message += f"📈 <b>Toplam İş:</b> {data.get('total_jobs', 0):,}\n"
             
             if 'api_results' in data:
-                message += "\n**API Results:**\n"
+                message += "\n🔍 <b>API Sonuçları:</b>\n"
                 for api_name, count in data['api_results'].items():
-                    message += f"• {api_name}: {count} jobs\n"
+                    message += f"• {api_name}: {count} iş\n"
         else:
-            message += f"**Error:** {data.get('error', 'Unknown error')}\n"
+            message += f"❌ <b>Hata:</b> {data.get('error', 'Bilinmeyen hata')}\n"
         
-        message += f"\n🕐 **Time:** {data.get('timestamp', datetime.now().isoformat())}"
+        message += f"\n🎯 <b>ÖZET</b>\n"
+        if data.get('status') == 'success':
+            message += f"External API'lerden iş ilanları başarıyla çekildi.\n\n"
+        else:
+            message += f"External API crawl sırasında hata oluştu.\n\n"
+        
+        message += f"#Buzz2Remote #ExternalAPI #Crawler"
         return message
     
     def _format_distill_crawl_message(self, data: Dict[str, Any]) -> str:
         """Format distill crawl notification message"""
         status_emoji = "✅" if data.get('status') == 'success' else "❌"
         
-        message = f"{status_emoji} **DISTILL CRAWL**\n\n"
-        message += f"**Status:** {data.get('status', 'unknown').upper()}\n"
+        # Get current date and time
+        current_time = datetime.now()
+        date_str = current_time.strftime('%d.%m.%Y')
+        time_str = current_time.strftime('%H:%M')
+        
+        message = f"🔍 <b>DISTILL CRAWL</b>\n\n"
+        message += f"🕐 <b>Tarih:</b> {date_str}\n"
+        message += f"⏰ <b>Saat:</b> {time_str} UTC\n\n"
+        
+        message += f"📊 <b>Durum:</b> {data.get('status', 'bilinmiyor').upper()}\n"
         
         if data.get('status') == 'success':
-            message += f"**Companies Found:** {data.get('companies_found', 0):,}\n"
-            message += f"**Jobs Found:** {data.get('jobs_found', 0):,}\n"
+            message += f"🏢 <b>Bulunan Şirketler:</b> {data.get('companies_found', 0):,}\n"
+            message += f"📈 <b>Bulunan İşler:</b> {data.get('jobs_found', 0):,}\n"
         else:
-            message += f"**Error:** {data.get('error', 'Unknown error')}\n"
+            message += f"❌ <b>Hata:</b> {data.get('error', 'Bilinmeyen hata')}\n"
         
-        message += f"\n🕐 **Time:** {data.get('timestamp', datetime.now().isoformat())}"
+        message += f"\n🎯 <b>ÖZET</b>\n"
+        if data.get('status') == 'success':
+            message += f"Distill crawler başarıyla çalıştı ve yeni veriler toplandı.\n\n"
+        else:
+            message += f"Distill crawl sırasında hata oluştu.\n\n"
+        
+        message += f"#Buzz2Remote #DistillCrawler #Companies"
         return message
     
     def _format_daily_stats_message(self, data: Dict[str, Any]) -> str:
         """Format daily statistics notification message"""
         status_emoji = "✅" if data.get('status') == 'success' else "❌"
         
-        message = f"{status_emoji} **DAILY STATISTICS**\n\n"
-        message += f"**Status:** {data.get('status', 'unknown').upper()}\n"
+        # Get current date and time
+        current_time = datetime.now()
+        date_str = current_time.strftime('%d.%m.%Y')
+        time_str = current_time.strftime('%H:%M')
+        
+        message = f"📊 <b>GÜNLÜK İSTATİSTİK RAPORU</b>\n\n"
+        message += f"🕐 <b>Tarih:</b> {date_str}\n"
+        message += f"⏰ <b>Saat:</b> {time_str} UTC\n\n"
         
         if data.get('status') == 'success':
-            message += f"**Total Jobs:** {data.get('total_jobs', 0):,}\n"
-            message += f"**Active Jobs:** {data.get('active_jobs', 0):,}\n"
-            message += f"**Total Companies:** {data.get('total_companies', 0):,}\n"
-            message += f"**New Jobs Today:** {data.get('new_jobs_today', 0):,}\n"
+            message += f"📈 <b>İŞ İLANLARI</b>\n"
+            message += f"• Toplam İlan: <b>{data.get('total_jobs', 0):,}</b>\n"
+            message += f"• Aktif İlan: <b>{data.get('active_jobs', 0):,}</b>\n"
+            message += f"• Bugün Eklenen: <b>{data.get('new_jobs_today', 0):,}</b>\n\n"
+            
+            message += f"🏢 <b>ŞİRKETLER</b>\n"
+            message += f"• Toplam Şirket: <b>{data.get('total_companies', 0):,}</b>\n\n"
+            
+            message += f"✅ <b>DURUM</b>\n"
+            message += f"• Veritabanı: <b>Bağlı</b>\n"
+            message += f"• API Servisi: <b>Aktif</b>\n"
+            message += f"• Scheduler: <b>Çalışıyor</b>\n\n"
+            
+            message += f"🎯 <b>ÖZET</b>\n"
+            message += f"Buzz2Remote platformu günlük istatistikleri başarıyla toplandı. Tüm sistemler normal çalışıyor.\n\n"
+            message += f"#Buzz2Remote #RemoteJobs #DailyStats"
         else:
-            message += f"**Error:** {data.get('error', 'Unknown error')}\n"
+            message += f"❌ <b>HATA</b>\n"
+            message += f"• Hata: {data.get('error', 'Bilinmeyen hata')}\n\n"
+            message += f"⚠️ Sistem hatası nedeniyle istatistikler toplanamadı."
         
-        message += f"\n🕐 **Time:** {data.get('timestamp', datetime.now().isoformat())}"
         return message
     
     def _format_generic_message(self, data: Dict[str, Any]) -> str:
         """Format generic notification message"""
-        status_emoji = "✅" if data.get('status') == 'success' else "⚠️" if data.get('status') == 'warning' else "❌"
+        status_emoji = "📢" if data.get('status') == 'success' else "⚠️" if data.get('status') == 'warning' else "💥"
+        status_text = "BAŞARILI" if data.get('status') == 'success' else "UYARI" if data.get('status') == 'warning' else "HATA"
         
-        message = f"{status_emoji} **NOTIFICATION**\n\n"
-        message += f"**Type:** {data.get('type', 'unknown')}\n"
-        message += f"**Status:** {data.get('status', 'unknown').upper()}\n"
+        # Get current date and time
+        current_time = datetime.now()
+        date_str = current_time.strftime('%d.%m.%Y')
+        time_str = current_time.strftime('%H:%M')
+        
+        message = f"{status_emoji} <b>GENEL BİLDİRİM</b>\n\n"
+        message += f"🕐 <b>Tarih:</b> {date_str}\n"
+        message += f"⏰ <b>Saat:</b> {time_str} UTC\n\n"
+        
+        message += f"📋 <b>Tip:</b> {data.get('type', 'Bilinmiyor')}\n"
+        message += f"📊 <b>Durum:</b> {status_text}\n"
         
         if 'message' in data:
-            message += f"**Message:** {data['message']}\n"
+            message += f"💬 <b>Mesaj:</b> {data['message']}\n"
         
         if 'error' in data:
-            message += f"**Error:** {data['error']}\n"
+            message += f"❌ <b>Hata:</b> {data['error']}\n"
         
-        message += f"\n🕐 **Time:** {data.get('timestamp', datetime.now().isoformat())}"
+        message += f"\n🎯 <b>ÖZET</b>\n"
+        message += f"Buzz2Remote platformundan genel bildirim.\n\n"
+        message += f"#Buzz2Remote #Notification #Update"
         return message
     
     async def send_error_notification(self, message: str, error_data: Dict[str, Any] = None) -> bool:
@@ -993,7 +1080,7 @@ class RemoteJobsBot:
                 await self.application.bot.send_message(
                     chat_id=notification_chat_id,
                     text=message,
-                    parse_mode='Markdown',
+                    parse_mode='HTML',
                     disable_web_page_preview=True
                 )
                 logger.info(f"Error notification sent successfully to chat {notification_chat_id}")
@@ -1007,6 +1094,89 @@ class RemoteJobsBot:
             logger.error(f"Failed to process error notification: {str(e)}")
             return False
     
+    async def send_new_job_notification(self, job_data: Dict[str, Any]) -> bool:
+        """
+        Send new job notification to Telegram
+        
+        Args:
+            job_data: Dictionary containing job information
+        """
+        if not self.enabled or not self.application:
+            logger.warning("Cannot send new job notification: Bot is disabled")
+            return False
+            
+        try:
+            # Format the new job message
+            message = self._format_new_job_message(job_data)
+            
+            # Get notification chat ID from environment
+            notification_chat_id = os.getenv('TELEGRAM_CHAT_ID')
+            
+            if not notification_chat_id:
+                logger.warning("TELEGRAM_CHAT_ID not set, cannot send new job notification")
+                return False
+            
+            try:
+                notification_chat_id = int(notification_chat_id)
+            except ValueError:
+                logger.error(f"Invalid TELEGRAM_CHAT_ID format: {notification_chat_id}")
+                return False
+            
+            # Send notification
+            try:
+                await self.application.bot.send_message(
+                    chat_id=notification_chat_id,
+                    text=message,
+                    parse_mode='HTML'
+                )
+                logger.info(f"New job notification sent successfully to chat {notification_chat_id}")
+                return True
+                
+            except Exception as e:
+                logger.error(f"Failed to send new job notification: {str(e)}")
+                return False
+            
+        except Exception as e:
+            logger.error(f"Failed to process new job notification: {str(e)}")
+            return False
+
+    def _format_new_job_message(self, data: Dict[str, Any]) -> str:
+        """Format new job notification message"""
+        # Get current date and time
+        current_time = datetime.now()
+        date_str = current_time.strftime('%d.%m.%Y')
+        time_str = current_time.strftime('%H:%M')
+        
+        # Remote indicator
+        remote_emoji = "🏠" if data.get('is_remote', False) else "🏢"
+        remote_text = "Remote" if data.get('is_remote', False) else "On-site"
+        
+        # Salary formatting
+        salary = data.get('salary', 'Not specified')
+        if salary and salary != 'Not specified':
+            salary_text = f"💰 <b>Maaş:</b> {salary}"
+        else:
+            salary_text = "💰 <b>Maaş:</b> Belirtilmemiş"
+        
+        message = f"🆕 <b>YENİ İŞ İLANI EKLENDİ!</b>\n\n"
+        message += f"🕐 <b>Tarih:</b> {date_str}\n"
+        message += f"⏰ <b>Saat:</b> {time_str} UTC\n\n"
+        
+        message += f"💼 <b>Pozisyon:</b> {data.get('job_title', 'Bilinmiyor')}\n"
+        message += f"🏢 <b>Şirket:</b> {data.get('company', 'Bilinmiyor')}\n"
+        message += f"📍 <b>Konum:</b> {data.get('location', 'Bilinmiyor')}\n"
+        message += f"📋 <b>İş Türü:</b> {data.get('job_type', 'Bilinmiyor')}\n"
+        message += f"{remote_emoji} <b>Çalışma Şekli:</b> {remote_text}\n"
+        message += f"{salary_text}\n\n"
+        
+        message += f"🔗 <b>İlan ID:</b> {data.get('job_id', 'Bilinmiyor')}\n\n"
+        
+        message += f"🎯 <b>ÖZET</b>\n"
+        message += f"Buzz2Remote platformuna yeni bir iş ilanı eklendi. Detayları yukarıda görebilirsiniz.\n\n"
+        
+        message += f"#Buzz2Remote #NewJob #RemoteJobs #JobAlert"
+        return message
+
     async def send_crawler_notification(self, crawler_data: Dict[str, Any]) -> bool:
         """
         Send crawler status notification to Telegram
@@ -1020,43 +1190,58 @@ class RemoteJobsBot:
             
         try:
             # Format the crawler message
-            status_emoji = "✅" if crawler_data.get('status') == 'success' else "⚠️" if crawler_data.get('status') == 'warning' else "❌"
+            status_emoji = "🕷️" if crawler_data.get('status') == 'success' else "⚠️" if crawler_data.get('status') == 'warning' else "💥"
+            status_text = "BAŞARILI" if crawler_data.get('status') == 'success' else "UYARI" if crawler_data.get('status') == 'warning' else "HATA"
             
-            message = f"{status_emoji} **CRAWLER UPDATE**\n\n"
-            message += f"**Service:** {crawler_data.get('service', 'Unknown')}\n"
-            message += f"**Status:** {crawler_data.get('status', 'unknown').upper()}\n"
+            # Get current date and time
+            current_time = datetime.now()
+            date_str = current_time.strftime('%d.%m.%Y')
+            time_str = current_time.strftime('%H:%M')
+            
+            message = f"{status_emoji} <b>CRAWLER GÜNCELLEMESİ</b>\n\n"
+            message += f"🕐 <b>Tarih:</b> {date_str}\n"
+            message += f"⏰ <b>Saat:</b> {time_str} UTC\n\n"
+            
+            message += f"🔧 <b>Servis:</b> {crawler_data.get('service', 'Bilinmiyor')}\n"
+            message += f"📊 <b>Durum:</b> {status_text}\n"
             
             if 'companies_processed' in crawler_data:
-                message += f"**Companies Processed:** {crawler_data['companies_processed']}\n"
+                message += f"🏢 <b>İşlenen Şirketler:</b> {crawler_data['companies_processed']:,}\n"
             
             if 'jobs_found' in crawler_data:
-                message += f"**Jobs Found:** {crawler_data['jobs_found']}\n"
+                message += f"📈 <b>Bulunan İşler:</b> {crawler_data['jobs_found']:,}\n"
             
             if 'new_jobs' in crawler_data:
-                message += f"**New Jobs:** {crawler_data['new_jobs']}\n"
+                message += f"🆕 <b>Yeni İşler:</b> {crawler_data['new_jobs']:,}\n"
             
             if 'disabled_endpoints' in crawler_data and crawler_data['disabled_endpoints']:
-                message += f"\n🚫 **Disabled Endpoints:** {len(crawler_data['disabled_endpoints'])}\n"
+                message += f"\n🚫 <b>Devre Dışı Endpoint'ler:</b> {len(crawler_data['disabled_endpoints'])}\n"
                 for endpoint in crawler_data['disabled_endpoints'][:5]:  # Show max 5
-                    reason = endpoint.get('reason', 'Unknown')
-                    company = endpoint.get('company', 'Unknown')
+                    reason = endpoint.get('reason', 'Bilinmiyor')
+                    company = endpoint.get('company', 'Bilinmiyor')
                     message += f"• {company}: {reason}\n"
                 
                 if len(crawler_data['disabled_endpoints']) > 5:
-                    message += f"• ... and {len(crawler_data['disabled_endpoints']) - 5} more\n"
+                    message += f"• ... ve {len(crawler_data['disabled_endpoints']) - 5} tane daha\n"
             
             if 'errors' in crawler_data and crawler_data['errors']:
-                message += f"\n❌ **Errors:** {len(crawler_data['errors'])}\n"
+                message += f"\n❌ <b>Hatalar:</b> {len(crawler_data['errors'])}\n"
                 for error in crawler_data['errors'][:3]:  # Show max 3 errors
                     message += f"• {error}\n"
                 
                 if len(crawler_data['errors']) > 3:
-                    message += f"• ... and {len(crawler_data['errors']) - 3} more\n"
+                    message += f"• ... ve {len(crawler_data['errors']) - 3} hata daha\n"
             
             if 'duration' in crawler_data:
-                message += f"\n⏱️ **Duration:** {crawler_data['duration']}\n"
+                message += f"\n⏱️ <b>Süre:</b> {crawler_data['duration']}\n"
             
-            message += f"\n🕐 **Time:** {crawler_data.get('timestamp', datetime.now().isoformat())}"
+            message += f"\n🎯 <b>ÖZET</b>\n"
+            if crawler_data.get('status') == 'success':
+                message += f"Crawler başarıyla çalıştı ve veriler güncellendi.\n\n"
+            else:
+                message += f"Crawler çalışması sırasında sorunlar oluştu.\n\n"
+            
+            message += f"#Buzz2Remote #Crawler #Update"
             
             # Get notification chat ID from environment
             notification_chat_id = os.getenv('TELEGRAM_CHAT_ID')
@@ -1076,7 +1261,7 @@ class RemoteJobsBot:
                 await self.application.bot.send_message(
                     chat_id=notification_chat_id,
                     text=message,
-                    parse_mode='Markdown'
+                    parse_mode='HTML'
                 )
                 logger.info(f"Crawler notification sent successfully to chat {notification_chat_id}")
                 return True

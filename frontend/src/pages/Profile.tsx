@@ -3,6 +3,11 @@ import { jobService } from '../services/AllServices';
 import { useAuth } from '../contexts/AuthContext';
 import { User, Heart, FileText, Upload, ExternalLink, CheckCircle, AlertCircle, Loader } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import DragDropCVUpload from '../components/DragDropCVUpload';
+import AICVAnalysis from '../components/AICVAnalysis';
+import SkillsExtraction from '../components/SkillsExtraction';
+import AutoProfileFill from '../components/AutoProfileFill';
+import CoverLetterManager from '../components/CoverLetterManager';
 
 interface ApplicationHistory {
   applications: any[];
@@ -22,6 +27,14 @@ interface ParsedCVData {
   certifications: string[];
 }
 
+interface Skill {
+  id: string;
+  name: string;
+  category?: string;
+  confidence?: number;
+  source: 'cv' | 'manual' | 'ai';
+}
+
 const Profile: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
@@ -32,6 +45,8 @@ const Profile: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [parsedData, setParsedData] = useState<ParsedCVData | null>(null);
   const [showParsedData, setShowParsedData] = useState(false);
+  const [userSkills, setUserSkills] = useState<Skill[]>([]);
+  const [isExtractingSkills, setIsExtractingSkills] = useState(false);
 
   useEffect(() => {
     const fetchApplicationHistory = async () => {
@@ -51,26 +66,9 @@ const Profile: React.FC = () => {
     fetchApplicationHistory();
   }, [user?.id]);
 
-  const handleCvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setCvFile(file);
-      
-      // Validate file type
-      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-      if (!allowedTypes.includes(file.type)) {
-        toast.error('Please upload a PDF, DOC, or DOCX file');
-        return;
-      }
-      
-      // Validate file size (5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('File size must be less than 5MB');
-        return;
-      }
-      
-      await uploadAndParseCV(file);
-    }
+  const handleCvUpload = async (file: File) => {
+    setCvFile(file);
+    await uploadAndParseCV(file);
   };
 
   const uploadAndParseCV = async (file: File) => {
@@ -100,6 +98,11 @@ const Profile: React.FC = () => {
         setParsedData(result.data.parsed_data);
         setShowParsedData(true);
         toast.success('CV uploaded and parsed successfully!');
+        
+        // Automatically extract skills from the uploaded CV
+        setTimeout(() => {
+          extractSkillsFromCV();
+        }, 1000);
         
         // Update user context with new data
         // You might want to refresh the user data here
@@ -162,6 +165,170 @@ const Profile: React.FC = () => {
     // For now, we'll just show a success message
     toast.success('Profile updated with CV data!');
     setShowParsedData(false);
+  };
+
+  const handleRemoveCurrentCV = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8001'}/api/v1/profile/cv`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        toast.success('CV removed successfully');
+        // Refresh user data or update local state
+        window.location.reload();
+      } else {
+        throw new Error('Failed to remove CV');
+      }
+    } catch (error: any) {
+      console.error('Error removing CV:', error);
+      toast.error(error.message || 'Failed to remove CV');
+    }
+  };
+
+  // Skills extraction functions
+  const extractSkillsFromCV = async () => {
+    try {
+      setIsExtractingSkills(true);
+      
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8001'}/api/v1/skills/extract-from-cv`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to extract skills');
+      }
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Convert extracted skills to Skill interface format
+        const extractedSkills: Skill[] = result.data.skills.map((skill: any, index: number) => ({
+          id: skill.id || `skill-${index}`,
+          name: skill.name,
+          category: skill.category,
+          confidence: skill.confidence,
+          source: skill.source || 'cv'
+        }));
+        
+        setUserSkills(extractedSkills);
+        toast.success(`Successfully extracted ${extractedSkills.length} skills from your CV!`);
+      } else {
+        throw new Error(result.message || 'Failed to extract skills');
+      }
+      
+    } catch (error: any) {
+      console.error('Error extracting skills:', error);
+      toast.error(error.message || 'Failed to extract skills');
+    } finally {
+      setIsExtractingSkills(false);
+    }
+  };
+
+  const updateUserSkills = async (skills: Skill[]) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8001'}/api/v1/skills/update-skills`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          skills: skills.map(skill => skill.name),
+          extracted_skills: skills
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to update skills');
+      }
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setUserSkills(skills);
+        toast.success('Skills updated successfully!');
+      } else {
+        throw new Error(result.message || 'Failed to update skills');
+      }
+      
+    } catch (error: any) {
+      console.error('Error updating skills:', error);
+      toast.error(error.message || 'Failed to update skills');
+    }
+  };
+
+  const loadUserSkills = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8001'}/api/v1/skills/user-skills`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        const skills: Skill[] = result.extracted_skills?.map((skill: any, index: number) => ({
+          id: skill.id || `skill-${index}`,
+          name: skill.name,
+          category: skill.category,
+          confidence: skill.confidence,
+          source: skill.source || 'cv'
+        })) || [];
+        
+        setUserSkills(skills);
+      }
+    } catch (error) {
+      console.error('Error loading user skills:', error);
+    }
+  };
+
+  // Load user skills on component mount
+  useEffect(() => {
+    if (user?.id) {
+      loadUserSkills();
+    }
+  }, [user?.id]);
+
+  // Handle profile auto-fill updates
+  const handleProfileUpdate = async (profileData: any) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8001'}/api/v1/profile/auto-fill/apply`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(profileData),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to update profile');
+      }
+      
+      // Refresh the page to show updated data
+      window.location.reload();
+      
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      throw error;
+    }
   };
 
   const menuItems = [
@@ -335,56 +502,59 @@ const Profile: React.FC = () => {
                       </div>
                     )}
                     
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                      <div className="flex items-center justify-center gap-4">
-                        <input
-                          type="file"
-                          accept=".pdf,.doc,.docx"
-                          onChange={handleCvUpload}
-                          className="hidden"
-                          id="cv-upload"
-                          disabled={isUploading}
-                        />
-                        <label
-                          htmlFor="cv-upload"
-                          className={`px-6 py-3 rounded-lg cursor-pointer transition flex items-center gap-2 ${
-                            isUploading 
-                              ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
-                              : 'bg-blue-600 text-white hover:bg-blue-700'
-                          }`}
-                        >
-                          {isUploading ? (
-                            <>
-                              <Loader className="animate-spin" size={16} />
-                              Processing...
-                            </>
-                          ) : (
-                            <>
-                              <Upload size={16} />
-                              Upload New CV
-                            </>
-                          )}
-                        </label>
-                        {user?.profile?.cvUrl && (
-                          <a
-                            href={user.profile.cvUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
-                          >
-                            <ExternalLink size={16} />
-                            View Current CV
-                          </a>
-                        )}
-                      </div>
-                      <p className="text-gray-500 text-sm mt-2">
-                        Supported formats: PDF, DOC, DOCX (Max 5MB)
-                      </p>
-                      <p className="text-gray-400 text-xs mt-1">
-                        Upload your CV to automatically fill your profile information
-                      </p>
-                    </div>
+                    {/* Modern Drag & Drop CV Upload */}
+                    <DragDropCVUpload
+                      onFileUpload={handleCvUpload}
+                      onFileRemove={handleRemoveCurrentCV}
+                      currentCVUrl={user?.profile?.cvUrl}
+                      isUploading={isUploading}
+                      maxFileSize={5}
+                      acceptedFileTypes={['.pdf', '.doc', '.docx']}
+                    />
                   </div>
+
+                  {/* Auto Profile Fill */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4 flex items-center">
+                      <User className="mr-2" size={20} />
+                      Auto Profile Fill
+                    </h3>
+                    <AutoProfileFill
+                      onProfileUpdate={handleProfileUpdate}
+                      currentProfile={{
+                        name: user?.profile?.name || user?.name,
+                        email: user?.profile?.email || user?.email,
+                        phone: user?.profile?.phone,
+                        location: user?.profile?.location,
+                        title: (user?.profile as any)?.title,
+                        summary: (user?.profile as any)?.summary,
+                        skills: user?.skills?.map((skill: any) => skill.name || skill) || [],
+                        experience: user?.experience,
+                        education: user?.education,
+                        languages: (user?.profile as any)?.languages,
+                        certifications: (user?.profile as any)?.certifications,
+                        linkedin_url: (user?.profile as any)?.linkedin_url,
+                        github_url: (user?.profile as any)?.github_url,
+                        portfolio_url: (user?.profile as any)?.portfolio_url
+                      }}
+                      className="mt-4"
+                    />
+                  </div>
+
+                  {/* Cover Letter Manager */}
+                  <CoverLetterManager
+                    className="mt-8"
+                    onUpdate={() => {
+                      // Refresh user data if needed
+                      window.location.reload();
+                    }}
+                  />
+
+                  {/* AI CV Analysis */}
+                  <AICVAnalysis
+                    cvUrl={user?.profile?.cvUrl}
+                    className="mt-8"
+                  />
 
                   {/* Parsed Data Preview */}
                   {showParsedData && parsedData && (
@@ -466,44 +636,51 @@ const Profile: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Skills */}
+                  {/* Skills Extraction */}
                   <div>
-                    <h3 className="text-lg font-semibold mb-4 flex items-center justify-between">
-                      <span>Skills & Expertise</span>
-                      {user?.cv_source === 'linkedin' && (
-                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                          From LinkedIn
-                        </span>
-                      )}
-                    </h3>
-                    <div className="flex flex-wrap gap-3">
-                      {user?.skills && user.skills.length > 0 ? (
-                        user.skills.map((skill) => (
-                          <span
-                            key={skill.id || skill.name}
-                            className="bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium border border-blue-200"
-                          >
-                            {skill.name}
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold flex items-center">
+                        <span>Skills & Expertise</span>
+                        {user?.cv_source === 'linkedin' && (
+                          <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                            From LinkedIn
                           </span>
-                        ))
-                      ) : user?.profile?.skills && user.profile.skills.length > 0 ? (
-                        user.profile.skills.map((skill) => (
-                          <span
-                            key={skill}
-                            className="bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium border border-blue-200"
-                          >
-                            {skill}
-                          </span>
-                        ))
-                      ) : (
-                        <div className="text-center py-8 text-gray-500 w-full">
-                          <p>No skills information available</p>
-                          {user?.linkedin_connected && (
-                            <p className="text-sm mt-2">Connect your LinkedIn account to import your skills</p>
+                        )}
+                      </h3>
+                      {/* Extract Skills Button */}
+                      {user?.profile?.cvUrl && (
+                        <button
+                          onClick={extractSkillsFromCV}
+                          disabled={isExtractingSkills}
+                          className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            isExtractingSkills
+                              ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                              : 'bg-green-600 text-white hover:bg-green-700'
+                          }`}
+                        >
+                          {isExtractingSkills ? (
+                            <>
+                              <Loader className="animate-spin mr-2" size={16} />
+                              Extracting...
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="mr-2" size={16} />
+                              Extract Skills from CV
+                            </>
                           )}
-                        </div>
+                        </button>
                       )}
                     </div>
+                    <SkillsExtraction
+                      skills={userSkills}
+                      onSkillsUpdate={updateUserSkills}
+                      isExtracting={isExtractingSkills}
+                      className="mt-4"
+                    />
+                    {user?.linkedin_connected && (
+                      <p className="text-sm mt-2">Connect your LinkedIn account to import your skills</p>
+                    )}
                   </div>
 
                   {/* Experience */}

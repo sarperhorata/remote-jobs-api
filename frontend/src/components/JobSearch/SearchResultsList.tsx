@@ -12,7 +12,7 @@ const SearchResultsList: React.FC<SearchResultsListProps> = ({ jobs, totalResult
     <div className="bg-white rounded-lg shadow-md">
       <div className="p-6 border-b border-gray-200">
         <h2 className="text-xl font-bold text-gray-800">
-          {totalResults > 0 ? `${totalResults} jobs found` : 'No jobs found'}
+          Job Search Results: {totalResults > 0 ? `${totalResults} jobs found` : 'No jobs found'}
         </h2>
         {/* Sorting options can go here */}
       </div>

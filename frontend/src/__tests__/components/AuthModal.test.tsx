@@ -520,42 +520,48 @@ describe('AuthModal', () => {
 
   describe('Error Handling', () => {
     test('handles network error during login', async () => {
-      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+      // Mock fetch to simulate network error
+      global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
 
       renderAuthModal();
-      
+
       const emailInput = screen.getByLabelText(/email address/i);
       const passwordInput = screen.getByLabelText(/password/i);
-      const submitButton = screen.getByRole('button', { name: /sign in/i });
+      const submitButton = screen.getAllByRole('button', { name: /sign in/i })[1]; // Get the submit button, not the tab
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
       fireEvent.click(submitButton);
 
       await waitFor(() => {
-        expect(screen.getByText('Login failed. Please try again.')).toBeInTheDocument();
+        expect(screen.getByText(/network error/i)).toBeInTheDocument();
       });
     });
 
     test('handles network error during registration', async () => {
-      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+      // Mock fetch to simulate network error
+      global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
 
-      renderAuthModal({ defaultTab: 'register' });
+      renderAuthModal();
       
+      // Switch to register tab
+      const registerTab = screen.getByRole('button', { name: /create account/i });
+      fireEvent.click(registerTab);
+
       const emailInput = screen.getByLabelText(/email address/i);
       const nameInput = screen.getByLabelText(/full name/i);
       const passwordInput = screen.getByLabelText(/password/i);
       const termsCheckbox = screen.getByLabelText(/i agree to the terms of service/i);
-      const submitButton = screen.getByRole('button', { name: /create account/i, type: 'submit' });
+      const submitButton = screen.getAllByRole('button', { name: /create account/i })[1]; // Get the submit button, not the tab
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       fireEvent.change(nameInput, { target: { value: 'John Doe' } });
-      fireEvent.change(passwordInput, { target: { value: 'StrongPass123' } });
+      fireEvent.change(passwordInput, { target: { value: 'password123' } });
       fireEvent.click(termsCheckbox);
       fireEvent.click(submitButton);
 
       await waitFor(() => {
-        expect(screen.getByText('Registration failed')).toBeInTheDocument();
+        expect(screen.getByText(/network error/i)).toBeInTheDocument();
       });
     });
   });

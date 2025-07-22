@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch, AsyncMock
 from httpx import AsyncClient
 from bson import ObjectId
 from contextlib import asynccontextmanager
+import time
 
 # Add parent directory to sys.path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -29,7 +30,7 @@ def event_loop():
     yield loop
     loop.close()
 
-# Mock database for testing
+# Enhanced mock database for testing
 @pytest.fixture(scope="session")
 def mock_db_client():
     """Create a mock database client."""
@@ -38,10 +39,10 @@ def mock_db_client():
 
 @pytest.fixture(scope="session")
 def mock_db():
-    """Create a mock database instance."""
+    """Create a comprehensive mock database instance."""
     mock_db = AsyncMock(spec=AsyncIOMotorDatabase)
     
-    # Create mock collections
+    # Create mock collections with better setup
     mock_collections = {
         'companies': AsyncMock(),
         'jobs': AsyncMock(),
@@ -49,26 +50,48 @@ def mock_db():
         'notifications': AsyncMock(),
         'admin': AsyncMock(),
         'ads': AsyncMock(),
-        'notification_settings': AsyncMock()
+        'notification_settings': AsyncMock(),
+        'applications': AsyncMock(),
+        'logs': AsyncMock(),
+        'analytics': AsyncMock(),
+        'cache': AsyncMock(),
+        'sessions': AsyncMock()
     }
     
-    # Set up mock collections with common operations
-    for collection in mock_collections.values():
+    # Set up mock collections with comprehensive operations
+    for collection_name, collection in mock_collections.items():
+        # Basic operations
         collection.find = AsyncMock()
         collection.find_one = AsyncMock()
         collection.insert_one = AsyncMock()
         collection.update_one = AsyncMock()
         collection.delete_one = AsyncMock()
         collection.count_documents = AsyncMock()
+        collection.aggregate = AsyncMock()
+        collection.create_index = AsyncMock()
+        collection.drop_index = AsyncMock()
+        collection.index_information = MagicMock(return_value={})
         
-        # Set up cursor mock
-        mock_cursor = AsyncMock()
+        # Set up cursor mock with proper chaining
+        mock_cursor = MagicMock()
         mock_cursor.to_list = AsyncMock(return_value=[])
         mock_cursor.sort = MagicMock(return_value=mock_cursor)
         mock_cursor.skip = MagicMock(return_value=mock_cursor)
         mock_cursor.limit = MagicMock(return_value=mock_cursor)
+        mock_cursor.hint = MagicMock(return_value=mock_cursor)
+        mock_cursor.batch_size = MagicMock(return_value=mock_cursor)
+        mock_cursor.__iter__ = MagicMock(return_value=iter([]))
+        mock_cursor.__aiter__ = MagicMock(return_value=iter([]))
+        
         collection.find.return_value = mock_cursor
-        collection.aggregate = AsyncMock(return_value=mock_cursor)
+        collection.aggregate.return_value = mock_cursor
+        
+        # Set up realistic return values
+        collection.find_one.return_value = None
+        collection.count_documents.return_value = 0
+        collection.insert_one.return_value = MagicMock(inserted_id=ObjectId())
+        collection.update_one.return_value = MagicMock(modified_count=1)
+        collection.delete_one.return_value = MagicMock(deleted_count=1)
     
     # Attach collections to database mock
     for name, collection in mock_collections.items():
@@ -95,13 +118,17 @@ def client(async_db_override, db_override) -> Generator[TestClient, None, None]:
     def get_db_override():
         return db_override
     
+    # Clear any existing overrides
+    app.dependency_overrides.clear()
+    
+    # Set up new overrides
     app.dependency_overrides[get_async_db] = async_db_override
     app.dependency_overrides[get_db] = get_db_override
     
     with TestClient(app) as test_client:
         yield test_client
     
-    # Clean up overrides
+    # Clean up
     app.dependency_overrides.clear()
 
 @pytest.fixture(scope="function")

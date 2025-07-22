@@ -19,7 +19,7 @@ def test_admin_login():
     
     # Check environment variables
     admin_username = os.getenv("ADMIN_USERNAME", "admin")
-    admin_password = os.getenv("ADMIN_PASSWORD", "buzz2remote2024")
+    admin_password = os.getenv("ADMIN_PASSWORD", "")
     
     print(f"\n📋 Environment Variables:")
     print(f"ADMIN_USERNAME: {admin_username}")

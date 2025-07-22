@@ -18,9 +18,15 @@ def run_command(cmd, description=""):
     print("-" * 60)
     
     try:
+        # Split command into list to avoid shell=True
+        if isinstance(cmd, str):
+            cmd_list = cmd.split()
+        else:
+            cmd_list = cmd
+            
         result = subprocess.run(
-            cmd, 
-            shell=True, 
+            cmd_list, 
+            shell=False, 
             capture_output=True, 
             text=True,
             cwd=os.path.dirname(os.path.abspath(__file__))

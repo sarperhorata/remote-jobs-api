@@ -22,7 +22,7 @@ import json
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
 # Security
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
+SECRET_KEY = os.getenv("SECRET_KEY", "")
 ALGORITHM = "HS256"
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 logger = logging.getLogger(__name__)

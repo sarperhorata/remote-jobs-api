@@ -159,7 +159,7 @@ from backend.middleware.activity_middleware import ActivityTrackingMiddleware
 app.add_middleware(ActivityTrackingMiddleware)
 
 # Add session middleware
-app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET_KEY", "a_very_secret_key"))
+app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET_KEY", ""))
 
 # Mount static files for admin panel if it exists
 admin_static_path = os.path.join(os.path.dirname(__file__), "admin_panel", "static")

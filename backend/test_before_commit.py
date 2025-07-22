@@ -13,7 +13,13 @@ from datetime import datetime
 def run_command(cmd):
     """Run a command and return success status."""
     try:
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        # Split command into list to avoid shell=True
+        if isinstance(cmd, str):
+            cmd_list = cmd.split()
+        else:
+            cmd_list = cmd
+            
+        result = subprocess.run(cmd_list, shell=False, capture_output=True, text=True)
         return result.returncode == 0, result.stdout, result.stderr
     except Exception as e:
         return False, "", str(e)

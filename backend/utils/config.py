@@ -29,16 +29,16 @@ class Settings(BaseSettings):
     CORS_ALLOW_CREDENTIALS: bool = True
 
     # JWT settings
-    JWT_SECRET: str = "your-secret-key"
+    JWT_SECRET: str = os.getenv("JWT_SECRET", "")
     JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRE_MINUTES: int = 30
+    JWT_EXPIRE_MINUTES: int = int(os.getenv("JWT_EXPIRE_MINUTES", "30"))
 
     # Email settings
-    EMAIL_HOST: str = "smtp.gmail.com"
-    EMAIL_PORT: int = 587
-    EMAIL_USERNAME: str = ""
-    EMAIL_PASSWORD: str = ""
-    EMAIL_FROM: str = ""
+    EMAIL_HOST: str = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+    EMAIL_PORT: int = int(os.getenv("EMAIL_PORT", "587"))
+    EMAIL_USERNAME: str = os.getenv("EMAIL_USERNAME", "")
+    EMAIL_PASSWORD: str = os.getenv("EMAIL_PASSWORD", "")
+    EMAIL_FROM: str = os.getenv("EMAIL_FROM", "")
 
     # Database settings
     DATABASE_URL: Optional[str] = None
@@ -89,8 +89,8 @@ class Settings(BaseSettings):
     PASSWORD_REQUIRE_SPECIAL: bool = True
 
     # Admin Panel
-    ADMIN_USERNAME: str = "admin"
-    ADMIN_PASSWORD: str = "buzz2remote2024"
+    ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin")
+    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "")
     ADMIN_PANEL_ENABLED: bool = True
 
     # Sentry

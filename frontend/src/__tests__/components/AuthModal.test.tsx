@@ -103,7 +103,7 @@ describe('AuthModal', () => {
   describe('Login Form', () => {
     test('handles email input', () => {
       renderAuthModal();
-      const emailInput = screen.getByLabelText(/email/i);
+      const emailInput = screen.getByLabelText(/email address/i);
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       expect(emailInput).toHaveValue('test@example.com');
     });
@@ -160,7 +160,7 @@ describe('AuthModal', () => {
 
       renderAuthModal({ onClose: mockOnClose });
       
-      const emailInput = screen.getByLabelText(/email/i);
+      const emailInput = screen.getByLabelText(/email address/i);
       const passwordInput = screen.getByLabelText(/password/i);
       const submitButton = screen.getByRole('button', { name: /sign in/i });
 
@@ -185,7 +185,7 @@ describe('AuthModal', () => {
 
       renderAuthModal();
       
-      const emailInput = screen.getByLabelText(/email/i);
+      const emailInput = screen.getByLabelText(/email address/i);
       const passwordInput = screen.getByLabelText(/password/i);
       const submitButton = screen.getByRole('button', { name: /sign in/i });
 
@@ -207,7 +207,7 @@ describe('AuthModal', () => {
 
       renderAuthModal();
       
-      const emailInput = screen.getByLabelText(/email/i);
+      const emailInput = screen.getByLabelText(/email address/i);
       const passwordInput = screen.getByLabelText(/password/i);
       const submitButton = screen.getByRole('button', { name: /sign in/i });
 
@@ -233,7 +233,7 @@ describe('AuthModal', () => {
     });
 
     test('handles email input in register form', () => {
-      const emailInput = screen.getByLabelText(/email/i);
+      const emailInput = screen.getByLabelText(/email address/i);
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       expect(emailInput).toHaveValue('test@example.com');
     });
@@ -272,7 +272,7 @@ describe('AuthModal', () => {
     });
 
     test('shows validation error for empty fields', async () => {
-      const submitButton = screen.getByRole('button', { name: /create account/i });
+      const submitButton = screen.getByRole('button', { name: /create account/i, type: 'submit' });
       fireEvent.click(submitButton);
       
       await waitFor(() => {
@@ -281,10 +281,10 @@ describe('AuthModal', () => {
     });
 
     test('shows validation error for invalid password', async () => {
-      const emailInput = screen.getByLabelText(/email/i);
+      const emailInput = screen.getByLabelText(/email address/i);
       const nameInput = screen.getByLabelText(/full name/i);
       const passwordInput = screen.getByLabelText(/password/i);
-      const submitButton = screen.getByRole('button', { name: /create account/i });
+      const submitButton = screen.getByRole('button', { name: /create account/i, type: 'submit' });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       fireEvent.change(nameInput, { target: { value: 'John Doe' } });
@@ -297,10 +297,10 @@ describe('AuthModal', () => {
     });
 
     test('shows validation error for unchecked terms', async () => {
-      const emailInput = screen.getByLabelText(/email/i);
+      const emailInput = screen.getByLabelText(/email address/i);
       const nameInput = screen.getByLabelText(/full name/i);
       const passwordInput = screen.getByLabelText(/password/i);
-      const submitButton = screen.getByRole('button', { name: /create account/i });
+      const submitButton = screen.getByRole('button', { name: /create account/i, type: 'submit' });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       fireEvent.change(nameInput, { target: { value: 'John Doe' } });
@@ -318,11 +318,11 @@ describe('AuthModal', () => {
         json: async () => ({ message: 'Registration successful' })
       });
 
-      const emailInput = screen.getByLabelText(/email/i);
+      const emailInput = screen.getByLabelText(/email address/i);
       const nameInput = screen.getByLabelText(/full name/i);
       const passwordInput = screen.getByLabelText(/password/i);
       const termsCheckbox = screen.getByLabelText(/i agree to the terms of service/i);
-      const submitButton = screen.getByRole('button', { name: /create account/i });
+      const submitButton = screen.getByRole('button', { name: /create account/i, type: 'submit' });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       fireEvent.change(nameInput, { target: { value: 'John Doe' } });
@@ -341,11 +341,11 @@ describe('AuthModal', () => {
         json: async () => ({ detail: 'Email already exists' })
       });
 
-      const emailInput = screen.getByLabelText(/email/i);
+      const emailInput = screen.getByLabelText(/email address/i);
       const nameInput = screen.getByLabelText(/full name/i);
       const passwordInput = screen.getByLabelText(/password/i);
       const termsCheckbox = screen.getByLabelText(/i agree to the terms of service/i);
-      const submitButton = screen.getByRole('button', { name: /create account/i });
+      const submitButton = screen.getByRole('button', { name: /create account/i, type: 'submit' });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       fireEvent.change(nameInput, { target: { value: 'John Doe' } });
@@ -369,11 +369,11 @@ describe('AuthModal', () => {
         })
       });
 
-      const emailInput = screen.getByLabelText(/email/i);
+      const emailInput = screen.getByLabelText(/email address/i);
       const nameInput = screen.getByLabelText(/full name/i);
       const passwordInput = screen.getByLabelText(/password/i);
       const termsCheckbox = screen.getByLabelText(/i agree to the terms of service/i);
-      const submitButton = screen.getByRole('button', { name: /create account/i });
+      const submitButton = screen.getByRole('button', { name: /create account/i, type: 'submit' });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       fireEvent.change(nameInput, { target: { value: 'John Doe' } });
@@ -484,7 +484,7 @@ describe('AuthModal', () => {
 
       renderAuthModal();
       
-      const emailInput = screen.getByLabelText(/email/i);
+      const emailInput = screen.getByLabelText(/email address/i);
       const passwordInput = screen.getByLabelText(/password/i);
       const submitButton = screen.getByRole('button', { name: /sign in/i });
 
@@ -501,11 +501,11 @@ describe('AuthModal', () => {
 
       renderAuthModal({ defaultTab: 'register' });
       
-      const emailInput = screen.getByLabelText(/email/i);
+      const emailInput = screen.getByLabelText(/email address/i);
       const nameInput = screen.getByLabelText(/full name/i);
       const passwordInput = screen.getByLabelText(/password/i);
       const termsCheckbox = screen.getByLabelText(/i agree to the terms of service/i);
-      const submitButton = screen.getByRole('button', { name: /create account/i });
+      const submitButton = screen.getByRole('button', { name: /create account/i, type: 'submit' });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       fireEvent.change(nameInput, { target: { value: 'John Doe' } });
@@ -524,7 +524,7 @@ describe('AuthModal', () => {
 
       renderAuthModal();
       
-      const emailInput = screen.getByLabelText(/email/i);
+      const emailInput = screen.getByLabelText(/email address/i);
       const passwordInput = screen.getByLabelText(/password/i);
       const submitButton = screen.getByRole('button', { name: /sign in/i });
 
@@ -542,11 +542,11 @@ describe('AuthModal', () => {
 
       renderAuthModal({ defaultTab: 'register' });
       
-      const emailInput = screen.getByLabelText(/email/i);
+      const emailInput = screen.getByLabelText(/email address/i);
       const nameInput = screen.getByLabelText(/full name/i);
       const passwordInput = screen.getByLabelText(/password/i);
       const termsCheckbox = screen.getByLabelText(/i agree to the terms of service/i);
-      const submitButton = screen.getByRole('button', { name: /create account/i });
+      const submitButton = screen.getByRole('button', { name: /create account/i, type: 'submit' });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       fireEvent.change(nameInput, { target: { value: 'John Doe' } });

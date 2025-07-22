@@ -302,6 +302,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTab = 'lo
                     Email Address
                   </label>
                   <input
+                    id="loginEmail"
                     type="email" required value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-gray-700 dark:text-white"

@@ -37,9 +37,16 @@ class TestAdminRoutes:
         if response.status_code == 302:
             assert "login" in response.headers.get("location", "")
     
-    @patch('backend.admin_panel.routes.get_async_db')
-    def test_admin_login_success(self, mock_db):
-        mock_db.return_value = MagicMock()
+    # @patch('admin_panel.routes.get_async_db')
+    # def test_admin_login_success(self, mock_db):
+    #     mock_db.return_value = MagicMock()
+    #     response = client.post("/admin/login", data={
+    #         "username": "admin",
+    #         "password": "admin123"
+    #     })
+    #     assert response.status_code in [200, 302, 404]
+    
+    def test_admin_login_success(self):
         response = client.post("/admin/login", data={
             "username": "admin",
             "password": "admin123"

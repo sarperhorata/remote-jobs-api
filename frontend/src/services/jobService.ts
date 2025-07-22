@@ -74,13 +74,14 @@ export const getJobById = async (id: string): Promise<Job | null> => {
     const response = await fetch(`${API_BASE_URL}/jobs/${id}`);
     
     if (!response.ok) {
-      throw new Error('Failed to fetch job');
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
     }
     
     return await response.json();
   } catch (error) {
     console.error('Error fetching job:', error);
-    return null;
+    throw error;
   }
 };
 
@@ -112,13 +113,14 @@ export const searchJobs = async (query: string, params: any = {}): Promise<Job[]
     const response = await fetch(`${API_BASE_URL}/jobs/search/?${searchParams}`);
     
     if (!response.ok) {
-      throw new Error('Failed to search jobs');
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
     }
     
     return await response.json();
   } catch (error) {
     console.error('Error searching jobs:', error);
-    return [];
+    throw error;
   }
 };
 
@@ -636,13 +638,30 @@ export const jobService = {
   unsaveJob: async (userId: string, jobId: string) => {
     await unsaveJob(jobId);
   },
+  getJobsByCompany: async (companyId: string) => {
+    return await JobServiceClass.getJobs(1, 100, { company: companyId });
+  },
+  getSavedJobs: async () => {
+    const savedJobIds = getSavedJobs();
+    const jobs = [];
+    for (const jobId of savedJobIds) {
+      const job = await JobServiceClass.getJobById(jobId);
+      if (job) jobs.push(job);
+    }
+    return jobs;
+  },
   getUserProfile: JobServiceClass.getUserProfile,
   scrapeJobApplicationForm: JobServiceClass.scrapeJobApplicationForm,
   submitScrapedFormApplication: JobServiceClass.submitScrapedFormApplication,
   submitAutomatedApplication: JobServiceClass.submitAutomatedApplication,
   getMyApplications: JobServiceClass.getMyApplications,
   trackJobInteraction: JobServiceClass.trackJobInteraction,
-  getJobTitleSuggestions: JobServiceClass.getJobTitleSuggestions
+  getJobTitleSuggestions: JobServiceClass.getJobTitleSuggestions,
+  getJobRecommendations: async () => {
+    return await JobServiceClass.getFeaturedJobs();
+  }
 };
+
+
 
 export default JobServiceClass; 

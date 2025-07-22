@@ -55,7 +55,8 @@ def mock_db():
         'logs': AsyncMock(),
         'analytics': AsyncMock(),
         'cache': AsyncMock(),
-        'sessions': AsyncMock()
+        'sessions': AsyncMock(),
+        'user_activities': AsyncMock()  # Activity logger için eklendi
     }
     
     # Set up mock collections with comprehensive operations

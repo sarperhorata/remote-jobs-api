@@ -154,6 +154,16 @@ app.add_middleware(
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
+# Add security middlewares
+from backend.middleware.input_validation import input_validator
+from backend.middleware.rate_limiting import rate_limiter
+
+# Add input validation middleware
+app.add_middleware(input_validator.__class__)
+
+# Add rate limiting middleware
+app.add_middleware(rate_limiter.__class__)
+
 # Add activity tracking middleware
 from backend.middleware.activity_middleware import ActivityTrackingMiddleware
 app.add_middleware(ActivityTrackingMiddleware)

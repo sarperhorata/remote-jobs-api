@@ -16,6 +16,8 @@ from pydantic import BaseModel, Field
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import requests
 from backend.utils.linkedin import LinkedInIntegration
+from backend.middleware.rate_limiting import brute_force_protection
+from backend.middleware.input_validation import input_validator
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
@@ -97,6 +99,25 @@ async def register_user(
     db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
     """Register a new user."""
+    # Validate email format
+    if not input_validator.validate_email(user.email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email format"
+        )
+    
+    # Validate password strength
+    password_validation = input_validator.validate_password_strength(user.password)
+    if not password_validation["valid"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Password validation failed: {', '.join(password_validation['errors'])}"
+        )
+    
+    # Sanitize user data
+    user.email = input_validator.sanitize_string(user.email)
+    user.name = input_validator.sanitize_string(user.name)
+    
     # Check if user already exists
     existing_user = await db.users.find_one({"email": user.email})
     if existing_user:
@@ -144,17 +165,36 @@ async def register_user(
 @router.post("/login", response_model=Token)
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
-    db: AsyncIOMotorDatabase = Depends(get_async_db)
+    db: AsyncIOMotorDatabase = Depends(get_async_db),
+    request: Request = None
 ):
     """Login to get access token."""
+    # Get client IP for brute force protection
+    client_ip = request.client.host if request and request.client else "unknown"
+    
+    # Check if IP is blocked
+    if brute_force_protection.is_blocked(client_ip):
+        remaining_time = brute_force_protection.get_block_remaining(client_ip)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Too many failed login attempts. Please try again in {remaining_time} seconds.",
+            headers={"Retry-After": str(remaining_time)}
+        )
+    
     # Find user
     user = await db.users.find_one({"email": form_data.username})
     if not user or not verify_password(form_data.password, user.get("hashed_password", "")):
+        # Record failed attempt
+        brute_force_protection.record_failed_attempt(client_ip, client_ip)
+        
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
+    # Record successful attempt (clear failed attempts)
+    brute_force_protection.record_successful_attempt(client_ip)
     
     # Check if email is verified (for new onboarding users)
     if user.get("email_verified") is False:

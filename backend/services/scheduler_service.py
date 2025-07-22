@@ -368,7 +368,8 @@ class SchedulerService:
 🗑️ <b>Removed jobs:</b> {result.deleted_count}
 📅 <b>Cutoff date:</b> {cutoff_date.strftime('%Y-%m-%d')}
 🕐 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC""")
-            except:
+            except Exception as e:
+                logger.warning(f"Failed to send cleanup notification: {e}")
                 pass
                 
         except Exception as e:

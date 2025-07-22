@@ -363,7 +363,8 @@ class AutoApplicationService:
                 label = self.driver.find_element(By.XPATH, f"//label[@for='{element_id}']")
                 if label:
                     return label.text.strip()
-        except:
+        except Exception as e:
+            logger.debug(f"Failed to find label by 'for' attribute: {e}")
             pass
         
         try:
@@ -372,7 +373,8 @@ class AutoApplicationService:
             label = parent.find_element(By.TAG_NAME, "label")
             if label:
                 return label.text.strip()
-        except:
+        except Exception as e:
+            logger.debug(f"Failed to find label in parent container: {e}")
             pass
         
         # Fallback to name or placeholder

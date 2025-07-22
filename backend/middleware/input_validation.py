@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 class InputValidationMiddleware:
     """Middleware for validating and sanitizing input data"""
     
-    def __init__(self):
+    def __init__(self, app=None):
+        self.app = app
         # SQL injection patterns
         self.sql_patterns = [
             r"(\b(union|select|insert|update|delete|drop|create|alter|exec|execute|script)\b)",

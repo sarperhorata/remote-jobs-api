@@ -3,7 +3,7 @@ import json
 import logging
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
-import user_agent
+from user_agents import parse as user_agent_parse
 import ipaddress
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -70,7 +70,7 @@ class ActivityLogger:
     def _parse_user_agent(self, user_agent_string: str) -> Dict[str, str]:
         """Parse user agent string to extract device info"""
         try:
-            ua = user_agent.parse(user_agent_string)
+            ua = user_agent_parse(user_agent_string)
             return {
                 "browser": f"{ua.browser.family} {ua.browser.version_string}",
                 "os": f"{ua.os.family} {ua.os.version_string}",

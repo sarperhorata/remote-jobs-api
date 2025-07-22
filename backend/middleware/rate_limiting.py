@@ -54,7 +54,8 @@ class RateLimiter:
 class RateLimitingMiddleware:
     """Rate limiting middleware for FastAPI"""
     
-    def __init__(self):
+    def __init__(self, app=None):
+        self.app = app
         # Different rate limits for different endpoints
         self.rate_limits = {
             # Auth endpoints - stricter limits

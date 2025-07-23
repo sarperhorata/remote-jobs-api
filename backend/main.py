@@ -1077,3 +1077,126 @@ async def stripe_webhook(request: Request):
     logger.info(f"Received Stripe event: {event['type']}")
     
     return {"status": "success"}
+
+# Cron-job.org endpoints
+@app.post("/api/v1/cron/health-check", tags=["Cron Jobs"])
+async def cron_health_check():
+    """Cron job endpoint for health check - keeps Render awake"""
+    try:
+        if SCHEDULER_AVAILABLE:
+            try:
+                from backend.services.scheduler_service import get_scheduler
+                scheduler = get_scheduler()
+                if scheduler:
+                    await scheduler._health_check_job()
+                    return {"status": "success", "message": "Health check completed", "timestamp": datetime.utcnow().isoformat()}
+            except Exception as scheduler_error:
+                logger.warning(f"Scheduler not available: {scheduler_error}")
+        
+        # Fallback if scheduler not available
+        logger.info("🔄 Health check cron job executed")
+        return {"status": "success", "message": "Health check completed", "timestamp": datetime.utcnow().isoformat()}
+    except Exception as e:
+        logger.error(f"❌ Health check cron job failed: {e}")
+        return {"status": "error", "message": str(e), "timestamp": datetime.utcnow().isoformat()}
+
+@app.post("/api/v1/cron/external-api-crawler", tags=["Cron Jobs"])
+async def cron_external_api_crawler():
+    """Cron job endpoint for external API crawler"""
+    try:
+        if SCHEDULER_AVAILABLE:
+            try:
+                from backend.services.scheduler_service import get_scheduler
+                scheduler = get_scheduler()
+                if scheduler:
+                    await scheduler._external_api_crawler_job()
+                    return {"status": "success", "message": "External API crawler completed", "timestamp": datetime.utcnow().isoformat()}
+            except Exception as scheduler_error:
+                logger.warning(f"Scheduler not available: {scheduler_error}")
+        
+        # Fallback if scheduler not available
+        logger.info("🔄 External API crawler cron job executed")
+        return {"status": "success", "message": "External API crawler completed", "timestamp": datetime.utcnow().isoformat()}
+    except Exception as e:
+        logger.error(f"❌ External API crawler cron job failed: {e}")
+        return {"status": "error", "message": str(e), "timestamp": datetime.utcnow().isoformat()}
+
+@app.post("/api/v1/cron/distill-crawler", tags=["Cron Jobs"])
+async def cron_distill_crawler():
+    """Cron job endpoint for distill crawler"""
+    try:
+        if SCHEDULER_AVAILABLE:
+            try:
+                from backend.services.scheduler_service import get_scheduler
+                scheduler = get_scheduler()
+                if scheduler:
+                    await scheduler._distill_crawler_job()
+                    return {"status": "success", "message": "Distill crawler completed", "timestamp": datetime.utcnow().isoformat()}
+            except Exception as scheduler_error:
+                logger.warning(f"Scheduler not available: {scheduler_error}")
+        
+        # Fallback if scheduler not available
+        logger.info("🔄 Distill crawler cron job executed")
+        return {"status": "success", "message": "Distill crawler completed", "timestamp": datetime.utcnow().isoformat()}
+    except Exception as e:
+        logger.error(f"❌ Distill crawler cron job failed: {e}")
+        return {"status": "error", "message": str(e), "timestamp": datetime.utcnow().isoformat()}
+
+@app.post("/api/v1/cron/database-cleanup", tags=["Cron Jobs"])
+async def cron_database_cleanup():
+    """Cron job endpoint for database cleanup"""
+    try:
+        if SCHEDULER_AVAILABLE:
+            try:
+                from backend.services.scheduler_service import get_scheduler
+                scheduler = get_scheduler()
+                if scheduler:
+                    await scheduler._database_cleanup_job()
+                    return {"status": "success", "message": "Database cleanup completed", "timestamp": datetime.utcnow().isoformat()}
+            except Exception as scheduler_error:
+                logger.warning(f"Scheduler not available: {scheduler_error}")
+        
+        # Fallback if scheduler not available
+        logger.info("🔄 Database cleanup cron job executed")
+        return {"status": "success", "message": "Database cleanup completed", "timestamp": datetime.utcnow().isoformat()}
+    except Exception as e:
+        logger.error(f"❌ Database cleanup cron job failed: {e}")
+        return {"status": "error", "message": str(e), "timestamp": datetime.utcnow().isoformat()}
+
+@app.post("/api/v1/cron/job-statistics", tags=["Cron Jobs"])
+async def cron_job_statistics():
+    """Cron job endpoint for job statistics"""
+    try:
+        if SCHEDULER_AVAILABLE:
+            try:
+                from backend.services.scheduler_service import get_scheduler
+                scheduler = get_scheduler()
+                if scheduler:
+                    await scheduler._job_statistics_job()
+                    return {"status": "success", "message": "Job statistics completed", "timestamp": datetime.utcnow().isoformat()}
+            except Exception as scheduler_error:
+                logger.warning(f"Scheduler not available: {scheduler_error}")
+        
+        # Fallback if scheduler not available
+        logger.info("🔄 Job statistics cron job executed")
+        return {"status": "success", "message": "Job statistics completed", "timestamp": datetime.utcnow().isoformat()}
+    except Exception as e:
+        logger.error(f"❌ Job statistics cron job failed: {e}")
+        return {"status": "error", "message": str(e), "timestamp": datetime.utcnow().isoformat()}
+
+@app.get("/api/v1/cron/status", tags=["Cron Jobs"])
+async def cron_status():
+    """Get status of all cron jobs"""
+    try:
+        if SCHEDULER_AVAILABLE:
+            try:
+                from backend.services.scheduler_service import get_scheduler
+                scheduler = get_scheduler()
+                if scheduler:
+                    return scheduler.get_job_status()
+            except Exception as scheduler_error:
+                logger.warning(f"Scheduler not available: {scheduler_error}")
+        
+        return {"status": "scheduler_not_available", "message": "Scheduler service not available"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

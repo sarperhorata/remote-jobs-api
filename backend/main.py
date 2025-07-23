@@ -1078,6 +1078,13 @@ async def stripe_webhook(request: Request):
     
     return {"status": "success"}
 
+# Render static IP addresses
+RENDER_IPS = [
+    "100.20.92.101",
+    "44.225.181.72", 
+    "44.227.217.144"
+]
+
 # Cron-job.org endpoints
 def verify_cron_api_key(request: Request):
     """Verify cron job API key"""
@@ -1090,12 +1097,28 @@ def verify_cron_api_key(request: Request):
             detail="Invalid or missing API key. Use X-API-Key header or api_key query parameter."
         )
 
+def verify_render_ip(request: Request):
+    """Verify request comes from Render IP"""
+    client_ip = request.client.host
+    if client_ip not in RENDER_IPS:
+        logger.warning(f"Request from unauthorized IP: {client_ip}")
+        # Don't block, just log for monitoring
+        return False
+    return True
+
 @app.post("/api/v1/cron/health-check", tags=["Cron Jobs"])
 async def cron_health_check(request: Request):
     """Cron job endpoint for health check - keeps Render awake"""
     try:
         # Verify API key
         verify_cron_api_key(request)
+        
+        # Monitor IP (don't block, just log)
+        is_render_ip = verify_render_ip(request)
+        if is_render_ip:
+            logger.info(f"✅ Health check from Render IP: {request.client.host}")
+        else:
+            logger.warning(f"⚠️ Health check from non-Render IP: {request.client.host}")
         
         if SCHEDULER_AVAILABLE:
             try:

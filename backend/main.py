@@ -1079,10 +1079,24 @@ async def stripe_webhook(request: Request):
     return {"status": "success"}
 
 # Cron-job.org endpoints
+def verify_cron_api_key(request: Request):
+    """Verify cron job API key"""
+    api_key = request.headers.get("X-API-Key") or request.query_params.get("api_key")
+    expected_key = os.getenv("CRON_API_KEY", "buzz2remote-cron-2024")
+    
+    if not api_key or api_key != expected_key:
+        raise HTTPException(
+            status_code=401, 
+            detail="Invalid or missing API key. Use X-API-Key header or api_key query parameter."
+        )
+
 @app.post("/api/v1/cron/health-check", tags=["Cron Jobs"])
-async def cron_health_check():
+async def cron_health_check(request: Request):
     """Cron job endpoint for health check - keeps Render awake"""
     try:
+        # Verify API key
+        verify_cron_api_key(request)
+        
         if SCHEDULER_AVAILABLE:
             try:
                 from backend.services.scheduler_service import get_scheduler
@@ -1096,14 +1110,19 @@ async def cron_health_check():
         # Fallback if scheduler not available
         logger.info("🔄 Health check cron job executed")
         return {"status": "success", "message": "Health check completed", "timestamp": datetime.utcnow().isoformat()}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"❌ Health check cron job failed: {e}")
         return {"status": "error", "message": str(e), "timestamp": datetime.utcnow().isoformat()}
 
 @app.post("/api/v1/cron/external-api-crawler", tags=["Cron Jobs"])
-async def cron_external_api_crawler():
+async def cron_external_api_crawler(request: Request):
     """Cron job endpoint for external API crawler"""
     try:
+        # Verify API key
+        verify_cron_api_key(request)
+        
         if SCHEDULER_AVAILABLE:
             try:
                 from backend.services.scheduler_service import get_scheduler
@@ -1117,14 +1136,19 @@ async def cron_external_api_crawler():
         # Fallback if scheduler not available
         logger.info("🔄 External API crawler cron job executed")
         return {"status": "success", "message": "External API crawler completed", "timestamp": datetime.utcnow().isoformat()}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"❌ External API crawler cron job failed: {e}")
         return {"status": "error", "message": str(e), "timestamp": datetime.utcnow().isoformat()}
 
 @app.post("/api/v1/cron/distill-crawler", tags=["Cron Jobs"])
-async def cron_distill_crawler():
+async def cron_distill_crawler(request: Request):
     """Cron job endpoint for distill crawler"""
     try:
+        # Verify API key
+        verify_cron_api_key(request)
+        
         if SCHEDULER_AVAILABLE:
             try:
                 from backend.services.scheduler_service import get_scheduler
@@ -1138,14 +1162,19 @@ async def cron_distill_crawler():
         # Fallback if scheduler not available
         logger.info("🔄 Distill crawler cron job executed")
         return {"status": "success", "message": "Distill crawler completed", "timestamp": datetime.utcnow().isoformat()}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"❌ Distill crawler cron job failed: {e}")
         return {"status": "error", "message": str(e), "timestamp": datetime.utcnow().isoformat()}
 
 @app.post("/api/v1/cron/database-cleanup", tags=["Cron Jobs"])
-async def cron_database_cleanup():
+async def cron_database_cleanup(request: Request):
     """Cron job endpoint for database cleanup"""
     try:
+        # Verify API key
+        verify_cron_api_key(request)
+        
         if SCHEDULER_AVAILABLE:
             try:
                 from backend.services.scheduler_service import get_scheduler
@@ -1159,14 +1188,19 @@ async def cron_database_cleanup():
         # Fallback if scheduler not available
         logger.info("🔄 Database cleanup cron job executed")
         return {"status": "success", "message": "Database cleanup completed", "timestamp": datetime.utcnow().isoformat()}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"❌ Database cleanup cron job failed: {e}")
         return {"status": "error", "message": str(e), "timestamp": datetime.utcnow().isoformat()}
 
 @app.post("/api/v1/cron/job-statistics", tags=["Cron Jobs"])
-async def cron_job_statistics():
+async def cron_job_statistics(request: Request):
     """Cron job endpoint for job statistics"""
     try:
+        # Verify API key
+        verify_cron_api_key(request)
+        
         if SCHEDULER_AVAILABLE:
             try:
                 from backend.services.scheduler_service import get_scheduler
@@ -1180,6 +1214,8 @@ async def cron_job_statistics():
         # Fallback if scheduler not available
         logger.info("🔄 Job statistics cron job executed")
         return {"status": "success", "message": "Job statistics completed", "timestamp": datetime.utcnow().isoformat()}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"❌ Job statistics cron job failed: {e}")
         return {"status": "error", "message": str(e), "timestamp": datetime.utcnow().isoformat()}
@@ -1200,3 +1236,22 @@ async def cron_status():
         return {"status": "scheduler_not_available", "message": "Scheduler service not available"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+@app.post("/api/v1/cron/test-timeout", tags=["Cron Jobs"])
+async def cron_test_timeout(request: Request):
+    """Test endpoint for timeout - responds quickly"""
+    try:
+        # Verify API key
+        verify_cron_api_key(request)
+        
+        # Simulate quick response
+        return {
+            "status": "success", 
+            "message": "Quick response test", 
+            "timestamp": datetime.utcnow().isoformat(),
+            "response_time": "fast"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {"status": "error", "message": str(e), "timestamp": datetime.utcnow().isoformat()}

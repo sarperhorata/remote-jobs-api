@@ -6,33 +6,43 @@ Bu dokümanda Buzz2Remote projesi için cron-job.org'da cron job'ların nasıl k
 
 Aşağıdaki endpoint'ler cron-job.org tarafından çağrılabilir:
 
+### 🔑 Authentication
+Tüm cron job endpoint'leri API key gerektirir:
+- **Header:** `X-API-Key: buzz2remote-cron-2024`
+- **Query Param:** `?api_key=buzz2remote-cron-2024`
+
 ### 1. Health Check (Render'ı Uyanık Tutmak İçin)
 - **URL:** `https://buzz2remote-api.onrender.com/api/v1/cron/health-check`
 - **Method:** POST
-- **Schedule:** Her 14 dakikada bir
+- **Headers:** `X-API-Key: buzz2remote-cron-2024`
+- **Schedule:** Her 10 dakikada bir (cron-job.org max 30s timeout)
 - **Amaç:** Render servisini uyku modundan çıkarmak
 
 ### 2. External API Crawler
 - **URL:** `https://buzz2remote-api.onrender.com/api/v1/cron/external-api-crawler`
 - **Method:** POST
+- **Headers:** `X-API-Key: buzz2remote-cron-2024`
 - **Schedule:** Her gün saat 09:00 UTC
 - **Amaç:** Dış API'lerden iş ilanlarını çekmek
 
 ### 3. Distill Crawler
 - **URL:** `https://buzz2remote-api.onrender.com/api/v1/cron/distill-crawler`
 - **Method:** POST
+- **Headers:** `X-API-Key: buzz2remote-cron-2024`
 - **Schedule:** Her gün saat 10:00 UTC
 - **Amaç:** Buzz2Remote-Companies Distill crawler'ını çalıştırmak
 
 ### 4. Database Cleanup
 - **URL:** `https://buzz2remote-api.onrender.com/api/v1/cron/database-cleanup`
 - **Method:** POST
+- **Headers:** `X-API-Key: buzz2remote-cron-2024`
 - **Schedule:** Her Pazar günü saat 02:00 UTC
 - **Amaç:** Eski verileri temizlemek
 
 ### 5. Job Statistics
 - **URL:** `https://buzz2remote-api.onrender.com/api/v1/cron/job-statistics`
 - **Method:** POST
+- **Headers:** `X-API-Key: buzz2remote-cron-2024`
 - **Schedule:** Her gün saat 08:00 UTC
 - **Amaç:** Günlük iş istatistiklerini güncellemek
 
@@ -41,6 +51,13 @@ Aşağıdaki endpoint'ler cron-job.org tarafından çağrılabilir:
 - **Method:** GET
 - **Schedule:** Her saat başı (monitoring için)
 - **Amaç:** Cron job'ların durumunu kontrol etmek
+
+### 7. Test Timeout (Quick Response)
+- **URL:** `https://buzz2remote-api.onrender.com/api/v1/cron/test-timeout`
+- **Method:** POST
+- **Headers:** `X-API-Key: buzz2remote-cron-2024`
+- **Schedule:** Her 5 dakikada bir (test için)
+- **Amaç:** Hızlı response test etmek
 
 ## 📋 Cron-job.org Kurulum Adımları
 
@@ -55,37 +72,42 @@ Aşağıdaki endpoint'ler cron-job.org tarafından çağrılabilir:
 1. Dashboard'da "CREATE CRONJOB" butonuna tıklayın
 2. **Title:** `Buzz2Remote Health Check`
 3. **URL:** `https://buzz2remote-api.onrender.com/api/v1/cron/health-check`
-4. **Schedule:** `*/14 * * * *` (Her 14 dakikada bir)
+4. **Schedule:** `*/10 * * * *` (Her 10 dakikada bir)
 5. **Method:** POST
-6. **Save** butonuna tıklayın
+6. **Headers:** `X-API-Key: buzz2remote-cron-2024`
+7. **Save** butonuna tıklayın
 
 #### External API Crawler
 1. **Title:** `Buzz2Remote External API Crawler`
 2. **URL:** `https://buzz2remote-api.onrender.com/api/v1/cron/external-api-crawler`
 3. **Schedule:** `0 9 * * *` (Her gün 09:00 UTC)
 4. **Method:** POST
-5. **Save**
+5. **Headers:** `X-API-Key: buzz2remote-cron-2024`
+6. **Save**
 
 #### Distill Crawler
 1. **Title:** `Buzz2Remote Distill Crawler`
 2. **URL:** `https://buzz2remote-api.onrender.com/api/v1/cron/distill-crawler`
 3. **Schedule:** `0 10 * * *` (Her gün 10:00 UTC)
 4. **Method:** POST
-5. **Save**
+5. **Headers:** `X-API-Key: buzz2remote-cron-2024`
+6. **Save**
 
 #### Database Cleanup
 1. **Title:** `Buzz2Remote Database Cleanup`
 2. **URL:** `https://buzz2remote-api.onrender.com/api/v1/cron/database-cleanup`
 3. **Schedule:** `0 2 * * 0` (Her Pazar 02:00 UTC)
 4. **Method:** POST
-5. **Save**
+5. **Headers:** `X-API-Key: buzz2remote-cron-2024`
+6. **Save**
 
 #### Job Statistics
 1. **Title:** `Buzz2Remote Job Statistics`
 2. **URL:** `https://buzz2remote-api.onrender.com/api/v1/cron/job-statistics`
 3. **Schedule:** `0 8 * * *` (Her gün 08:00 UTC)
 4. **Method:** POST
-5. **Save**
+5. **Headers:** `X-API-Key: buzz2remote-cron-2024`
+6. **Save**
 
 #### Monitoring
 1. **Title:** `Buzz2Remote Status Monitor`
@@ -94,9 +116,18 @@ Aşağıdaki endpoint'ler cron-job.org tarafından çağrılabilir:
 4. **Method:** GET
 5. **Save**
 
+#### Test Timeout
+1. **Title:** `Buzz2Remote Test Timeout`
+2. **URL:** `https://buzz2remote-api.onrender.com/api/v1/cron/test-timeout`
+3. **Schedule:** `*/5 * * * *` (Her 5 dakikada bir)
+4. **Method:** POST
+5. **Headers:** `X-API-Key: buzz2remote-cron-2024`
+6. **Save**
+
 ## ⚙️ Cron Expression Açıklamaları
 
-- `*/14 * * * *` - Her 14 dakikada bir
+- `*/10 * * * *` - Her 10 dakikada bir (cron-job.org max 30s timeout)
+- `*/5 * * * *` - Her 5 dakikada bir (test için)
 - `0 9 * * *` - Her gün saat 09:00
 - `0 10 * * *` - Her gün saat 10:00
 - `0 2 * * 0` - Her Pazar saat 02:00
@@ -118,8 +149,8 @@ Her cron job için:
 3. **Retry delay:** 5 minutes
 
 ### Timeout Settings
-1. **Request timeout:** 300 seconds (5 minutes)
-2. **Grace time:** 60 seconds
+1. **Request timeout:** 30 seconds (cron-job.org maximum)
+2. **Grace time:** 10 seconds
 
 ## 📊 Monitoring
 

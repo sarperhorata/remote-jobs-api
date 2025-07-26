@@ -258,13 +258,19 @@ class SchedulerService:
                 crawler = DistillCrawler()
                 
                 # Run crawler
-                results = await crawler.run_crawler()
+                jobs = await crawler.crawl_all_companies()
+                
+                # Save jobs to database
+                save_result = crawler.save_jobs_to_database(jobs)
                 
                 # Log success
                 await self._log_job_run("distill_crawler", "success", f"Distill crawler completed successfully", {
-                    "companies_found": len(results.get('companies', [])),
-                    "jobs_found": len(results.get('jobs', [])),
-                    "errors": results.get('errors', [])
+                    "companies_found": len(crawler.companies_data),
+                    "jobs_found": len(jobs),
+                    "new_jobs": save_result.get('new_jobs', 0),
+                    "updated_jobs": save_result.get('updated_jobs', 0),
+                    "new_companies": save_result.get('new_companies', 0),
+                    "updated_companies": save_result.get('updated_companies', 0)
                 })
                 
                 # Update cache after distill crawler
@@ -277,13 +283,15 @@ class SchedulerService:
                         await bot_manager.bot_instance.send_deployment_notification({
                             'type': 'distill_crawl',
                             'status': 'success',
-                            'companies_found': len(results.get('companies', [])),
-                            'jobs_found': len(results.get('jobs', [])),
+                            'companies_found': len(crawler.companies_data),
+                            'jobs_found': len(jobs),
+                            'new_jobs': save_result.get('new_jobs', 0),
+                            'updated_jobs': save_result.get('updated_jobs', 0),
                             'timestamp': datetime.now().isoformat()
                         })
                         
                         # Send new job notifications for each new job found
-                        jobs_found = len(results.get('jobs', []))
+                        jobs_found = save_result.get('new_jobs', 0)
                         if jobs_found > 0:
                             # Get the latest jobs from database
                             from database.db import get_async_db

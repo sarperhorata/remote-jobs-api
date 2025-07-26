@@ -24,7 +24,8 @@ async def run_crawler():
     
     try:
         # Import crawler
-        from backend.distill_crawler import DistillCrawler
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
+        from distill_crawler import DistillCrawler
         
         crawler = DistillCrawler()
         print("✅ Crawler imported successfully")
@@ -71,7 +72,7 @@ async def run_crawler():
         
         # Try to send Telegram notification
         try:
-            from backend.external_job_apis import ServiceNotifier
+            from external_job_apis import ServiceNotifier
             notifier = ServiceNotifier()
             
             notification_data = {

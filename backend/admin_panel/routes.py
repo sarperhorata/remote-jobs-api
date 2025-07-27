@@ -3572,6 +3572,165 @@ async def admin_companies(
     except:
         return RedirectResponse(url="/admin/login", status_code=302)
 
+    try:
+        db = await get_db()
+        if not db:
+            raise Exception("Database connection failed")
+
+        # Build query
+        query = {}
+        if company_filter:
+            query["$or"] = [
+                {"name": {"$regex": company_filter, "$options": "i"}},
+                {"website": {"$regex": company_filter, "$options": "i"}},
+                {"industry": {"$regex": company_filter, "$options": "i"}}
+            ]
+
+        # Count total companies
+        total_companies = await db.companies.count_documents(query)
+        
+        # Setup pagination
+        limit = 20
+        skip = (page - 1) * limit
+        total_pages = (total_companies + limit - 1) // limit
+
+        # Setup sorting
+        sort_field = sort_by
+        sort_direction = -1 if sort_order == "desc" else 1
+        
+        if sort_by == "jobs_count":
+            sort_field = "active_jobs_count"
+        elif sort_by == "name":
+            sort_field = "name"
+        elif sort_by == "created_at":
+            sort_field = "created_at"
+            
+        # Fetch companies with aggregation pipeline
+        pipeline = [
+            {"$match": query},
+            {
+                "$lookup": {
+                    "from": "jobs",
+                    "localField": "name",
+                    "foreignField": "company",
+                    "as": "jobs"
+                }
+            },
+            {
+                "$addFields": {
+                    "active_jobs_count": {
+                        "$size": {
+                            "$filter": {
+                                "input": "$jobs",
+                                "cond": {"$eq": ["$$this.is_active", True]}
+                            }
+                        }
+                    },
+                    "total_jobs_count": {"$size": "$jobs"}
+                }
+            },
+            {"$sort": {sort_field: sort_direction}},
+            {"$skip": skip},
+            {"$limit": limit},
+            {
+                "$project": {
+                    "name": 1,
+                    "website": 1,
+                    "industry": 1,
+                    "size": 1,
+                    "location": 1,
+                    "description": 1,
+                    "active_jobs_count": 1,
+                    "total_jobs_count": 1,
+                    "created_at": 1,
+                    "updated_at": 1
+                }
+            }
+        ]
+        
+        companies_cursor = db.companies.aggregate(pipeline)
+        companies = await companies_cursor.to_list(length=limit)
+
+        # Get summary stats
+        stats_pipeline = [
+            {
+                "$lookup": {
+                    "from": "jobs",
+                    "localField": "name", 
+                    "foreignField": "company",
+                    "as": "jobs"
+                }
+            },
+            {
+                "$addFields": {
+                    "active_jobs_count": {
+                        "$size": {
+                            "$filter": {
+                                "input": "$jobs",
+                                "cond": {"$eq": ["$$this.is_active", True]}
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "$group": {
+                    "_id": None,
+                    "total_companies": {"$sum": 1},
+                    "companies_with_jobs": {
+                        "$sum": {"$cond": [{"$gt": ["$active_jobs_count", 0]}, 1, 0]}
+                    },
+                    "total_active_jobs": {"$sum": "$active_jobs_count"},
+                    "avg_jobs_per_company": {"$avg": "$active_jobs_count"}
+                }
+            }
+        ]
+        
+        stats_result = await db.companies.aggregate(stats_pipeline).to_list(length=1)
+        stats = stats_result[0] if stats_result else {
+            "total_companies": 0,
+            "companies_with_jobs": 0, 
+            "total_active_jobs": 0,
+            "avg_jobs_per_company": 0
+        }
+
+        # Render template
+        return templates.TemplateResponse(
+            "companies.html",
+            {
+                "request": request,
+                "title": "Companies Management",
+                "companies": companies,
+                "total_companies": total_companies,
+                "current_page": page,
+                "total_pages": total_pages,
+                "sort_by": sort_by,
+                "sort_order": sort_order,
+                "company_filter": company_filter or "",
+                "stats": stats,
+                "has_prev": page > 1,
+                "has_next": page < total_pages,
+                "prev_page": page - 1 if page > 1 else None,
+                "next_page": page + 1 if page < total_pages else None,
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in admin companies page: {e}")
+        return HTMLResponse(
+            content=f"""
+            <html>
+            <head><title>Companies - Error</title></head>
+            <body>
+                <h1>Companies Management</h1>
+                <p>Error loading companies page: {str(e)}</p>
+                <a href="/admin/dashboard">Back to Dashboard</a>
+            </body>
+            </html>
+            """,
+            status_code=500
+        )
+
 
 @admin_router.get("/cache", response_class=HTMLResponse)
 async def admin_cache_management(request: Request):
@@ -3585,9 +3744,21 @@ async def admin_cache_management(request: Request):
         return RedirectResponse(url="/admin/login", status_code=302)
 
     try:
-        # Render cache management template
+        # Get cache statistics for initial load
+        from backend.services.cache_service import get_cache_service
+        cache_service = get_cache_service()
+        
+        # Get cache stats
+        cache_stats = await cache_service.get_stats()
+        
+        # Render cache management template with initial data
         return templates.TemplateResponse(
-            "cache_management.html", {"request": request, "title": "Cache Management"}
+            "cache_management.html", 
+            {
+                "request": request, 
+                "title": "Cache Management",
+                "cache_stats": cache_stats
+            }
         )
     except Exception as e:
         logger.error(f"Error rendering cache management page: {e}")
@@ -3604,6 +3775,89 @@ async def admin_cache_management(request: Request):
         """,
             status_code=500,
         )
+
+
+@admin_router.get("/api/cache/stats")
+async def get_cache_stats(admin_auth: bool = Depends(get_admin_auth)):
+    """Get cache statistics API endpoint"""
+    try:
+        from backend.services.cache_service import get_cache_service
+        cache_service = get_cache_service()
+        
+        stats = await cache_service.get_stats()
+        popular_keywords = await cache_service.get_popular_keywords(limit=20)
+        
+        return {
+            "success": True,
+            "stats": stats,
+            "popular_keywords": popular_keywords,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting cache stats: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "stats": {
+                "total_entries": 0,
+                "popular_entries": 0,
+                "regular_entries": 0,
+                "max_size": 1000
+            },
+            "popular_keywords": []
+        }
+
+
+@admin_router.post("/api/cache/clear")
+async def clear_cache(admin_auth: bool = Depends(get_admin_auth)):
+    """Clear cache API endpoint"""
+    try:
+        from backend.services.cache_service import get_cache_service
+        cache_service = get_cache_service()
+        
+        cleared_count = await cache_service.clear_all()
+        
+        return {
+            "success": True,
+            "message": f"Successfully cleared {cleared_count} cache entries",
+            "cleared_count": cleared_count,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error clearing cache: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "Failed to clear cache"
+        }
+
+
+@admin_router.post("/api/cache/clear-pattern")
+async def clear_cache_pattern(
+    pattern: str = Form(...),
+    admin_auth: bool = Depends(get_admin_auth)
+):
+    """Clear cache by pattern API endpoint"""
+    try:
+        from backend.services.cache_service import get_cache_service
+        cache_service = get_cache_service()
+        
+        cleared_count = await cache_service.clear_pattern(pattern)
+        
+        return {
+            "success": True,
+            "message": f"Successfully cleared {cleared_count} cache entries matching pattern: {pattern}",
+            "cleared_count": cleared_count,
+            "pattern": pattern,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error clearing cache pattern: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "message": f"Failed to clear cache pattern: {pattern}"
+        }
 
 
 @admin_router.get("/crawler-progress/{process_id}")

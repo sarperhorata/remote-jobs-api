@@ -336,44 +336,46 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
       </div>
 
       {/* Dropdown */}
-      {showDropdown && allSuggestions.length > 0 && createPortal(
-        <div
-          ref={dropdownRef}
-          className="absolute z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
-          style={{
-            top: dropdownPosition.top + 5,
-            left: dropdownPosition.left,
-            width: dropdownPosition.width,
-            minWidth: '200px'
-          }}
-          onMouseDown={(e) => {
-            console.log('🖱️ Dropdown mousedown event');
-            e.preventDefault(); // Prevent input blur
-          }}
-        >
-          {console.log('🎯 Rendering dropdown with suggestions:', allSuggestions)}
-          {allSuggestions.map((suggestion, index) => (
-            <div
-              key={index}
-              className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors duration-150"
-              onClick={() => {
-                console.log('🖱️ Clicked on suggestion:', suggestion);
-                selectPosition(suggestion);
-              }}
-            >
-              <div className="flex justify-between items-center">
-                <span className="font-medium text-gray-800">
-                  {suggestion.title}
-                </span>
-                <span className="text-sm text-gray-500">
-                  {suggestion.count} jobs
-                </span>
+      {showDropdown && allSuggestions.length > 0 && (() => {
+        console.log('🎯 Rendering dropdown with suggestions:', allSuggestions);
+        return createPortal(
+          <div
+            ref={dropdownRef}
+            className="absolute z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+            style={{
+              top: dropdownPosition.top + 5,
+              left: dropdownPosition.left,
+              width: dropdownPosition.width,
+              minWidth: '200px'
+            }}
+            onMouseDown={(e) => {
+              console.log('🖱️ Dropdown mousedown event');
+              e.preventDefault(); // Prevent input blur
+            }}
+          >
+            {allSuggestions.map((suggestion, index) => (
+              <div
+                key={index}
+                className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors duration-150"
+                onClick={() => {
+                  console.log('🖱️ Clicked on suggestion:', suggestion);
+                  selectPosition(suggestion);
+                }}
+              >
+                <div className="flex justify-between items-center">
+                  <span className="font-medium text-gray-800">
+                    {suggestion.title}
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    {suggestion.count} jobs
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>,
-        document.body
-      )}
+            ))}
+          </div>,
+          document.body
+        );
+      })()}
     </div>
   );
 };

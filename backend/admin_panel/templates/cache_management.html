@@ -116,18 +116,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function loadCacheStats() {
     try {
-        const response = await fetch('/api/v1/jobs/cache/stats');
+        const response = await fetch('/admin/api/cache/stats');
         const data = await response.json();
         
-        if (data.status === 'success') {
-            const stats = data.cache_stats;
-            document.getElementById('total-entries').textContent = stats.total_entries;
-            document.getElementById('popular-entries').textContent = stats.popular_cache.size;
-            document.getElementById('regular-entries').textContent = stats.regular_cache.size;
-            document.getElementById('max-size').textContent = stats.total_max_size;
+        if (data.success) {
+            const stats = data.stats;
+            document.getElementById('total-entries').textContent = stats.total_entries || 0;
+            document.getElementById('popular-entries').textContent = stats.popular_entries || 0;
+            document.getElementById('regular-entries').textContent = stats.regular_entries || 0;
+            document.getElementById('max-size').textContent = stats.max_size || 1000;
+            
+            // Update popular keywords
+            updatePopularKeywords(data.popular_keywords || []);
         }
     } catch (error) {
         console.error('Error loading cache stats:', error);
+        // Show fallback data
+        document.getElementById('total-entries').textContent = '-';
+        document.getElementById('popular-entries').textContent = '-';
+        document.getElementById('regular-entries').textContent = '-';
+        document.getElementById('max-size').textContent = '-';
     }
 }
 
@@ -153,21 +161,36 @@ async function loadPopularKeywords() {
 }
 
 async function clearCache() {
+    if (!confirm('Are you sure you want to clear ALL cache entries? This action cannot be undone.')) {
+        return;
+    }
+    
+    const button = document.getElementById('clear-cache');
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Clearing...';
+    button.disabled = true;
+    
     try {
-        const response = await fetch('/api/v1/jobs/cache/clear', {
-            method: 'POST'
+        const response = await fetch('/admin/api/cache/clear', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
         });
         const data = await response.json();
         
-        if (data.status === 'success') {
-            alert('Cache cleared successfully!');
+        if (data.success) {
+            alert(`Cache cleared successfully! Removed ${data.cleared_count} entries.`);
             loadCacheStats();
         } else {
-            alert('Failed to clear cache: ' + data.message);
+            alert('Failed to clear cache: ' + (data.error || data.message));
         }
     } catch (error) {
         console.error('Error clearing cache:', error);
         alert('Error clearing cache');
+    } finally {
+        button.innerHTML = originalText;
+        button.disabled = false;
     }
 }
 
@@ -267,6 +290,26 @@ async function testCache() {
         console.error('Error testing cache:', error);
         resultDiv.innerHTML = '<div class="text-sm text-red-600">Error testing cache</div>';
     }
+}
+
+function updatePopularKeywords(keywords) {
+    const container = document.getElementById('popular-keywords');
+    container.innerHTML = '';
+    
+    if (keywords.length === 0) {
+        container.innerHTML = '<span class="text-gray-500 text-sm">No popular keywords found</span>';
+        return;
+    }
+    
+    keywords.forEach(keyword => {
+        const badge = document.createElement('span');
+        badge.className = 'bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium hover:bg-blue-200 transition-colors cursor-pointer';
+        badge.textContent = keyword;
+        badge.onclick = () => {
+            document.getElementById('test-keyword').value = keyword;
+        };
+        container.appendChild(badge);
+    });
 }
 </script>
 {% endblock %} 

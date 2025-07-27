@@ -37,8 +37,14 @@ sentry_sdk.init(
     before_send=lambda event, hint: None if "Not Found" in event.get('logentry', {}).get('message', '') else event,
 )
 
-# Add project root to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Add project root to path for different environments
+current_dir = os.path.dirname(__file__)
+parent_dir = os.path.abspath(os.path.join(current_dir, '..'))
+sys.path.insert(0, parent_dir)
+
+# For Render deployment compatibility
+if '/opt/render/project/src' in current_dir:
+    sys.path.insert(0, '/opt/render/project/src')
 
 from backend.routes import auth, profile, jobs, ads, notification_routes, companies, payment, onboarding, applications, translation
 from backend.routes.auto_apply import router as auto_apply_router

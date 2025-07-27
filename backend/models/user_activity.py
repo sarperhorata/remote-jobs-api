@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -67,7 +67,7 @@ class UserActivity(BaseModel):
     os: Optional[str] = None
 
     # Timing
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     duration_seconds: Optional[float] = None
 
     # Error tracking
@@ -79,8 +79,7 @@ class UserActivity(BaseModel):
     is_success: bool = True
     metadata: Optional[Dict[str, Any]] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class UserSession(BaseModel):
@@ -91,8 +90,8 @@ class UserSession(BaseModel):
     session_token: str
 
     # Session details
-    started_at: datetime = Field(default_factory=datetime.utcnow)
-    last_activity: datetime = Field(default_factory=datetime.utcnow)
+    started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    last_activity: datetime = Field(default_factory=lambda: datetime.now(UTC))
     ended_at: Optional[datetime] = None
     is_active: bool = True
 
@@ -113,8 +112,7 @@ class UserSession(BaseModel):
     avg_response_time: Optional[float] = None
     total_session_time: Optional[float] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class ActivitySummary(BaseModel):
@@ -141,5 +139,4 @@ class ActivitySummary(BaseModel):
     features_used: List[str] = Field(default_factory=list)
     most_used_feature: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

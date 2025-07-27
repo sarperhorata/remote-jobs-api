@@ -56,8 +56,7 @@ class Settings(BaseSettings):
     # OpenAI
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
 
-    class Config:
-        case_sensitive = True
+    model_config = {"case_sensitive": True}
 
 
 @lru_cache()

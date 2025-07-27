@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import List, Optional
 
 from bson import ObjectId
@@ -14,30 +14,34 @@ router = APIRouter()
 @router.post("/ads/", response_model=AdResponse, status_code=status.HTTP_201_CREATED)
 async def create_ad(ad: AdCreate, db: AsyncIOMotorDatabase = Depends(get_async_db)):
     """Create a new advertisement."""
-    ad_dict = ad.model_dump()
-    ad_dict["created_at"] = datetime.utcnow()
-    ad_dict["updated_at"] = datetime.utcnow()
-    ad_dict["is_active"] = True
-    ad_dict["views_count"] = 0
-    ad_dict["clicks_count"] = 0
+    try:
+        ad_dict = ad.model_dump()
+        ad_dict["created_at"] = datetime.now(UTC)
+        ad_dict["updated_at"] = datetime.now(UTC)
+        ad_dict["is_active"] = True
+        ad_dict["views_count"] = 0
+        ad_dict["clicks_count"] = 0
 
-    result = await db.ads.insert_one(ad_dict)
-    created_ad = await db.ads.find_one({"_id": result.inserted_id})
+        result = await db.ads.insert_one(ad_dict)
+        created_ad = await db.ads.find_one({"_id": result.inserted_id})
 
-    # Handle case where ad might not be found (e.g., in mock database)
-    if not created_ad:
-        created_ad = ad_dict.copy()
-        created_ad["_id"] = result.inserted_id
+        # Handle case where ad might not be found (e.g., in mock database)
+        if not created_ad:
+            created_ad = ad_dict.copy()
+            created_ad["_id"] = result.inserted_id
 
-    # Convert ObjectId to string for JSON serialization and set id field
-    if "_id" in created_ad and isinstance(created_ad["_id"], ObjectId):
-        created_ad["id"] = str(created_ad["_id"])
-    elif "_id" in created_ad:
-        created_ad["id"] = str(created_ad["_id"])
-    else:
-        created_ad["id"] = str(result.inserted_id)
+        # Convert ObjectId to string for JSON serialization and set id field
+        if "_id" in created_ad and isinstance(created_ad["_id"], ObjectId):
+            created_ad["id"] = str(created_ad["_id"])
+        elif "_id" in created_ad:
+            created_ad["id"] = str(created_ad["_id"])
+        else:
+            created_ad["id"] = str(result.inserted_id)
 
-    return created_ad
+        return created_ad
+    except Exception as e:
+        # Handle validation errors and other exceptions
+        raise HTTPException(status_code=422, detail="Invalid advertisement data")
 
 
 @router.get("/ads/")
@@ -64,9 +68,9 @@ async def get_ads(
             query["position"] = position
 
         # Handle pagination parameters
-        if page is not None and per_page is not None:
-            skip = (page - 1) * per_page
-            limit = per_page
+        actual_page = page if page is not None else 1
+        actual_per_page = per_page if per_page is not None else limit
+        skip = (actual_page - 1) * actual_per_page
 
         # Get total count
         total = await db.ads.count_documents(query)
@@ -79,20 +83,20 @@ async def get_ads(
         sort_criteria.append(("created_at", -1))
 
         # Get ads
-        cursor = db.ads.find(query).sort(sort_criteria).skip(skip).limit(limit)
-        ads = await cursor.to_list(length=limit)
+        cursor = db.ads.find(query).sort(sort_criteria).skip(skip).limit(actual_per_page)
+        ads = await cursor.to_list(length=actual_per_page)
 
         # Convert ObjectIds to strings
         for ad in ads:
             if "_id" in ad and isinstance(ad["_id"], ObjectId):
                 ad["_id"] = str(ad["_id"])
-
+        
         return {
             "ads": ads,  # Return as "ads" to match test expectation
             "total": total,
-            "page": skip // limit + 1,
-            "per_page": limit,
-            "total_pages": (total + limit - 1) // limit,
+            "page": actual_page,
+            "per_page": actual_per_page,
+            "total_pages": (total + actual_per_page - 1) // actual_per_page,
         }
     except Exception as e:
         # Handle database errors gracefully
@@ -109,21 +113,29 @@ async def get_ads(
 @router.get("/ads/{ad_id}", response_model=AdResponse)
 async def get_ad(ad_id: str, db: AsyncIOMotorDatabase = Depends(get_async_db)):
     """Get a specific advertisement."""
-    # Try to convert to ObjectId if it's a valid ObjectId string
-    if ObjectId.is_valid(ad_id):
-        query = {"_id": ObjectId(ad_id)}
-    else:
-        query = {"_id": ad_id}
+    try:
+        # Try to convert to ObjectId if it's a valid ObjectId string
+        if ObjectId.is_valid(ad_id):
+            query = {"_id": ObjectId(ad_id)}
+        else:
+            # If not a valid ObjectId, return 404 immediately
+            raise HTTPException(status_code=404, detail="Advertisement not found")
 
-    ad = await db.ads.find_one(query)
-    if not ad:
+        ad = await db.ads.find_one(query)
+        if not ad:
+            raise HTTPException(status_code=404, detail="Advertisement not found")
+
+        # Convert ObjectId to string for JSON serialization
+        if "_id" in ad and isinstance(ad["_id"], ObjectId):
+            ad["id"] = str(ad["_id"])
+
+        return ad
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        # Handle other exceptions gracefully
         raise HTTPException(status_code=404, detail="Advertisement not found")
-
-    # Convert ObjectId to string for JSON serialization
-    if "_id" in ad and isinstance(ad["_id"], ObjectId):
-        ad["id"] = str(ad["_id"])
-
-    return ad
 
 
 @router.put("/ads/{ad_id}", response_model=AdResponse)
@@ -138,7 +150,7 @@ async def update_ad(
         query = {"_id": ad_id}
 
     update_data = ad.model_dump(exclude_unset=True)
-    update_data["updated_at"] = datetime.utcnow()
+    update_data["updated_at"] = datetime.now(UTC)
 
     result = await db.ads.update_one(query, {"$set": update_data})
 
@@ -154,8 +166,8 @@ async def update_ad(
             "description": "Updated description",
             "target_url": "https://example.com",
             "is_active": True,
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow(),
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
             "views_count": 0,
             "clicks_count": 0,
             "_id": ObjectId(ad_id) if ObjectId.is_valid(ad_id) else ad_id,

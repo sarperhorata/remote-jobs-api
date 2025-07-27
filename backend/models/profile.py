@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import List, Optional
 
 from pydantic import BaseModel, EmailStr, Field
@@ -18,8 +18,7 @@ class Profile(BaseModel):
     experience: Optional[str] = None
     education: Optional[str] = None
     languages: List[str] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

@@ -35,8 +35,20 @@ async def get_database_client() -> AsyncIOMotorClient:
                     _client = AsyncIOMotorClient(MONGODB_URI)
                     logger.info("Using real MongoDB client for testing")
             else:
-                _client = AsyncIOMotorClient(MONGODB_URI)
-                logger.info("Using real MongoDB client")
+                # Optimize connection settings for testing
+                if os.getenv("TESTING") == "true":
+                    _client = AsyncIOMotorClient(
+                        MONGODB_URI,
+                        serverSelectionTimeoutMS=5000,  # 5 seconds
+                        connectTimeoutMS=5000,
+                        socketTimeoutMS=5000,
+                        maxPoolSize=1,  # Minimal pool for tests
+                        minPoolSize=0
+                    )
+                    logger.info("Using optimized MongoDB client for testing")
+                else:
+                    _client = AsyncIOMotorClient(MONGODB_URI)
+                    logger.info("Using real MongoDB client")
         except Exception as e:
             logger.error(f"Failed to connect to MongoDB: {e}")
             raise

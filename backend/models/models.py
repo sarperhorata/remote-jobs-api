@@ -1,6 +1,6 @@
 # Removed SQLAlchemy imports as we're using MongoDB
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
@@ -84,11 +84,10 @@ class UserNotificationPreference(BaseModel):
     email: Optional[str] = None
     notify_on_deployment: bool = True
     notify_on_error: bool = True
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class SelectorBase(BaseModel):
@@ -385,16 +384,15 @@ class User(BaseModel):
     skills: Optional[List[Skill]] = None
     certificates: Optional[List[Certificate]] = None
 
-    created_at: datetime = datetime.now()
-    updated_at: datetime = datetime.now()
+    created_at: datetime = datetime.now(UTC)
+    updated_at: datetime = datetime.now(UTC)
     stripe_customer_id: Optional[str] = None
     stripe_subscription_id: Optional[str] = None
     subscription_status: Optional[str] = None
     subscription_plan: Optional[str] = None
     subscription_end_date: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 # Enhanced Job Model for MongoDB with Translation Support
@@ -426,11 +424,10 @@ class EnhancedJob(BaseModel):
     applicant_count: Optional[int] = None
     views: int = 0
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 # Translation Models
@@ -457,7 +454,7 @@ class JobTranslation(BaseModel):
     target_language: str
     translated_fields: Dict[str, str]  # field_name -> translated_text
     translation_metadata: Optional[Dict[str, Any]] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class CompanyTranslation(BaseModel):
@@ -468,7 +465,7 @@ class CompanyTranslation(BaseModel):
     target_language: str
     translated_fields: Dict[str, str]  # field_name -> translated_text
     translation_metadata: Optional[Dict[str, Any]] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class JobTranslationResult(BaseModel):
@@ -508,11 +505,10 @@ class UserNotification(BaseModel):
     action_url: Optional[str] = None  # URL to navigate when clicked
     action_text: Optional[str] = None  # Text for action button
     metadata: Optional[Dict[str, Any]] = None  # Additional data
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     read_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class UserNotificationCreate(BaseModel):
@@ -554,16 +550,15 @@ class JobApplicationMongo(BaseModel):
     external_reference: Optional[str] = None  # Company reference/confirmation number
 
     # Metadata
-    applied_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    applied_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # Response tracking
     viewed_by_company: bool = False
     company_response_date: Optional[datetime] = None
     company_response: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
     def to_dict(self):
         return {

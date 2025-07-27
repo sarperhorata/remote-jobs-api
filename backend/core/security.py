@@ -3,9 +3,10 @@ from typing import Optional
 import jwt
 from jwt import InvalidTokenError as JWTError
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Header
 from fastapi.security import OAuth2PasswordBearer
 from backend.utils.config import get_settings
+import os
 
 settings = get_settings()
 
@@ -35,6 +36,18 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+def require_api_key(x_api_key: str = Header(..., alias="X-API-Key")) -> str:
+    """Validate API key for internal service endpoints"""
+    expected_api_key = os.getenv("API_KEY", "buzz2remote-secure-api-key-2025")
+    
+    if x_api_key != expected_api_key:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid API key"
+        )
+    
+    return x_api_key
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> Optional[dict]:
     """Get current user from JWT token"""

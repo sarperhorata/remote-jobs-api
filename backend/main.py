@@ -48,6 +48,7 @@ from backend.routes.ai_cv_analysis import router as ai_cv_analysis_router
 from backend.routes.skills_extraction import router as skills_extraction_router
 from backend.routes.profile_auto_fill import router as profile_auto_fill_router
 from backend.routes.legal import router as legal_router
+from backend.routes.backup import router as backup_router
 from backend.routes.cronjobs import router as cronjobs_router
 from backend.routes.fake_job_detection import router as fake_job_router
 from backend.routes.sentry_webhook import router as sentry_webhook_router
@@ -247,6 +248,7 @@ routers_to_include = [
     (ai_services_router, "/api/v1", ["ai-services"]),
     (ai_cv_analysis_router, "/api/v1", ["ai-cv-analysis"]),
     (skills_extraction_router, "/api/v1", ["skills-extraction"]),
+    (backup_router, "", ["backup"]),
     (profile_auto_fill_router, "/api/v1", ["profile-auto-fill"]),
     (fake_job_router, "/api/v1", ["fake-job-detection"]),
     (sentry_webhook_router, "/api/v1", ["webhooks"]),

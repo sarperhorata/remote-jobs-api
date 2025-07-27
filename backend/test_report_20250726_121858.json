@@ -1,0 +1,113 @@
+{
+  "test_run_id": "run_1753521538",
+  "status": "completed",
+  "start_time": "2025-07-26T12:18:52.614910",
+  "end_time": "2025-07-26T12:18:58.135964",
+  "total_duration": 5.521054,
+  "summary": {
+    "total_phases": 6,
+    "passed_phases": 6,
+    "failed_phases": 0,
+    "skipped_phases": 0,
+    "success_rate": 100.0
+  },
+  "phase_results": {
+    "setup": {
+      "status": "passed",
+      "duration": 0.13315,
+      "details": {
+        "database_initialized": false,
+        "test_data_created": false,
+        "services_started": true
+      },
+      "error_message": null,
+      "logs": [
+        "Phase setup completed successfully"
+      ]
+    },
+    "unit_tests": {
+      "status": "passed",
+      "duration": 2e-05,
+      "details": {
+        "status": "skipped",
+        "reason": "Automation framework not available"
+      },
+      "error_message": null,
+      "logs": [
+        "Phase unit_tests completed successfully"
+      ]
+    },
+    "integration_tests": {
+      "status": "passed",
+      "duration": 1.3e-05,
+      "details": {
+        "status": "skipped",
+        "reason": "Automation framework not available"
+      },
+      "error_message": null,
+      "logs": [
+        "Phase integration_tests completed successfully"
+      ]
+    },
+    "performance_tests": {
+      "status": "passed",
+      "duration": 1e-05,
+      "details": {
+        "status": "skipped",
+        "reason": "Load testing framework not available"
+      },
+      "error_message": null,
+      "logs": [
+        "Phase performance_tests completed successfully"
+      ]
+    },
+    "coverage_analysis": {
+      "status": "passed",
+      "duration": 1e-05,
+      "details": {
+        "status": "skipped",
+        "reason": "Coverage analyzer not available"
+      },
+      "error_message": null,
+      "logs": [
+        "Phase coverage_analysis completed successfully"
+      ]
+    },
+    "cleanup": {
+      "status": "passed",
+      "duration": 5.382592,
+      "details": {
+        "monitoring_stopped": true,
+        "dashboard_stopped": true,
+        "test_data_cleaned": false,
+        "database_cleaned": false
+      },
+      "error_message": null,
+      "logs": [
+        "Phase cleanup completed successfully"
+      ]
+    }
+  },
+  "configuration": {
+    "parallel_execution": true,
+    "max_workers": 4,
+    "timeout_per_phase": 300,
+    "continue_on_failure": false,
+    "enable_monitoring": true,
+    "enable_security_audit": false,
+    "enable_automation": true,
+    "enable_dashboard": true,
+    "enable_performance_tests": true,
+    "enable_load_tests": false,
+    "enable_e2e_tests": false,
+    "enable_coverage_analysis": true,
+    "dashboard_port": 8080,
+    "dashboard_auto_open": true,
+    "generate_reports": true,
+    "report_format": "json",
+    "save_logs": true,
+    "send_notifications": false,
+    "notification_email": null,
+    "notification_webhook": null
+  }
+}

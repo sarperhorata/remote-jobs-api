@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Body, Request
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from bson import ObjectId
@@ -14,6 +14,7 @@ from backend.services.job_scraping_service import JobScrapingService
 from backend.services.auto_application_service import AutoApplicationService
 from backend.utils.html_cleaner import clean_job_data
 from backend.services.job_title_parser import job_title_parser
+from backend.middleware.rate_limiting import RateLimits
 import re
 import json
 from collections import defaultdict, Counter
@@ -62,13 +63,40 @@ async def create_job(
     return created_job
 
 @router.get("/", response_model=JobListResponse)
+@RateLimits.public_list
 async def read_jobs(
-    skip: int = 0, limit: int = 100, db: AsyncIOMotorDatabase = Depends(get_async_db)
+    request: Request,
+    skip: int = 0, limit: int = 50, db: AsyncIOMotorDatabase = Depends(get_async_db)  # Reduced from 100
 ):
-    """Retrieve all jobs with pagination."""
-    jobs_cursor = db.jobs.find().skip(skip).limit(limit)
-    total_jobs = await db.jobs.count_documents({})
-    jobs = await jobs_cursor.to_list(limit)
+    """Retrieve all jobs with pagination - OPTIMIZED with aggregation pipeline."""
+    # Use aggregation pipeline for better performance
+    pipeline = [
+        {"$match": {"is_active": True}},  # Filter active jobs first
+        {"$sort": {"posted_date": -1}},   # Sort by newest first
+        {"$skip": skip},
+        {"$limit": limit},
+        {"$project": {  # Only return needed fields
+            "_id": {"$toString": "$_id"},  # Convert ObjectId to string
+            "title": 1,
+            "company": 1,
+            "location": 1,
+            "posted_date": 1,
+            "salary_min": 1,
+            "salary_max": 1,
+            "remote": 1,
+            "work_type": 1,
+            "tags": 1,
+            "apply_url": 1,
+            "created_at": 1
+        }}
+    ]
+    
+    # Execute aggregation
+    jobs = await db.jobs.aggregate(pipeline).to_list(None)
+    
+    # Get total count efficiently
+    total_jobs = await db.jobs.count_documents({"is_active": True})
+    
     return {
         "items": jobs,
         "total": total_jobs,
@@ -78,10 +106,12 @@ async def read_jobs(
     }
 
 @router.get("/search", response_model=dict)
+@RateLimits.public_search
 async def search_jobs(
+    request: Request,
     q: str = Query("", description="Search query"),
     page: int = Query(1, ge=1, description="Page number"),
-    limit: int = Query(20, ge=1, le=5000, description="Number of results per page"),
+    limit: int = Query(20, ge=1, le=50, description="Number of results per page (optimized)"),  # Reduced from 5000
     sort_by: str = Query("newest", description="Sort by: newest, relevance, salary"),
     work_type: Optional[str] = Query(None, description="Work type filter"),
     job_type: Optional[str] = Query(None, description="Job type filter"),
@@ -96,10 +126,14 @@ async def search_jobs(
     keyword_search: Optional[bool] = Query(False, description="Whether this is a keyword search"),
     db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
-    """Advanced job search with filtering and pagination"""
+    """Advanced job search with filtering and pagination - OPTIMIZED"""
     try:
         # Calculate skip for pagination
         skip = (page - 1) * limit
+        
+        # Use optimized aggregation pipeline for better performance
+        pipeline = []
+        match_stage = {"is_active": True}  # Always filter active jobs first
         
         # Start with simple query
         query = {}
@@ -327,33 +361,67 @@ async def search_jobs(
         # Debug: Log the final query
         logger.info(f"Search query: {query}")
         
-        # Get total count for pagination
-        total = await db.jobs.count_documents(query)
-        logger.info(f"Total jobs found with filters: {total}")
+        # OPTIMIZED: Use aggregation pipeline for better performance
+        # Build aggregation pipeline
+        pipeline = []
         
-        # Build sort criteria based on sort_by parameter
+        # Add match stage with query
+        if query:
+            pipeline.append({"$match": query})
+        
+        # Add sort stage based on sort_by parameter
         if sort_by == "relevance":
             # Most relevant: prioritize jobs with salary info and sort by creation date
-            cursor = db.jobs.find(query).sort([
-                ("salary_range", -1),  # Jobs with salary info first
-                ("created_at", -1)     # Then by newest
-            ]).skip(skip).limit(limit)
+            pipeline.append({"$sort": {
+                "salary_range": -1,  # Jobs with salary info first
+                "created_at": -1     # Then by newest
+            }})
         elif sort_by == "newest":
-            cursor = db.jobs.find(query).sort("created_at", -1).skip(skip).limit(limit)
+            pipeline.append({"$sort": {"created_at": -1}})
         elif sort_by == "oldest":
-            cursor = db.jobs.find(query).sort("created_at", 1).skip(skip).limit(limit)
+            pipeline.append({"$sort": {"created_at": 1}})
         else:
             # Default to newest
-            cursor = db.jobs.find(query).sort("created_at", -1).skip(skip).limit(limit)
-        jobs = await cursor.to_list(length=limit)
+            pipeline.append({"$sort": {"created_at": -1}})
         
-        # Convert ObjectIds to strings and format response
+        # Add pagination
+        pipeline.extend([
+            {"$skip": skip},
+            {"$limit": limit}
+        ])
+        
+        # Add projection to only return needed fields
+        pipeline.append({"$project": {
+            "_id": {"$toString": "$_id"},  # Convert ObjectId to string
+            "id": {"$toString": "$_id"},   # Also provide id field
+            "title": 1,
+            "company": 1,
+            "location": 1,
+            "posted_date": 1,
+            "salary_min": 1,
+            "salary_max": 1,
+            "salary_range": 1,
+            "remote": 1,
+            "work_type": 1,
+            "job_type": 1,
+            "isRemote": 1,
+            "tags": 1,
+            "apply_url": 1,
+            "created_at": 1,
+            "required_skills": 1,
+            "description": 1,
+            "seniority_level": 1
+        }})
+        
+        # Execute aggregation pipeline
+        jobs = await db.jobs.aggregate(pipeline).to_list(None)
+        
+        # Get total count efficiently (separate query for count)
+        total = await db.jobs.count_documents(query) if query else await db.jobs.count_documents({})
+        logger.info(f"Total jobs found with filters: {total}")
+        
+        # Ensure required fields exist with minimal processing
         for job in jobs:
-            if "_id" in job and isinstance(job["_id"], ObjectId):
-                job["id"] = str(job["_id"])
-                job["_id"] = str(job["_id"])
-            
-            # Ensure required fields exist
             job.setdefault("title", "Unknown Position")
             job.setdefault("company", "Unknown Company")
             job.setdefault("location", "Remote")
@@ -402,6 +470,12 @@ async def search_jobs(
                 "limit": limit,
                 "total_pages": 1
             }
+        
+        # Convert ObjectIds to strings and format response
+        for job in jobs:
+            if "_id" in job and isinstance(job["_id"], ObjectId):
+                job["id"] = str(job["_id"])
+                job["_id"] = str(job["_id"])
         
         return {
             "jobs": jobs,

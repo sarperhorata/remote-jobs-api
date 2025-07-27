@@ -48,6 +48,7 @@ from backend.routes.ai_cv_analysis import router as ai_cv_analysis_router
 from backend.routes.skills_extraction import router as skills_extraction_router
 from backend.routes.profile_auto_fill import router as profile_auto_fill_router
 from backend.routes.legal import router as legal_router
+from backend.routes.cronjobs import router as cronjobs_router
 from backend.routes.fake_job_detection import router as fake_job_router
 from backend.routes.sentry_webhook import router as sentry_webhook_router
 from backend.routes.email_test import router as email_test_router
@@ -141,18 +142,79 @@ allowed_origins = [
 ]
 
 # Development ortamında tüm origin'lere izin ver
-if os.getenv("ENVIRONMENT") == "production" or os.getenv("ENVIRONMENT") == "development" or os.getenv("NODE_ENV") == "development":
-    allowed_origins = ["*"]
+# Enhanced CORS Configuration for Security
+if os.getenv("ENVIRONMENT") == "production":
+    # Production: Restrictive CORS for security
+    allowed_origins = [
+        "https://buzz2remote.com",
+        "https://www.buzz2remote.com", 
+        "https://buzz2remote-frontend.netlify.app",
+        "https://buzz2remote.netlify.app"
+    ]
+elif os.getenv("ENVIRONMENT") == "development" or os.getenv("NODE_ENV") == "development":
+    # Development: Allow local development
+    allowed_origins = [
+        "http://localhost:3000",
+        "http://localhost:3001", 
+        "http://localhost:3002",
+        "http://127.0.0.1:3000",
+        "https://buzz2remote-frontend.netlify.app"  # For testing
+    ]
+else:
+    # Default: Local development only
+    allowed_origins = [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3002"
+    ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["*"],
-    expose_headers=["*"]
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Removed PATCH for security
+    allow_headers=[
+        "Content-Type",
+        "Authorization", 
+        "X-Requested-With",
+        "Accept",
+        "Origin",
+        "X-API-Key"
+    ],  # More restrictive headers
+    expose_headers=[
+        "Content-Length",
+        "X-Total-Count",
+        "X-Rate-Limit-Remaining"
+    ]  # Only expose necessary headers
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# Add rate limiting middleware
+from backend.middleware.rate_limiting import limiter, custom_rate_limit_handler
+from slowapi.errors import RateLimitExceeded
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
+
+# Add enhanced security headers middleware  
+from backend.middleware.security_headers import initialize_security_middleware
+security_headers, security_reporting = initialize_security_middleware(app)
+app.add_middleware(type(security_headers))
+app.add_middleware(type(security_reporting))
+
+# Add response caching middleware
+from backend.middleware.response_cache import initialize_cache_middleware
+cache_middleware = initialize_cache_middleware(app)
+app.add_middleware(type(cache_middleware))
+
+# Add comprehensive error handling middleware
+from backend.middleware.error_handler import initialize_error_handler
+error_handler = initialize_error_handler(app)
+app.add_middleware(type(error_handler))
+
+# Add input validation middleware (gradual rollout)
+from backend.middleware.input_validation import initialize_input_validation_middleware
+input_validation = initialize_input_validation_middleware(app)
+app.add_middleware(type(input_validation))
 
 # Add activity tracking middleware
 from backend.middleware.activity_middleware import ActivityTrackingMiddleware
@@ -190,6 +252,7 @@ routers_to_include = [
     (sentry_webhook_router, "/api/v1", ["webhooks"]),
     (email_test_router, "/email-test", ["email-test"]),
     (salary_estimation_router, "/api/v1/salary", ["salary-estimation"]),
+    (cronjobs_router, "", ["cronjobs"]),
 ]
 
 # Include admin cleanup router
@@ -240,6 +303,50 @@ async def health_check():
 async def api_health_check():
     """API health check endpoint for frontend health monitoring."""
     return await health_check()
+
+@app.get("/api/security-health", tags=["Security"])
+async def security_health():
+    """Security monitoring endpoint"""
+    from backend.middleware.security_headers import get_security_health
+    return get_security_health()
+
+@app.get("/api/cache-stats", tags=["Performance"])
+async def cache_stats():
+    """Cache statistics endpoint"""
+    from backend.middleware.response_cache import get_cache_manager
+    cache_manager = get_cache_manager()
+    if cache_manager:
+        return await cache_manager.get_stats()
+    return {"error": "Cache not initialized"}
+
+@app.post("/api/cache/clear", tags=["Performance"])
+async def clear_cache():
+    """Clear all cache entries"""
+    from backend.middleware.response_cache import get_cache_manager
+    cache_manager = get_cache_manager()
+    if cache_manager:
+        success = await cache_manager.clear_all()
+        return {"success": success, "message": "Cache cleared"}
+    return {"error": "Cache not initialized"}
+
+@app.post("/api/cache/clear/{pattern}", tags=["Performance"])
+async def clear_cache_pattern(pattern: str):
+    """Clear cache entries matching pattern"""
+    from backend.middleware.response_cache import get_cache_manager
+    cache_manager = get_cache_manager()
+    if cache_manager:
+        cleared = await cache_manager.clear_pattern(pattern)
+        return {"cleared": cleared, "pattern": pattern}
+    return {"error": "Cache not initialized"}
+
+@app.get("/api/error-stats", tags=["Monitoring"])
+async def error_stats():
+    """Get error statistics and monitoring data"""
+    from backend.middleware.error_handler import get_error_handler
+    error_handler = get_error_handler()
+    if error_handler:
+        return error_handler.get_error_stats()
+    return {"error": "Error handler not initialized"}
 
 @app.get("/api/status", tags=["General"])
 async def api_status():

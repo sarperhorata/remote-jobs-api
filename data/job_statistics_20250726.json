@@ -1,0 +1,332 @@
+{
+  "_id": "6884bfd61bc1dfabcd4fce89",
+  "date": "2025-07-26",
+  "timestamp": "2025-07-26 14:45:26.108000",
+  "daily_stats": {
+    "new_jobs_24h": 0,
+    "total_jobs": 7190,
+    "remote_jobs": 3304,
+    "onsite_jobs": 3886
+  },
+  "job_distribution": {
+    "by_type": [
+      {
+        "type": "Full-time",
+        "count": 6462
+      },
+      {
+        "type": "On-site",
+        "count": 335
+      },
+      {
+        "type": "berufserfahren",
+        "count": 96
+      },
+      {
+        "type": "",
+        "count": 71
+      },
+      {
+        "type": "Remote",
+        "count": 30
+      },
+      {
+        "type": "professional / experienced",
+        "count": 24
+      },
+      {
+        "type": "Contract",
+        "count": 23
+      },
+      {
+        "type": "Internship",
+        "count": 18
+      },
+      {
+        "type": "teamleitung",
+        "count": 14
+      },
+      {
+        "type": "berufseinstieg",
+        "count": 13
+      },
+      {
+        "type": "Freelance",
+        "count": 9
+      },
+      {
+        "type": "FlexTime",
+        "count": 9
+      },
+      {
+        "type": "Freelance, berufserfahren",
+        "count": 6
+      },
+      {
+        "type": "FlexTime, FullTime",
+        "count": 6
+      },
+      {
+        "type": "FlexTime, Shift",
+        "count": 4
+      },
+      {
+        "type": "Working student, hilfst\u00e4tigkeit / student",
+        "count": 4
+      },
+      {
+        "type": "Working student",
+        "count": 4
+      },
+      {
+        "type": "manager",
+        "count": 4
+      },
+      {
+        "type": "Apprenticeship",
+        "count": 3
+      },
+      {
+        "type": "Side",
+        "count": 3
+      },
+      {
+        "type": "hilfst\u00e4tigkeit / student",
+        "count": 3
+      },
+      {
+        "type": "Working student, berufseinstieg",
+        "count": 3
+      },
+      {
+        "type": "Internship, berufseinstieg",
+        "count": 3
+      },
+      {
+        "type": "FULL_TIME",
+        "count": 3
+      },
+      {
+        "type": "Freelance, professional / experienced",
+        "count": 2
+      },
+      {
+        "type": "Freelance, berufseinstieg",
+        "count": 2
+      },
+      {
+        "type": null,
+        "count": 2
+      },
+      {
+        "type": "FlexTime, FullTime, Shift",
+        "count": 2
+      },
+      {
+        "type": "Internship, hilfst\u00e4tigkeit / student",
+        "count": 2
+      },
+      {
+        "type": "Full time",
+        "count": 2
+      },
+      {
+        "type": "Freelance, entry",
+        "count": 2
+      },
+      {
+        "type": "Part-time",
+        "count": 2
+      },
+      {
+        "type": "Apprenticeship, berufserfahren",
+        "count": 1
+      },
+      {
+        "type": "Internship, no experience required / student",
+        "count": 1
+      },
+      {
+        "type": "Vollzeit (unbefristet), berufserfahren",
+        "count": 1
+      },
+      {
+        "type": "Working student, entry",
+        "count": 1
+      },
+      {
+        "type": "Working student, professional / experienced",
+        "count": 1
+      },
+      {
+        "type": "Traineeship",
+        "count": 1
+      },
+      {
+        "type": "FlexTime, FullTime, Holidays, Shift",
+        "count": 1
+      },
+      {
+        "type": "FullTime, Shift",
+        "count": 1
+      },
+      {
+        "type": "Working student, teamleitung",
+        "count": 1
+      },
+      {
+        "type": "Contract, berufserfahren",
+        "count": 1
+      },
+      {
+        "type": "Working student, berufserfahren",
+        "count": 1
+      },
+      {
+        "type": "FullTime, PartTime",
+        "count": 1
+      },
+      {
+        "type": "Apprenticeship, berufseinstieg",
+        "count": 1
+      },
+      {
+        "type": "Shift",
+        "count": 1
+      },
+      {
+        "type": "Side, berufseinstieg",
+        "count": 1
+      },
+      {
+        "type": "FlexTime, FullTime, Holidays",
+        "count": 1
+      },
+      {
+        "type": "Working student, no experience required / student",
+        "count": 1
+      },
+      {
+        "type": "executive",
+        "count": 1
+      },
+      {
+        "type": "Contrat",
+        "count": 1
+      },
+      {
+        "type": "Hourly",
+        "count": 1
+      },
+      {
+        "type": "CONTRACTOR",
+        "count": 1
+      },
+      {
+        "type": "FullTime",
+        "count": 1
+      },
+      {
+        "type": "FullTime, PartTime, Weekends",
+        "count": 1
+      },
+      {
+        "type": "Teilzeit (unbefristet)",
+        "count": 1
+      }
+    ],
+    "by_location": [
+      {
+        "location": "Remote",
+        "count": 2331
+      },
+      {
+        "location": "Anywhere",
+        "count": 1210
+      },
+      {
+        "location": "USA",
+        "count": 104
+      },
+      {
+        "location": "Berlin",
+        "count": 97
+      },
+      {
+        "location": "Munich",
+        "count": 87
+      },
+      {
+        "location": "remote",
+        "count": 84
+      },
+      {
+        "location": "PayrollPayroll Operations Manager, Payroll",
+        "count": 67
+      },
+      {
+        "location": "Worldwide",
+        "count": 46
+      },
+      {
+        "location": "Hamburg",
+        "count": 45
+      },
+      {
+        "location": "\u0130stanbul",
+        "count": 42
+      }
+    ],
+    "by_company": [
+      {
+        "company": "We Work Remotely: Remote jobs in design, programming, marketing and more",
+        "count": 2107
+      },
+      {
+        "company": "Global HR Solutions for Distributed Teams | Remote",
+        "count": 518
+      },
+      {
+        "company": "Remote Jobs - NoDesk",
+        "count": 401
+      },
+      {
+        "company": "Raycast",
+        "count": 341
+      },
+      {
+        "company": "Unknown Company",
+        "count": 199
+      },
+      {
+        "company": "Career Ratehawk",
+        "count": 172
+      },
+      {
+        "company": "Search Remote Jobs at Capital One - US",
+        "count": 122
+      },
+      {
+        "company": "Token Metrics",
+        "count": 100
+      },
+      {
+        "company": "MariaDB Careers | MariaDB",
+        "count": 75
+      },
+      {
+        "company": "Work at Astronomer - Astronomer",
+        "count": 72
+      }
+    ]
+  },
+  "salary_stats": {
+    "_id": null,
+    "avg_salary": 83000.0,
+    "min_salary": 65000,
+    "max_salary": 180000,
+    "count": 10
+  },
+  "top_skills": [],
+  "generated_at": "2025-07-26 14:45:26.108000"
+}

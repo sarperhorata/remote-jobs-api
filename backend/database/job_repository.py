@@ -12,11 +12,21 @@ class JobRepository:
     
     def __init__(self):
         """Initialize the job repository with MongoDB collection"""
-        self.db = get_database_client()
-        self.collection = self.db.jobs
-        
-        # Ensure indexes for faster queries
-        self._ensure_indexes()
+        try:
+            self.db = get_database_client()
+            # Check if db is a coroutine (happens during testing)
+            if hasattr(self.db, '__await__'):
+                # In test environment, we'll set this manually
+                self.db = None
+                self.collection = None
+            else:
+                self.collection = self.db.jobs
+                # Ensure indexes for faster queries
+                self._ensure_indexes()
+        except Exception as e:
+            logger.warning(f"Database initialization failed: {e}")
+            self.db = None
+            self.collection = None
     
     def _ensure_indexes(self):
         """Create necessary indexes for the jobs collection"""

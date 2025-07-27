@@ -1,312 +1,195 @@
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
-import json
-import hashlib
+import asyncio
+import time
 from services.cache_service import CacheService
 
 class TestCacheService:
-    """Cache Service testleri"""
+    """In-memory Cache Service testleri"""
     
     @pytest.fixture
-    def mock_redis(self):
-        """Mock Redis client"""
-        mock_redis = Mock()
-        mock_redis.ping.return_value = True
-        mock_redis.get.return_value = None
-        mock_redis.setex.return_value = True
-        mock_redis.delete.return_value = 1
-        mock_redis.exists.return_value = 1
-        return mock_redis
-    
-    @pytest.fixture
-    def cache_service_with_redis(self, mock_redis):
-        """Redis ile cache service instance"""
-        with patch('services.cache_service.redis.Redis', return_value=mock_redis):
-            service = CacheService()
-            return service, mock_redis
-    
-    @pytest.fixture
-    def cache_service_without_redis(self):
-        """Redis olmadan cache service instance"""
-        with patch('services.cache_service.redis.Redis', side_effect=Exception("Redis connection failed")):
-            service = CacheService()
-            return service
-    
-    def test_service_initialization_with_redis(self, cache_service_with_redis):
-        """Redis ile service başlatma testi"""
-        service, mock_redis = cache_service_with_redis
-        
-        assert service.enabled is True
-        assert service.redis_client is not None
-        mock_redis.ping.assert_called_once()
-    
-    def test_service_initialization_without_redis(self, cache_service_without_redis):
-        """Redis olmadan service başlatma testi"""
-        service = cache_service_without_redis
-        
-        assert service.enabled is False
-        assert service.redis_client is None
-    
-    def test_generate_key(self, cache_service_with_redis):
-        """Cache key generation testi"""
-        service, _ = cache_service_with_redis
-        
-        params = {"query": "python", "location": "remote"}
-        key = service._generate_key("jobs", params)
-        
-        assert key.startswith("buzz2remote:jobs:")
-        assert len(key.split(":")[-1]) == 8  # MD5 hash length
-    
-    def test_generate_key_consistent(self, cache_service_with_redis):
-        """Cache key consistency testi"""
-        service, _ = cache_service_with_redis
-        
-        params = {"query": "python", "location": "remote"}
-        key1 = service._generate_key("jobs", params)
-        key2 = service._generate_key("jobs", params)
-        
-        assert key1 == key2  # Same params should generate same key
+    def cache_service(self):
+        """Cache service instance"""
+        return CacheService(max_size=3, ttl_hours=1)  # Small cache for testing
     
     @pytest.mark.asyncio
-    async def test_get_with_redis(self, cache_service_with_redis):
-        """Redis ile get testi"""
-        service, mock_redis = cache_service_with_redis
-        
-        # Mock successful get
-        mock_redis.get.return_value = json.dumps({"data": "test"})
-        
-        result = await service.get("test_key")
-        
-        assert result == {"data": "test"}
-        mock_redis.get.assert_called_once_with("test_key")
+    async def test_service_initialization(self, cache_service):
+        """Service başlatma testi"""
+        assert cache_service.max_size == 3
+        assert cache_service.ttl_hours == 1
+        assert cache_service.popular_ttl_hours == 72
+        assert len(cache_service.cache) == 0
+        assert len(cache_service.popular_cache) == 0
     
     @pytest.mark.asyncio
-    async def test_get_without_redis(self, cache_service_without_redis):
-        """Redis olmadan get testi"""
-        service = cache_service_without_redis
-        
-        result = await service.get("test_key")
-        
-        assert result is None
-    
-    @pytest.mark.asyncio
-    async def test_get_invalid_json(self, cache_service_with_redis):
-        """Invalid JSON get testi"""
-        service, mock_redis = cache_service_with_redis
-        
-        # Mock invalid JSON
-        mock_redis.get.return_value = "invalid json"
-        
-        result = await service.get("test_key")
-        
-        assert result is None
-    
-    @pytest.mark.asyncio
-    async def test_set_with_redis(self, cache_service_with_redis):
-        """Redis ile set testi"""
-        service, mock_redis = cache_service_with_redis
-        
-        data = {"test": "data"}
-        result = await service.set("test_key", data, expire=300)
-        
-        assert result is True
-        mock_redis.setex.assert_called_once_with("test_key", 300, json.dumps(data, default=str))
-    
-    @pytest.mark.asyncio
-    async def test_set_without_redis(self, cache_service_without_redis):
-        """Redis olmadan set testi"""
-        service = cache_service_without_redis
-        
-        result = await service.set("test_key", {"test": "data"})
-        
-        assert result is False
-    
-    @pytest.mark.asyncio
-    async def test_get_jobs_cache(self, cache_service_with_redis):
-        """Jobs cache get testi"""
-        service, mock_redis = cache_service_with_redis
-        
-        filters = {"query": "python", "location": "remote"}
-        page = 1
-        limit = 10
-        
-        # Mock successful get
-        cached_data = {"jobs": [{"id": "1", "title": "Python Developer"}]}
-        mock_redis.get.return_value = json.dumps(cached_data)
-        
-        result = await service.get_jobs_cache(filters, page, limit)
-        
-        assert result == cached_data
-        
-        # Verify key generation
-        expected_key = service._generate_key("jobs", {**filters, "page": page, "limit": limit})
-        mock_redis.get.assert_called_once_with(expected_key)
-    
-    @pytest.mark.asyncio
-    async def test_set_jobs_cache(self, cache_service_with_redis):
-        """Jobs cache set testi"""
-        service, mock_redis = cache_service_with_redis
-        
-        filters = {"query": "python", "location": "remote"}
-        page = 1
-        limit = 10
-        data = {"jobs": [{"id": "1", "title": "Python Developer"}]}
-        expire = 600
-        
-        result = await service.set_jobs_cache(filters, page, limit, data, expire)
-        
+    async def test_set_and_get_normal_cache(self, cache_service):
+        """Normal cache set/get testi"""
+        # Set value
+        result = await cache_service.set("test_key", {"data": "test_value"})
         assert result is True
         
-        # Verify key generation and set
-        expected_key = service._generate_key("jobs", {**filters, "page": page, "limit": limit})
-        mock_redis.setex.assert_called_once_with(expected_key, expire, json.dumps(data, default=str))
+        # Get value
+        value = await cache_service.get("test_key")
+        assert value == {"data": "test_value"}
     
     @pytest.mark.asyncio
-    async def test_get_user_cache(self, cache_service_with_redis):
-        """User cache get testi"""
-        service, mock_redis = cache_service_with_redis
-        
-        user_id = "user123"
-        cache_type = "preferences"
-        
-        # Mock successful get
-        cached_data = {"theme": "dark", "notifications": True}
-        mock_redis.get.return_value = json.dumps(cached_data)
-        
-        result = await service.get_user_cache(user_id, cache_type)
-        
-        assert result == cached_data
-        
-        # Verify key generation
-        expected_key = service._generate_key(f"user_{cache_type}", {"user_id": user_id})
-        mock_redis.get.assert_called_once_with(expected_key)
-    
-    @pytest.mark.asyncio
-    async def test_set_user_cache(self, cache_service_with_redis):
-        """User cache set testi"""
-        service, mock_redis = cache_service_with_redis
-        
-        user_id = "user123"
-        cache_type = "preferences"
-        data = {"theme": "dark", "notifications": True}
-        expire = 3600
-        
-        result = await service.set_user_cache(user_id, cache_type, data, expire)
-        
+    async def test_set_and_get_popular_cache(self, cache_service):
+        """Popular keyword cache testi"""
+        # Set popular keyword (should use popular cache)
+        result = await cache_service.set("react developer", {"jobs": [1, 2, 3]})
         assert result is True
         
-        # Verify key generation and set
-        expected_key = service._generate_key(f"user_{cache_type}", {"user_id": user_id})
-        mock_redis.setex.assert_called_once_with(expected_key, expire, json.dumps(data, default=str))
+        # Should be in popular cache, not normal cache
+        assert "react developer" in cache_service.popular_cache
+        assert "react developer" not in cache_service.cache
+        
+        # Get value
+        value = await cache_service.get("react developer")
+        assert value == {"jobs": [1, 2, 3]}
     
     @pytest.mark.asyncio
-    async def test_delete_cache(self, cache_service_with_redis):
-        """Cache delete testi"""
-        service, mock_redis = cache_service_with_redis
-        
-        result = await service.delete("test_key")
-        
+    async def test_cache_miss(self, cache_service):
+        """Cache miss testi"""
+        value = await cache_service.get("nonexistent_key")
+        assert value is None
+    
+    @pytest.mark.asyncio
+    async def test_cache_ttl_expiry(self, cache_service):
+        """TTL expiry testi"""
+        # Set with very short TTL
+        result = await cache_service.set("short_ttl_key", "test_value", ttl_hours=0.001)  # ~3.6 seconds
         assert result is True
-        mock_redis.delete.assert_called_once_with("test_key")
+        
+        # Should exist immediately
+        value = await cache_service.get("short_ttl_key")
+        assert value == "test_value"
+        
+        # Wait for expiry (simulate)
+        await asyncio.sleep(0.1)  # Wait a bit
+        
+        # Manually expire by setting past time
+        cache_service.expiry_times["short_ttl_key"] = time.time() - 1
+        
+        # Should be expired now
+        value = await cache_service.get("short_ttl_key")
+        assert value is None
     
     @pytest.mark.asyncio
-    async def test_exists_cache(self, cache_service_with_redis):
-        """Cache exists testi"""
-        service, mock_redis = cache_service_with_redis
+    async def test_lru_eviction(self, cache_service):
+        """LRU eviction testi"""
+        # Fill cache to max capacity (3 items)
+        await cache_service.set("key1", "value1")
+        await cache_service.set("key2", "value2")
+        await cache_service.set("key3", "value3")
         
-        result = await service.exists("test_key")
+        assert len(cache_service.cache) == 3
         
-        assert result is True
-        mock_redis.exists.assert_called_once_with("test_key")
+        # Add one more item - should evict oldest (key1)
+        await cache_service.set("key4", "value4")
+        
+        assert len(cache_service.cache) == 3
+        assert await cache_service.get("key1") is None  # Evicted
+        assert await cache_service.get("key2") == "value2"
+        assert await cache_service.get("key3") == "value3"
+        assert await cache_service.get("key4") == "value4"
     
     @pytest.mark.asyncio
-    async def test_clear_all_cache(self, cache_service_with_redis):
-        """Clear all cache testi"""
-        service, mock_redis = cache_service_with_redis
-        
-        # Mock keys pattern
-        mock_redis.keys.return_value = ["buzz2remote:jobs:12345678", "buzz2remote:user_preferences:87654321"]
-        
-        result = await service.clear_all_cache()
-        
-        assert result is True
-        mock_redis.keys.assert_called_once_with("buzz2remote:*")
-        assert mock_redis.delete.call_count == 2
-    
-    @pytest.mark.asyncio
-    async def test_clear_pattern_cache(self, cache_service_with_redis):
-        """Clear pattern cache testi"""
-        service, mock_redis = cache_service_with_redis
-        
-        pattern = "buzz2remote:jobs:*"
-        mock_redis.keys.return_value = ["buzz2remote:jobs:12345678", "buzz2remote:jobs:87654321"]
-        
-        result = await service.clear_pattern_cache(pattern)
-        
-        assert result is True
-        mock_redis.keys.assert_called_once_with(pattern)
-        assert mock_redis.delete.call_count == 2
-    
-    def test_cache_key_uniqueness(self, cache_service_with_redis):
-        """Cache key uniqueness testi"""
-        service, _ = cache_service_with_redis
-        
-        # Different params should generate different keys
-        key1 = service._generate_key("jobs", {"query": "python"})
-        key2 = service._generate_key("jobs", {"query": "javascript"})
-        
-        assert key1 != key2
-        
-        # Same params should generate same key
-        key3 = service._generate_key("jobs", {"query": "python"})
-        assert key1 == key3
-    
-    @pytest.mark.asyncio
-    async def test_cache_service_integration(self, cache_service_with_redis):
-        """Cache service integration testi"""
-        service, mock_redis = cache_service_with_redis
-        
-        # Test full cache cycle
-        test_data = {"test": "data", "number": 123}
-        
-        # Set data
-        mock_redis.setex.return_value = True
-        set_result = await service.set("test_key", test_data, expire=300)
-        assert set_result is True
-        
-        # Get data
-        mock_redis.get.return_value = json.dumps(test_data)
-        get_result = await service.get("test_key")
-        assert get_result == test_data
-        
-        # Check exists
-        mock_redis.exists.return_value = 1
-        exists_result = await service.exists("test_key")
-        assert exists_result is True
-        
-        # Delete data
-        mock_redis.delete.return_value = 1
-        delete_result = await service.delete("test_key")
-        assert delete_result is True
-    
-    def test_cache_service_methods_exist(self, cache_service_with_redis):
-        """Cache service metodlarının varlığını test et"""
-        service, _ = cache_service_with_redis
-        
-        required_methods = [
-            '_generate_key',
-            'get',
-            'set',
-            'get_jobs_cache',
-            'set_jobs_cache',
-            'get_user_cache',
-            'set_user_cache',
-            'delete',
-            'exists',
-            'clear_all_cache',
-            'clear_pattern_cache'
+    async def test_popular_keyword_detection(self, cache_service):
+        """Popular keyword detection testi"""
+        popular_keywords = [
+            "react developer",
+            "python engineer", 
+            "javascript fullstack",
+            "java backend",
+            "node.js developer"
         ]
         
-        for method in required_methods:
-            assert hasattr(service, method)
-            assert callable(getattr(service, method)) 
+        for keyword in popular_keywords:
+            is_popular = cache_service._is_popular_keyword(keyword)
+            assert is_popular is True
+            
+        non_popular_keywords = [
+            "unique_job_title_xyz",
+            "very_specific_role_abc",
+            "random_search_term"
+        ]
+        
+        for keyword in non_popular_keywords:
+            is_popular = cache_service._is_popular_keyword(keyword)
+            assert is_popular is False
+    
+    @pytest.mark.asyncio
+    async def test_delete_cache(self, cache_service):
+        """Cache delete testi"""
+        # Set value
+        await cache_service.set("delete_test", "value_to_delete")
+        assert await cache_service.get("delete_test") == "value_to_delete"
+        
+        # Delete value
+        result = await cache_service.delete("delete_test")
+        assert result is True
+        
+        # Should be None after delete
+        assert await cache_service.get("delete_test") is None
+    
+    @pytest.mark.asyncio
+    async def test_clear_cache(self, cache_service):
+        """Cache clear testi"""
+        # Set some values
+        await cache_service.set("key1", "value1")
+        await cache_service.set("react job", "popular_value")  # Popular cache
+        
+        assert len(cache_service.cache) == 1
+        assert len(cache_service.popular_cache) == 1
+        
+        # Clear all cache
+        result = await cache_service.clear()
+        assert result is True
+        
+        # All caches should be empty
+        assert len(cache_service.cache) == 0
+        assert len(cache_service.popular_cache) == 0
+        assert len(cache_service.access_times) == 0
+        assert len(cache_service.popular_access_times) == 0
+    
+    @pytest.mark.asyncio
+    async def test_cache_with_json_serializable_data(self, cache_service):
+        """JSON serializable data testi"""
+        test_data = {
+            "jobs": [
+                {"id": 1, "title": "Developer", "salary": 50000},
+                {"id": 2, "title": "Designer", "salary": 45000}
+            ],
+            "metadata": {
+                "total_count": 2,
+                "search_query": "test search",
+                "timestamp": "2024-01-15T10:00:00Z"
+            }
+        }
+        
+        await cache_service.set("complex_data", test_data)
+        result = await cache_service.get("complex_data")
+        
+        assert result == test_data
+        assert result["jobs"][0]["title"] == "Developer"
+        assert result["metadata"]["total_count"] == 2
+    
+    @pytest.mark.asyncio
+    async def test_cache_performance_stats(self, cache_service):
+        """Cache performance istatistikleri"""
+        # Get performance stats
+        stats = await cache_service.get_stats()
+        
+        assert "regular_cache" in stats
+        assert "popular_cache" in stats
+        assert "total_entries" in stats
+        assert stats["regular_cache"]["size"] == 0
+        assert stats["popular_cache"]["size"] == 0
+        
+        # Add some data and check stats
+        await cache_service.set("test1", "value1")
+        await cache_service.set("react test", "popular_value")
+        
+        stats = await cache_service.get_stats()
+        assert stats["regular_cache"]["size"] == 1
+        assert stats["popular_cache"]["size"] == 1
+        assert stats["total_entries"] == 2 

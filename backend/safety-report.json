@@ -1,0 +1,6 @@
+Usage: safety check [OPTIONS]
+Try 'safety check --help' for help.
+
+Error: Invalid value for '--policy-file': 
+Unable to load the Safety Policy file ".safety-policy.yml".
+HINT: Vulnerability IDs under the 'ignore-vulnerabilities' key, need to follow the convention 'ID_NUMBER:', probably you are missing a colon.

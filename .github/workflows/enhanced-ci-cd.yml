@@ -76,7 +76,7 @@ jobs:
       
     - name: 📊 Upload Test Reports
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: test-reports-${{ github.run_number }}
         path: |
@@ -177,7 +177,7 @@ jobs:
         
     - name: 📊 Upload Security Reports
       if: always()
-      uses: actions/upload-artifact@v3
+              uses: actions/upload-artifact@v4
       with:
         name: security-reports-${{ github.run_number }}
         path: |

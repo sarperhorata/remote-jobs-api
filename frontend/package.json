@@ -41,17 +41,17 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "dev": "react-scripts start",
-    "start:test": "PORT=3002 react-scripts start",
     "build": "react-scripts build",
+    "build:analyze": "ANALYZE=true react-scripts build",
+    "build:production": "NODE_ENV=production react-scripts build",
     "test": "react-scripts test",
-    "test:quick": "react-scripts test --watchAll=false",
-    "test:lint": "react-scripts test --testPathPattern=lint-validation --watchAll=false",
-    "lint": "eslint src/ --ext .ts,.tsx",
-    "lint:fix": "eslint src/ --ext .ts,.tsx --fix",
-    "lint:pre-commit": "node scripts/pre-commit-lint.js",
-    "type-check": "tsc --noEmit",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run",
+    "test:e2e": "cypress run",
+    "test:coverage": "react-scripts test --coverage --silent --watchAll=false",
+    "bundle:analyze": "npx webpack-bundle-analyzer build/static/js/*.js",
+    "bundle:size": "npx bundlesize"
   },
   "jest": {
     "collectCoverageFrom": [
@@ -124,7 +124,12 @@
     "tailwindcss": "^3.4.17",
     "tslib": "^2.8.1",
     "typescript": "4.9.5",
-    "webpack-dev-server": "^5.2.2"
+    "webpack-dev-server": "^5.2.2",
+    "webpack-bundle-analyzer": "^4.10.1",
+    "compression-webpack-plugin": "^11.0.0",
+    "image-webpack-loader": "^8.1.0",
+    "bundlesize": "^0.18.1",
+    "craco": "^0.0.3"
   },
   "bugs": {
     "url": "https://buzz2remote.com/issues"

@@ -21,8 +21,12 @@ class TestCompanyRepository:
     def company_repo(self, mock_db):
         """Company repository instance with mocked database"""
         mock_client, mock_collection = mock_db
-        with patch('database.company_repository.get_database_client', return_value=mock_client):
+        # Mock get_database_client to return the mock client directly (not as coroutine)
+        with patch('database.company_repository.get_database_client') as mock_get_db:
+            mock_get_db.return_value = mock_client
             repo = CompanyRepository()
+            # Manually set the collection since indexes might fail in mocks
+            repo.collection = mock_collection
             return repo, mock_collection
     
     def test_init_creates_indexes(self, mock_db):
@@ -177,13 +181,18 @@ class TestCompanyRepository:
         """Test getting companies with pagination"""
         repo, mock_collection = company_repo
         
-        # Mock cursor
+        # Mock cursor chain (find -> sort -> skip -> limit)
         mock_cursor = Mock()
         mock_companies = [
             {'_id': ObjectId('507f1f77bcf86cd799439011'), 'name': 'Company 1'},
             {'_id': ObjectId('507f1f77bcf86cd799439012'), 'name': 'Company 2'}
         ]
         mock_cursor.__iter__ = Mock(return_value=iter(mock_companies))
+        
+        # Setup method chaining: find().sort().skip().limit()
+        mock_cursor.sort.return_value = mock_cursor
+        mock_cursor.skip.return_value = mock_cursor  
+        mock_cursor.limit.return_value = mock_cursor
         mock_collection.find.return_value = mock_cursor
         
         result = repo.get_companies(skip=10, limit=5, sort_by='name', sort_order=1)
@@ -206,6 +215,11 @@ class TestCompanyRepository:
         query = {'industry': 'Technology'}
         mock_cursor = Mock()
         mock_cursor.__iter__ = Mock(return_value=iter([]))
+        
+        # Setup method chaining: find().sort().skip().limit()
+        mock_cursor.sort.return_value = mock_cursor
+        mock_cursor.skip.return_value = mock_cursor  
+        mock_cursor.limit.return_value = mock_cursor
         mock_collection.find.return_value = mock_cursor
         
         repo.get_companies(query=query)

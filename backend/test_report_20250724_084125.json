@@ -1,0 +1,89 @@
+{
+  "test_run_id": "run_1753335685",
+  "status": "completed",
+  "start_time": "2025-07-24T08:41:25.266258",
+  "end_time": "2025-07-24T08:41:25.266417",
+  "total_duration": 0.000159,
+  "summary": {
+    "total_phases": 4,
+    "passed_phases": 4,
+    "failed_phases": 0,
+    "skipped_phases": 0,
+    "success_rate": 100.0
+  },
+  "phase_results": {
+    "setup": {
+      "status": "passed",
+      "duration": 1.3e-05,
+      "details": {
+        "database_initialized": false,
+        "test_data_created": false,
+        "services_started": false
+      },
+      "error_message": null,
+      "logs": [
+        "Phase setup completed successfully"
+      ]
+    },
+    "unit_tests": {
+      "status": "passed",
+      "duration": 1.2e-05,
+      "details": {
+        "status": "skipped",
+        "reason": "Automation framework not available"
+      },
+      "error_message": null,
+      "logs": [
+        "Phase unit_tests completed successfully"
+      ]
+    },
+    "integration_tests": {
+      "status": "passed",
+      "duration": 9e-06,
+      "details": {
+        "status": "skipped",
+        "reason": "Automation framework not available"
+      },
+      "error_message": null,
+      "logs": [
+        "Phase integration_tests completed successfully"
+      ]
+    },
+    "cleanup": {
+      "status": "passed",
+      "duration": 9e-06,
+      "details": {
+        "monitoring_stopped": false,
+        "dashboard_stopped": false,
+        "test_data_cleaned": false,
+        "database_cleaned": false
+      },
+      "error_message": null,
+      "logs": [
+        "Phase cleanup completed successfully"
+      ]
+    }
+  },
+  "configuration": {
+    "parallel_execution": true,
+    "max_workers": 4,
+    "timeout_per_phase": 60,
+    "continue_on_failure": true,
+    "enable_monitoring": false,
+    "enable_security_audit": false,
+    "enable_automation": true,
+    "enable_dashboard": false,
+    "enable_performance_tests": false,
+    "enable_load_tests": false,
+    "enable_e2e_tests": false,
+    "enable_coverage_analysis": false,
+    "dashboard_port": 8080,
+    "dashboard_auto_open": true,
+    "generate_reports": true,
+    "report_format": "json",
+    "save_logs": true,
+    "send_notifications": false,
+    "notification_email": null,
+    "notification_webhook": null
+  }
+}

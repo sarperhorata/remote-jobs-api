@@ -1,0 +1,32 @@
+# Master Test Runner Configuration
+# Basic configuration for testing the backend infrastructure
+
+# General settings
+parallel_execution: true
+max_workers: 2
+timeout_per_phase: 300  # 5 minutes per phase
+continue_on_failure: true
+
+# Component settings
+enable_monitoring: true
+enable_security_audit: true
+enable_automation: true
+enable_dashboard: true
+enable_performance_tests: true
+enable_load_tests: true
+enable_e2e_tests: true
+enable_coverage_analysis: true
+
+# Dashboard settings
+dashboard_port: 8080
+dashboard_auto_open: true
+
+# Reporting settings
+generate_reports: true
+report_format: "json"
+save_logs: true
+
+# Notification settings
+send_notifications: false
+notification_email: null
+notification_webhook: null 

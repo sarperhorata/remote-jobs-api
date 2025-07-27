@@ -6,6 +6,7 @@ import os
 from backend.database import get_async_db
 from backend.schemas.user import UserCreate, Token
 from backend.utils.email import create_password_reset_token, verify_token, send_password_reset_email, send_verification_email
+from backend.middleware.rate_limiting import RateLimits
 import logging
 from bson import ObjectId
 import jwt
@@ -92,7 +93,9 @@ class ResetPasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=8)
 
 @router.post("/register", response_model=AuthResponse)
+@RateLimits.auth_register
 async def register_user(
+    request: Request,
     user: UserCreate,
     db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
@@ -133,16 +136,21 @@ async def register_user(
     # Create access token
     access_token = create_access_token(data={"sub": str(result.inserted_id)})
     
+    # Generate name from available data
+    display_name = user.name or user.full_name or f"{getattr(user, 'first_name', '')} {getattr(user, 'last_name', '')}".strip() or user.email.split('@')[0]
+    
     return AuthResponse(
         access_token=access_token,
         token_type="bearer",
         user_id=str(result.inserted_id),
         email=user.email,
-        name=user.name
+        name=display_name
     )
 
 @router.post("/login", response_model=Token)
+@RateLimits.auth_login
 async def login_for_access_token(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):

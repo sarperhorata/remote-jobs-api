@@ -11,8 +11,32 @@ class UserBase(BaseModel):
     is_superuser: bool = False
 
 class UserCreate(UserBase):
-    password: str = Field(...)
+    password: str = Field(..., min_length=8, description="Password must be at least 8 characters long")
     name: Optional[str] = None  # For backward compatibility
+    first_name: Optional[str] = None  # For forms using first_name/last_name
+    last_name: Optional[str] = None
+    phone: Optional[str] = None  # Common field in registration
+    
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v):
+        # En az 8 karakter
+        if len(v) < 8:
+            raise ValueError('Şifre en az 8 karakter olmalıdır')
+        
+        # En az bir büyük harf
+        if not any(c.isupper() for c in v):
+            raise ValueError('Şifre en az bir büyük harf içermelidir')
+        
+        # En az bir küçük harf
+        if not any(c.islower() for c in v):
+            raise ValueError('Şifre en az bir küçük harf içermelidir')
+        
+        # En az bir rakam
+        if not any(c.isdigit() for c in v):
+            raise ValueError('Şifre en az bir rakam içermelidir')
+        
+        return v
 
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None

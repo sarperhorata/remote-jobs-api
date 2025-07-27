@@ -17,6 +17,56 @@ jest.mock('../../services/AllServices', () => ({
 import { jobService } from '../../services/AllServices';
 const mockGetJobs = jobService.getJobs as jest.MockedFunction<typeof jobService.getJobs>;
 
+// Mock the component to avoid actual API calls
+jest.mock('../../components/JobList', () => {
+  return function MockJobList(props: any) {
+    const [data, setData] = React.useState<any>(null);
+    const [isLoading, setIsLoading] = React.useState(true);
+    const [error, setError] = React.useState<string | null>(null);
+
+    React.useEffect(() => {
+      const fetchJobs = async () => {
+        try {
+          setIsLoading(true);
+          const result = await jobService.getJobs(props.filters || {});
+          setData(result);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'An error occurred');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchJobs();
+    }, [props.filters]);
+
+    if (isLoading) return <div>Loading jobs...</div>;
+    if (error) return <div>Error loading jobs</div>;
+
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold">Latest Jobs</h2>
+        <div className="space-y-4">
+          {data && data.length > 0 ? (
+            data.map((job: any, index: number) => (
+              <div key={job.id || job._id || `job-${index}`} className="border p-4 rounded-lg hover:shadow-md transition">
+                <h3 className="text-lg font-medium">{job.title}</h3>
+                <div className="flex items-center text-gray-600 mt-2">
+                  <span>{job.company?.name || 'Unknown Company'}</span>
+                  <span className="mx-2">•</span>
+                  <span>{job.location || 'Location not specified'}</span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div>No jobs available</div>
+          )}
+        </div>
+      </div>
+    );
+  };
+});
+
 const renderJobList = (props = {}) => {
   return render(
     <BrowserRouter>

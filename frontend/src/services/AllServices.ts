@@ -1,5 +1,5 @@
 import { HomejobService } from './HomeJobService';
-import jobServiceInstance from './jobService';
+import { jobService as jobServiceInstance } from './jobService';
 
 // Export all services from this file
 export { HomejobService };

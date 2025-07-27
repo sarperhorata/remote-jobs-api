@@ -72,14 +72,24 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
     if (!query.trim()) return null;
     
     try {
+      console.log('🌐 fetchKeywordCount called with:', query);
       const finalApiUrl = await getApiUrl();
-      const response = await fetch(`${finalApiUrl}/jobs/quick-search-count?q=${encodeURIComponent(query)}`);
+      console.log('🔗 Final API URL:', finalApiUrl);
+      const url = `${finalApiUrl}/api/v1/jobs/quick-search-count?q=${encodeURIComponent(query)}`;
+      console.log('📡 Making request to:', url);
+      
+      const response = await fetch(url);
+      console.log('📨 Response status:', response.status, response.statusText);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ API Response data:', data);
         return data;
+      } else {
+        console.log('❌ API Response not OK:', response.status, response.statusText);
       }
     } catch (error) {
-      console.error('Error fetching keyword count:', error);
+      console.error('💥 Error fetching keyword count:', error);
     }
     return null;
   }, []);
@@ -99,6 +109,7 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
+    console.log('🔤 Input changed:', value);
     setInputValue(value);
     
     // Clear previous timeout
@@ -107,9 +118,12 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
     }
     
     if (value.trim().length >= 1) {
+      console.log('🔍 Starting search for:', value);
       // For keyword search, show single line result
       searchTimeoutRef.current = setTimeout(async () => {
+        console.log('⏰ Search timeout fired for:', value);
         const keywordResult = await fetchKeywordCount(value);
+        console.log('📊 Keyword result:', keywordResult);
         if (keywordResult && keywordResult.count > 0) {
           const suggestion = {
             title: `${value} (${keywordResult.count} jobs)`,
@@ -119,12 +133,15 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
           console.log('🔍 Setting keyword suggestion:', suggestion);
           setAllSuggestions([suggestion]);
           setShowDropdown(true);
+          console.log('👁️ Dropdown should be visible now');
         } else {
+          console.log('❌ No results or error, hiding dropdown');
           setAllSuggestions([]);
           setShowDropdown(false);
         }
       }, 300);
     } else {
+      console.log('🧹 Input too short, clearing suggestions');
       setAllSuggestions([]);
       setShowDropdown(false);
     }
@@ -304,7 +321,9 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
             w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg
             focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200
             transition-all duration-200 ease-in-out
-            ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}
+            text-gray-900 placeholder-gray-500
+            dark:text-white dark:placeholder-gray-400 dark:border-gray-600 dark:bg-gray-800
+            ${disabled ? 'bg-gray-100 cursor-not-allowed dark:bg-gray-700' : 'bg-white dark:bg-gray-800'}
             ${isRTL(inputValue) ? 'text-right' : 'text-left'}
           `}
         />
@@ -327,7 +346,12 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
             width: dropdownPosition.width,
             minWidth: '200px'
           }}
+          onMouseDown={(e) => {
+            console.log('🖱️ Dropdown mousedown event');
+            e.preventDefault(); // Prevent input blur
+          }}
         >
+          {console.log('🎯 Rendering dropdown with suggestions:', allSuggestions)}
           {allSuggestions.map((suggestion, index) => (
             <div
               key={index}

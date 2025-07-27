@@ -1,31 +1,10 @@
 {% extends "base.html" %}
 
-{% block content %}
-<div class="py-6">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- Page Header -->
-        <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shadow-lg p-6 mb-6">
-            <div class="flex items-center">
-                <div class="mr-4">
-                    <div class="bg-white p-3 rounded-full">
-                        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2V6"></path>
-                        </svg>
-                    </div>
-                </div>
-                <div class="flex-1">
-                    <h1 class="text-3xl font-bold text-white">🚀 Buzz2Remote Admin Panel</h1>
-                    <p class="text-blue-100 mt-1">Jobs Management Dashboard</p>
-                </div>
-                <div class="hidden md:block">
-                    <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                        <p class="text-white text-sm">System Status</p>
-                        <p class="text-green-300 font-medium">🟢 All Systems Operational</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+{% block title %}Jobs Management - Buzz2Remote Admin{% endblock %}
 
+{% block subtitle %}Jobs Management Dashboard{% endblock %}
+
+{% block content %}
         <!-- Jobs Table -->
         <div class="bg-white rounded-lg shadow">
             <div class="p-6">
@@ -79,8 +58,6 @@
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
 <script>
 let currentPage = 1;

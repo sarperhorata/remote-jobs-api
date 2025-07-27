@@ -1,116 +1,165 @@
-<div class="bg-white rounded-lg shadow">
-    <div class="p-6">
-        <h2 class="text-xl font-bold mb-4">Companies</h2>
-        <div class="overflow-x-auto">
-            <table class="min-w-full">
-                <thead>
-                    <tr class="bg-gray-50">
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onclick="sortTable('name')">
-                            Company Name <span id="nameSort"></span>
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onclick="sortTable('industry')">
-                            Industry <span id="industrySort"></span>
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onclick="sortTable('size')">
-                            Size <span id="sizeSort"></span>
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onclick="sortTable('open_positions')">
-                            Open Positions <span id="positionsSort"></span>
-                        </th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200" id="companiesTableBody">
-                    {% for company in companies %}
-                    <tr>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <a href="{{ company.career_page_url }}" target="_blank" class="text-blue-600 hover:text-blue-800">{{ company.name }}</a>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">{{ company.industry }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">{{ company.size }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">{{ company.open_positions }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        <div class="mt-4 flex justify-between items-center">
-            <div class="text-sm text-gray-700">
-                Showing <span id="startIndex">1</span> to <span id="endIndex">10</span> of <span id="totalItems">{{ total_companies }}</span> companies
+{% extends "base.html" %}
+
+{% block title %}Companies Management - Buzz2Remote Admin{% endblock %}
+
+{% block subtitle %}Companies Management Dashboard{% endblock %}
+
+{% block content %}
+    <!-- Companies Statistics -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Companies Statistics</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-blue-50 p-4 rounded-lg">
+                <div class="text-2xl font-bold text-blue-600">{{ stats.total_companies }}</div>
+                <div class="text-sm text-blue-700">Total Companies</div>
             </div>
-            <div class="flex space-x-2">
-                <button id="prevPage" class="px-3 py-1 border rounded hover:bg-gray-100" disabled>Previous</button>
-                <button id="nextPage" class="px-3 py-1 border rounded hover:bg-gray-100">Next</button>
+            <div class="bg-green-50 p-4 rounded-lg">
+                <div class="text-2xl font-bold text-green-600">{{ stats.companies_with_jobs }}</div>
+                <div class="text-sm text-green-700">Companies with Jobs</div>
+            </div>
+            <div class="bg-orange-50 p-4 rounded-lg">
+                <div class="text-2xl font-bold text-orange-600">{{ stats.total_active_jobs }}</div>
+                <div class="text-sm text-orange-700">Total Active Jobs</div>
+            </div>
+            <div class="bg-purple-50 p-4 rounded-lg">
+                <div class="text-2xl font-bold text-purple-600">{{ "%.1f"|format(stats.avg_jobs_per_company) }}</div>
+                <div class="text-sm text-purple-700">Avg Jobs/Company</div>
             </div>
         </div>
     </div>
-</div>
+
+    <!-- Companies Table -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="p-6">
+            <h2 class="text-xl font-bold mb-4">Companies</h2>
+            
+            <!-- Search and Filter -->
+            <div class="mb-4 flex gap-4">
+                <input type="text" id="companyFilter" placeholder="Search companies..." 
+                       class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       value="{{ company_filter }}">
+                <button onclick="applyFilter()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors">
+                    <i class="fas fa-search mr-2"></i>Search
+                </button>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead>
+                        <tr class="bg-gray-50">
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onclick="sortTable('name')">
+                                Company Name <span id="nameSort"></span>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onclick="sortTable('industry')">
+                                Industry <span id="industrySort"></span>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onclick="sortTable('size')">
+                                Size <span id="sizeSort"></span>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onclick="sortTable('jobs_count')">
+                                Active Jobs <span id="jobsSort"></span>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Website
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Location
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="companiesTableBody">
+                        {% for company in companies %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="font-medium text-gray-900">{{ company.name }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-gray-500">{{ company.industry or 'N/A' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-gray-500">{{ company.size or 'N/A' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm font-medium">
+                                    {{ company.active_jobs_count }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if company.website %}
+                                <a href="{{ company.website }}" target="_blank" class="text-blue-600 hover:text-blue-800">
+                                    <i class="fas fa-external-link-alt mr-1"></i>Visit
+                                </a>
+                                {% else %}
+                                <span class="text-gray-400">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-gray-500">{{ company.location or 'N/A' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            <div class="mt-4 flex justify-between items-center">
+                <div class="text-sm text-gray-700">
+                    Showing {{ (current_page - 1) * 20 + 1 }} to {{ current_page * 20 if current_page * 20 < total_companies else total_companies }} of {{ total_companies }} companies
+                </div>
+                <div class="flex space-x-2">
+                    {% if has_prev %}
+                    <a href="?page={{ prev_page }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}{% if company_filter %}&company_filter={{ company_filter }}{% endif %}" 
+                       class="px-3 py-1 border rounded hover:bg-gray-100">Previous</a>
+                    {% else %}
+                    <button class="px-3 py-1 border rounded text-gray-400" disabled>Previous</button>
+                    {% endif %}
+                    
+                    {% if has_next %}
+                    <a href="?page={{ next_page }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}{% if company_filter %}&company_filter={{ company_filter }}{% endif %}" 
+                       class="px-3 py-1 border rounded hover:bg-gray-100">Next</a>
+                    {% else %}
+                    <button class="px-3 py-1 border rounded text-gray-400" disabled>Next</button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
 
 <script>
-let currentPage = 1;
-let currentSort = { column: 'name', direction: 'asc' };
-const itemsPerPage = 10;
+function applyFilter() {
+    const filter = document.getElementById('companyFilter').value;
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.set('company_filter', filter);
+    currentUrl.searchParams.set('page', '1');
+    window.location.href = currentUrl.toString();
+}
 
 function sortTable(column) {
-    if (currentSort.column === column) {
-        currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
-    } else {
-        currentSort.column = column;
-        currentSort.direction = 'asc';
-    }
-    loadCompanies();
-}
-
-async function loadCompanies() {
-    try {
-        const response = await fetch(`/api/admin/companies?page=${currentPage}&sort=${currentSort.column}&direction=${currentSort.direction}`);
-        const data = await response.json();
-        
-        const tbody = document.getElementById('companiesTableBody');
-        tbody.innerHTML = '';
-        
-        data.companies.forEach(company => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <a href="${company.career_page_url}" target="_blank" class="text-blue-600 hover:text-blue-800">${company.name}</a>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">${company.industry}</td>
-                <td class="px-6 py-4 whitespace-nowrap">${company.size}</td>
-                <td class="px-6 py-4 whitespace-nowrap">${company.open_positions}</td>
-            `;
-            tbody.appendChild(row);
-        });
-        
-        updatePagination(data.total);
-    } catch (error) {
-        console.error('Error loading companies:', error);
-    }
-}
-
-function updatePagination(total) {
-    const startIndex = (currentPage - 1) * itemsPerPage + 1;
-    const endIndex = Math.min(startIndex + itemsPerPage - 1, total);
+    const currentUrl = new URL(window.location);
+    const currentSort = currentUrl.searchParams.get('sort_by');
+    const currentOrder = currentUrl.searchParams.get('sort_order');
     
-    document.getElementById('startIndex').textContent = startIndex;
-    document.getElementById('endIndex').textContent = endIndex;
-    document.getElementById('totalItems').textContent = total;
+    let newOrder = 'asc';
+    if (currentSort === column) {
+        newOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+    }
     
-    document.getElementById('prevPage').disabled = currentPage === 1;
-    document.getElementById('nextPage').disabled = endIndex >= total;
+    currentUrl.searchParams.set('sort_by', column);
+    currentUrl.searchParams.set('sort_order', newOrder);
+    currentUrl.searchParams.set('page', '1');
+    window.location.href = currentUrl.toString();
 }
 
-document.getElementById('prevPage').addEventListener('click', () => {
-    if (currentPage > 1) {
-        currentPage--;
-        loadCompanies();
+// Update sort indicators
+document.addEventListener('DOMContentLoaded', function() {
+    const currentSort = '{{ sort_by }}';
+    const currentOrder = '{{ sort_order }}';
+    
+    const sortElements = {
+        'name': document.getElementById('nameSort'),
+        'industry': document.getElementById('industrySort'),
+        'size': document.getElementById('sizeSort'),
+        'jobs_count': document.getElementById('jobsSort')
+    };
+    
+    if (sortElements[currentSort]) {
+        sortElements[currentSort].textContent = currentOrder === 'asc' ? ' ↑' : ' ↓';
     }
 });
-
-document.getElementById('nextPage').addEventListener('click', () => {
-    currentPage++;
-    loadCompanies();
-});
-
-// Initial load
-loadCompanies();
-</script> 
+</script>
+{% endblock %} 

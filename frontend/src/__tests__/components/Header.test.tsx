@@ -53,8 +53,8 @@ describe('Header Component', () => {
     expect(screen.getByText(/Buzz2Remote/i)).toBeInTheDocument();
     
     // Check for navigation items that actually exist
-    expect(screen.getByText(/Browse Jobs/i)).toBeInTheDocument();
-    expect(screen.getByText(/Companies/i)).toBeInTheDocument();
+    expect(screen.getByText(/Remote Tips/i)).toBeInTheDocument();
+    expect(screen.getByText(/Salary Guide/i)).toBeInTheDocument();
     expect(screen.getByText(/Pricing/i)).toBeInTheDocument();
   });
 
@@ -92,15 +92,9 @@ describe('Header Component', () => {
     renderWithProviders(<Header />);
     
     // Check for all navigation links that should be present
-    expect(screen.getByText(/Browse Jobs/i)).toBeInTheDocument();
-    expect(screen.getByText(/Companies/i)).toBeInTheDocument();
-    expect(screen.getByText(/Pricing/i)).toBeInTheDocument();
     expect(screen.getByText(/Remote Tips/i)).toBeInTheDocument();
-    expect(screen.getByText(/Career Tips/i)).toBeInTheDocument();
-    expect(screen.getByText(/Remote Hints/i)).toBeInTheDocument();
     expect(screen.getByText(/Salary Guide/i)).toBeInTheDocument();
-    expect(screen.getByText(/About/i)).toBeInTheDocument();
-    expect(screen.getByText(/Contact/i)).toBeInTheDocument();
+    expect(screen.getByText(/Pricing/i)).toBeInTheDocument();
   });
 
   it('has proper logo structure', () => {

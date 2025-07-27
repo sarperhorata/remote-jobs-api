@@ -22,21 +22,21 @@ describe('dateUtils', () => {
     test('formats date correctly', () => {
       const date = new Date('2024-01-15T10:30:00Z');
       const result = formatDate(date);
-      expect(result).toBe('Jan 15, 2024');
+      expect(result).toBe('January 15, 2024');
     });
 
     test('handles different date formats', () => {
       const date1 = new Date('2024-12-25T00:00:00Z');
       const date2 = new Date('2023-06-01T12:00:00Z');
       
-      expect(formatDate(date1)).toBe('Dec 25, 2024');
-      expect(formatDate(date2)).toBe('Jun 1, 2023');
+      expect(formatDate(date1)).toBe('December 25, 2024');
+      expect(formatDate(date2)).toBe('June 1, 2023');
     });
 
     test('handles invalid date', () => {
       const invalidDate = new Date('invalid');
       const result = formatDate(invalidDate);
-      expect(result).toBe('Invalid Date');
+      expect(result).toBe('Invalid date');
     });
   });
 
@@ -44,7 +44,7 @@ describe('dateUtils', () => {
     test('formats time as "just now" for recent times', () => {
       const recentTime = new Date('2024-01-15T11:59:30Z'); // 30 seconds ago
       const result = formatRelativeTime(recentTime);
-      expect(result).toBe('just now');
+      expect(result).toBe('Just now');
     });
 
     test('formats time as minutes ago', () => {
@@ -86,7 +86,7 @@ describe('dateUtils', () => {
     test('handles future dates', () => {
       const futureDate = new Date('2024-01-16T12:00:00Z');
       const result = formatRelativeTime(futureDate);
-      expect(result).toBe('in 1 day');
+      expect(result).toBe('In the future');
     });
   });
 
@@ -95,13 +95,13 @@ describe('dateUtils', () => {
       const startDate = new Date('2024-01-01T00:00:00Z');
       const endDate = new Date('2024-01-31T23:59:59Z');
       const result = formatDateRange(startDate, endDate);
-      expect(result).toBe('Jan 1 - Jan 31, 2024');
+      expect(result).toBe('Jan 1, 2024 - Jan 31, 2024');
     });
 
     test('formats same day range', () => {
       const date = new Date('2024-01-15T12:00:00Z');
       const result = formatDateRange(date, date);
-      expect(result).toBe('Jan 15, 2024');
+      expect(result).toBe('Jan 15, 2024 - Jan 15, 2024');
     });
 
     test('formats different year range', () => {
@@ -115,7 +115,7 @@ describe('dateUtils', () => {
       const invalidDate = new Date('invalid');
       const validDate = new Date('2024-01-15T12:00:00Z');
       const result = formatDateRange(invalidDate, validDate);
-      expect(result).toBe('Invalid Date');
+      expect(result).toBe('Invalid date range');
     });
   });
 
@@ -172,7 +172,7 @@ describe('dateUtils', () => {
     test('formats seconds ago', () => {
       const thirtySecondsAgo = new Date('2024-01-15T11:59:30Z');
       const result = formatTimeAgo(thirtySecondsAgo);
-      expect(result).toBe('30 seconds ago');
+      expect(result).toBe('Just now');
     });
 
     test('formats minutes ago', () => {

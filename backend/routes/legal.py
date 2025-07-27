@@ -1,6 +1,7 @@
+from datetime import datetime
+
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
-from datetime import datetime
 
 router = APIRouter(prefix="/legal", tags=["Legal"])
 
@@ -9,15 +10,16 @@ TERMS_VERSION = "1.0"
 PRIVACY_VERSION = "1.0"
 LAST_UPDATED = "2024-01-15"
 
+
 @router.get("/terms", response_class=HTMLResponse)
 async def get_terms_and_conditions():
     """
     **Terms and Conditions Page**
-    
+
     Comprehensive terms of service including subscription terms, billing policies, and user obligations.
     GDPR compliant and includes specific provisions for EU users.
     """
-    
+
     html_content = f"""
     <!DOCTYPE html>
     <html lang="en">
@@ -216,18 +218,19 @@ async def get_terms_and_conditions():
     </body>
     </html>
     """
-    
+
     return html_content
+
 
 @router.get("/privacy", response_class=HTMLResponse)
 async def get_privacy_policy():
     """
     **Privacy Policy Page**
-    
+
     Comprehensive privacy policy with detailed GDPR compliance information,
     data processing procedures, and user rights protection.
     """
-    
+
     html_content = f"""
     <!DOCTYPE html>
     <html lang="en">
@@ -544,17 +547,18 @@ async def get_privacy_policy():
     </body>
     </html>
     """
-    
+
     return html_content
+
 
 @router.get("/cookie-policy", response_class=HTMLResponse)
 async def get_cookie_policy():
     """
     **Cookie Policy Page**
-    
+
     Detailed cookie policy with GDPR compliance and granular cookie management options.
     """
-    
+
     html_content = f"""
     <!DOCTYPE html>
     <html lang="en">
@@ -965,8 +969,9 @@ async def get_cookie_policy():
     </body>
     </html>
     """
-    
+
     return html_content
+
 
 @router.get("/gdpr-info")
 async def get_gdpr_info():
@@ -976,32 +981,32 @@ async def get_gdpr_info():
             "right_of_access": {
                 "description": "Request access to your personal data",
                 "how_to_exercise": "Email gdpr@buzz2remote.com",
-                "response_time": "30 days"
+                "response_time": "30 days",
             },
             "right_to_rectification": {
                 "description": "Correct inaccurate personal data",
                 "how_to_exercise": "Update in account settings or email gdpr@buzz2remote.com",
-                "response_time": "30 days"
+                "response_time": "30 days",
             },
             "right_to_erasure": {
                 "description": "Request deletion of your personal data",
                 "how_to_exercise": "Delete account or email gdpr@buzz2remote.com",
-                "response_time": "30 days"
+                "response_time": "30 days",
             },
             "right_to_portability": {
                 "description": "Receive your data in structured format",
                 "how_to_exercise": "Email gdpr@buzz2remote.com with export request",
-                "response_time": "30 days"
+                "response_time": "30 days",
             },
             "right_to_object": {
                 "description": "Object to processing of your personal data",
                 "how_to_exercise": "Email gdpr@buzz2remote.com",
-                "response_time": "30 days"
-            }
+                "response_time": "30 days",
+            },
         },
         "contact": {
             "dpo_email": "dpo@buzz2remote.com",
             "gdpr_email": "gdpr@buzz2remote.com",
-            "general_privacy": "privacy@buzz2remote.com"
-        }
-    } 
+            "general_privacy": "privacy@buzz2remote.com",
+        },
+    }

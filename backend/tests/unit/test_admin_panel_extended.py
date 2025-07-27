@@ -1,9 +1,10 @@
-import pytest
 import asyncio
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
-from fastapi.testclient import TestClient
 from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
+import pytest
 from bson import ObjectId
+from fastapi.testclient import TestClient
 
 from main import app
 
@@ -20,6 +21,7 @@ class TestAdminPanelExtended:
         """Admin panel modülü başarıyla import edilir"""
         try:
             from admin_panel.routes import router as admin_router
+
             assert admin_router is not None
         except ImportError as e:
             pytest.skip(f"Admin panel routes not available: {e}")
@@ -28,9 +30,10 @@ class TestAdminPanelExtended:
         """Admin panel router konfigürasyonu doğru"""
         try:
             from admin_panel.routes import router as admin_router
+
             # Router object properties
-            assert hasattr(admin_router, 'routes')
-            assert hasattr(admin_router, 'prefix')
+            assert hasattr(admin_router, "routes")
+            assert hasattr(admin_router, "prefix")
         except ImportError as e:
             pytest.skip(f"Admin panel routes not available: {e}")
 
@@ -41,7 +44,7 @@ class TestAdminPanelExtended:
         assert response.status_code in [200, 302, 307]
 
     def test_admin_logout_route_exists(self, client):
-        """Admin logout route mevcut"""  
+        """Admin logout route mevcut"""
         response = client.get("/admin/logout")
         # Should return 302 (redirect) or 200
         assert response.status_code in [200, 302, 307]
@@ -87,23 +90,25 @@ class TestAdminPanelExtended:
         response = client.get("/admin/test")
         assert response.status_code in [200, 302, 404, 500]
 
-    @patch('backend.admin_panel.routes.DATABASE_AVAILABLE', True)
-    @patch('backend.admin_panel.routes.get_async_db')
+    @patch("backend.admin_panel.routes.DATABASE_AVAILABLE", True)
+    @patch("backend.admin_panel.routes.get_async_db")
     def test_admin_dashboard_with_db(self, mock_db, client):
         """Admin dashboard database ile test"""
         mock_db_instance = AsyncMock()
         mock_db.return_value.__aenter__.return_value = mock_db_instance
-        
+
         # Mock database responses
         mock_db_instance.jobs.count_documents = AsyncMock(return_value=1000)
-        mock_db_instance.jobs.distinct = AsyncMock(return_value=["Company1", "Company2"])
+        mock_db_instance.jobs.distinct = AsyncMock(
+            return_value=["Company1", "Company2"]
+        )
         mock_db_instance.users.count_documents = AsyncMock(return_value=50)
-        
+
         response = client.get("/admin/")
         # Should handle the route (redirect or render)
         assert response.status_code in [200, 302, 307, 500]
 
-    @patch('backend.admin_panel.routes.DATABASE_AVAILABLE', False)
+    @patch("backend.admin_panel.routes.DATABASE_AVAILABLE", False)
     def test_admin_without_database(self, client):
         """Admin panel database olmadan test"""
         response = client.get("/admin/")
@@ -193,11 +198,11 @@ class TestAdminPanelExtended:
         # Should return some response
         assert response.status_code in [200, 302, 401, 403, 404, 500]
 
-    @patch('backend.admin_panel.routes.templates')
+    @patch("backend.admin_panel.routes.templates")
     def test_admin_template_rendering(self, mock_templates, client):
         """Admin template rendering test"""
         mock_templates.TemplateResponse.return_value = Mock()
-        
+
         response = client.get("/admin/login")
         # Should attempt to render template
         assert response.status_code in [200, 302, 500]
@@ -206,12 +211,13 @@ class TestAdminPanelExtended:
         """Admin static files yapısı kontrol"""
         try:
             import os
+
             admin_static_path = "backend/admin_panel/static"
             if os.path.exists(admin_static_path):
                 # Check if static directories exist
                 css_path = os.path.join(admin_static_path, "css")
                 js_path = os.path.join(admin_static_path, "js")
-                
+
                 # Directories should exist or be creatable
                 assert True  # Structure validation passed
             else:
@@ -225,11 +231,12 @@ class TestAdminPanelExtended:
         """Admin templates yapısı kontrol"""
         try:
             import os
+
             admin_templates_path = "backend/admin_panel/templates"
             if os.path.exists(admin_templates_path):
                 # Check if template files exist
                 base_template = os.path.join(admin_templates_path, "base.html")
-                
+
                 # Templates should exist or be manageable
                 assert True  # Structure validation passed
             else:
@@ -243,7 +250,7 @@ class TestAdminPanelExtended:
         """Admin security headers test"""
         response = client.get("/admin/login")
         # Should have response headers (security or otherwise)
-        assert hasattr(response, 'headers')
+        assert hasattr(response, "headers")
         assert isinstance(response.headers, object)
 
     def test_admin_error_handling(self, client):
@@ -268,7 +275,7 @@ class TestAdminPanelExtended:
         # Test session behavior
         response1 = client.get("/admin/login")
         response2 = client.get("/admin/login")
-        
+
         # Should handle sessions consistently
         assert response1.status_code in [200, 302]
         assert response2.status_code in [200, 302]
@@ -287,7 +294,7 @@ class TestAdminPanelExtended:
         for i in range(3):
             response = client.get("/admin/test")
             responses.append(response.status_code)
-        
+
         # Should handle multiple requests (rate limiting or normal operation)
         for status_code in responses:
             assert status_code in [200, 302, 404, 429, 500]
@@ -295,7 +302,9 @@ class TestAdminPanelExtended:
     def test_admin_content_type_handling(self, client):
         """Admin content type handling test"""
         response_html = client.get("/admin/login", headers={"Accept": "text/html"})
-        response_json = client.get("/admin/test", headers={"Accept": "application/json"})
-        
+        response_json = client.get(
+            "/admin/test", headers={"Accept": "application/json"}
+        )
+
         assert response_html.status_code in [200, 302, 404, 500]
-        assert response_json.status_code in [200, 302, 404, 500] 
+        assert response_json.status_code in [200, 302, 404, 500]

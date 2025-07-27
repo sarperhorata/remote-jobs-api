@@ -1,56 +1,67 @@
-import time
-import uuid
 import json
 import logging
-from typing import Callable, Dict, Any, Optional
+import time
+import uuid
+from datetime import datetime
+from typing import Any, Callable, Dict, Optional
+
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
-from datetime import datetime
 
 from ..services.activity_logger import activity_logger
 
 logger = logging.getLogger(__name__)
 
+
 class ActivityTrackingMiddleware(BaseHTTPMiddleware):
     """Middleware to track all user activities and API calls"""
-    
+
     def __init__(self, app, exclude_paths: list = None):
         super().__init__(app)
         self.exclude_paths = exclude_paths or [
-            "/docs", "/redoc", "/openapi.json", "/favicon.ico", 
-            "/health", "/admin/static", "/static"
+            "/docs",
+            "/redoc",
+            "/openapi.json",
+            "/favicon.ico",
+            "/health",
+            "/admin/static",
+            "/static",
         ]
-    
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Skip tracking for excluded paths
         if any(request.url.path.startswith(path) for path in self.exclude_paths):
             return await call_next(request)
-        
+
         # Start tracking
         start_time = time.time()
         request_id = str(uuid.uuid4())
-        
+
         # Extract user info from request
         user_id = await self._extract_user_id(request)
         session_id = await self._extract_session_id(request)
-        
+
         # Prepare request data for logging
         request_data = {
             "request_id": request_id,
             "method": request.method,
             "endpoint": request.url.path,
             "query_params": dict(request.query_params),
-            "headers": {k: v for k, v in request.headers.items() if k.lower() not in ['authorization', 'cookie']},
+            "headers": {
+                k: v
+                for k, v in request.headers.items()
+                if k.lower() not in ["authorization", "cookie"]
+            },
             "ip_address": self._get_client_ip(request),
             "user_agent": request.headers.get("user-agent", ""),
-            "referer": request.headers.get("referer", "")
+            "referer": request.headers.get("referer", ""),
         }
-        
+
         # Process request
         response = None
         error_occurred = False
         error_message = None
-        
+
         try:
             response = await call_next(request)
         except Exception as e:
@@ -61,7 +72,7 @@ class ActivityTrackingMiddleware(BaseHTTPMiddleware):
         finally:
             # Calculate response time
             process_time = (time.time() - start_time) * 1000  # Convert to milliseconds
-            
+
             # Log the activity
             try:
                 await self._log_request_activity(
@@ -71,32 +82,32 @@ class ActivityTrackingMiddleware(BaseHTTPMiddleware):
                     response_time_ms=process_time,
                     status_code=response.status_code if response else 500,
                     error_occurred=error_occurred,
-                    error_message=error_message
+                    error_message=error_message,
                 )
             except Exception as log_error:
                 logger.error(f"Failed to log activity: {str(log_error)}")
-        
+
         # Add response headers
         if response:
             response.headers["X-Request-ID"] = request_id
             response.headers["X-Response-Time"] = f"{process_time:.2f}ms"
-        
+
         return response
-    
+
     def _get_client_ip(self, request: Request) -> str:
         """Extract real client IP from request"""
         # Check proxy headers
         forwarded_for = request.headers.get("x-forwarded-for")
         if forwarded_for:
             return forwarded_for.split(",")[0].strip()
-        
+
         real_ip = request.headers.get("x-real-ip")
         if real_ip:
             return real_ip
-        
+
         # Fallback to client IP
         return request.client.host if request.client else "unknown"
-    
+
     async def _extract_user_id(self, request: Request) -> Optional[str]:
         """Extract user ID from JWT token or session"""
         try:
@@ -105,20 +116,21 @@ class ActivityTrackingMiddleware(BaseHTTPMiddleware):
             if authorization and authorization.startswith("Bearer "):
                 # Import here to avoid circular imports
                 from utils.auth import decode_token
+
                 token = authorization.split(" ")[1]
                 payload = decode_token(token)
                 return payload.get("sub") if payload else None
-            
+
             # Try to get from session
             session_user = request.session.get("user")
             if session_user:
                 return session_user.get("id")
-                
+
         except Exception as e:
             logger.debug(f"Could not extract user ID: {str(e)}")
-        
+
         return None
-    
+
     async def _extract_session_id(self, request: Request) -> Optional[str]:
         """Extract session ID from request"""
         try:
@@ -126,7 +138,7 @@ class ActivityTrackingMiddleware(BaseHTTPMiddleware):
             return request.session.get("session_id")
         except Exception:
             return None
-    
+
     async def _log_request_activity(
         self,
         request_data: Dict[str, Any],
@@ -135,16 +147,15 @@ class ActivityTrackingMiddleware(BaseHTTPMiddleware):
         response_time_ms: float,
         status_code: int,
         error_occurred: bool = False,
-        error_message: Optional[str] = None
+        error_message: Optional[str] = None,
     ):
         """Log the request as a user activity"""
-        
+
         # Determine activity type based on endpoint
         activity_type = self._determine_activity_type(
-            request_data["endpoint"], 
-            request_data["method"]
+            request_data["endpoint"], request_data["method"]
         )
-        
+
         # Prepare activity data
         activity_data = {
             "endpoint": request_data["endpoint"],
@@ -154,13 +165,13 @@ class ActivityTrackingMiddleware(BaseHTTPMiddleware):
             "status_code": status_code,
             "user_agent": request_data["user_agent"],
             "referer": request_data["referer"],
-            "request_id": request_data["request_id"]
+            "request_id": request_data["request_id"],
         }
-        
+
         if error_occurred:
             activity_data["error_message"] = error_message
             activity_type = "error_occurred"
-        
+
         # Log the activity
         await activity_logger.log_activity(
             activity_type=activity_type,
@@ -170,12 +181,12 @@ class ActivityTrackingMiddleware(BaseHTTPMiddleware):
             ip_address=request_data["ip_address"],
             response_time_ms=response_time_ms,
             status_code=status_code,
-            is_success=not error_occurred
+            is_success=not error_occurred,
         )
-    
+
     def _determine_activity_type(self, endpoint: str, method: str) -> str:
         """Determine activity type based on endpoint and method"""
-        
+
         # Authentication endpoints
         if "/api/auth" in endpoint:
             if "login" in endpoint:
@@ -188,7 +199,7 @@ class ActivityTrackingMiddleware(BaseHTTPMiddleware):
                 return "password_reset"
             else:
                 return "auth_action"
-        
+
         # Job-related endpoints
         if "/api/jobs" in endpoint:
             if method == "GET":
@@ -205,7 +216,7 @@ class ActivityTrackingMiddleware(BaseHTTPMiddleware):
                     return "job_save"
                 else:
                     return "job_action"
-        
+
         # Application endpoints
         if "/api/applications" in endpoint:
             if method == "POST":
@@ -214,22 +225,22 @@ class ActivityTrackingMiddleware(BaseHTTPMiddleware):
                 return "application_view"
             else:
                 return "application_action"
-        
+
         # Profile endpoints
         if "/api/profile" in endpoint or "/api/onboarding" in endpoint:
             return "profile_update"
-        
+
         # Company endpoints
         if "/api/companies" in endpoint:
             return "company_view"
-        
+
         # Payment endpoints
         if "/api/payment" in endpoint:
             return "payment_action"
-        
+
         # Admin endpoints
         if "/admin" in endpoint:
             return "admin_action"
-        
+
         # Default
-        return "api_call" 
+        return "api_call"

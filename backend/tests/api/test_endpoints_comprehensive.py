@@ -1,9 +1,12 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
+
 from main import app
 
 client = TestClient(app)
+
 
 class TestComprehensiveEndpoints:
     def test_jobs_statistics(self):
@@ -21,7 +24,10 @@ class TestComprehensiveEndpoints:
 
     @patch("backend.services.mailgun_service.mailgun_service.send_email")
     def test_email_test_endpoint(self, mock_send_email):
-        mock_send_email.return_value = {"success": True, "message": "Email sent successfully"}
+        mock_send_email.return_value = {
+            "success": True,
+            "message": "Email sent successfully",
+        }
         response = client.post("/email-test/send-test-email?email=test@example.com")
         # Email test endpoint might not exist in all environments
         assert response.status_code in [200, 404]
@@ -59,4 +65,4 @@ class TestComprehensiveEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert "companies" in data
-        assert "total" in data 
+        assert "total" in data

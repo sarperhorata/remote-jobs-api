@@ -1,38 +1,47 @@
-import os
-import requests
 import logging
-from typing import Dict, Any, Optional, List
+import os
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+import requests
 
 logger = logging.getLogger(__name__)
 
+
 class MailgunService:
     """Mailgun email service for sending emails"""
-    
+
     def __init__(self):
         self.api_key = os.getenv("MAILGUN_API_KEY")
-        self.domain = os.getenv("MAILGUN_DOMAIN", "mg.buzz2remote.com")  # Mailgun'da ayarlanmış domain
+        self.domain = os.getenv(
+            "MAILGUN_DOMAIN", "mg.buzz2remote.com"
+        )  # Mailgun'da ayarlanmış domain
         self.from_email = os.getenv("FROM_EMAIL", "info@buzz2remote.com")
         self.base_url = f"https://api.mailgun.net/v3/{self.domain}"
-        
+
         # Daily email limit for free tier
         self.daily_limit = 100
         self.sent_today = 0
         self.last_reset_date = datetime.now().date()
-        
+
         # Brand colors and styling
         self.brand_colors = {
             "primary": "#667eea",
-            "secondary": "#764ba2", 
+            "secondary": "#764ba2",
             "success": "#28a745",
             "warning": "#ffc107",
             "danger": "#dc3545",
             "info": "#17a2b8",
             "light": "#f8f9fa",
-            "dark": "#343a40"
+            "dark": "#343a40",
         }
-        
-    def _get_base_template(self, title: str, content: str, header_gradient: str = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)") -> str:
+
+    def _get_base_template(
+        self,
+        title: str,
+        content: str,
+        header_gradient: str = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    ) -> str:
         """Get base email template with Buzz2Remote branding"""
         return f"""
         <!DOCTYPE html>
@@ -288,54 +297,56 @@ class MailgunService:
         </body>
         </html>
         """
-        
+
     def _check_daily_limit(self) -> bool:
         """Check if we're within daily email limit"""
         current_date = datetime.now().date()
-        
+
         # Reset counter if new day
         if current_date > self.last_reset_date:
             self.sent_today = 0
             self.last_reset_date = current_date
-            
+
         return self.sent_today < self.daily_limit
-    
+
     def send_email(
         self,
         to_email: str,
         subject: str,
         html_content: str,
         text_content: Optional[str] = None,
-        from_name: Optional[str] = "Buzz2Remote"
+        from_name: Optional[str] = "Buzz2Remote",
     ) -> Dict[str, Any]:
         """
         Send email via Mailgun API
-        
+
         Args:
             to_email: Recipient email address
             subject: Email subject
             html_content: HTML email content
             text_content: Plain text content (optional)
             from_name: Sender name (optional)
-            
+
         Returns:
             Dict with success status and message
         """
         try:
             # Check if Mailgun API key is configured
             if not self.api_key:
-                logger.warning(f"Mailgun API key not configured. Logging email instead of sending: {to_email} - {subject}")
+                logger.warning(
+                    f"Mailgun API key not configured. Logging email instead of sending: {to_email} - {subject}"
+                )
                 logger.info(f"Email content (HTML): {html_content[:500]}...")
                 if text_content:
                     logger.info(f"Email content (Text): {text_content[:500]}...")
-                
+
                 # Return success for development/testing purposes
                 return {
                     "success": True,
                     "message": "Email logged (Mailgun not configured)",
-                    "warning": "Mailgun API key not configured - email was logged instead of sent"
+                    "warning": "Mailgun API key not configured - email was logged instead of sent",
                 }
-            
+
             # Check daily limit
             if not self._check_daily_limit():
                 logger.error(f"Daily email limit ({self.daily_limit}) reached")
@@ -344,73 +355,68 @@ class MailgunService:
                     "error": "Daily email limit reached",
                     "limit_info": {
                         "sent_today": self.sent_today,
-                        "daily_limit": self.daily_limit
-                    }
+                        "daily_limit": self.daily_limit,
+                    },
                 }
-            
+
             # Prepare email data
-            from_address = f"{from_name} <{self.from_email}>" if from_name else self.from_email
-            
+            from_address = (
+                f"{from_name} <{self.from_email}>" if from_name else self.from_email
+            )
+
             data = {
                 "from": from_address,
                 "to": to_email,
                 "subject": subject,
-                "html": html_content
+                "html": html_content,
             }
-            
+
             if text_content:
                 data["text"] = text_content
-            
+
             # Send email via Mailgun API
             response = requests.post(
                 f"{self.base_url}/messages",
                 auth=("api", self.api_key),
                 data=data,
-                timeout=30
+                timeout=30,
             )
-            
+
             if response.status_code == 200:
                 self.sent_today += 1
                 logger.info(f"Email sent successfully to {to_email}")
                 return {
                     "success": True,
                     "message_id": response.json().get("id"),
-                    "message": "Email sent successfully"
+                    "message": "Email sent successfully",
                 }
             else:
-                logger.error(f"Mailgun API error: {response.status_code} - {response.text}")
+                logger.error(
+                    f"Mailgun API error: {response.status_code} - {response.text}"
+                )
                 return {
                     "success": False,
                     "error": f"Mailgun API error: {response.status_code}",
-                    "details": response.text
+                    "details": response.text,
                 }
-                
+
         except requests.exceptions.Timeout:
             logger.error("Mailgun API timeout")
-            return {
-                "success": False,
-                "error": "Email service timeout"
-            }
+            return {"success": False, "error": "Email service timeout"}
         except requests.exceptions.RequestException as e:
             logger.error(f"Mailgun request error: {str(e)}")
-            return {
-                "success": False,
-                "error": f"Request error: {str(e)}"
-            }
+            return {"success": False, "error": f"Request error: {str(e)}"}
         except Exception as e:
             logger.error(f"Unexpected error sending email: {str(e)}")
-            return {
-                "success": False,
-                "error": f"Unexpected error: {str(e)}"
-            }
-    
+            return {"success": False, "error": f"Unexpected error: {str(e)}"}
+
     def send_verification_email(self, email: str, token: str) -> bool:
         """Send email verification email with enhanced template"""
         frontend_url = os.getenv("FRONTEND_URL", "https://buzz2remote.com")
         verification_url = f"{frontend_url}/verify-email?token={token}"
-        
+
         subject = "✅ Email Adresinizi Doğrulayın - Buzz2Remote"
-        
+
         content = f"""
         <h2>🎉 Hoş Geldiniz!</h2>
         <p>Buzz2Remote'a kaydolduğunuz için teşekkürler! Hesabınızı aktifleştirmek için email adresinizi doğrulamanız gerekiyor.</p>
@@ -456,9 +462,9 @@ class MailgunService:
             Alternatif link: {verification_url}
         </p>
         """
-        
+
         html_content = self._get_base_template("Email Doğrulama", content)
-        
+
         text_content = f"""
         Buzz2Remote'a Hoş Geldiniz!
         
@@ -471,23 +477,23 @@ class MailgunService:
         
         Buzz2Remote Ekibi
         """
-        
+
         result = self.send_email(
             to_email=email,
             subject=subject,
             html_content=html_content,
-            text_content=text_content
+            text_content=text_content,
         )
-        
+
         return result.get("success", False)
-    
+
     def send_password_reset_email(self, email: str, token: str) -> bool:
         """Send password reset email with enhanced template"""
         frontend_url = os.getenv("FRONTEND_URL", "https://buzz2remote.com")
         reset_url = f"{frontend_url}/reset-password?token={token}"
-        
+
         subject = "🔐 Şifre Sıfırlama Talebi - Buzz2Remote"
-        
+
         content = f"""
         <h2>Şifrenizi Sıfırlayın</h2>
         <p>Buzz2Remote hesabınız için şifre sıfırlama talebi aldık. Güvenliğiniz için hemen işlem yapmanızı öneririz.</p>
@@ -512,13 +518,13 @@ class MailgunService:
         
         <p><strong>Destek:</strong> Herhangi bir sorun yaşarsanız <a href="mailto:support@buzz2remote.com">support@buzz2remote.com</a> adresinden bizimle iletişime geçebilirsiniz.</p>
         """
-        
+
         html_content = self._get_base_template(
-            "Şifre Sıfırlama", 
-            content, 
-            "linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)"
+            "Şifre Sıfırlama",
+            content,
+            "linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)",
         )
-        
+
         text_content = f"""
         Şifre Sıfırlama - Buzz2Remote
         
@@ -531,20 +537,20 @@ class MailgunService:
         
         Buzz2Remote Güvenlik Ekibi
         """
-        
+
         result = self.send_email(
             to_email=email,
             subject=subject,
             html_content=html_content,
-            text_content=text_content
+            text_content=text_content,
         )
-        
+
         return result.get("success", False)
-    
+
     def send_welcome_email(self, email: str, name: str) -> bool:
         """Send welcome email after onboarding completion"""
         subject = "🎉 Hoş Geldiniz! Kariyeriniz Başlıyor - Buzz2Remote"
-        
+
         content = f"""
         <h2>Merhaba {name}! 🎉</h2>
         <p>Tebrikler! Buzz2Remote ailesine katıldınız. Artık dünyanın en iyi remote iş fırsatlarına erişim sahibisiniz.</p>
@@ -587,41 +593,43 @@ class MailgunService:
         
         <p><strong>Remote çalışma dünyasında başarılar!</strong></p>
         """
-        
+
         html_content = self._get_base_template(
-            "Hoş Geldiniz!", 
-            content, 
-            "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)"
+            "Hoş Geldiniz!",
+            content,
+            "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
         )
-        
+
         result = self.send_email(
-            to_email=email,
-            subject=subject,
-            html_content=html_content
+            to_email=email, subject=subject, html_content=html_content
         )
-        
+
         return result.get("success", False)
-    
-    def send_new_jobs_email(self, email: str, name: str, jobs: List[Dict], user_preferences: Dict = None) -> bool:
+
+    def send_new_jobs_email(
+        self, email: str, name: str, jobs: List[Dict], user_preferences: Dict = None
+    ) -> bool:
         """Send daily/weekly new jobs email"""
         job_count = len(jobs)
         subject = f"🔥 {job_count} Yeni Remote İş Fırsatı - Buzz2Remote"
-        
+
         # Create search URL with user preferences
         frontend_url = os.getenv("FRONTEND_URL", "https://buzz2remote.com")
         search_params = []
-        
+
         if user_preferences:
             if user_preferences.get("location"):
                 search_params.append(f"location={user_preferences['location']}")
             if user_preferences.get("skills"):
-                search_params.append(f"skills={','.join(user_preferences['skills'][:3])}")
+                search_params.append(
+                    f"skills={','.join(user_preferences['skills'][:3])}"
+                )
             if user_preferences.get("salary_min"):
                 search_params.append(f"salary_min={user_preferences['salary_min']}")
-        
+
         search_params.append("date_range=24h")  # Son 24 saat
         search_url = f"{frontend_url}/jobs?" + "&".join(search_params)
-        
+
         # Generate job cards HTML
         job_cards_html = ""
         for job in jobs[:5]:  # Sadece ilk 5 işi göster
@@ -630,11 +638,11 @@ class MailgunService:
                 salary_info = f"${job['salary_min']:,} - ${job['salary_max']:,}"
             elif job.get("salary_min"):
                 salary_info = f"${job['salary_min']:,}+"
-            
+
             location_info = job.get("location", "Remote")
             if location_info == "Remote" or not location_info:
                 location_info = "🌍 Anywhere"
-            
+
             job_cards_html += f"""
             <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 16px; transition: all 0.3s ease;">
                 <div style="display: flex; align-items: center; margin-bottom: 12px;">
@@ -655,7 +663,7 @@ class MailgunService:
                 <a href="{frontend_url}/jobs/{job.get('_id', '')}" style="color: #667eea; text-decoration: none; font-weight: 500; font-size: 14px;">Detayları Görüntüle →</a>
             </div>
             """
-        
+
         content = f"""
         <h2>Merhaba {name}! 👋</h2>
         <p>Son 24 saatte sizin için <strong>{job_count} yeni remote iş fırsatı</strong> bulundu!</p>
@@ -683,34 +691,62 @@ class MailgunService:
         
         <p>Bu email'i almayı istemiyorsanız, <a href="{frontend_url}/unsubscribe?email={email}">buradan</a> abonelikten çıkabilirsiniz.</p>
         """
-        
+
         html_content = self._get_base_template(
-            "Yeni İş Fırsatları", 
-            content, 
-            "linear-gradient(135deg, #ff9a56 0%, #ffad56 100%)"
+            "Yeni İş Fırsatları",
+            content,
+            "linear-gradient(135deg, #ff9a56 0%, #ffad56 100%)",
         )
-        
+
         result = self.send_email(
-            to_email=email,
-            subject=subject,
-            html_content=html_content
+            to_email=email, subject=subject, html_content=html_content
         )
-        
+
         return result.get("success", False)
-    
-    def send_application_status_email(self, email: str, name: str, job_title: str, company_name: str, status: str) -> bool:
+
+    def send_application_status_email(
+        self, email: str, name: str, job_title: str, company_name: str, status: str
+    ) -> bool:
         """Send application status update email"""
         status_info = {
-            "accepted": {"emoji": "🎉", "color": "#10b981", "title": "Başvurunuz Kabul Edildi!", "message": "Tebrikler! Başvurunuz olumlu karşılandı."},
-            "rejected": {"emoji": "😔", "color": "#ef4444", "title": "Başvuru Sonucu", "message": "Maalesef bu sefer olmadı, ama pes etmeyin!"},
-            "interview": {"emoji": "📞", "color": "#3b82f6", "title": "Mülakat Davetiniz Var!", "message": "Harika haber! Mülakat için davet edildiniz."},
-            "viewed": {"emoji": "👀", "color": "#8b5cf6", "title": "Başvurunuz İnceleniyor", "message": "Başvurunuz HR ekibi tarafından görüntülendi."}
+            "accepted": {
+                "emoji": "🎉",
+                "color": "#10b981",
+                "title": "Başvurunuz Kabul Edildi!",
+                "message": "Tebrikler! Başvurunuz olumlu karşılandı.",
+            },
+            "rejected": {
+                "emoji": "😔",
+                "color": "#ef4444",
+                "title": "Başvuru Sonucu",
+                "message": "Maalesef bu sefer olmadı, ama pes etmeyin!",
+            },
+            "interview": {
+                "emoji": "📞",
+                "color": "#3b82f6",
+                "title": "Mülakat Davetiniz Var!",
+                "message": "Harika haber! Mülakat için davet edildiniz.",
+            },
+            "viewed": {
+                "emoji": "👀",
+                "color": "#8b5cf6",
+                "title": "Başvurunuz İnceleniyor",
+                "message": "Başvurunuz HR ekibi tarafından görüntülendi.",
+            },
         }
-        
-        info = status_info.get(status, {"emoji": "📝", "color": "#6b7280", "title": "Başvuru Güncellemesi", "message": "Başvuru durumunuzda güncelleme var."})
-        
+
+        info = status_info.get(
+            status,
+            {
+                "emoji": "📝",
+                "color": "#6b7280",
+                "title": "Başvuru Güncellemesi",
+                "message": "Başvuru durumunuzda güncelleme var.",
+            },
+        )
+
         subject = f"{info['emoji']} {info['title']} - {company_name}"
-        
+
         content = f"""
         <h2>Merhaba {name}!</h2>
         <p>{info['message']}</p>
@@ -725,64 +761,63 @@ class MailgunService:
         
         <p>Başarılar dileriz!</p>
         """
-        
+
         html_content = self._get_base_template(
-            info['title'], 
-            content, 
-            f"linear-gradient(135deg, {info['color']} 0%, {info['color']}dd 100%)"
+            info["title"],
+            content,
+            f"linear-gradient(135deg, {info['color']} 0%, {info['color']}dd 100%)",
         )
-        
+
         result = self.send_email(
-            to_email=email,
-            subject=subject,
-            html_content=html_content
+            to_email=email, subject=subject, html_content=html_content
         )
-        
+
         return result.get("success", False)
-    
-    def create_mailgun_template(self, template_name: str, template_content: Dict) -> Dict[str, Any]:
+
+    def create_mailgun_template(
+        self, template_name: str, template_content: Dict
+    ) -> Dict[str, Any]:
         """Create stored template in Mailgun"""
         try:
             data = {
                 "name": template_name,
                 "description": template_content.get("description", ""),
                 "template": template_content.get("html", ""),
-                "tag": "buzz2remote-templates"
+                "tag": "buzz2remote-templates",
             }
-            
+
             response = requests.post(
                 f"{self.base_url}/templates",
                 auth=("api", self.api_key),
                 data=data,
-                timeout=30
+                timeout=30,
             )
-            
+
             if response.status_code == 200:
                 logger.info(f"Template {template_name} created successfully")
                 return {
                     "success": True,
                     "template_name": template_name,
-                    "response": response.json()
+                    "response": response.json(),
                 }
             else:
-                logger.error(f"Failed to create template: {response.status_code} - {response.text}")
+                logger.error(
+                    f"Failed to create template: {response.status_code} - {response.text}"
+                )
                 return {
                     "success": False,
                     "error": f"Mailgun API error: {response.status_code}",
-                    "details": response.text
+                    "details": response.text,
                 }
-                
+
         except Exception as e:
             logger.error(f"Error creating template: {str(e)}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
+            return {"success": False, "error": str(e)}
+
     def test_email_service(self, test_email: str) -> Dict[str, Any]:
         """Test email service with enhanced template"""
         subject = "🧪 Test Email - Buzz2Remote"
-        
+
         content = f"""
         <h2>Email Service Test</h2>
         <p>Bu bir test emailidir. Eğer bu emaili alıyorsanız, Mailgun entegrasyonu başarıyla çalışıyor!</p>
@@ -806,19 +841,15 @@ class MailgunService:
         
         <p><strong>Test tarihi:</strong> {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
         """
-        
+
         html_content = self._get_base_template(
-            "Test Email", 
-            content, 
-            "linear-gradient(135deg, #10b981 0%, #059669 100%)"
+            "Test Email", content, "linear-gradient(135deg, #10b981 0%, #059669 100%)"
         )
-        
+
         return self.send_email(
-            to_email=test_email,
-            subject=subject,
-            html_content=html_content
+            to_email=test_email, subject=subject, html_content=html_content
         )
-    
+
     def get_stats(self) -> Dict[str, Any]:
         """Get email service statistics"""
         return {
@@ -826,8 +857,11 @@ class MailgunService:
             "daily_limit": self.daily_limit,
             "remaining_today": self.daily_limit - self.sent_today,
             "last_reset_date": self.last_reset_date.isoformat(),
-            "service_status": "active" if self._check_daily_limit() else "limit_reached"
+            "service_status": (
+                "active" if self._check_daily_limit() else "limit_reached"
+            ),
         }
 
+
 # Global instance
-mailgun_service = MailgunService() 
+mailgun_service = MailgunService()

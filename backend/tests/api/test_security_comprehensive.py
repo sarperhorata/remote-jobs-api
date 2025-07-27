@@ -1,11 +1,14 @@
-import pytest
-from fastapi.testclient import TestClient
-from unittest.mock import patch, Mock
 import json
 import time
+from unittest.mock import Mock, patch
+
+import pytest
+from fastapi.testclient import TestClient
+
 from main import app
 
 client = TestClient(app)
+
 
 class TestAPISecurityComprehensive:
     """Comprehensive API security tests"""
@@ -17,14 +20,14 @@ class TestAPISecurityComprehensive:
             "1' OR '1'='1",
             "admin'; DELETE FROM users; --",
             "1' UNION SELECT * FROM users --",
-            "'; INSERT INTO jobs VALUES ('malicious'); --"
+            "'; INSERT INTO jobs VALUES ('malicious'); --",
         ]
-        
+
         for injection in sql_injections:
             # Test in job search
             response = client.get(f"/api/v1/jobs/search?q={injection}")
             assert response.status_code in [200, 400, 422]
-            
+
             # Should not return suspicious data
             if response.status_code == 200:
                 data = response.json()
@@ -38,12 +41,12 @@ class TestAPISecurityComprehensive:
             "javascript:alert('xss')",
             "<img src=x onerror=alert('xss')>",
             "<iframe src=javascript:alert('xss')></iframe>",
-            "';alert('xss');//"
+            "';alert('xss');//",
         ]
-        
+
         for payload in xss_payloads:
             response = client.get(f"/api/v1/jobs/search?q={payload}")
-            
+
             # Should sanitize or reject XSS attempts
             if response.status_code == 200:
                 data = response.text
@@ -58,14 +61,14 @@ class TestAPISecurityComprehensive:
             "../../../windows/system32/config/sam",
             "....//....//etc/passwd",
             "%2e%2e%2f%2e%2e%2fetc%2fpasswd",
-            "..\\..\\windows\\system32\\config\\sam"
+            "..\\..\\windows\\system32\\config\\sam",
         ]
-        
+
         for traversal in path_traversals:
             # Test in various endpoints
             response = client.get(f"/api/v1/jobs/{traversal}")
             assert response.status_code in [400, 404, 422]
-            
+
             # Should not expose system files
             if response.status_code == 200:
                 data = response.text.lower()
@@ -77,12 +80,12 @@ class TestAPISecurityComprehensive:
         malicious_headers = {
             "X-Forwarded-For": "127.0.0.1\r\nX-Injected: malicious",
             "User-Agent": "test\r\nSet-Cookie: malicious=true",
-            "Referer": "http://evil.com\r\nLocation: http://evil.com"
+            "Referer": "http://evil.com\r\nLocation: http://evil.com",
         }
-        
+
         for header, value in malicious_headers.items():
             response = client.get("/api/v1/jobs/search", headers={header: value})
-            
+
             # Should not include injected headers in response
             assert "X-Injected" not in response.headers
             assert "malicious=true" not in response.headers.get("Set-Cookie", "")
@@ -94,12 +97,12 @@ class TestAPISecurityComprehensive:
             "| cat /etc/passwd",
             "&& rm -rf /",
             "`whoami`",
-            "$(cat /etc/passwd)"
+            "$(cat /etc/passwd)",
         ]
-        
+
         for injection in command_injections:
             response = client.get(f"/api/v1/jobs/search?q={injection}")
-            
+
             # Should not execute system commands
             assert response.status_code in [200, 400, 422]
             if response.status_code == 200:
@@ -112,21 +115,21 @@ class TestAPISecurityComprehensive:
         # Make rapid requests to test rate limiting
         responses = []
         start_time = time.time()
-        
+
         for i in range(20):
             response = client.get("/api/v1/jobs/search?limit=1")
             responses.append(response.status_code)
-            
+
             # Small delay to avoid overwhelming the test
             time.sleep(0.01)
-        
+
         execution_time = time.time() - start_time
-        
+
         # Should handle rapid requests appropriately
         # Either allow all requests or implement rate limiting
         status_codes = set(responses)
         assert status_codes.issubset({200, 429, 503})
-        
+
         # If rate limiting is implemented, should see 429s
         if 429 in status_codes:
             assert responses.count(429) > 0
@@ -135,9 +138,9 @@ class TestAPISecurityComprehensive:
         """Test protection against oversized requests"""
         # Very large JSON payload
         large_payload = {"data": "x" * 100000}  # 100KB
-        
+
         response = client.post("/api/v1/jobs/search", json=large_payload)
-        
+
         # Should reject or handle large payloads appropriately
         assert response.status_code in [200, 400, 413, 422]
 
@@ -148,16 +151,16 @@ class TestAPISecurityComprehensive:
             '{"invalid": json}',
             '{"escaped": "\\u0000"}',
             '{"circular": {"ref": "circular"}}',
-            'not json at all'
+            "not json at all",
         ]
-        
+
         for malformed in malformed_jsons:
             response = client.post(
                 "/api/v1/jobs/search",
                 data=malformed,
-                headers={"Content-Type": "application/json"}
+                headers={"Content-Type": "application/json"},
             )
-            
+
             # Should handle malformed JSON gracefully
             assert response.status_code in [400, 422]
 
@@ -171,13 +174,13 @@ class TestAPISecurityComprehensive:
             {"Authorization": "Basic YWRtaW46YWRtaW4="},  # admin:admin
             {"X-Admin-Override": "true"},
             {"X-User-Id": "1"},
-            {"X-Forwarded-User": "admin"}
+            {"X-Forwarded-User": "admin"},
         ]
-        
+
         for headers in bypass_attempts:
             # Test protected endpoint
             response = client.get("/api/v1/auth/me", headers=headers)
-            
+
             # Should properly validate authentication
             assert response.status_code in [401, 403, 404]
 
@@ -188,17 +191,20 @@ class TestAPISecurityComprehensive:
             {"role": "admin"},
             {"is_admin": True},
             {"permissions": ["all"]},
-            {"user_type": "superuser"}
+            {"user_type": "superuser"},
         ]
-        
+
         for payload in escalation_attempts:
-            response = client.post("/api/v1/auth/register", json={
-                "email": "test@example.com",
-                "password": "password123",
-                "name": "Test User",
-                **payload
-            })
-            
+            response = client.post(
+                "/api/v1/auth/register",
+                json={
+                    "email": "test@example.com",
+                    "password": "password123",
+                    "name": "Test User",
+                    **payload,
+                },
+            )
+
             # Should not allow privilege escalation through registration
             if response.status_code in [200, 201]:
                 data = response.json()
@@ -212,13 +218,13 @@ class TestAPISecurityComprehensive:
             "/api/v1/jobs/search",
             headers={
                 "Origin": "https://evil.com",
-                "Access-Control-Request-Method": "GET"
-            }
+                "Access-Control-Request-Method": "GET",
+            },
         )
-        
+
         # Should have appropriate CORS headers
         assert response.status_code in [200, 204]
-        
+
         # Should not allow arbitrary origins in production
         cors_header = response.headers.get("Access-Control-Allow-Origin")
         if cors_header:
@@ -227,16 +233,22 @@ class TestAPISecurityComprehensive:
     def test_sensitive_data_exposure(self):
         """Test that sensitive data is not exposed"""
         response = client.get("/api/v1/jobs/search?limit=1")
-        
+
         if response.status_code == 200:
             data = response.text.lower()
-            
+
             # Should not expose sensitive information
             sensitive_terms = [
-                "password", "secret", "api_key", "token", "private_key",
-                "database_url", "connection_string", "admin_password"
+                "password",
+                "secret",
+                "api_key",
+                "token",
+                "private_key",
+                "database_url",
+                "connection_string",
+                "admin_password",
             ]
-            
+
             for term in sensitive_terms:
                 assert term not in data
 
@@ -247,15 +259,15 @@ class TestAPISecurityComprehensive:
             "/api/v1/jobs/nonexistent",
             "/api/v1/users/99999",
             "/api/v1/auth/invalid",
-            "/nonexistent/endpoint"
+            "/nonexistent/endpoint",
         ]
-        
+
         for endpoint in error_endpoints:
             response = client.get(endpoint)
-            
+
             if response.status_code >= 400:
                 error_text = response.text.lower()
-                
+
                 # Should not expose internal paths or sensitive info
                 assert "/users/" not in error_text
                 assert "password" not in error_text
@@ -269,13 +281,13 @@ class TestAPISecurityComprehensive:
             ("malicious.php", "<?php system($_GET['cmd']); ?>", "application/x-php"),
             ("script.js", "alert('xss')", "application/javascript"),
             ("exploit.exe", b"\x4d\x5a\x90\x00", "application/x-executable"),
-            ("large.txt", "x" * 10000000, "text/plain")  # 10MB file
+            ("large.txt", "x" * 10000000, "text/plain"),  # 10MB file
         ]
-        
+
         for filename, content, content_type in malicious_files:
             files = {"file": (filename, content, content_type)}
             response = client.post("/api/v1/upload", files=files)
-            
+
             # Should reject malicious files or handle safely
             if response.status_code in [200, 201]:
                 # File should be processed safely
@@ -287,13 +299,13 @@ class TestAPISecurityComprehensive:
         # Test session fixation
         response1 = client.get("/api/v1/auth/login")
         session1 = response1.cookies.get("session_id")
-        
+
         # Login with credentials
-        login_response = client.post("/api/v1/auth/login", json={
-            "email": "test@example.com",
-            "password": "password123"
-        })
-        
+        login_response = client.post(
+            "/api/v1/auth/login",
+            json={"email": "test@example.com", "password": "password123"},
+        )
+
         # Session should be regenerated after login
         if login_response.status_code == 200:
             session2 = login_response.cookies.get("session_id")
@@ -304,18 +316,21 @@ class TestAPISecurityComprehensive:
         """Test protection against timing attacks"""
         # Test login timing consistency
         times = []
-        
+
         for i in range(5):
             start_time = time.time()
-            response = client.post("/api/v1/auth/login", json={
-                "email": f"nonexistent{i}@example.com",
-                "password": "wrongpassword"
-            })
+            response = client.post(
+                "/api/v1/auth/login",
+                json={
+                    "email": f"nonexistent{i}@example.com",
+                    "password": "wrongpassword",
+                },
+            )
             end_time = time.time()
-            
+
             times.append(end_time - start_time)
             assert response.status_code in [400, 401]
-        
+
         # Response times should be relatively consistent
         if len(times) > 1:
             time_variance = max(times) - min(times)
@@ -324,15 +339,15 @@ class TestAPISecurityComprehensive:
     def test_clickjacking_protection(self):
         """Test clickjacking protection"""
         response = client.get("/api/v1/jobs/search")
-        
+
         # Should have frame protection headers
         frame_options = response.headers.get("X-Frame-Options")
         csp = response.headers.get("Content-Security-Policy")
-        
+
         # Should prevent embedding in frames
         if frame_options:
             assert frame_options in ["DENY", "SAMEORIGIN"]
-        
+
         if csp:
             assert "frame-ancestors" in csp
 
@@ -341,18 +356,18 @@ class TestAPISecurityComprehensive:
         # Test with incorrect content types
         wrong_content_types = [
             "text/plain",
-            "application/xml", 
+            "application/xml",
             "image/png",
-            "application/x-www-form-urlencoded"
+            "application/x-www-form-urlencoded",
         ]
-        
+
         for content_type in wrong_content_types:
             response = client.post(
                 "/api/v1/auth/login",
                 data='{"email": "test@example.com", "password": "test"}',
-                headers={"Content-Type": content_type}
+                headers={"Content-Type": content_type},
             )
-            
+
             # Should validate content type appropriately
             assert response.status_code in [400, 415, 422]
 
@@ -363,14 +378,15 @@ class TestAPISecurityComprehensive:
             "/api/v0/jobs/search",  # Older version
             "/api/v2/jobs/search",  # Future version
             "/api/v1.1/jobs/search",  # Sub-version
-            "/api/beta/jobs/search"  # Beta version
+            "/api/beta/jobs/search",  # Beta version
         ]
-        
+
         for endpoint in version_tests:
             response = client.get(endpoint)
-            
+
             # Should handle version requests appropriately
             assert response.status_code in [200, 404, 410]
+
 
 class TestInputValidationSecurity:
     """Test input validation security measures"""
@@ -383,12 +399,12 @@ class TestInputValidationSecurity:
             "Здравствуй мир",  # Russian
             "こんにちは世界",  # Japanese
             "��🚀⭐️",  # Emojis
-            "\u0000\u0001\u0002"  # Control characters
+            "\u0000\u0001\u0002",  # Control characters
         ]
-        
+
         for unicode_input in unicode_inputs:
             response = client.get(f"/api/v1/jobs/search?q={unicode_input}")
-            
+
             # Should handle unicode gracefully
             assert response.status_code in [200, 400, 422]
 
@@ -397,13 +413,13 @@ class TestInputValidationSecurity:
         boundary_tests = [
             ("limit", [-1, 0, 1, 100, 10000, 2**31]),
             ("page", [-1, 0, 1, 1000, 2**31]),
-            ("salary_min", [-1, 0, 1, 1000000, 2**31])
+            ("salary_min", [-1, 0, 1, 1000000, 2**31]),
         ]
-        
+
         for param, values in boundary_tests:
             for value in values:
                 response = client.get(f"/api/v1/jobs/search?{param}={value}")
-                
+
                 # Should handle boundary values appropriately
                 assert response.status_code in [200, 400, 422]
 
@@ -412,32 +428,28 @@ class TestInputValidationSecurity:
         null_byte_payloads = [
             "test\x00.php",
             "search\x00%00admin",
-            "query\x00..\x00..etc\x00passwd"
+            "query\x00..\x00..etc\x00passwd",
         ]
-        
+
         for payload in null_byte_payloads:
             response = client.get(f"/api/v1/jobs/search?q={payload}")
-            
+
             # Should handle null bytes securely
             assert response.status_code in [200, 400, 422]
 
     def test_format_string_protection(self):
         """Test protection against format string attacks"""
-        format_payloads = [
-            "%s%s%s%s%s",
-            "%x%x%x%x%x",
-            "{0}{1}{2}{3}",
-            "$(echo test)"
-        ]
-        
+        format_payloads = ["%s%s%s%s%s", "%x%x%x%x%x", "{0}{1}{2}{3}", "$(echo test)"]
+
         for payload in format_payloads:
             response = client.get(f"/api/v1/jobs/search?q={payload}")
-            
+
             # Should not execute format strings
             assert response.status_code in [200, 400, 422]
             if response.status_code == 200:
                 data = response.text
                 assert "test" not in data or payload in data
+
 
 class TestAuthenticationSecurityAdvanced:
     """Advanced authentication security tests"""
@@ -449,13 +461,13 @@ class TestAuthenticationSecurityAdvanced:
             "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ",
             "eyJhbGciOiJub25lIn0.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.",
             "fake.token.here",
-            ""
+            "",
         ]
-        
+
         for token in fake_tokens:
             headers = {"Authorization": f"Bearer {token}"}
             response = client.get("/api/v1/auth/me", headers=headers)
-            
+
             # Should reject invalid tokens
             assert response.status_code in [401, 403]
 
@@ -469,16 +481,19 @@ class TestAuthenticationSecurityAdvanced:
             "admin",
             "",
             "a",  # Too short
-            "12345678"  # No complexity
+            "12345678",  # No complexity
         ]
-        
+
         for password in weak_passwords:
-            response = client.post("/api/v1/auth/register", json={
-                "email": "test@example.com",
-                "password": password,
-                "name": "Test User"
-            })
-            
+            response = client.post(
+                "/api/v1/auth/register",
+                json={
+                    "email": "test@example.com",
+                    "password": password,
+                    "name": "Test User",
+                },
+            )
+
             # Should reject weak passwords
             assert response.status_code in [400, 422]
 
@@ -488,27 +503,27 @@ class TestAuthenticationSecurityAdvanced:
         test_emails = [
             "existing@example.com",
             "nonexistent@example.com",
-            "admin@example.com"
+            "admin@example.com",
         ]
-        
+
         response_times = []
         response_messages = []
-        
+
         for email in test_emails:
             start_time = time.time()
-            response = client.post("/api/v1/auth/forgot-password", json={
-                "email": email
-            })
+            response = client.post(
+                "/api/v1/auth/forgot-password", json={"email": email}
+            )
             end_time = time.time()
-            
+
             response_times.append(end_time - start_time)
             response_messages.append(response.text)
-        
+
         # Response times should be similar to prevent enumeration
         if len(response_times) > 1:
             time_variance = max(response_times) - min(response_times)
             assert time_variance < 0.5  # Should not vary significantly
-        
+
         # Response messages should be similar
         unique_messages = set(response_messages)
         assert len(unique_messages) <= 2  # Should not leak account existence

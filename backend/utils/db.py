@@ -1,20 +1,19 @@
+import asyncio
+import json
 import logging
 import os
-import json
-from typing import List, Dict, Any, Optional
-from datetime import datetime
 import sqlite3
-import asyncio
-from pymongo import MongoClient
-from motor.motor_asyncio import AsyncIOMotorClient
-from dotenv import load_dotenv
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
+from dotenv import load_dotenv
+from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import MongoClient
 from utils.config import get_db_url
-from models.models import (
-    Job, Monitor, Website, Notification, 
-    ChangeLog, WebsiteType, NotificationType,
-    SelectorBase
-)
+
+from models.models import (ChangeLog, Job, Monitor, Notification,
+                           NotificationType, SelectorBase, Website,
+                           WebsiteType)
 
 # Load environment variables
 load_dotenv()
@@ -22,7 +21,9 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 # SQLite veritabanı dosya yolu
-DB_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "remotejobs.db")
+DB_FILE = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)), "data", "remotejobs.db"
+)
 
 # MongoDB connection string
 MONGODB_URL = "process.env.MONGODB_URI/"
@@ -35,32 +36,34 @@ async_client = AsyncIOMotorClient(MONGODB_URL)
 db = client.remote_jobs
 async_db = async_client.remote_jobs
 
+
 # SQLite veritabanı bağlantısı için connection pool
 # İleride SQLAlchemy veya başka bir ORM ile değiştirilebilir
 class Database:
     """
     SQLite veritabanı işlemleri için yardımcı sınıf
     """
-    
+
     def __init__(self, db_file=DB_FILE):
         self.db_file = db_file
         self.conn = None
-        
+
         # Veritabanı klasörünün var olduğundan emin ol
         os.makedirs(os.path.dirname(db_file), exist_ok=True)
-        
+
         # Veritabanını başlat
         self._init_db()
-    
+
     def _init_db(self):
         """
         Veritabanını ve tabloları oluşturur
         """
         conn = sqlite3.connect(self.db_file)
         cursor = conn.cursor()
-        
+
         # Website tablosu
-        cursor.execute('''
+        cursor.execute(
+            """
         CREATE TABLE IF NOT EXISTS websites (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -71,10 +74,12 @@ class Database:
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-        ''')
-        
+        """
+        )
+
         # Monitor tablosu
-        cursor.execute('''
+        cursor.execute(
+            """
         CREATE TABLE IF NOT EXISTS monitors (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -89,10 +94,12 @@ class Database:
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (website_id) REFERENCES websites(id)
         )
-        ''')
-        
+        """
+        )
+
         # Notification tablosu
-        cursor.execute('''
+        cursor.execute(
+            """
         CREATE TABLE IF NOT EXISTS notifications (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -102,10 +109,12 @@ class Database:
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-        ''')
-        
+        """
+        )
+
         # Monitor-Notification ilişki tablosu
-        cursor.execute('''
+        cursor.execute(
+            """
         CREATE TABLE IF NOT EXISTS monitor_notifications (
             monitor_id INTEGER NOT NULL,
             notification_id INTEGER NOT NULL,
@@ -114,10 +123,12 @@ class Database:
             FOREIGN KEY (monitor_id) REFERENCES monitors(id),
             FOREIGN KEY (notification_id) REFERENCES notifications(id)
         )
-        ''')
-        
+        """
+        )
+
         # Job tablosu
-        cursor.execute('''
+        cursor.execute(
+            """
         CREATE TABLE IF NOT EXISTS jobs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
@@ -135,10 +146,12 @@ class Database:
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (website_id) REFERENCES websites(id)
         )
-        ''')
-        
+        """
+        )
+
         # ChangeLog tablosu
-        cursor.execute('''
+        cursor.execute(
+            """
         CREATE TABLE IF NOT EXISTS change_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             monitor_id INTEGER NOT NULL,
@@ -152,13 +165,14 @@ class Database:
             FOREIGN KEY (monitor_id) REFERENCES monitors(id),
             FOREIGN KEY (job_id) REFERENCES jobs(id)
         )
-        ''')
-        
+        """
+        )
+
         conn.commit()
         conn.close()
-        
+
         logger.info(f"Database initialized at {self.db_file}")
-    
+
     def connect(self):
         """
         Veritabanına bağlanır
@@ -167,7 +181,7 @@ class Database:
             self.conn = sqlite3.connect(self.db_file)
             self.conn.row_factory = sqlite3.Row
         return self.conn
-    
+
     def close(self):
         """
         Veritabanı bağlantısını kapatır
@@ -175,7 +189,7 @@ class Database:
         if self.conn:
             self.conn.close()
             self.conn = None
-    
+
     def execute(self, query, params=None):
         """
         SQL sorgusu çalıştırır
@@ -188,21 +202,21 @@ class Database:
             cursor.execute(query)
         conn.commit()
         return cursor
-    
+
     def fetch_all(self, query, params=None):
         """
         SQL sorgusu çalıştırır ve tüm sonuçları döndürür
         """
         cursor = self.execute(query, params)
         return cursor.fetchall()
-    
+
     def fetch_one(self, query, params=None):
         """
         SQL sorgusu çalıştırır ve ilk sonucu döndürür
         """
         cursor = self.execute(query, params)
         return cursor.fetchone()
-    
+
     def insert(self, table, data):
         """
         Tabloya veri ekler
@@ -212,7 +226,7 @@ class Database:
         query = f"INSERT INTO {table} ({keys}) VALUES ({placeholders})"
         cursor = self.execute(query, list(data.values()))
         return cursor.lastrowid
-    
+
     def update(self, table, data, condition, condition_params):
         """
         Tablodaki veriyi günceller
@@ -222,7 +236,7 @@ class Database:
         params = list(data.values()) + condition_params
         cursor = self.execute(query, params)
         return cursor.rowcount
-    
+
     def delete(self, table, condition, params=None):
         """
         Tablodaki veriyi siler
@@ -243,7 +257,7 @@ async def get_websites(include_inactive=False) -> List[Website]:
     """
     condition = "" if include_inactive else "WHERE is_active = 1"
     rows = db.fetch_all(f"SELECT * FROM websites {condition}")
-    
+
     websites = []
     for row in rows:
         website = dict(row)
@@ -251,10 +265,11 @@ async def get_websites(include_inactive=False) -> List[Website]:
             website["selectors"] = json.loads(website["selectors"])
         else:
             website["selectors"] = []
-        
+
         websites.append(Website(**website))
-    
+
     return websites
+
 
 async def get_website(website_id: int) -> Optional[Website]:
     """
@@ -263,14 +278,15 @@ async def get_website(website_id: int) -> Optional[Website]:
     row = db.fetch_one("SELECT * FROM websites WHERE id = ?", [website_id])
     if not row:
         return None
-    
+
     website = dict(row)
     if website["selectors"]:
         website["selectors"] = json.loads(website["selectors"])
     else:
         website["selectors"] = []
-    
+
     return Website(**website)
+
 
 async def create_website(website_data: Dict[str, Any]) -> int:
     """
@@ -278,19 +294,22 @@ async def create_website(website_data: Dict[str, Any]) -> int:
     """
     # Selektörleri JSON olarak dönüştür
     if "selectors" in website_data and website_data["selectors"]:
-        website_data["selectors"] = json.dumps([s.dict() for s in website_data["selectors"]])
+        website_data["selectors"] = json.dumps(
+            [s.dict() for s in website_data["selectors"]]
+        )
     else:
         website_data["selectors"] = None
-    
+
     # created_at ve updated_at alanlarını ayarla
     website_data["created_at"] = datetime.now().isoformat()
     website_data["updated_at"] = datetime.now().isoformat()
-    
+
     # Boolean değerleri 0/1 olarak dönüştür
     if "is_active" in website_data:
         website_data["is_active"] = 1 if website_data["is_active"] else 0
-    
+
     return db.insert("websites", website_data)
+
 
 async def update_website(website_id: int, website_data: Dict[str, Any]) -> bool:
     """
@@ -298,17 +317,20 @@ async def update_website(website_id: int, website_data: Dict[str, Any]) -> bool:
     """
     # Selektörleri JSON olarak dönüştür
     if "selectors" in website_data and website_data["selectors"]:
-        website_data["selectors"] = json.dumps([s.dict() for s in website_data["selectors"]])
-    
+        website_data["selectors"] = json.dumps(
+            [s.dict() for s in website_data["selectors"]]
+        )
+
     # updated_at alanını güncelle
     website_data["updated_at"] = datetime.now().isoformat()
-    
+
     # Boolean değerleri 0/1 olarak dönüştür
     if "is_active" in website_data:
         website_data["is_active"] = 1 if website_data["is_active"] else 0
-    
+
     rows_affected = db.update("websites", website_data, "id = ?", [website_id])
     return rows_affected > 0
+
 
 async def delete_website(website_id: int) -> bool:
     """
@@ -325,29 +347,30 @@ async def get_monitors(include_inactive=False) -> List[Monitor]:
     """
     condition = "" if include_inactive else "WHERE is_active = 1"
     rows = db.fetch_all(f"SELECT * FROM monitors {condition}")
-    
+
     monitors = []
     for row in rows:
         monitor = dict(row)
-        
+
         # JSON formatındaki alanları dönüştür
         if monitor["keywords"]:
             monitor["keywords"] = json.loads(monitor["keywords"])
         else:
             monitor["keywords"] = []
-        
+
         if monitor["exclude_keywords"]:
             monitor["exclude_keywords"] = json.loads(monitor["exclude_keywords"])
         else:
             monitor["exclude_keywords"] = []
-        
+
         # Boolean değerleri dönüştür
         monitor["is_active"] = bool(monitor["is_active"])
         monitor["notify_on_change"] = bool(monitor["notify_on_change"])
-        
+
         monitors.append(Monitor(**monitor))
-    
+
     return monitors
+
 
 async def get_monitor(monitor_id: int) -> Optional[Monitor]:
     """
@@ -356,25 +379,26 @@ async def get_monitor(monitor_id: int) -> Optional[Monitor]:
     row = db.fetch_one("SELECT * FROM monitors WHERE id = ?", [monitor_id])
     if not row:
         return None
-    
+
     monitor = dict(row)
-    
+
     # JSON formatındaki alanları dönüştür
     if monitor["keywords"]:
         monitor["keywords"] = json.loads(monitor["keywords"])
     else:
         monitor["keywords"] = []
-    
+
     if monitor["exclude_keywords"]:
         monitor["exclude_keywords"] = json.loads(monitor["exclude_keywords"])
     else:
         monitor["exclude_keywords"] = []
-    
+
     # Boolean değerleri dönüştür
     monitor["is_active"] = bool(monitor["is_active"])
     monitor["notify_on_change"] = bool(monitor["notify_on_change"])
-    
+
     return Monitor(**monitor)
+
 
 async def create_monitor(monitor_data: Dict[str, Any]) -> int:
     """
@@ -385,24 +409,25 @@ async def create_monitor(monitor_data: Dict[str, Any]) -> int:
         monitor_data["keywords"] = json.dumps(monitor_data["keywords"])
     else:
         monitor_data["keywords"] = None
-    
+
     if "exclude_keywords" in monitor_data and monitor_data["exclude_keywords"]:
         monitor_data["exclude_keywords"] = json.dumps(monitor_data["exclude_keywords"])
     else:
         monitor_data["exclude_keywords"] = None
-    
+
     # created_at ve updated_at alanlarını ayarla
     monitor_data["created_at"] = datetime.now().isoformat()
     monitor_data["updated_at"] = datetime.now().isoformat()
-    
+
     # Boolean değerleri 0/1 olarak dönüştür
     if "is_active" in monitor_data:
         monitor_data["is_active"] = 1 if monitor_data["is_active"] else 0
-    
+
     if "notify_on_change" in monitor_data:
         monitor_data["notify_on_change"] = 1 if monitor_data["notify_on_change"] else 0
-    
+
     return db.insert("monitors", monitor_data)
+
 
 async def update_monitor(monitor_id: int, monitor_data: Dict[str, Any]) -> bool:
     """
@@ -411,22 +436,23 @@ async def update_monitor(monitor_id: int, monitor_data: Dict[str, Any]) -> bool:
     # Liste alanlarını JSON olarak dönüştür
     if "keywords" in monitor_data and monitor_data["keywords"]:
         monitor_data["keywords"] = json.dumps(monitor_data["keywords"])
-    
+
     if "exclude_keywords" in monitor_data and monitor_data["exclude_keywords"]:
         monitor_data["exclude_keywords"] = json.dumps(monitor_data["exclude_keywords"])
-    
+
     # updated_at alanını güncelle
     monitor_data["updated_at"] = datetime.now().isoformat()
-    
+
     # Boolean değerleri 0/1 olarak dönüştür
     if "is_active" in monitor_data:
         monitor_data["is_active"] = 1 if monitor_data["is_active"] else 0
-    
+
     if "notify_on_change" in monitor_data:
         monitor_data["notify_on_change"] = 1 if monitor_data["notify_on_change"] else 0
-    
+
     rows_affected = db.update("monitors", monitor_data, "id = ?", [monitor_id])
     return rows_affected > 0
+
 
 async def delete_monitor(monitor_id: int) -> bool:
     """
@@ -443,23 +469,24 @@ async def get_notifications(include_inactive=False) -> List[Notification]:
     """
     condition = "" if include_inactive else "WHERE is_active = 1"
     rows = db.fetch_all(f"SELECT * FROM notifications {condition}")
-    
+
     notifications = []
     for row in rows:
         notification = dict(row)
-        
+
         # JSON formatındaki config alanını dönüştür
         if notification["config"]:
             notification["config"] = json.loads(notification["config"])
         else:
             notification["config"] = {}
-        
+
         # Boolean değerleri dönüştür
         notification["is_active"] = bool(notification["is_active"])
-        
+
         notifications.append(Notification(**notification))
-    
+
     return notifications
+
 
 async def get_notification(notification_id: int) -> Optional[Notification]:
     """
@@ -468,19 +495,20 @@ async def get_notification(notification_id: int) -> Optional[Notification]:
     row = db.fetch_one("SELECT * FROM notifications WHERE id = ?", [notification_id])
     if not row:
         return None
-    
+
     notification = dict(row)
-    
+
     # JSON formatındaki config alanını dönüştür
     if notification["config"]:
         notification["config"] = json.loads(notification["config"])
     else:
         notification["config"] = {}
-    
+
     # Boolean değerleri dönüştür
     notification["is_active"] = bool(notification["is_active"])
-    
+
     return Notification(**notification)
+
 
 async def create_notification(notification_data: Dict[str, Any]) -> int:
     """
@@ -491,34 +519,40 @@ async def create_notification(notification_data: Dict[str, Any]) -> int:
         notification_data["config"] = json.dumps(notification_data["config"])
     else:
         notification_data["config"] = "{}"
-    
+
     # created_at ve updated_at alanlarını ayarla
     notification_data["created_at"] = datetime.now().isoformat()
     notification_data["updated_at"] = datetime.now().isoformat()
-    
+
     # Boolean değerleri 0/1 olarak dönüştür
     if "is_active" in notification_data:
         notification_data["is_active"] = 1 if notification_data["is_active"] else 0
-    
+
     return db.insert("notifications", notification_data)
 
-async def update_notification(notification_id: int, notification_data: Dict[str, Any]) -> bool:
+
+async def update_notification(
+    notification_id: int, notification_data: Dict[str, Any]
+) -> bool:
     """
     Bir bildirimi günceller
     """
     # Config alanını JSON olarak dönüştür
     if "config" in notification_data and notification_data["config"]:
         notification_data["config"] = json.dumps(notification_data["config"])
-    
+
     # updated_at alanını güncelle
     notification_data["updated_at"] = datetime.now().isoformat()
-    
+
     # Boolean değerleri 0/1 olarak dönüştür
     if "is_active" in notification_data:
         notification_data["is_active"] = 1 if notification_data["is_active"] else 0
-    
-    rows_affected = db.update("notifications", notification_data, "id = ?", [notification_id])
+
+    rows_affected = db.update(
+        "notifications", notification_data, "id = ?", [notification_id]
+    )
     return rows_affected > 0
+
 
 async def delete_notification(notification_id: int) -> bool:
     """
@@ -534,15 +568,19 @@ async def link_monitor_notification(monitor_id: int, notification_id: int) -> bo
     Bir monitör ile bir bildirimi ilişkilendirir
     """
     try:
-        db.insert("monitor_notifications", {
-            "monitor_id": monitor_id,
-            "notification_id": notification_id,
-            "created_at": datetime.now().isoformat()
-        })
+        db.insert(
+            "monitor_notifications",
+            {
+                "monitor_id": monitor_id,
+                "notification_id": notification_id,
+                "created_at": datetime.now().isoformat(),
+            },
+        )
         return True
     except Exception as e:
         logger.error(f"Error linking monitor and notification: {e}")
         return False
+
 
 async def unlink_monitor_notification(monitor_id: int, notification_id: int) -> bool:
     """
@@ -551,46 +589,52 @@ async def unlink_monitor_notification(monitor_id: int, notification_id: int) -> 
     rows_affected = db.delete(
         "monitor_notifications",
         "monitor_id = ? AND notification_id = ?",
-        [monitor_id, notification_id]
+        [monitor_id, notification_id],
     )
     return rows_affected > 0
+
 
 async def get_monitor_notifications(monitor_id: int) -> List[Notification]:
     """
     Bir monitöre bağlı tüm bildirimleri döndürür
     """
-    rows = db.fetch_all("""
+    rows = db.fetch_all(
+        """
         SELECT n.* FROM notifications n
         JOIN monitor_notifications mn ON n.id = mn.notification_id
         WHERE mn.monitor_id = ? AND n.is_active = 1
-    """, [monitor_id])
-    
+    """,
+        [monitor_id],
+    )
+
     notifications = []
     for row in rows:
         notification = dict(row)
-        
+
         # JSON formatındaki config alanını dönüştür
         if notification["config"]:
             notification["config"] = json.loads(notification["config"])
         else:
             notification["config"] = {}
-        
+
         # Boolean değerleri dönüştür
         notification["is_active"] = bool(notification["is_active"])
-        
+
         notifications.append(Notification(**notification))
-    
+
     return notifications
 
 
 # Job işlemleri
-async def get_jobs(filters: Dict[str, Any] = None, limit: int = 100, offset: int = 0) -> List[Job]:
+async def get_jobs(
+    filters: Dict[str, Any] = None, limit: int = 100, offset: int = 0
+) -> List[Job]:
     """
     İş ilanlarını döndürür
     """
     query = "SELECT * FROM jobs"
     params = []
-    
+
     # Filtreleri ekle
     if filters:
         conditions = []
@@ -608,37 +652,38 @@ async def get_jobs(filters: Dict[str, Any] = None, limit: int = 100, offset: int
                 elif key == "website_id":
                     conditions.append("website_id = ?")
                     params.append(value)
-        
+
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
-    
+
     # Sıralama ve limit ekle
     query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
     params.extend([limit, offset])
-    
+
     rows = db.fetch_all(query, params)
-    
+
     jobs = []
     for row in rows:
         job = dict(row)
-        
+
         # JSON formatındaki alanları dönüştür
         if job["tags"]:
             job["tags"] = json.loads(job["tags"])
         else:
             job["tags"] = []
-        
+
         if job["raw_data"]:
             job["raw_data"] = json.loads(job["raw_data"])
         else:
             job["raw_data"] = None
-        
+
         # Boolean değerleri dönüştür
         job["is_remote"] = bool(job["is_remote"])
-        
+
         jobs.append(Job(**job))
-    
+
     return jobs
+
 
 async def get_job(job_id: int) -> Optional[Job]:
     """
@@ -647,24 +692,25 @@ async def get_job(job_id: int) -> Optional[Job]:
     row = db.fetch_one("SELECT * FROM jobs WHERE id = ?", [job_id])
     if not row:
         return None
-    
+
     job = dict(row)
-    
+
     # JSON formatındaki alanları dönüştür
     if job["tags"]:
         job["tags"] = json.loads(job["tags"])
     else:
         job["tags"] = []
-    
+
     if job["raw_data"]:
         job["raw_data"] = json.loads(job["raw_data"])
     else:
         job["raw_data"] = None
-    
+
     # Boolean değerleri dönüştür
     job["is_remote"] = bool(job["is_remote"])
-    
+
     return Job(**job)
+
 
 async def create_job(job_data: Dict[str, Any]) -> int:
     """
@@ -675,26 +721,27 @@ async def create_job(job_data: Dict[str, Any]) -> int:
         job_data["tags"] = json.dumps(job_data["tags"])
     else:
         job_data["tags"] = None
-    
+
     if "raw_data" in job_data and job_data["raw_data"]:
         job_data["raw_data"] = json.dumps(job_data["raw_data"])
     else:
         job_data["raw_data"] = None
-    
+
     # created_at ve updated_at alanlarını ayarla
     job_data["created_at"] = datetime.now().isoformat()
     job_data["updated_at"] = datetime.now().isoformat()
-    
+
     # Boolean değerleri 0/1 olarak dönüştür
     if "is_remote" in job_data:
         job_data["is_remote"] = 1 if job_data["is_remote"] else 0
-    
+
     try:
         return db.insert("jobs", job_data)
     except sqlite3.IntegrityError:
         # URL benzersiz olmadığında hata oluşabilir
         logger.warning(f"Job with URL {job_data.get('url')} already exists")
         return 0
+
 
 async def delete_job(job_id: int) -> bool:
     """
@@ -714,59 +761,63 @@ async def create_change_log(change_log_data: Dict[str, Any]) -> int:
         change_log_data["old_data"] = json.dumps(change_log_data["old_data"])
     else:
         change_log_data["old_data"] = None
-    
+
     if "new_data" in change_log_data and change_log_data["new_data"]:
         change_log_data["new_data"] = json.dumps(change_log_data["new_data"])
     else:
         change_log_data["new_data"] = None
-    
+
     # created_at ve updated_at alanlarını ayarla
     change_log_data["created_at"] = datetime.now().isoformat()
     change_log_data["updated_at"] = datetime.now().isoformat()
-    
+
     # Boolean değerleri 0/1 olarak dönüştür
     if "is_notified" in change_log_data:
         change_log_data["is_notified"] = 1 if change_log_data["is_notified"] else 0
-    
+
     return db.insert("change_logs", change_log_data)
 
-async def get_change_logs(monitor_id: Optional[int] = None, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
+
+async def get_change_logs(
+    monitor_id: Optional[int] = None, limit: int = 100, offset: int = 0
+) -> List[Dict[str, Any]]:
     """
     Değişiklik kayıtlarını döndürür
     """
     query = "SELECT cl.*, j.title, j.company, j.url FROM change_logs cl JOIN jobs j ON cl.job_id = j.id"
     params = []
-    
+
     if monitor_id:
         query += " WHERE cl.monitor_id = ?"
         params.append(monitor_id)
-    
+
     query += " ORDER BY cl.created_at DESC LIMIT ? OFFSET ?"
     params.extend([limit, offset])
-    
+
     rows = db.fetch_all(query, params)
-    
+
     change_logs = []
     for row in rows:
         change_log = dict(row)
-        
+
         # JSON formatındaki alanları dönüştür
         if change_log["old_data"]:
             change_log["old_data"] = json.loads(change_log["old_data"])
         else:
             change_log["old_data"] = None
-        
+
         if change_log["new_data"]:
             change_log["new_data"] = json.loads(change_log["new_data"])
         else:
             change_log["new_data"] = None
-        
+
         # Boolean değerleri dönüştür
         change_log["is_notified"] = bool(change_log["is_notified"])
-        
+
         change_logs.append(change_log)
-    
+
     return change_logs
+
 
 def test_connection():
     """
@@ -774,12 +825,13 @@ def test_connection():
     """
     try:
         client = MongoClient(MONGODB_URL)
-        client.admin.command('ping')
+        client.admin.command("ping")
         logger.info("MongoDB connection successful!")
         return True
     except Exception as e:
         logger.error(f"MongoDB connection failed: {str(e)}")
         return False
+
 
 # Collections
 users = db.users
@@ -795,4 +847,4 @@ async_jobs = async_db.jobs
 async_profiles = async_db.profiles
 async_notifications = async_db.notifications
 async_ads = async_db.ads
-async_support_tickets = async_db.support_tickets 
+async_support_tickets = async_db.support_tickets

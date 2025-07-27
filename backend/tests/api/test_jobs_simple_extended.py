@@ -1,8 +1,10 @@
 import pytest
 from fastapi.testclient import TestClient
+
 from main import app
 
 client = TestClient(app)
+
 
 class TestJobsRouteSimple:
     """Simple extended tests for jobs routes"""
@@ -27,7 +29,7 @@ class TestJobsRouteSimple:
         response = client.get("/api/v1/jobs/search?page=1&limit=5")
         assert response.status_code in [200, 422]
         data = response.json()
-        
+
         items = data.get("items", data.get("jobs", []))
         assert len(items) <= 5
 
@@ -36,13 +38,13 @@ class TestJobsRouteSimple:
         filters = {
             "location": "Remote",
             "company": "Tech Corp",
-            "work_type": "remote", 
+            "work_type": "remote",
             "job_type": "full-time",
             "experience_level": "senior",
             "sort_by": "newest",
-            "posted_age": "7DAYS"
+            "posted_age": "7DAYS",
         }
-        
+
         query_string = "&".join([f"{k}={v}" for k, v in filters.items()])
         response = client.get(f"/api/v1/jobs/search?{query_string}")
         assert response.status_code in [200, 422]
@@ -109,9 +111,9 @@ class TestJobsRouteSimple:
             "python & machine learning",
             "react.js + typescript",
             "c++ developer",
-            "full-stack engineer"
+            "full-stack engineer",
         ]
-        
+
         for query in complex_queries:
             response = client.get(f"/api/v1/jobs/search?q={query}")
             assert response.status_code in [200, 422]
@@ -119,7 +121,7 @@ class TestJobsRouteSimple:
     def test_search_jobs_with_date_filters(self):
         """Test job search with date-based filters"""
         date_filters = ["1DAY", "7DAYS", "14DAYS", "30DAYS"]
-        
+
         for filter_val in date_filters:
             response = client.get(f"/api/v1/jobs/search?posted_age={filter_val}")
             assert response.status_code in [200, 422]
@@ -127,7 +129,7 @@ class TestJobsRouteSimple:
     def test_search_jobs_sorting_options(self):
         """Test job search with different sorting options"""
         sort_options = ["newest", "oldest", "relevance", "salary_high", "salary_low"]
-        
+
         for sort_option in sort_options:
             response = client.get(f"/api/v1/jobs/search?sort_by={sort_option}")
             assert response.status_code in [200, 422]
@@ -136,11 +138,11 @@ class TestJobsRouteSimple:
         """Test search with malformed parameters"""
         malformed_params = [
             "limit=abc",
-            "page=xyz", 
+            "page=xyz",
             "posted_age=invalid",
-            "sort_by=nonsense"
+            "sort_by=nonsense",
         ]
-        
+
         for param in malformed_params:
             response = client.get(f"/api/v1/jobs/search?{param}")
             # Should handle malformed params gracefully
@@ -150,13 +152,13 @@ class TestJobsRouteSimple:
         """Test job search response has correct structure"""
         response = client.get("/api/v1/jobs/search?limit=1")
         assert response.status_code in [200, 422]
-        
+
         data = response.json()
-        
+
         # Should have either 'items' or 'jobs' key
         assert "items" in data or "jobs" in data
         assert "total" in data
-        
+
         items = data.get("items", data.get("jobs", []))
         if items:
             job = items[0]
@@ -168,10 +170,10 @@ class TestJobsRouteSimple:
         """Test autocomplete endpoints return correct structure"""
         endpoints = [
             "/api/v1/jobs/job-titles/search?q=dev&limit=3",
-            "/api/v1/jobs/companies/search?q=tech&limit=3", 
-            "/api/v1/jobs/locations/search?q=san&limit=3"
+            "/api/v1/jobs/companies/search?q=tech&limit=3",
+            "/api/v1/jobs/locations/search?q=san&limit=3",
         ]
-        
+
         for endpoint in endpoints:
             response = client.get(endpoint)
             assert response.status_code in [200, 422]
@@ -181,7 +183,7 @@ class TestJobsRouteSimple:
     def test_search_with_unicode_characters(self):
         """Test search with unicode characters"""
         unicode_queries = ["développeur", "ingeniero", "разработчик"]
-        
+
         for query in unicode_queries:
             response = client.get(f"/api/v1/jobs/search?q={query}")
             assert response.status_code in [200, 422]
@@ -191,9 +193,9 @@ class TestJobsRouteSimple:
         malicious_queries = [
             "'; DROP TABLE jobs; --",
             "1' OR '1'='1",
-            "<script>alert('xss')</script>"
+            "<script>alert('xss')</script>",
         ]
-        
+
         for query in malicious_queries:
             response = client.get(f"/api/v1/jobs/search?q={query}")
             assert response.status_code in [200, 422]  # Should handle safely
@@ -218,16 +220,15 @@ class TestJobsRouteSimple:
     def test_cors_headers(self):
         """Test CORS headers are present"""
         response = client.options("/api/v1/jobs/search")
-        assert response.status_code in [200, 405]  # Some endpoints may not support OPTIONS
+        assert response.status_code in [
+            200,
+            405,
+        ]  # Some endpoints may not support OPTIONS
 
     def test_pagination_edge_cases(self):
         """Test pagination edge cases"""
-        edge_cases = [
-            "page=0&limit=1",
-            "page=1&limit=1000",
-            "page=999999&limit=1"
-        ]
-        
+        edge_cases = ["page=0&limit=1", "page=1&limit=1000", "page=999999&limit=1"]
+
         for params in edge_cases:
             response = client.get(f"/api/v1/jobs/search?{params}")
             assert response.status_code in [200, 400, 422]
@@ -235,72 +236,77 @@ class TestJobsRouteSimple:
     def test_search_performance_basic(self):
         """Test search performance doesn't timeout"""
         import time
-        
+
         start_time = time.time()
         response = client.get("/api/v1/jobs/search?q=python&limit=10")
         end_time = time.time()
-        
+
         assert response.status_code in [200, 422]
         # Should complete within reasonable time (3 seconds)
         assert (end_time - start_time) < 3.0
 
+
 class TestJobsSkillsRoutes:
     """Test job skills-related routes"""
-    
+
     def test_skills_search_endpoint_exists(self, client):
         """Test skills search endpoint exists"""
         response = client.get("/api/v1/jobs/skills/search?q=python&limit=5")
         assert response.status_code == 200
-        
+
     def test_skills_search_with_results(self, client):
         """Test skills search returns results"""
         response = client.get("/api/v1/jobs/skills/search?q=java&limit=10")
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
-        
+
     def test_skills_search_empty_query(self, client):
         """Test skills search with empty query"""
         response = client.get("/api/v1/jobs/skills/search?q=&limit=5")
         assert response.status_code == 200
 
+
 class TestJobsRecentRoutes:
     """Test recent jobs routes"""
-    
+
     def test_recent_jobs_endpoint_exists(self, client):
         """Test recent jobs endpoint exists"""
         response = client.get("/api/v1/jobs/recent?limit=5")
         assert response.status_code == 200
-        
+
     def test_recent_jobs_with_timestamp(self, client):
         """Test recent jobs with since parameter"""
         from datetime import datetime, timedelta
+
         since = (datetime.utcnow() - timedelta(days=1)).isoformat()
         response = client.get(f"/api/v1/jobs/recent?since={since}&limit=3")
         assert response.status_code == 200
 
+
 class TestJobsTrackingRoutes:
     """Test job tracking routes"""
-    
+
     def test_track_job_interaction_endpoint(self, client):
         """Test track job interaction endpoint"""
         tracking_data = {
             "action": "view",
             "source": "search_results",
-            "user_agent": "test-agent"
+            "user_agent": "test-agent",
         }
         response = client.post("/api/v1/jobs/job123/track", json=tracking_data)
         # Should return 200, 401, or 422 - not 404
         assert response.status_code in [200, 401, 422, 500]
 
+
 class TestJobsStatisticsRoutes:
     """Test job statistics routes"""
-    
+
     def test_job_statistics_endpoint_exists(self, client):
         """Test job statistics endpoint exists"""
         response = client.get("/api/v1/jobs/statistics")
         assert response.status_code in [200, 404, 500]
-        
+
     def test_job_statistics_response_format(self, client):
         """Test job statistics response format"""
         response = client.get("/api/v1/jobs/statistics")
@@ -309,28 +315,30 @@ class TestJobsStatisticsRoutes:
             # Should have basic statistics fields
             assert "total_jobs" in data or "error" in data
 
+
 class TestJobsRecommendationRoutes:
     """Test job recommendations routes"""
-    
+
     def test_recommendations_endpoint_exists(self, client):
         """Test recommendations endpoint exists"""
         response = client.get("/api/v1/jobs/recommendations?limit=5")
         assert response.status_code in [200, 500]
-        
+
     def test_recommendations_with_limit(self, client):
         """Test recommendations with different limits"""
         for limit in [1, 5, 10]:
             response = client.get(f"/api/v1/jobs/recommendations?limit={limit}")
             assert response.status_code in [200, 500]
 
+
 class TestJobsSkillsRoutes:
     """Test job skills-related routes"""
-    
+
     def test_skills_search_endpoint_exists(self, client):
         """Test skills search endpoint exists"""
         response = client.get("/api/v1/jobs/skills/search?q=python&limit=5")
         assert response.status_code == 200
-        
+
     def test_skills_search_with_results(self, client):
         """Test skills search returns results"""
         response = client.get("/api/v1/jobs/skills/search?q=java&limit=10")
@@ -338,17 +346,19 @@ class TestJobsSkillsRoutes:
         data = response.json()
         assert isinstance(data, list)
 
+
 class TestJobsRecentRoutes:
     """Test recent jobs routes"""
-    
+
     def test_recent_jobs_endpoint_exists(self, client):
         """Test recent jobs endpoint exists"""
         response = client.get("/api/v1/jobs/recent?limit=5")
         assert response.status_code == 200
 
+
 class TestJobsStatisticsRoutes:
     """Test job statistics routes"""
-    
+
     def test_job_statistics_endpoint_exists(self, client):
         """Test job statistics endpoint exists"""
         response = client.get("/api/v1/jobs/statistics")

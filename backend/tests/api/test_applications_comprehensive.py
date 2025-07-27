@@ -1,6 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
+
 from main import app
+
 
 class TestApplicationsRoutesComprehensive:
     @pytest.fixture
@@ -11,11 +13,11 @@ class TestApplicationsRoutesComprehensive:
         """Test applications endpoints exist and return auth errors (not 404)"""
         endpoints = [
             "/api/v1/applications/apply",
-            "/api/v1/applications/my-applications", 
+            "/api/v1/applications/my-applications",
             "/api/v1/applications/applied-jobs",
-            "/api/v1/applications/stats"
+            "/api/v1/applications/stats",
         ]
-        
+
         for endpoint in endpoints:
             if "apply" in endpoint:
                 response = client.post(endpoint, json={})

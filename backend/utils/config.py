@@ -1,6 +1,7 @@
-import os
 import logging
-from typing import Dict, Any, Optional
+import os
+from typing import Any, Dict, Optional
+
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -15,8 +16,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(case_sensitive=True, env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        case_sensitive=True, env_file=".env", extra="ignore"
+    )
 
     # API settings
     API_HOST: str = "127.0.0.1"
@@ -49,7 +53,9 @@ class Settings(BaseSettings):
     TELEGRAM_CHAT_ID: str = "YOUR_CHAT_ID_HERE"
 
     # Crawler settings
-    USER_AGENT: str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    USER_AGENT: str = (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    )
     REQUEST_TIMEOUT: int = 30
     REQUEST_DELAY: float = 1.5
 
@@ -98,28 +104,53 @@ class Settings(BaseSettings):
     SENTRY_TRACES_SAMPLE_RATE: float = 0.2
     SENTRY_PROFILES_SAMPLE_RATE: float = 0.2
     ENVIRONMENT: str = "development"
-    
+
     # MongoDB URL for explicit use if DATABASE_URL is not set directly
     MONGODB_URL: Optional[str] = None
 
     def __init__(self, **data: Any):
         super().__init__(**data)
+
+        # Check for Render deployment environment
+        is_render = "/opt/render/project" in os.getcwd()
+
         # Dynamic adjustments after loading from env
         if not self.DATABASE_URL:
-            if self.IS_PRODUCTION:
-                raise ValueError("DATABASE_URL environment variable is required in production")
+            # Try alternative environment variable names
+            mongodb_uri = (
+                os.getenv("MONGODB_URI") or os.getenv("MONGODB_URL") or self.MONGODB_URL
+            )
+
+            if self.IS_PRODUCTION or is_render:
+                if mongodb_uri:
+                    self.DATABASE_URL = mongodb_uri
+                    logger.info(
+                        f"Production database configured: {self.DATABASE_URL[:50]}..."
+                    )
+                else:
+                    # Fallback for Render production without proper env vars
+                    logger.warning(
+                        "No production database URL found, using MongoDB Atlas default pattern"
+                    )
+                    self.DATABASE_URL = "mongodb+srv://buzz2remote:buzz2remote@cluster0.mongodb.net/buzz2remote"
             else:
-                self.DATABASE_URL = self.MONGODB_URL if self.MONGODB_URL else "mongodb://localhost:27017/buzz2remote"
+                self.DATABASE_URL = (
+                    mongodb_uri
+                    if mongodb_uri
+                    else "mongodb://localhost:27017/buzz2remote"
+                )
                 logger.info(f"Using development database: {self.DATABASE_URL}")
         else:
-            logger.info(f"Database URL configured: {self.DATABASE_URL[:20]}...")
-        
+            logger.info(f"Database URL configured: {self.DATABASE_URL[:50]}...")
+
         if not self.IS_PRODUCTION and self.TELEGRAM_BOT_TOKEN.startswith("YOUR_"):
             logger.info("Telegram bot disabled - using placeholder token")
             self.TELEGRAM_BOT_TOKEN = ""
             self.TELEGRAM_CHAT_ID = ""
 
+
 _settings: Optional[Settings] = None
+
 
 def get_settings() -> Settings:
     global _settings
@@ -127,15 +158,18 @@ def get_settings() -> Settings:
         _settings = Settings()
     return _settings
 
+
 # Test compatibility functions
 def get_db_url() -> str:
     """Get database URL for testing compatibility"""
     settings = get_settings()
     return settings.DATABASE_URL or "mongodb://localhost:27017/buzz2remote"
 
+
 def get_database_url() -> str:
     """Get database URL for testing compatibility"""
     return get_db_url()
+
 
 def get_all_config() -> Dict[str, Any]:
     """Get all configuration as dictionary for testing compatibility"""
@@ -161,7 +195,10 @@ def get_all_config() -> Dict[str, Any]:
         "telegram": {
             "bot_token": settings.TELEGRAM_BOT_TOKEN,
             "chat_id": settings.TELEGRAM_CHAT_ID,
-            "enabled": bool(settings.TELEGRAM_BOT_TOKEN and not settings.TELEGRAM_BOT_TOKEN.startswith("YOUR_")),
+            "enabled": bool(
+                settings.TELEGRAM_BOT_TOKEN
+                and not settings.TELEGRAM_BOT_TOKEN.startswith("YOUR_")
+            ),
         },
         "monitor": {
             "default_check_interval": settings.DEFAULT_CHECK_INTERVAL,
@@ -219,6 +256,7 @@ def get_all_config() -> Dict[str, Any]:
         "sentry_dsn": settings.SENTRY_DSN,
     }
 
+
 def get_crawler_headers() -> Dict[str, str]:
     """Get crawler headers for testing compatibility"""
     settings = get_settings()
@@ -231,9 +269,10 @@ def get_crawler_headers() -> Dict[str, str]:
         "Upgrade-Insecure-Requests": "1",
     }
 
+
 # Test compatibility constants
 settings = get_settings()
 DATABASE_URL = settings.DATABASE_URL
 USER_AGENT = settings.USER_AGENT
 API_HOST = settings.API_HOST
-API_PORT = settings.API_PORT 
+API_PORT = settings.API_PORT

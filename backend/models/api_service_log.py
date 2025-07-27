@@ -1,9 +1,12 @@
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
 from pydantic import BaseModel, Field
+
 
 class APIServiceLog(BaseModel):
     """Model for API service logs"""
+
     service_name: str
     endpoint: str
     status: str  # success, error, warning
@@ -16,6 +19,4 @@ class APIServiceLog(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now)
 
     class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        } 
+        json_encoders = {datetime: lambda v: v.isoformat()}

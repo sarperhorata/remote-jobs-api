@@ -1,6 +1,8 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Optional, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class NotificationBase(BaseModel):
     title: str
@@ -9,11 +11,14 @@ class NotificationBase(BaseModel):
     data: Optional[Dict[str, Any]] = None
     is_read: bool = False
 
+
 class NotificationCreate(NotificationBase):
     user_id: str
 
+
 class NotificationUpdate(BaseModel):
     is_read: Optional[bool] = None
+
 
 class NotificationResponse(NotificationBase):
     id: str
@@ -23,9 +28,10 @@ class NotificationResponse(NotificationBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class NotificationListResponse(BaseModel):
     items: List[NotificationResponse]
     total: int
     page: int
     per_page: int
-    total_pages: int 
+    total_pages: int

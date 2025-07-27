@@ -1,7 +1,7 @@
 import pytest
+from bson import ObjectId
 from fastapi import status
 from httpx import AsyncClient
-from bson import ObjectId
 
 
 class TestAdsAPISimple:
@@ -45,11 +45,11 @@ class TestAdsAPISimple:
         """Test ad creation with complete valid data."""
         ad_data = {
             "title": "Test Ad",
-            "company": "TestCorp", 
+            "company": "TestCorp",
             "position": "banner",
             "target_url": "https://test.com",
             "budget": 100,
-            "duration_days": 30
+            "duration_days": 30,
         }
         response = client.post("/api/v1/ads/", json=ad_data)
         # Should either create (201) or require authentication (401/403)
@@ -60,7 +60,7 @@ class TestAdsAPISimple:
         # GET should work
         response = client.get("/api/v1/ads/")
         assert response.status_code == 200
-        
+
         # POST should work (or require auth)
         response = client.post("/api/v1/ads/", json={})
         assert response.status_code in [201, 401, 403, 422]

@@ -1,9 +1,11 @@
-from pydantic import BaseModel, HttpUrl, Field, EmailStr
-from typing import List, Optional, Dict, Any, Union
-from enum import Enum
-from datetime import datetime
 # Removed SQLAlchemy imports as we're using MongoDB
 import uuid
+from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional, Union
+
+from pydantic import BaseModel, EmailStr, Field, HttpUrl
+
 
 class WebsiteType(str, Enum):
     REMOTE_OK = "remote_ok"
@@ -13,16 +15,19 @@ class WebsiteType(str, Enum):
     REMOTIVE = "remotive"
     CUSTOM = "custom"
 
+
 class NotificationType(str, Enum):
     EMAIL = "email"
     TELEGRAM = "telegram"
     WEBHOOK = "webhook"
+
 
 class WorkType(str, Enum):
     REMOTE = "remote"
     HYBRID = "hybrid"
     OFFICE = "office"
     ANY = "any"
+
 
 class JobType(str, Enum):
     FULL_TIME = "full_time"
@@ -32,16 +37,19 @@ class JobType(str, Enum):
     INTERNSHIP = "internship"
     ANY = "any"
 
+
 class TravelRequirement(str, Enum):
     NO = "no"
     LIMITED = "limited"
     YES = "yes"
     ANY = "any"
 
+
 class WorkHours(str, Enum):
     REGULAR = "regular"  # 9-5
     FLEXIBLE = "flexible"
     ANY = "any"
+
 
 class MeetingFrequency(str, Enum):
     DAILY = "daily"
@@ -51,11 +59,13 @@ class MeetingFrequency(str, Enum):
     RARELY = "rarely"
     ANY = "any"
 
+
 class SkillLevel(str, Enum):
     BEGINNER = "beginner"
     INTERMEDIATE = "intermediate"
     ADVANCED = "advanced"
     EXPERT = "expert"
+
 
 class LanguageLevel(str, Enum):
     ELEMENTARY = "elementary"
@@ -63,9 +73,11 @@ class LanguageLevel(str, Enum):
     ADVANCED = "advanced"
     NATIVE = "native"
 
+
 # MongoDB Models (using Pydantic)
 class UserNotificationPreference(BaseModel):
     """Model for storing user notification preferences in MongoDB"""
+
     id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
     user_id: str
     telegram_chat_id: Optional[int] = None
@@ -78,20 +90,24 @@ class UserNotificationPreference(BaseModel):
     class Config:
         from_attributes = True
 
+
 class SelectorBase(BaseModel):
     name: str
     selector_type: str = "css"  # css, xpath
     value: str
     attribute: Optional[str] = None
 
+
 class SelectorCreate(SelectorBase):
     pass
+
 
 class Selector(SelectorBase):
     id: int
     website_id: int
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
+
 
 class WebsiteBase(BaseModel):
     name: str
@@ -102,14 +118,17 @@ class WebsiteBase(BaseModel):
     headers: Optional[Dict[str, str]] = None
     params: Optional[Dict[str, str]] = None
 
+
 class WebsiteCreate(WebsiteBase):
     selectors: List[SelectorCreate]
+
 
 class Website(WebsiteBase):
     id: int
     selectors: List[Selector] = []
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
+
 
 class MonitorBase(BaseModel):
     name: str
@@ -120,13 +139,16 @@ class MonitorBase(BaseModel):
     is_active: bool = True
     notify_on_change: bool = True
 
+
 class MonitorCreate(MonitorBase):
     pass
+
 
 class Monitor(MonitorBase):
     id: int
     created_at: datetime
     updated_at: datetime
+
 
 class NotificationBase(BaseModel):
     name: str
@@ -134,13 +156,16 @@ class NotificationBase(BaseModel):
     config: Dict[str, Any]  # Configuration for the notification type
     is_active: bool = True
 
+
 class Notification(NotificationBase):
     id: int
     created_at: datetime
     updated_at: datetime
 
+
 class NotificationCreate(NotificationBase):
     pass
+
 
 class JobBase(BaseModel):
     title: str
@@ -155,13 +180,16 @@ class JobBase(BaseModel):
     website_id: int
     raw_data: Optional[Dict[str, Any]] = None
 
+
 class JobCreate(JobBase):
     monitor_id: int
+
 
 class Job(JobBase):
     id: int
     created_at: datetime
     updated_at: datetime
+
 
 class ChangeLogBase(BaseModel):
     monitor_id: int
@@ -171,13 +199,16 @@ class ChangeLogBase(BaseModel):
     new_data: Optional[Dict[str, Any]] = None
     is_notified: bool = False
 
+
 class ChangeLogCreate(ChangeLogBase):
     pass
+
 
 class ChangeLog(ChangeLogBase):
     id: int
     created_at: datetime
     updated_at: datetime
+
 
 # User Profile Models
 class Skill(BaseModel):
@@ -185,9 +216,11 @@ class Skill(BaseModel):
     level: SkillLevel
     years_experience: Optional[int] = None
 
+
 class Language(BaseModel):
     name: str
     level: LanguageLevel
+
 
 class Education(BaseModel):
     institution: str
@@ -198,6 +231,7 @@ class Education(BaseModel):
     current: bool = False
     description: Optional[str] = None
 
+
 class WorkExperience(BaseModel):
     title: str
     company: str
@@ -207,6 +241,7 @@ class WorkExperience(BaseModel):
     current: bool = False
     description: Optional[str] = None
 
+
 class Certificate(BaseModel):
     name: str
     issuing_organization: str
@@ -215,10 +250,12 @@ class Certificate(BaseModel):
     credential_id: Optional[str] = None
     credential_url: Optional[HttpUrl] = None
 
+
 class SalaryExpectation(BaseModel):
     amount: float
     currency: str = "USD"
     period: str = "year"  # year, month, hour
+
 
 class WorkPreferences(BaseModel):
     work_type: WorkType = WorkType.ANY
@@ -230,7 +267,8 @@ class WorkPreferences(BaseModel):
     min_salary: Optional[SalaryExpectation] = None
     willing_to_relocate: bool = False
     preferred_locations: Optional[List[str]] = None
-    
+
+
 class UserProfileBase(BaseModel):
     first_name: str
     last_name: str
@@ -255,6 +293,7 @@ class UserProfileBase(BaseModel):
     subscription_type: Optional[str] = None  # "free", "basic", "pro", "enterprise"
     subscription_expires: Optional[datetime] = None
 
+
 class UserProfile(UserProfileBase):
     id: int
     telegram_chat_id: Optional[int] = None
@@ -262,9 +301,11 @@ class UserProfile(UserProfileBase):
     updated_at: Optional[datetime] = None
     last_login: Optional[datetime] = None
 
+
 class UserProfileCreate(UserProfileBase):
     password: str = Field(..., min_length=8)
-    
+
+
 class UserProfileUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
@@ -289,7 +330,8 @@ class UserProfileUpdate(BaseModel):
     subscription_type: Optional[str] = None
     subscription_expires: Optional[datetime] = None
     telegram_chat_id: Optional[int] = None
-    
+
+
 # Job Application Models
 class JobApplication(BaseModel):
     id: int
@@ -302,12 +344,14 @@ class JobApplication(BaseModel):
     notes: Optional[str] = None
     match_score: Optional[float] = None  # 0-100% match between user and job
     updated_at: Optional[datetime] = None
-    
+
+
 class JobApplicationCreate(BaseModel):
     job_id: int
     cover_letter: Optional[str] = None
     resume_url: Optional[HttpUrl] = None
     notes: Optional[str] = None
+
 
 class User(BaseModel):
     id: Optional[str] = None
@@ -318,12 +362,14 @@ class User(BaseModel):
     is_superuser: bool = False
     email_verified: bool = False  # Email doğrulama durumu
     onboarding_completed: bool = False  # Onboarding tamamlandı mı?
-    onboarding_step: int = 0  # Hangi adımda (0: email, 1: password, 2: profile, 3: completed)
+    onboarding_step: int = (
+        0  # Hangi adımda (0: email, 1: password, 2: profile, 3: completed)
+    )
     linkedin_id: Optional[str] = None  # LinkedIn ID
     linkedin_profile: Optional[dict] = None  # LinkedIn profil bilgileri
     profile_picture_url: Optional[str] = None
     resume_url: Optional[str] = None  # CV dosya URL'i
-    
+
     # Social Media Links
     linkedin_url: Optional[str] = None
     github_url: Optional[str] = None
@@ -332,13 +378,13 @@ class User(BaseModel):
     facebook_url: Optional[str] = None
     youtube_url: Optional[str] = None
     personal_website: Optional[str] = None
-    
+
     # Work Experience and Education (for LinkedIn import)
     work_experience: Optional[List[WorkExperience]] = None
     education: Optional[List[Education]] = None
     skills: Optional[List[Skill]] = None
     certificates: Optional[List[Certificate]] = None
-    
+
     created_at: datetime = datetime.now()
     updated_at: datetime = datetime.now()
     stripe_customer_id: Optional[str] = None
@@ -349,6 +395,7 @@ class User(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 # Enhanced Job Model for MongoDB with Translation Support
 class EnhancedJob(BaseModel):
@@ -366,30 +413,32 @@ class EnhancedJob(BaseModel):
     isRemote: bool = False
     url: Optional[str] = None
     companyUrl: Optional[str] = None
-    
+
     # Translation fields
-    original_language: str = 'en'  # ISO language code (tr, de, fr, etc.)
+    original_language: str = "en"  # ISO language code (tr, de, fr, etc.)
     is_translated: bool = False
     original_data: Optional[Dict[str, Any]] = None  # Store original non-English data
     translation_metadata: Optional[Dict[str, Any]] = None  # Store translation details
-    
+
     # Additional metadata
     source: Optional[str] = None  # Source website/platform
     posted_date: Optional[datetime] = None
     applicant_count: Optional[int] = None
     views: int = 0
-    
+
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:
         from_attributes = True
 
+
 # Translation Models
 class TranslationRequest(BaseModel):
     text: str
     source_language: Optional[str] = None
-    target_language: str = 'en'
+    target_language: str = "en"
+
 
 class TranslationResponse(BaseModel):
     translated_text: str
@@ -399,8 +448,10 @@ class TranslationResponse(BaseModel):
     translation_confidence: float
     error: Optional[str] = None
 
+
 class JobTranslation(BaseModel):
     """Translation data for a job listing"""
+
     job_id: str
     original_language: str
     target_language: str
@@ -408,14 +459,17 @@ class JobTranslation(BaseModel):
     translation_metadata: Optional[Dict[str, Any]] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
+
 class CompanyTranslation(BaseModel):
     """Translation data for company information"""
+
     company_id: str
     original_language: str
     target_language: str
     translated_fields: Dict[str, str]  # field_name -> translated_text
     translation_metadata: Optional[Dict[str, Any]] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
 
 class JobTranslationResult(BaseModel):
     job_id: str
@@ -425,10 +479,12 @@ class JobTranslationResult(BaseModel):
     original_data: Optional[Dict[str, Any]] = None
     translation_metadata: Optional[Dict[str, Any]] = None
 
+
 class BatchTranslationRequest(BaseModel):
     job_ids: List[str]
-    target_language: str = 'en'
+    target_language: str = "en"
     batch_size: int = 10
+
 
 class BatchTranslationResponse(BaseModel):
     total_jobs: int
@@ -437,8 +493,10 @@ class BatchTranslationResponse(BaseModel):
     results: List[JobTranslationResult]
     errors: List[str] = []
 
+
 class UserNotification(BaseModel):
     """Model for user notifications in MongoDB"""
+
     id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
     user_id: str
     title: str
@@ -456,6 +514,7 @@ class UserNotification(BaseModel):
     class Config:
         from_attributes = True
 
+
 class UserNotificationCreate(BaseModel):
     user_id: str
     title: str
@@ -466,60 +525,66 @@ class UserNotificationCreate(BaseModel):
     action_text: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
+
 class UserNotificationUpdate(BaseModel):
     is_read: Optional[bool] = None
     is_active: Optional[bool] = None
     read_at: Optional[datetime] = None
 
+
 class JobApplicationMongo(BaseModel):
     """MongoDB Job Application model using Pydantic"""
-    
+
     id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
     user_id: str
     job_id: str
-    
+
     # Application status
-    status: str = 'applied'  # applied, viewed, rejected, hired, withdrawn
+    status: str = "applied"  # applied, viewed, rejected, hired, withdrawn
     application_type: str  # external, scraped, automated
-    
+
     # Application data
     cover_letter: Optional[str] = None
     resume_url: Optional[str] = None
     additional_notes: Optional[str] = None
     form_data: Optional[Dict[str, Any]] = None  # Store scraped form responses
-    
+
     # External tracking
     external_url: Optional[str] = None  # Company application URL
     external_reference: Optional[str] = None  # Company reference/confirmation number
-    
+
     # Metadata
     applied_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    
+
     # Response tracking
     viewed_by_company: bool = False
     company_response_date: Optional[datetime] = None
     company_response: Optional[str] = None
-    
+
     class Config:
         from_attributes = True
-    
+
     def to_dict(self):
         return {
-            'id': self.id,
-            'user_id': self.user_id,
-            'job_id': self.job_id,
-            'status': self.status,
-            'application_type': self.application_type,
-            'cover_letter': self.cover_letter,
-            'resume_url': self.resume_url,
-            'additional_notes': self.additional_notes,
-            'form_data': self.form_data,
-            'external_url': self.external_url,
-            'external_reference': self.external_reference,
-            'applied_at': self.applied_at.isoformat() if self.applied_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'viewed_by_company': self.viewed_by_company,
-            'company_response_date': self.company_response_date.isoformat() if self.company_response_date else None,
-            'company_response': self.company_response
-        } 
+            "id": self.id,
+            "user_id": self.user_id,
+            "job_id": self.job_id,
+            "status": self.status,
+            "application_type": self.application_type,
+            "cover_letter": self.cover_letter,
+            "resume_url": self.resume_url,
+            "additional_notes": self.additional_notes,
+            "form_data": self.form_data,
+            "external_url": self.external_url,
+            "external_reference": self.external_reference,
+            "applied_at": self.applied_at.isoformat() if self.applied_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "viewed_by_company": self.viewed_by_company,
+            "company_response_date": (
+                self.company_response_date.isoformat()
+                if self.company_response_date
+                else None
+            ),
+            "company_response": self.company_response,
+        }

@@ -1,5 +1,7 @@
-from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict, EmailStr
+
 
 class ProfileBase(BaseModel):
     name: str
@@ -12,14 +14,17 @@ class ProfileBase(BaseModel):
     education: Optional[str] = None
     languages: List[str] = []
 
+
 class ProfileCreate(ProfileBase):
     pass
+
 
 class ProfileUpdate(ProfileBase):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
 
+
 class ProfileResponse(ProfileBase):
     id: int
 
-    model_config = ConfigDict(from_attributes=True) 
+    model_config = ConfigDict(from_attributes=True)

@@ -1,5 +1,5 @@
 # Utils package
-# Helper functions and tools 
+# Helper functions and tools
 
 # Import config first to avoid circular imports
 try:
@@ -20,4 +20,4 @@ except ImportError:
 try:
     from .recaptcha import *
 except ImportError:
-    pass 
+    pass

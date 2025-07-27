@@ -1,11 +1,13 @@
 import asyncio
-from database.db import get_database
 from datetime import datetime
+
+from database.db import get_database
+
 
 async def add_sample_salary_data():
     """Test için örnek maaş verileri ekle"""
     db = await get_database()
-    
+
     # Örnek maaş verileri
     sample_jobs = [
         {
@@ -19,7 +21,7 @@ async def add_sample_salary_data():
             "is_estimated": False,
             "created_at": datetime.now().isoformat(),
             "job_type": "Full-time",
-            "work_type": "remote"
+            "work_type": "remote",
         },
         {
             "title": "Senior Software Engineer",
@@ -32,7 +34,7 @@ async def add_sample_salary_data():
             "is_estimated": False,
             "created_at": datetime.now().isoformat(),
             "job_type": "Full-time",
-            "work_type": "remote"
+            "work_type": "remote",
         },
         {
             "title": "Frontend Developer",
@@ -45,7 +47,7 @@ async def add_sample_salary_data():
             "is_estimated": False,
             "created_at": datetime.now().isoformat(),
             "job_type": "Full-time",
-            "work_type": "remote"
+            "work_type": "remote",
         },
         {
             "title": "Backend Developer",
@@ -58,7 +60,7 @@ async def add_sample_salary_data():
             "is_estimated": False,
             "created_at": datetime.now().isoformat(),
             "job_type": "Full-time",
-            "work_type": "remote"
+            "work_type": "remote",
         },
         {
             "title": "Full Stack Developer",
@@ -71,7 +73,7 @@ async def add_sample_salary_data():
             "is_estimated": False,
             "created_at": datetime.now().isoformat(),
             "job_type": "Full-time",
-            "work_type": "remote"
+            "work_type": "remote",
         },
         {
             "title": "Product Manager",
@@ -84,7 +86,7 @@ async def add_sample_salary_data():
             "is_estimated": False,
             "created_at": datetime.now().isoformat(),
             "job_type": "Full-time",
-            "work_type": "remote"
+            "work_type": "remote",
         },
         {
             "title": "Data Scientist",
@@ -97,7 +99,7 @@ async def add_sample_salary_data():
             "is_estimated": False,
             "created_at": datetime.now().isoformat(),
             "job_type": "Full-time",
-            "work_type": "remote"
+            "work_type": "remote",
         },
         {
             "title": "DevOps Engineer",
@@ -110,7 +112,7 @@ async def add_sample_salary_data():
             "is_estimated": False,
             "created_at": datetime.now().isoformat(),
             "job_type": "Full-time",
-            "work_type": "remote"
+            "work_type": "remote",
         },
         {
             "title": "UX Designer",
@@ -123,7 +125,7 @@ async def add_sample_salary_data():
             "is_estimated": False,
             "created_at": datetime.now().isoformat(),
             "job_type": "Full-time",
-            "work_type": "remote"
+            "work_type": "remote",
         },
         {
             "title": "QA Engineer",
@@ -136,20 +138,23 @@ async def add_sample_salary_data():
             "is_estimated": False,
             "created_at": datetime.now().isoformat(),
             "job_type": "Full-time",
-            "work_type": "remote"
-        }
+            "work_type": "remote",
+        },
     ]
-    
+
     # Verileri ekle
     result = await db.jobs.insert_many(sample_jobs)
     print(f"{len(result.inserted_ids)} adet örnek iş eklendi")
-    
+
     # Kontrol et
-    jobs_with_salary = await db.jobs.count_documents({
-        'salary_min': {'$exists': True, '$ne': None},
-        'salary_max': {'$exists': True, '$ne': None}
-    })
+    jobs_with_salary = await db.jobs.count_documents(
+        {
+            "salary_min": {"$exists": True, "$ne": None},
+            "salary_max": {"$exists": True, "$ne": None},
+        }
+    )
     print(f"Toplam maaş bilgisi olan iş sayısı: {jobs_with_salary}")
 
+
 if __name__ == "__main__":
-    asyncio.run(add_sample_salary_data()) 
+    asyncio.run(add_sample_salary_data())

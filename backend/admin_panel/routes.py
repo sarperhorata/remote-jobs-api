@@ -1,22 +1,23 @@
-from fastapi import APIRouter, Request, HTTPException, Depends, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
-from typing import Optional, Dict, Any
-import os
-import sys
-from datetime import datetime, timedelta
+import asyncio
 import json
 import logging
-from motor.motor_asyncio import AsyncIOMotorDatabase
-import asyncio
-import uuid
-from bson import ObjectId
-import time
-import subprocess
+import os
 import shutil
+import subprocess
+import sys
+import time
+import uuid
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any, Dict, Optional
+
+from bson import ObjectId
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 # Add backend to path for imports
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -30,14 +31,18 @@ logger = logging.getLogger(__name__)
 db = None
 
 try:
-    from database import get_async_db  # Direct import since we're in backend directory
     from pymongo import DESCENDING
+
+    from database import \
+        get_async_db  # Direct import since we're in backend directory
+
     DATABASE_AVAILABLE = True
     logger.info("Database connection successful for admin panel")
 except Exception as e:
     logger.warning(f"Database not available: {e}")
     DATABASE_AVAILABLE = False
-    
+
+
 async def get_db():
     """Get database instance for admin panel"""
     global db
@@ -49,20 +54,24 @@ async def get_db():
             db = None
     return db if DATABASE_AVAILABLE else None
 
+
 try:
     from services.scheduler_service import get_scheduler
+
     SCHEDULER_AVAILABLE = True
 except Exception as e:
     logger.warning(f"Scheduler service not available: {e}")
+
     def get_scheduler():
         return None
+
     SCHEDULER_AVAILABLE = False
 
 # Setup templates
 templates_path = os.path.join(os.path.dirname(__file__), "templates")
 env = Environment(
     loader=FileSystemLoader(templates_path),
-    autoescape=select_autoescape(['html', 'xml'])
+    autoescape=select_autoescape(["html", "xml"]),
 )
 templates = Jinja2Templates(directory=templates_path)
 
@@ -73,42 +82,44 @@ admin_router = APIRouter()
 
 # Cache for dashboard stats
 CACHE_DURATION = 300  # 5 minutes in seconds
-_dashboard_cache = {
-    "data": None,
-    "timestamp": 0
-}
+_dashboard_cache = {"data": None, "timestamp": 0}
+
 
 # Admin Authentication Middleware
 async def admin_auth_middleware(request: Request, call_next):
     """Middleware to protect all admin routes"""
     path = request.url.path
-    
+
     # Allow access to login, test, and static files without authentication
     public_paths = ["/admin/login", "/admin/test", "/admin/static"]
-    
+
     if path.startswith("/admin") and not any(path.startswith(p) for p in public_paths):
         admin_logged_in = request.session.get("admin_logged_in", False)
         if not admin_logged_in:
             # Redirect to login page
             return RedirectResponse(url="/admin/login", status_code=302)
-    
+
     response = await call_next(request)
     return response
+
 
 def get_admin_auth(request: Request):
     """Enhanced admin authentication check with better error handling"""
     try:
         admin_logged_in = request.session.get("admin_logged_in", False)
         if not admin_logged_in:
-            logger.warning(f"Unauthorized admin access attempt from {request.client.host if request.client else 'unknown'}")
+            logger.warning(
+                f"Unauthorized admin access attempt from {request.client.host if request.client else 'unknown'}"
+            )
             raise HTTPException(
-                status_code=401, 
-                detail="Admin authentication required. Please login at /admin/login"
+                status_code=401,
+                detail="Admin authentication required. Please login at /admin/login",
             )
         return True
     except Exception as e:
         logger.error(f"Error in admin authentication: {e}")
         raise HTTPException(status_code=401, detail="Authentication error")
+
 
 @admin_router.get("/", response_class=HTMLResponse)
 @admin_router.get("/dashboard", response_class=HTMLResponse)
@@ -121,7 +132,7 @@ async def admin_dashboard(request: Request):
             return RedirectResponse(url="/admin/login", status_code=302)
     except:
         return RedirectResponse(url="/admin/login", status_code=302)
-    
+
     try:
         db = await get_db()
         if not DATABASE_AVAILABLE or db is None:
@@ -133,41 +144,59 @@ async def admin_dashboard(request: Request):
             # Get basic statistics using async db connection
             total_jobs = await db.jobs.count_documents({})
             active_jobs = await db.jobs.count_documents({"is_active": True})
-            
+
             # Jobs added in last 24 hours
             yesterday = datetime.now() - timedelta(days=1)
             # Try multiple date fields to find recently added jobs
-            new_jobs_24h = await db.jobs.count_documents({
-                "$or": [
-                    {"created_at": {"$gte": yesterday}},
-                    {"created_at": {"$gte": yesterday.isoformat()}},
-                    {"last_updated": {"$gte": yesterday.isoformat()}},
-                    {"posted_date": {"$gte": yesterday.isoformat()}}
-                ]
-            })
-        
+            new_jobs_24h = await db.jobs.count_documents(
+                {
+                    "$or": [
+                        {"created_at": {"$gte": yesterday}},
+                        {"created_at": {"$gte": yesterday.isoformat()}},
+                        {"last_updated": {"$gte": yesterday.isoformat()}},
+                        {"posted_date": {"$gte": yesterday.isoformat()}},
+                    ]
+                }
+            )
+
         # Get scheduler status
         scheduler = get_scheduler()
-        scheduler_status = scheduler.get_job_status() if scheduler else {"status": "not_available", "jobs": []}
-        
+        scheduler_status = (
+            scheduler.get_job_status()
+            if scheduler
+            else {"status": "not_available", "jobs": []}
+        )
+
         # Get real API sources stats
         try:
             if DATABASE_AVAILABLE and db:
                 # Get active API sources from database
                 sources_pipeline = [
-                    {"$group": {"_id": "$source_type", "count": {"$sum": 1}, "latest": {"$max": "$last_updated"}}},
-                    {"$match": {"count": {"$gt": 0}}}
+                    {
+                        "$group": {
+                            "_id": "$source_type",
+                            "count": {"$sum": 1},
+                            "latest": {"$max": "$last_updated"},
+                        }
+                    },
+                    {"$match": {"count": {"$gt": 0}}},
                 ]
                 sources_result = await db.jobs.aggregate(sources_pipeline).to_list(20)
                 active_api_sources = len(sources_result)
-                
+
                 # Get last successful sync
                 latest_sync = datetime.now() - timedelta(hours=1)  # Default
                 if sources_result:
-                    latest_times = [s.get('latest') for s in sources_result if s.get('latest')]
+                    latest_times = [
+                        s.get("latest") for s in sources_result if s.get("latest")
+                    ]
                     if latest_times:
                         try:
-                            latest_sync = max(latest_times) if isinstance(latest_times[0], datetime) else datetime.fromisoformat(max(latest_times))
+                            latest_sync = (
+                                max(latest_times)
+                                if isinstance(latest_times[0], datetime)
+                                else datetime.fromisoformat(max(latest_times))
+                            )
                         except:
                             latest_sync = datetime.now() - timedelta(hours=1)
             else:
@@ -177,7 +206,7 @@ async def admin_dashboard(request: Request):
             logger.warning(f"API stats error: {api_error}")
             active_api_sources = 8
             latest_sync = datetime.now() - timedelta(hours=1)
-        
+
         # Build HTML response directly
         html_content = f"""
         <!DOCTYPE html>
@@ -318,9 +347,9 @@ async def admin_dashboard(request: Request):
         </body>
         </html>
         """
-        
+
         return HTMLResponse(content=html_content)
-        
+
     except Exception as e:
         logger.error(f"Error in admin dashboard: {str(e)}")
         error_html = f"""
@@ -345,6 +374,7 @@ async def admin_dashboard(request: Request):
         </html>
         """
         return HTMLResponse(content=error_html, status_code=500)
+
 
 @admin_router.get("/login", response_class=HTMLResponse)
 async def admin_login_page(request: Request):
@@ -515,6 +545,7 @@ async def admin_login_page(request: Request):
     """
     return HTMLResponse(content=html_content)
 
+
 @admin_router.post("/login")
 async def admin_login(request: Request):
     """Handle admin login"""
@@ -523,19 +554,23 @@ async def admin_login(request: Request):
         form_data = await request.form()
         username = form_data.get("username", "")
         password = form_data.get("password", "")
-        
-        logger.info(f"Admin login attempt - Username: '{username}', Password: '{password}'")
-        
+
+        logger.info(
+            f"Admin login attempt - Username: '{username}', Password: '{password}'"
+        )
+
         # Simple hardcoded check for testing
         if username == "admin" and password == "buzz2remote2024":
             request.session["admin_logged_in"] = True
             logger.info(f"Admin login successful for user: {username}")
             return RedirectResponse(url="/admin/", status_code=302)
         else:
-            logger.warning(f"Admin login failed - Invalid credentials for user: {username}")
+            logger.warning(
+                f"Admin login failed - Invalid credentials for user: {username}"
+            )
     except Exception as e:
         logger.error(f"Admin login error: {e}")
-    
+
     # Return error page if login fails
     else:
         error_html = """
@@ -694,24 +729,26 @@ async def admin_login(request: Request):
         """
         return HTMLResponse(content=error_html)
 
+
 @admin_router.get("/logout")
 async def admin_logout(request: Request):
     """Handle admin logout"""
     request.session.clear()
     return RedirectResponse(url="/admin/login", status_code=302)
 
+
 @admin_router.get("/jobs", response_class=HTMLResponse)
 async def admin_jobs(
-    request: Request, 
-    page: int = 1, 
-    sort_by: str = "created_at", 
-    sort_order: str = "desc", 
+    request: Request,
+    page: int = 1,
+    sort_by: str = "created_at",
+    sort_order: str = "desc",
     title_filter: Optional[str] = None,
     company_filter: Optional[str] = None,
-    location_filter: Optional[str] = None
+    location_filter: Optional[str] = None,
 ) -> HTMLResponse:
     """Job listings page with pagination and sorting"""
-    
+
     # Check authentication first
     try:
         admin_logged_in = request.session.get("admin_logged_in", False)
@@ -719,7 +756,7 @@ async def admin_jobs(
             return RedirectResponse(url="/admin/login", status_code=302)
     except:
         return RedirectResponse(url="/admin/login", status_code=302)
-    try:    
+    try:
         # Get database instance
         db = await get_db()
         if not DATABASE_AVAILABLE or db is None:
@@ -734,7 +771,7 @@ async def admin_jobs(
                     "type": "Full-time",
                     "created_at": datetime.now(),
                     "url": "https://example.com/job",
-                    "description": "This is a demo job listing"
+                    "description": "This is a demo job listing",
                 }
             ]
             total_jobs = 1
@@ -743,11 +780,11 @@ async def admin_jobs(
         else:
             page_size = 20
             skip = (page - 1) * page_size
-            
+
             # Build sort criteria
             sort_direction = -1 if sort_order == "desc" else 1
             sort_criteria = {sort_by: sort_direction}
-            
+
             # Build filter criteria
             filter_criteria = {}
             if title_filter:
@@ -756,21 +793,26 @@ async def admin_jobs(
                 filter_criteria.update(build_safe_filter(company_filter, "company"))
             if location_filter:
                 filter_criteria.update(build_safe_filter(location_filter, "location"))
-            
+
             # Get jobs data with pagination using direct db connection
             try:
                 total_jobs = await db.jobs.count_documents(filter_criteria)
-                jobs_cursor = db.jobs.find(filter_criteria).sort(list(sort_criteria.items())).skip(skip).limit(page_size)
+                jobs_cursor = (
+                    db.jobs.find(filter_criteria)
+                    .sort(list(sort_criteria.items()))
+                    .skip(skip)
+                    .limit(page_size)
+                )
                 jobs = await jobs_cursor.to_list(page_size)
-                
+
                 total_pages = (total_jobs + page_size - 1) // page_size
-                
+
             except Exception as e:
                 logger.error(f"Error fetching jobs: {e}")
                 jobs = []
                 total_jobs = 0
                 total_pages = 1
-        
+
         # Generate HTML content
         filter_parts = []
         if title_filter:
@@ -779,7 +821,9 @@ async def admin_jobs(
             filter_parts.append(f"company: {company_filter}")
         if location_filter:
             filter_parts.append(f"location: {location_filter}")
-        filter_message = f" (filtered by {', '.join(filter_parts)})" if filter_parts else ""
+        filter_message = (
+            f" (filtered by {', '.join(filter_parts)})" if filter_parts else ""
+        )
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -865,7 +909,7 @@ async def admin_jobs(
                             </tr>
                         </thead>
                         <tbody>"""
-        
+
         for job in jobs:
             job_id = str(job.get("_id", ""))
             title = job.get("title", "")
@@ -874,25 +918,25 @@ async def admin_jobs(
             source = job.get("source", "")
             created_at = job.get("created_at", None)
             url = job.get("url", "")
-            
+
             # Format created_at date
             if created_at:
                 if isinstance(created_at, datetime):
-                    date_str = created_at.strftime('%Y-%m-%d')
+                    date_str = created_at.strftime("%Y-%m-%d")
                 else:
                     date_str = str(created_at)
             else:
                 date_str = "N/A"
-            
+
             # Create filter links
             company_link = f"/admin/jobs?company_filter={company}"
             location_link = f"/admin/jobs?location_filter={location}"
-            
+
             # Create job ad link
-            job_ad_link = url if url else '#'
+            job_ad_link = url if url else "#"
             job_ad_text = "View Job Ad" if url else "No Link"
             job_ad_style = "" if url else "color: #999; cursor: not-allowed;"
-            
+
             html_content += f"""
                             <tr>
                                 <td>
@@ -903,15 +947,15 @@ async def admin_jobs(
                                 <td><a href="{job_ad_link}" target="_blank" style="{job_ad_style}">{job_ad_text}</a></td>
                                 <td>{date_str}</td>
                             </tr>"""
-        
+
         html_content += """
                         </tbody>
                     </table>"""
-        
+
         # Add pagination
         if total_pages > 1:
             html_content += '<div style="margin: 20px 0; text-align: center;">'
-            
+
             # Previous button
             if page > 1:
                 prev_url = f"/admin/jobs?page={page-1}&sort_by={sort_by}&sort_order={sort_order}"
@@ -922,25 +966,27 @@ async def admin_jobs(
                 if location_filter:
                     prev_url += f"&location_filter={location_filter}"
                 html_content += f'<a href="{prev_url}" style="margin: 0 5px; padding: 8px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">&larr; Previous</a>'
-            
+
             # Page numbers
             start_page = max(1, page - 2)
             end_page = min(total_pages, page + 2)
-            
+
             for p in range(start_page, end_page + 1):
-                page_url = f"/admin/jobs?page={p}&sort_by={sort_by}&sort_order={sort_order}"
+                page_url = (
+                    f"/admin/jobs?page={p}&sort_by={sort_by}&sort_order={sort_order}"
+                )
                 if title_filter:
                     page_url += f"&title_filter={title_filter}"
                 if company_filter:
                     page_url += f"&company_filter={company_filter}"
                 if location_filter:
                     page_url += f"&location_filter={location_filter}"
-                
+
                 if p == page:
                     html_content += f'<span style="margin: 0 5px; padding: 8px 12px; background: #6c757d; color: white; border-radius: 4px;">{p}</span>'
                 else:
                     html_content += f'<a href="{page_url}" style="margin: 0 5px; padding: 8px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">{p}</a>'
-            
+
             # Next button
             if page < total_pages:
                 next_url = f"/admin/jobs?page={page+1}&sort_by={sort_by}&sort_order={sort_order}"
@@ -951,10 +997,11 @@ async def admin_jobs(
                 if location_filter:
                     next_url += f"&location_filter={location_filter}"
                 html_content += f'<a href="{next_url}" style="margin: 0 5px; padding: 8px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Next &rarr;</a>'
-            
-            html_content += '</div>'
-        
-        html_content += """
+
+            html_content += "</div>"
+
+        html_content += (
+            """
                 </div>
             </div>
             
@@ -1046,8 +1093,12 @@ async def admin_jobs(
                 
                 // Sorting and filtering functions
                 function sortBy(column) {
-                    const currentSort = '""" + sort_by + """';
-                    const currentOrder = '""" + sort_order + """';
+                    const currentSort = '"""
+            + sort_by
+            + """';
+                    const currentOrder = '"""
+            + sort_order
+            + """';
                     
                     let newOrder = 'asc';
                     if (column === currentSort && currentOrder === 'asc') {
@@ -1115,9 +1166,10 @@ async def admin_jobs(
         </body>
         </html>
         """
-        
+        )
+
         return HTMLResponse(content=html_content)
-        
+
     except Exception as e:
         logger.error(f"Error in admin jobs: {str(e)}")
         error_html = f"""
@@ -1143,14 +1195,15 @@ async def admin_jobs(
         """
         return HTMLResponse(content=error_html, status_code=500)
 
+
 @admin_router.get("/cronjobs", response_class=HTMLResponse)
 async def admin_cronjobs(request: Request, admin_auth: bool = Depends(get_admin_auth)):
     """Cronjobs management page"""
     try:
         from datetime import datetime
-        
+
         scheduler = get_scheduler()
-        
+
         # For now, use mock data since scheduler has issues
         if not scheduler or True:  # Force mock data
             # Use mock data for cronjobs
@@ -1161,7 +1214,7 @@ async def admin_cronjobs(request: Request, admin_auth: bool = Depends(get_admin_
                     "next_run": "2025-07-19T20:06:00Z",
                     "trigger": "interval[0:14:00]",
                     "status": "Active",
-                    "description": "Keeps Render service awake by sending health check requests every 14 minutes"
+                    "description": "Keeps Render service awake by sending health check requests every 14 minutes",
                 },
                 {
                     "id": "external_api_crawler",
@@ -1169,7 +1222,7 @@ async def admin_cronjobs(request: Request, admin_auth: bool = Depends(get_admin_
                     "next_run": "2025-07-20T09:00:00Z",
                     "trigger": "cron[0 9 * * *]",
                     "status": "Active",
-                    "description": "Crawls external job APIs (RemoteOK, WeWorkRemotely, etc.) daily at 9 AM UTC"
+                    "description": "Crawls external job APIs (RemoteOK, WeWorkRemotely, etc.) daily at 9 AM UTC",
                 },
                 {
                     "id": "distill_crawler",
@@ -1177,7 +1230,7 @@ async def admin_cronjobs(request: Request, admin_auth: bool = Depends(get_admin_
                     "next_run": "2025-07-20T10:00:00Z",
                     "trigger": "cron[0 10 * * *]",
                     "status": "Active",
-                    "description": "Crawls company career pages from Distill export data daily at 10 AM UTC"
+                    "description": "Crawls company career pages from Distill export data daily at 10 AM UTC",
                 },
                 {
                     "id": "database_cleanup",
@@ -1185,7 +1238,7 @@ async def admin_cronjobs(request: Request, admin_auth: bool = Depends(get_admin_
                     "next_run": "2025-07-21T02:00:00Z",
                     "trigger": "cron[0 2 * * 0]",
                     "status": "Active",
-                    "description": "Removes old job postings (90+ days) weekly on Sunday at 2 AM UTC"
+                    "description": "Removes old job postings (90+ days) weekly on Sunday at 2 AM UTC",
                 },
                 {
                     "id": "job_statistics",
@@ -1193,10 +1246,10 @@ async def admin_cronjobs(request: Request, admin_auth: bool = Depends(get_admin_
                     "next_run": "2025-07-20T08:00:00Z",
                     "trigger": "cron[0 8 * * *]",
                     "status": "Active",
-                    "description": "Generates and sends daily job statistics at 8 AM UTC"
-                }
+                    "description": "Generates and sends daily job statistics at 8 AM UTC",
+                },
             ]
-            
+
             # Build HTML content with mock data
             html_content = f"""
             <!DOCTYPE html>
@@ -1259,11 +1312,13 @@ async def admin_cronjobs(request: Request, admin_auth: bool = Depends(get_admin_
                     </div>
                     
                     <div class="jobs-grid">"""
-            
+
             for job in mock_jobs:
                 status_class = f"status-{job['status'].lower()}"
-                next_run_display = job['next_run'] if job['next_run'] else 'Not scheduled'
-                
+                next_run_display = (
+                    job["next_run"] if job["next_run"] else "Not scheduled"
+                )
+
                 html_content += f"""
                 <div class="job-card">
                     <div class="job-header">{job['name']}</div>
@@ -1288,7 +1343,7 @@ async def admin_cronjobs(request: Request, admin_auth: bool = Depends(get_admin_
                         <button onclick="viewLogs('{job['id']}')" class="btn">📋 View Logs</button>
                     </div>
                 </div>"""
-            
+
             html_content += f"""
                 </div>
             </div>
@@ -1313,30 +1368,32 @@ async def admin_cronjobs(request: Request, admin_auth: bool = Depends(get_admin_
         </body>
         </html>
         """
-            
+
             return HTMLResponse(content=html_content)
-        
+
         scheduler_status = scheduler.get_job_status()
         formatted_jobs = []
-        
+
         for job in scheduler_status.get("jobs", []):
             formatted_job = {
                 "id": job["id"],
                 "name": job["name"],
                 "next_run": job["next_run"],
                 "trigger": job["trigger"],
-                "status": "Active" if job["next_run"] else "Inactive"
+                "status": "Active" if job["next_run"] else "Inactive",
             }
             job_descriptions = {
                 "health_check": "Keeps Render service awake by sending health check requests every 14 minutes",
                 "external_api_crawler": "Crawls external job APIs (RemoteOK, WeWorkRemotely, etc.) daily at 9 AM UTC",
                 "distill_crawler": "Crawls company career pages from Distill export data daily at 10 AM UTC",
                 "database_cleanup": "Removes old job postings (90+ days) weekly on Sunday at 2 AM UTC",
-                "job_statistics": "Generates and sends daily job statistics at 8 AM UTC"
+                "job_statistics": "Generates and sends daily job statistics at 8 AM UTC",
             }
-            formatted_job["description"] = job_descriptions.get(job["id"], "No description available")
+            formatted_job["description"] = job_descriptions.get(
+                job["id"], "No description available"
+            )
             formatted_jobs.append(formatted_job)
-        
+
         # Build HTML content
         html_content = f"""
         <!DOCTYPE html>
@@ -1393,11 +1450,11 @@ async def admin_cronjobs(request: Request, admin_auth: bool = Depends(get_admin_
                 </div>
                 
                 <div class="jobs-grid">"""
-        
+
         for job in formatted_jobs:
             status_class = f"status-{job['status'].lower()}"
-            next_run_display = job['next_run'] if job['next_run'] else 'Not scheduled'
-            
+            next_run_display = job["next_run"] if job["next_run"] else "Not scheduled"
+
             html_content += f"""
                 <div class="job-card">
                     <div class="job-header">{job['name']}</div>
@@ -1422,7 +1479,7 @@ async def admin_cronjobs(request: Request, admin_auth: bool = Depends(get_admin_
                         <button onclick="viewLogs('{job['id']}')" class="btn">📋 View Logs</button>
                     </div>
                 </div>"""
-        
+
         html_content += f"""
                 </div>
             </div>
@@ -1447,9 +1504,9 @@ async def admin_cronjobs(request: Request, admin_auth: bool = Depends(get_admin_
         </body>
         </html>
         """
-        
+
         return HTMLResponse(content=html_content)
-        
+
     except Exception as e:
         logger.error(f"Error fetching cronjobs: {e}")
         error_html = f"""
@@ -1465,6 +1522,7 @@ async def admin_cronjobs(request: Request, admin_auth: bool = Depends(get_admin_
         """
         return HTMLResponse(content=error_html, status_code=500)
 
+
 @admin_router.get("/settings", response_class=HTMLResponse)
 async def admin_settings(request: Request, admin_auth: bool = Depends(get_admin_auth)):
     """Settings page"""
@@ -1472,149 +1530,172 @@ async def admin_settings(request: Request, admin_auth: bool = Depends(get_admin_
         env_vars = {
             "ENVIRONMENT": os.getenv("ENVIRONMENT", "development"),
             "MONGODB_URI": "***" if os.getenv("MONGODB_URI") else "Not set",
-            "TELEGRAM_BOT_TOKEN": "***" if os.getenv("TELEGRAM_BOT_TOKEN") else "Not set",
+            "TELEGRAM_BOT_TOKEN": (
+                "***" if os.getenv("TELEGRAM_BOT_TOKEN") else "Not set"
+            ),
             "TELEGRAM_CHAT_ID": os.getenv("TELEGRAM_CHAT_ID", "Not set"),
-            "RENDER_GIT_COMMIT": os.getenv("RENDER_GIT_COMMIT", "Not available")[:8] if os.getenv("RENDER_GIT_COMMIT") else "Not available"
+            "RENDER_GIT_COMMIT": (
+                os.getenv("RENDER_GIT_COMMIT", "Not available")[:8]
+                if os.getenv("RENDER_GIT_COMMIT")
+                else "Not available"
+            ),
         }
-        
-        return templates.TemplateResponse("settings.html", {
-            "request": request,
-            "env_vars": env_vars,
-            "page_title": "Settings"
-        })
-        
+
+        return templates.TemplateResponse(
+            "settings.html",
+            {"request": request, "env_vars": env_vars, "page_title": "Settings"},
+        )
+
     except Exception as e:
         logger.error(f"Error fetching settings: {e}")
-        return templates.TemplateResponse("error.html", {
-            "request": request,
-            "error": str(e),
-            "page_title": "Error"
-        })
+        return templates.TemplateResponse(
+            "error.html", {"request": request, "error": str(e), "page_title": "Error"}
+        )
+
 
 @admin_router.get("/service-status")
 async def get_service_status(admin_auth: bool = Depends(get_admin_auth)):
     try:
         if not DATABASE_AVAILABLE or db is None:
             raise Exception("Database not available")
-            
+
         services = {
             "Buzz2remote": {"last_run": None, "status": "active"},
             "External": {"last_run": None, "status": "active"},
-            "Analysis": {"last_run": None, "status": "active"}
+            "Analysis": {"last_run": None, "status": "active"},
         }
-        
+
         logs_cursor = db.service_logs.find().sort("timestamp", -1).limit(3)
         logs = await logs_cursor.to_list(3)
         for log in logs:
             if log["service"] in services:
                 services[log["service"]]["last_run"] = log["timestamp"]
-        
+
         return services
     except Exception as e:
         logger.error(f"Error getting service status: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @admin_router.post("/actions/run-crawler")
 async def run_crawler_action():
     try:
         process_id = str(uuid.uuid4())
-        
+
         # Don't do database operations in test environment
         import os
-        if os.getenv('TESTING', 'false').lower() == 'true':
+
+        if os.getenv("TESTING", "false").lower() == "true":
             # In test environment, just return success immediately
             return {"status": "success", "process_id": process_id}
-        
+
         if not DATABASE_AVAILABLE or db is None:
             raise Exception("Database not available")
-            
-        await db.processes.insert_one({
-            "process_id": process_id,
-            "type": "crawler",
-            "status": "running",
-            "started_at": datetime.utcnow(),
-            "progress": 0
-        })
-        
+
+        await db.processes.insert_one(
+            {
+                "process_id": process_id,
+                "type": "crawler",
+                "status": "running",
+                "started_at": datetime.utcnow(),
+                "progress": 0,
+            }
+        )
+
         # In production, create background task
         asyncio.create_task(run_crawler_process_sync(process_id))
-            
+
         return {"status": "success", "process_id": process_id}
     except Exception as e:
         logger.error(f"Error starting crawler: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @admin_router.post("/actions/fetch-external-apis")
 async def fetch_external_apis_action():
     try:
         process_id = str(uuid.uuid4())
-        
+
         # Don't do database operations in test environment
         import os
-        if os.getenv('TESTING', 'false').lower() == 'true':
+
+        if os.getenv("TESTING", "false").lower() == "true":
             # In test environment, just return success immediately
             return {"status": "success", "process_id": process_id}
-        
+
         if not DATABASE_AVAILABLE or db is None:
             raise Exception("Database not available")
-            
-        await db.processes.insert_one({
-            "process_id": process_id,
-            "type": "api_fetch",
-            "status": "running",
-            "started_at": datetime.utcnow(),
-            "progress": 0
-        })
-        
+
+        await db.processes.insert_one(
+            {
+                "process_id": process_id,
+                "type": "api_fetch",
+                "status": "running",
+                "started_at": datetime.utcnow(),
+                "progress": 0,
+            }
+        )
+
         # In production, create background task
         asyncio.create_task(fetch_external_apis_process_sync(process_id))
-            
+
         return {"status": "success", "process_id": process_id}
     except Exception as e:
         logger.error(f"Error starting API fetch: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @admin_router.post("/actions/analyze-positions")
 async def analyze_positions_action():
     try:
         process_id = str(uuid.uuid4())
-        
+
         # Don't do database operations in test environment
         import os
-        if os.getenv('TESTING', 'false').lower() == 'true':
+
+        if os.getenv("TESTING", "false").lower() == "true":
             # In test environment, just return success immediately
             return {"status": "success", "process_id": process_id}
-        
+
         if not DATABASE_AVAILABLE or db is None:
             raise Exception("Database not available")
-            
-        await db.processes.insert_one({
-            "process_id": process_id,
-            "type": "analysis",
-            "status": "running",
-            "started_at": datetime.utcnow(),
-            "progress": 0
-        })
-        
+
+        await db.processes.insert_one(
+            {
+                "process_id": process_id,
+                "type": "analysis",
+                "status": "running",
+                "started_at": datetime.utcnow(),
+                "progress": 0,
+            }
+        )
+
         # In production, create background task
         asyncio.create_task(analyze_positions_process_sync(process_id))
-            
+
         return {"status": "success", "process_id": process_id}
     except Exception as e:
         logger.error(f"Error starting position analysis: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 async def run_crawler_process_sync(process_id: str):
     try:
         if not DATABASE_AVAILABLE or db is None:
             raise Exception("Database not available")
-            
+
         logger.info(f"Starting sync crawler process {process_id}")
         await asyncio.sleep(10)
-        
+
         await db.processes.update_one(
             {"process_id": process_id},
-            {"$set": {"status": "completed", "progress": 100, "ended_at": datetime.utcnow()}}
+            {
+                "$set": {
+                    "status": "completed",
+                    "progress": 100,
+                    "ended_at": datetime.utcnow(),
+                }
+            },
         )
         logger.info(f"Sync crawler process {process_id} completed.")
     except Exception as e:
@@ -1622,20 +1703,33 @@ async def run_crawler_process_sync(process_id: str):
         if DATABASE_AVAILABLE and db is not None:
             await db.processes.update_one(
                 {"process_id": process_id},
-                {"$set": {"status": "failed", "error": str(e), "ended_at": datetime.utcnow()}}
+                {
+                    "$set": {
+                        "status": "failed",
+                        "error": str(e),
+                        "ended_at": datetime.utcnow(),
+                    }
+                },
             )
+
 
 async def fetch_external_apis_process_sync(process_id: str):
     try:
         if not DATABASE_AVAILABLE or db is None:
             raise Exception("Database not available")
-            
+
         logger.info(f"Starting sync API fetch process {process_id}")
         await asyncio.sleep(10)
-        
+
         await db.processes.update_one(
             {"process_id": process_id},
-            {"$set": {"status": "completed", "progress": 100, "ended_at": datetime.utcnow()}}
+            {
+                "$set": {
+                    "status": "completed",
+                    "progress": 100,
+                    "ended_at": datetime.utcnow(),
+                }
+            },
         )
         logger.info(f"Sync API fetch process {process_id} completed.")
     except Exception as e:
@@ -1643,20 +1737,33 @@ async def fetch_external_apis_process_sync(process_id: str):
         if DATABASE_AVAILABLE and db is not None:
             await db.processes.update_one(
                 {"process_id": process_id},
-                {"$set": {"status": "failed", "error": str(e), "ended_at": datetime.utcnow()}}
+                {
+                    "$set": {
+                        "status": "failed",
+                        "error": str(e),
+                        "ended_at": datetime.utcnow(),
+                    }
+                },
             )
+
 
 async def analyze_positions_process_sync(process_id: str):
     try:
         if not DATABASE_AVAILABLE or db is None:
             raise Exception("Database not available")
-            
+
         logger.info(f"Starting sync analysis process {process_id}")
         await asyncio.sleep(10)
-        
+
         await db.processes.update_one(
             {"process_id": process_id},
-            {"$set": {"status": "completed", "progress": 100, "ended_at": datetime.utcnow()}}
+            {
+                "$set": {
+                    "status": "completed",
+                    "progress": 100,
+                    "ended_at": datetime.utcnow(),
+                }
+            },
         )
         logger.info(f"Sync analysis process {process_id} completed.")
     except Exception as e:
@@ -1664,8 +1771,15 @@ async def analyze_positions_process_sync(process_id: str):
         if DATABASE_AVAILABLE and db is not None:
             await db.processes.update_one(
                 {"process_id": process_id},
-                {"$set": {"status": "failed", "error": str(e), "ended_at": datetime.utcnow()}}
+                {
+                    "$set": {
+                        "status": "failed",
+                        "error": str(e),
+                        "ended_at": datetime.utcnow(),
+                    }
+                },
             )
+
 
 @admin_router.get("/job-details/{job_id}")
 async def get_job_details(job_id: str) -> dict:
@@ -1673,38 +1787,41 @@ async def get_job_details(job_id: str) -> dict:
     try:
         if not DATABASE_AVAILABLE or db is None:
             raise HTTPException(status_code=503, detail="Database not available")
-        
+
         # Try to find by ObjectId first, then by string
         try:
             job = await db.jobs.find_one({"_id": ObjectId(job_id)})
         except:
             job = await db.jobs.find_one({"_id": job_id})
-        
+
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
-        
+
         # Convert ObjectId to string for JSON serialization
         if "_id" in job:
             job["_id"] = str(job["_id"])
-        
+
         return job
-        
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error fetching job details: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 async def get_dashboard_stats():
     """Get real dashboard statistics from MongoDB with caching"""
     global _dashboard_cache
-    
+
     # Check cache
     current_time = time.time()
-    if (_dashboard_cache["data"] is not None and 
-        current_time - _dashboard_cache["timestamp"] < CACHE_DURATION):
+    if (
+        _dashboard_cache["data"] is not None
+        and current_time - _dashboard_cache["timestamp"] < CACHE_DURATION
+    ):
         return _dashboard_cache["data"]
-    
+
     # If cache miss, get fresh data
     if not DATABASE_AVAILABLE:
         stats = {
@@ -1713,44 +1830,46 @@ async def get_dashboard_stats():
             "active_apis": 8,
             "jobs_today": 22755,
             "active_jobs": 27743,
-            "remote_jobs": 27743
+            "remote_jobs": 27743,
         }
     else:
         try:
             async with get_async_db() as db:
                 # Get total jobs
                 total_jobs = await db.jobs.count_documents({})
-                
+
                 # Get total companies
                 total_companies_list = await db.jobs.distinct("company")
-                total_companies_count = len(total_companies_list) if total_companies_list else 0
-                
+                total_companies_count = (
+                    len(total_companies_list) if total_companies_list else 0
+                )
+
                 # Get jobs today
-                today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-                jobs_today = await db.jobs.count_documents({
-                    "created_at": {"$gte": today}
-                })
-                
+                today = datetime.now().replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                )
+                jobs_today = await db.jobs.count_documents(
+                    {"created_at": {"$gte": today}}
+                )
+
                 # Get active jobs
-                active_jobs = await db.jobs.count_documents({
-                    "is_active": True
-                })
-                
+                active_jobs = await db.jobs.count_documents({"is_active": True})
+
                 # Get remote jobs
-                remote_jobs = await db.jobs.count_documents({
-                    "location": {"$regex": "remote", "$options": "i"}
-                })
-                
+                remote_jobs = await db.jobs.count_documents(
+                    {"location": {"$regex": "remote", "$options": "i"}}
+                )
+
                 # Active APIs (hardcoded for now)
                 active_apis = 8
-                
+
                 stats = {
                     "total_jobs": total_jobs,
                     "total_companies": total_companies_count,
                     "active_apis": active_apis,
                     "jobs_today": jobs_today,
                     "active_jobs": active_jobs,
-                    "remote_jobs": remote_jobs
+                    "remote_jobs": remote_jobs,
                 }
         except Exception as e:
             print(f"Error getting dashboard stats: {e}")
@@ -1760,14 +1879,15 @@ async def get_dashboard_stats():
                 "active_apis": 8,
                 "jobs_today": 22755,
                 "active_jobs": 27743,
-                "remote_jobs": 27743
+                "remote_jobs": 27743,
             }
-    
+
     # Update cache
     _dashboard_cache["data"] = stats
     _dashboard_cache["timestamp"] = current_time
-    
+
     return stats
+
 
 @admin_router.get("/status", response_class=HTMLResponse)
 async def admin_status(request: Request, admin_auth: bool = Depends(get_admin_auth)):
@@ -1778,7 +1898,7 @@ async def admin_status(request: Request, admin_auth: bool = Depends(get_admin_au
         active_jobs = 0
         active_api_sources = 0
         latest_sync = datetime.now()
-        
+
         # Get database instance
         db = await get_db()
         if not DATABASE_AVAILABLE or db is None:
@@ -1788,36 +1908,48 @@ async def admin_status(request: Request, admin_auth: bool = Depends(get_admin_au
         else:
             total_jobs = await db.jobs.count_documents({})
             active_jobs = await db.jobs.count_documents({"is_active": True})
-        
+
         # Get scheduler status
         scheduler = get_scheduler()
-        scheduler_status = scheduler.get_job_status() if scheduler else {"status": "not_available", "jobs": []}
-        
+        scheduler_status = (
+            scheduler.get_job_status()
+            if scheduler
+            else {"status": "not_available", "jobs": []}
+        )
+
         # Get real-time test coverage data
         try:
             # Run backend tests to get current coverage
-            import subprocess
             import os
-            
+            import subprocess
+
             # Use shutil.which to find python executable safely
             python_executable = shutil.which("python") or shutil.which("python3")
             if not python_executable:
                 raise Exception("Python executable not found")
-            
+
             backend_test_result = subprocess.run(
-                [python_executable, "-m", "pytest", "tests/", "--tb=short", "-q", "--maxfail=1"],
+                [
+                    python_executable,
+                    "-m",
+                    "pytest",
+                    "tests/",
+                    "--tb=short",
+                    "-q",
+                    "--maxfail=1",
+                ],
                 cwd=os.path.join(os.getcwd(), "backend"),
                 capture_output=True,
                 text=True,
                 timeout=30,
-                shell=False
+                shell=False,
             )
-            
+
             # Parse test results
             if backend_test_result.returncode == 0:
-                lines = backend_test_result.stdout.split('\n')
+                lines = backend_test_result.stdout.split("\n")
                 for line in lines:
-                    if 'passed' in line and 'failed' in line:
+                    if "passed" in line and "failed" in line:
                         # Extract passed/total from pytest output
                         backend_success_rate = line.strip()
                         break
@@ -1827,22 +1959,26 @@ async def admin_status(request: Request, admin_auth: bool = Depends(get_admin_au
             else:
                 backend_success_rate = "Some tests failing"
                 backend_percentage = "⚠️ Issues detected"
-            
+
         except Exception as e:
             logger.warning(f"Could not get real test coverage: {e}")
             backend_success_rate = "126/134 (est)"
             backend_percentage = "94%"
-        
+
         test_coverage = {
             "backend": {
                 "total_coverage": backend_percentage,
                 "models": "94%",
-                "routes": "78%", 
+                "routes": "78%",
                 "admin_panel": "89%",
-                "last_test_run": datetime.now().strftime('%Y-%m-%d %H:%M'),
+                "last_test_run": datetime.now().strftime("%Y-%m-%d %H:%M"),
                 "tests_passed": backend_success_rate,
-                "total_tests": backend_success_rate.split('/')[1] if '/' in backend_success_rate else "134",
-                "last_update": "Real-time"
+                "total_tests": (
+                    backend_success_rate.split("/")[1]
+                    if "/" in backend_success_rate
+                    else "134"
+                ),
+                "last_update": "Real-time",
             },
             "frontend": {
                 "total_coverage": "84%",  # Updated based on our recent improvements
@@ -1850,55 +1986,86 @@ async def admin_status(request: Request, admin_auth: bool = Depends(get_admin_au
                 "pages": "85%",
                 "services": "92%",  # CacheService and FormValidationService fixed
                 "utils": "88%",  # Added missing utils key
-                "last_test_run": datetime.now().strftime('%Y-%m-%d %H:%M'),
+                "last_test_run": datetime.now().strftime("%Y-%m-%d %H:%M"),
                 "tests_passed": "326/326 (100%)",
                 "total_tests": "326",
-                "last_update": "Real-time"
-            }
+                "last_update": "Real-time",
+            },
         }
-        
+
         # System status - check real service states
         system_status = {
             "database": {
                 "status": "✅ Connected" if DATABASE_AVAILABLE else "❌ Disconnected",
                 "type": "MongoDB Atlas",
-                "last_ping": datetime.now().strftime('%H:%M:%S')
+                "last_ping": datetime.now().strftime("%H:%M:%S"),
             },
             "telegram": {
-                "status": "✅ Enabled" if os.getenv('TELEGRAM_BOT_TOKEN') and not os.getenv('DISABLE_TELEGRAM', 'false').lower() == 'true' else "❌ Disabled",
-                "chat_id": os.getenv('TELEGRAM_CHAT_ID', 'Not set'),
-                "last_message": "Startup notification sent" if os.getenv('TELEGRAM_BOT_TOKEN') else "No token configured"
+                "status": (
+                    "✅ Enabled"
+                    if os.getenv("TELEGRAM_BOT_TOKEN")
+                    and not os.getenv("DISABLE_TELEGRAM", "false").lower() == "true"
+                    else "❌ Disabled"
+                ),
+                "chat_id": os.getenv("TELEGRAM_CHAT_ID", "Not set"),
+                "last_message": (
+                    "Startup notification sent"
+                    if os.getenv("TELEGRAM_BOT_TOKEN")
+                    else "No token configured"
+                ),
             },
             "scheduler": {
-                "status": "✅ Running" if scheduler and scheduler.is_running else "❌ Not Available",
+                "status": (
+                    "✅ Running"
+                    if scheduler and scheduler.is_running
+                    else "❌ Not Available"
+                ),
                 "jobs_count": len(scheduler_status.get("jobs", [])) if scheduler else 0,
-                "next_job": scheduler_status.get("jobs", [{}])[0].get("next_run", "No jobs scheduled") if scheduler_status.get("jobs") else "No jobs"
+                "next_job": (
+                    scheduler_status.get("jobs", [{}])[0].get(
+                        "next_run", "No jobs scheduled"
+                    )
+                    if scheduler_status.get("jobs")
+                    else "No jobs"
+                ),
             },
             "crawler": {
                 "status": "✅ Ready",
                 "last_run": "Scheduled daily",
-                "jobs_processed": "Auto-scheduled"
-            }
+                "jobs_processed": "Auto-scheduled",
+            },
         }
-        
+
         # Get real API sources stats
         try:
             if DATABASE_AVAILABLE and db:
                 # Get active API sources from database
                 sources_pipeline = [
-                    {"$group": {"_id": "$source_type", "count": {"$sum": 1}, "latest": {"$max": "$last_updated"}}},
-                    {"$match": {"count": {"$gt": 0}}}
+                    {
+                        "$group": {
+                            "_id": "$source_type",
+                            "count": {"$sum": 1},
+                            "latest": {"$max": "$last_updated"},
+                        }
+                    },
+                    {"$match": {"count": {"$gt": 0}}},
                 ]
                 sources_result = await db.jobs.aggregate(sources_pipeline).to_list(20)
                 active_api_sources = len(sources_result)
-                
+
                 # Get last successful sync
                 latest_sync = datetime.now() - timedelta(hours=1)  # Default
                 if sources_result:
-                    latest_times = [s.get('latest') for s in sources_result if s.get('latest')]
+                    latest_times = [
+                        s.get("latest") for s in sources_result if s.get("latest")
+                    ]
                     if latest_times:
                         try:
-                            latest_sync = max(latest_times) if isinstance(latest_times[0], datetime) else datetime.fromisoformat(max(latest_times))
+                            latest_sync = (
+                                max(latest_times)
+                                if isinstance(latest_times[0], datetime)
+                                else datetime.fromisoformat(max(latest_times))
+                            )
                         except:
                             latest_sync = datetime.now() - timedelta(hours=1)
             else:
@@ -1908,7 +2075,7 @@ async def admin_status(request: Request, admin_auth: bool = Depends(get_admin_au
             logger.warning(f"API stats error: {api_error}")
             active_api_sources = 8
             latest_sync = datetime.now() - timedelta(hours=1)
-        
+
         # Build HTML response directly
         html_content = f"""
         <!DOCTYPE html>
@@ -2336,9 +2503,9 @@ async def admin_status(request: Request, admin_auth: bool = Depends(get_admin_au
         </body>
         </html>
         """
-        
+
         return HTMLResponse(content=html_content)
-        
+
     except Exception as e:
         logger.error(f"Status page error: {e}")
         error_html = f"""
@@ -2357,18 +2524,20 @@ async def admin_status(request: Request, admin_auth: bool = Depends(get_admin_au
         """
         return HTMLResponse(content=error_html, status_code=500)
 
+
 def build_safe_filter(search_term: str, field: str) -> dict:
     """Build safe MongoDB filter to prevent injection"""
     if not search_term:
         return {}
-    
+
     # Simple text search with regex
     return {
         field: {
             "$regex": search_term.replace("$", "").replace("{", "").replace("}", ""),
-            "$options": "i"
+            "$options": "i",
         }
     }
+
 
 def get_sort_indicator(column: str, current_sort: str, current_order: str) -> str:
     """Get sort indicator HTML for table headers"""
@@ -2379,62 +2548,70 @@ def get_sort_indicator(column: str, current_sort: str, current_order: str) -> st
             return "▲"
     return "↕"
 
+
 @admin_router.get("/apis", response_class=HTMLResponse)
 async def admin_apis(request: Request, admin_auth: bool = Depends(get_admin_auth)):
     """API services management page"""
     try:
         from datetime import datetime, timedelta
-        
+
         # Get real data for each service
         today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        
+
         # Calculate real statistics for each service
         services = {}
-        
+
         # List of known job sources
         source_types = [
-            "remoteok", "weworkremotely", "flexjobs", "remoteco", 
-            "jobspresso", "remotive", "authentic_jobs", "working_nomads",
-            "distill_crawler", "arbeitnow_free", "jobicy", "himalayas"
+            "remoteok",
+            "weworkremotely",
+            "flexjobs",
+            "remoteco",
+            "jobspresso",
+            "remotive",
+            "authentic_jobs",
+            "working_nomads",
+            "distill_crawler",
+            "arbeitnow_free",
+            "jobicy",
+            "himalayas",
         ]
-        
+
         total_jobs_today = 0
         active_services_count = 0
-        
+
         # Get database instance
         db = await get_db()
         if DATABASE_AVAILABLE and db is not None:
             for source in source_types:
                 try:
                     # Count total jobs from this source
-                    total_jobs = await db.jobs.count_documents({
-                        "source_type": source
-                    })
-                    
+                    total_jobs = await db.jobs.count_documents({"source_type": source})
+
                     # Count jobs added today
-                    jobs_today = await db.jobs.count_documents({
-                        "source_type": source,
-                        "created_at": {"$gte": today}
-                    })
-                    
+                    jobs_today = await db.jobs.count_documents(
+                        {"source_type": source, "created_at": {"$gte": today}}
+                    )
+
                     # Get latest job to determine last run
                     latest_job = await db.jobs.find_one(
-                        {"source_type": source},
-                        sort=[("created_at", -1)]
+                        {"source_type": source}, sort=[("created_at", -1)]
                     )
-                    
+
                     last_run = "Never"
                     last_run_dt = None
                     if latest_job and latest_job.get("created_at"):
                         try:
                             if isinstance(latest_job["created_at"], str):
-                                last_run_dt = datetime.fromisoformat(latest_job["created_at"].replace('Z', '+00:00'))
+                                last_run_dt = datetime.fromisoformat(
+                                    latest_job["created_at"].replace("Z", "+00:00")
+                                )
                             else:
                                 last_run_dt = latest_job["created_at"]
                             last_run = last_run_dt.strftime("%Y-%m-%d %H:%M")
                         except:
                             last_run = "Unknown"
-                    
+
                     # Determine status based on last activity - IMPROVED ALGORITHM
                     if jobs_today > 0:
                         # Service fetched jobs today - definitely active
@@ -2451,23 +2628,23 @@ async def admin_apis(request: Request, admin_auth: bool = Depends(get_admin_auth
                     else:
                         # Service has never fetched jobs or no recent activity
                         status = "inactive"
-                    
+
                     services[source] = {
                         "status": status,
                         "last_run": last_run,
                         "jobs_fetched": jobs_today,
-                        "total_jobs": total_jobs
+                        "total_jobs": total_jobs,
                     }
-                    
+
                     total_jobs_today += jobs_today
-                    
+
                 except Exception as e:
                     logger.error(f"Error getting stats for {source}: {e}")
                     services[source] = {
                         "status": "error",
                         "last_run": "Error",
                         "jobs_fetched": 0,
-                        "total_jobs": 0
+                        "total_jobs": 0,
                     }
         else:
             # Demo data when database is not available
@@ -2476,13 +2653,13 @@ async def admin_apis(request: Request, admin_auth: bool = Depends(get_admin_auth
                     "status": "active",
                     "last_run": datetime.now().strftime("%Y-%m-%d %H:%M"),
                     "jobs_fetched": 5,
-                    "total_jobs": 100
+                    "total_jobs": 100,
                 }
                 total_jobs_today += 5
                 active_services_count += 1
-        
+
         next_run = (datetime.now() + timedelta(hours=24)).strftime("%Y-%m-%d %H:%M UTC")
-        
+
         # Build HTML response
         html_content = f"""
         <!DOCTYPE html>
@@ -2561,7 +2738,7 @@ async def admin_apis(request: Request, admin_auth: bool = Depends(get_admin_auth
                 </div>
                 
                 <div class="services-grid">"""
-        
+
         for service_name, service_data in services.items():
             status_class = f"status-{service_data['status']}"
             html_content += f"""
@@ -2589,7 +2766,7 @@ async def admin_apis(request: Request, admin_auth: bool = Depends(get_admin_auth
                         <a href="/admin/logs/{service_name}" class="btn btn-logs">📋 Logs</a>
                     </div>
                 </div>"""
-        
+
         html_content += f"""
                 </div>
                 
@@ -2829,9 +3006,9 @@ async def admin_apis(request: Request, admin_auth: bool = Depends(get_admin_auth
         </body>
         </html>
         """
-        
+
         return HTMLResponse(content=html_content)
-        
+
     except Exception as e:
         logger.error(f"Error in APIs page: {e}")
         error_html = f"""
@@ -2847,25 +3024,29 @@ async def admin_apis(request: Request, admin_auth: bool = Depends(get_admin_auth
         """
         return HTMLResponse(content=error_html, status_code=500)
 
+
 @admin_router.post("/api-services/{service_endpoint}")
-async def run_api_service(service_endpoint: str, admin_auth: bool = Depends(get_admin_auth)):
+async def run_api_service(
+    service_endpoint: str, admin_auth: bool = Depends(get_admin_auth)
+):
     """Run specific API service"""
     try:
         # Start the specific API service
         process_id = str(uuid.uuid4())
-        
+
         # Log the action
         logger.info(f"Starting API service: {service_endpoint}")
-        
+
         return {
             "status": "success",
             "message": f"API service {service_endpoint} started",
-            "process_id": process_id
+            "process_id": process_id,
         }
-        
+
     except Exception as e:
         logger.error(f"Error starting API service {service_endpoint}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @admin_router.get("/test", response_class=HTMLResponse)
 async def admin_test(request: Request):
@@ -2900,54 +3081,170 @@ async def admin_test(request: Request):
     """
     return HTMLResponse(content=html_content)
 
+
 @admin_router.get("/logs/{service_name}", response_class=HTMLResponse)
-async def admin_service_logs(request: Request, service_name: str, admin_auth: bool = Depends(get_admin_auth)):
+async def admin_service_logs(
+    request: Request, service_name: str, admin_auth: bool = Depends(get_admin_auth)
+):
     """View logs for specific service"""
     try:
         # Mock log data for demonstration (in real scenario, this would come from log files or database)
         logs_data = {
             "remoteok": [
-                {"timestamp": "2024-01-15 10:00:01", "level": "INFO", "message": "RemoteOK API crawler started"},
-                {"timestamp": "2024-01-15 10:00:15", "level": "INFO", "message": "Fetched 120 jobs from RemoteOK"},
-                {"timestamp": "2024-01-15 10:00:16", "level": "INFO", "message": "Saved 85 new jobs to database"},
-                {"timestamp": "2024-01-15 10:00:17", "level": "INFO", "message": "RemoteOK crawler completed successfully"}
+                {
+                    "timestamp": "2024-01-15 10:00:01",
+                    "level": "INFO",
+                    "message": "RemoteOK API crawler started",
+                },
+                {
+                    "timestamp": "2024-01-15 10:00:15",
+                    "level": "INFO",
+                    "message": "Fetched 120 jobs from RemoteOK",
+                },
+                {
+                    "timestamp": "2024-01-15 10:00:16",
+                    "level": "INFO",
+                    "message": "Saved 85 new jobs to database",
+                },
+                {
+                    "timestamp": "2024-01-15 10:00:17",
+                    "level": "INFO",
+                    "message": "RemoteOK crawler completed successfully",
+                },
             ],
             "weworkremotely": [
-                {"timestamp": "2024-01-15 10:05:01", "level": "INFO", "message": "WeWorkRemotely API crawler started"},
-                {"timestamp": "2024-01-15 10:05:12", "level": "INFO", "message": "Fetched 85 jobs from WeWorkRemotely"},
-                {"timestamp": "2024-01-15 10:05:13", "level": "INFO", "message": "Saved 62 new jobs to database"},
-                {"timestamp": "2024-01-15 10:05:14", "level": "INFO", "message": "WeWorkRemotely crawler completed successfully"}
+                {
+                    "timestamp": "2024-01-15 10:05:01",
+                    "level": "INFO",
+                    "message": "WeWorkRemotely API crawler started",
+                },
+                {
+                    "timestamp": "2024-01-15 10:05:12",
+                    "level": "INFO",
+                    "message": "Fetched 85 jobs from WeWorkRemotely",
+                },
+                {
+                    "timestamp": "2024-01-15 10:05:13",
+                    "level": "INFO",
+                    "message": "Saved 62 new jobs to database",
+                },
+                {
+                    "timestamp": "2024-01-15 10:05:14",
+                    "level": "INFO",
+                    "message": "WeWorkRemotely crawler completed successfully",
+                },
             ],
             "scheduler": [
-                {"timestamp": "2024-01-15 09:00:01", "level": "INFO", "message": "Scheduler service started"},
-                {"timestamp": "2024-01-15 09:00:02", "level": "INFO", "message": "5 jobs scheduled"},
-                {"timestamp": "2024-01-15 10:00:00", "level": "INFO", "message": "External API crawler job triggered"},
-                {"timestamp": "2024-01-15 10:00:01", "level": "INFO", "message": "Health check job executed successfully"}
+                {
+                    "timestamp": "2024-01-15 09:00:01",
+                    "level": "INFO",
+                    "message": "Scheduler service started",
+                },
+                {
+                    "timestamp": "2024-01-15 09:00:02",
+                    "level": "INFO",
+                    "message": "5 jobs scheduled",
+                },
+                {
+                    "timestamp": "2024-01-15 10:00:00",
+                    "level": "INFO",
+                    "message": "External API crawler job triggered",
+                },
+                {
+                    "timestamp": "2024-01-15 10:00:01",
+                    "level": "INFO",
+                    "message": "Health check job executed successfully",
+                },
             ],
             "api-services": [
-                {"timestamp": "2024-01-15 08:00:01", "level": "INFO", "message": "API services started"},
-                {"timestamp": "2024-01-15 09:30:01", "level": "INFO", "message": "RemoteOK API health check: OK"},
-                {"timestamp": "2024-01-15 09:30:02", "level": "INFO", "message": "WeWorkRemotely API health check: OK"},
-                {"timestamp": "2024-01-15 09:30:03", "level": "WARNING", "message": "FlexJobs API slow response (2.5s)"}
+                {
+                    "timestamp": "2024-01-15 08:00:01",
+                    "level": "INFO",
+                    "message": "API services started",
+                },
+                {
+                    "timestamp": "2024-01-15 09:30:01",
+                    "level": "INFO",
+                    "message": "RemoteOK API health check: OK",
+                },
+                {
+                    "timestamp": "2024-01-15 09:30:02",
+                    "level": "INFO",
+                    "message": "WeWorkRemotely API health check: OK",
+                },
+                {
+                    "timestamp": "2024-01-15 09:30:03",
+                    "level": "WARNING",
+                    "message": "FlexJobs API slow response (2.5s)",
+                },
             ],
             "distill_crawler": [
-                {"timestamp": "2024-01-15 10:00:01", "level": "INFO", "message": "BUZZ2REMOTE-COMPANIES crawler started"},
-                {"timestamp": "2024-01-15 10:00:05", "level": "INFO", "message": "Processing company career pages from Distill export"},
-                {"timestamp": "2024-01-15 10:00:12", "level": "INFO", "message": "Fetched 78 jobs from career pages"},
-                {"timestamp": "2024-01-15 10:00:15", "level": "INFO", "message": "Saved 54 new jobs to database"},
-                {"timestamp": "2024-01-15 10:00:16", "level": "INFO", "message": "BUZZ2REMOTE-COMPANIES crawler completed successfully"}
+                {
+                    "timestamp": "2024-01-15 10:00:01",
+                    "level": "INFO",
+                    "message": "BUZZ2REMOTE-COMPANIES crawler started",
+                },
+                {
+                    "timestamp": "2024-01-15 10:00:05",
+                    "level": "INFO",
+                    "message": "Processing company career pages from Distill export",
+                },
+                {
+                    "timestamp": "2024-01-15 10:00:12",
+                    "level": "INFO",
+                    "message": "Fetched 78 jobs from career pages",
+                },
+                {
+                    "timestamp": "2024-01-15 10:00:15",
+                    "level": "INFO",
+                    "message": "Saved 54 new jobs to database",
+                },
+                {
+                    "timestamp": "2024-01-15 10:00:16",
+                    "level": "INFO",
+                    "message": "BUZZ2REMOTE-COMPANIES crawler completed successfully",
+                },
             ],
             "distill": [
-                {"timestamp": "2024-01-15 10:00:01", "level": "INFO", "message": "BUZZ2REMOTE-COMPANIES crawler started"},
-                {"timestamp": "2024-01-15 10:00:05", "level": "INFO", "message": "Processing company list"},
-                {"timestamp": "2024-01-15 10:00:10", "level": "INFO", "message": "Found 25 new jobs"},
-                {"timestamp": "2024-01-15 10:00:15", "level": "WARNING", "message": "Rate limit reached, waiting"},
-                {"timestamp": "2024-01-15 10:00:16", "level": "INFO", "message": "BUZZ2REMOTE-COMPANIES crawler completed successfully"}
-            ]
+                {
+                    "timestamp": "2024-01-15 10:00:01",
+                    "level": "INFO",
+                    "message": "BUZZ2REMOTE-COMPANIES crawler started",
+                },
+                {
+                    "timestamp": "2024-01-15 10:00:05",
+                    "level": "INFO",
+                    "message": "Processing company list",
+                },
+                {
+                    "timestamp": "2024-01-15 10:00:10",
+                    "level": "INFO",
+                    "message": "Found 25 new jobs",
+                },
+                {
+                    "timestamp": "2024-01-15 10:00:15",
+                    "level": "WARNING",
+                    "message": "Rate limit reached, waiting",
+                },
+                {
+                    "timestamp": "2024-01-15 10:00:16",
+                    "level": "INFO",
+                    "message": "BUZZ2REMOTE-COMPANIES crawler completed successfully",
+                },
+            ],
         }
-        
-        logs = logs_data.get(service_name, [{"timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'), "level": "INFO", "message": f"No logs found for {service_name}"}])
-        
+
+        logs = logs_data.get(
+            service_name,
+            [
+                {
+                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "level": "INFO",
+                    "message": f"No logs found for {service_name}",
+                }
+            ],
+        )
+
         # Build HTML response
         html_content = f"""
         <!DOCTYPE html>
@@ -3002,7 +3299,7 @@ async def admin_service_logs(request: Request, service_name: str, admin_auth: bo
                 </div>
                 
                 <div class="log-container" id="logContainer">"""
-        
+
         for log in reversed(logs):  # Show newest first
             level_class = log["level"].lower()
             html_content += f"""
@@ -3011,7 +3308,7 @@ async def admin_service_logs(request: Request, service_name: str, admin_auth: bo
                         <span class="log-level {level_class}">{log["level"]}</span>
                         <span class="log-message">{log["message"]}</span>
                     </div>"""
-        
+
         html_content += f"""
                 </div>
                 
@@ -3052,9 +3349,9 @@ async def admin_service_logs(request: Request, service_name: str, admin_auth: bo
         </body>
         </html>
         """
-        
+
         return HTMLResponse(content=html_content)
-        
+
     except Exception as e:
         logger.error(f"Error viewing logs for {service_name}: {e}")
         error_html = f"""
@@ -3070,6 +3367,7 @@ async def admin_service_logs(request: Request, service_name: str, admin_auth: bo
         """
         return HTMLResponse(content=error_html, status_code=500)
 
+
 @admin_router.get("/test", response_class=HTMLResponse)
 async def admin_test(request: Request):
     """Simple test endpoint to verify admin panel is working"""
@@ -3103,102 +3401,125 @@ async def admin_test(request: Request):
     """
     return HTMLResponse(content=html_content)
 
+
 @admin_router.post("/restart/frontend")
 async def restart_frontend(admin_auth: bool = Depends(get_admin_auth)):
     """Restart the frontend development server"""
     try:
-        import subprocess
         import os
-        
+        import subprocess
+
         # Use shutil.which to find pkill executable safely
         pkill_executable = shutil.which("pkill")
         if pkill_executable:
             # Kill existing npm start processes
-            subprocess.run([pkill_executable, "-f", "react-scripts start"], capture_output=True, shell=False)
-            subprocess.run([pkill_executable, "-f", "npm start"], capture_output=True, shell=False)
-        
+            subprocess.run(
+                [pkill_executable, "-f", "react-scripts start"],
+                capture_output=True,
+                shell=False,
+            )
+            subprocess.run(
+                [pkill_executable, "-f", "npm start"], capture_output=True, shell=False
+            )
+
         # Use shutil.which to find npm executable safely
         npm_executable = shutil.which("npm")
         if not npm_executable:
             raise Exception("npm executable not found")
-        
+
         # Get frontend path safely
         frontend_path = os.path.join(os.getcwd(), "frontend")
         if not os.path.exists(frontend_path):
             raise Exception("Frontend directory not found")
-        
+
         # Set environment variables
         env = os.environ.copy()
-        env['PORT'] = '3001'
+        env["PORT"] = "3001"
         process = subprocess.Popen(
             [npm_executable, "start"],
             cwd=frontend_path,
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            preexec_fn=os.setsid if hasattr(os, 'setsid') else None
+            preexec_fn=os.setsid if hasattr(os, "setsid") else None,
         )
-        
+
         return {
             "status": "success",
             "message": "Frontend restart initiated",
             "process_id": process.pid,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
-        
+
     except Exception as e:
         logger.error(f"Error restarting frontend: {e}")
         return {
-            "status": "error", 
+            "status": "error",
             "message": f"Failed to restart frontend: {str(e)}",
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
+
 
 @admin_router.post("/restart/backend")
 async def restart_backend(admin_auth: bool = Depends(get_admin_auth)):
     """Restart the backend server"""
     try:
-        import subprocess
         import os
-        
+        import subprocess
+
         # Use shutil.which to find pkill executable safely
         pkill_executable = shutil.which("pkill")
         if pkill_executable:
             # Kill existing uvicorn processes
-            subprocess.run([pkill_executable, "-f", "uvicorn main:app"], capture_output=True, shell=False)
-        
+            subprocess.run(
+                [pkill_executable, "-f", "uvicorn main:app"],
+                capture_output=True,
+                shell=False,
+            )
+
         # Use shutil.which to find python executable safely
         python_executable = shutil.which("python") or shutil.which("python3")
         if not python_executable:
             raise Exception("Python executable not found")
-        
+
         # Get backend path safely
         backend_path = os.path.join(os.getcwd(), "backend")
         if not os.path.exists(backend_path):
             raise Exception("Backend directory not found")
-        
+
         process = subprocess.Popen(
-            [python_executable, "-m", "uvicorn", "main:app", "--reload", "--host", "127.0.0.1", "--port", "8001"],
+            [
+                python_executable,
+                "-m",
+                "uvicorn",
+                "main:app",
+                "--reload",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "8001",
+            ],
             cwd=backend_path,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            preexec_fn=os.setsid if hasattr(os, 'setsid') else None
+            preexec_fn=os.setsid if hasattr(os, "setsid") else None,
         )
-        
+
         return {
             "status": "success",
             "message": "Backend restart initiated",
             "process_id": process.pid,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
-        
+
     except Exception as e:
         logger.error(f"Error restarting backend: {e}")
         return {
             "status": "error",
             "message": f"Failed to restart backend: {str(e)}",
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
+
 
 @admin_router.get("/test", response_class=HTMLResponse)
 async def admin_test(request: Request):
@@ -3233,8 +3554,15 @@ async def admin_test(request: Request):
     """
     return HTMLResponse(content=html_content)
 
+
 @admin_router.get("/companies", response_class=HTMLResponse)
-async def admin_companies(request: Request, page: int = 1, sort_by: str = "jobs_count", sort_order: str = "desc", company_filter: Optional[str] = None):
+async def admin_companies(
+    request: Request,
+    page: int = 1,
+    sort_by: str = "jobs_count",
+    sort_order: str = "desc",
+    company_filter: Optional[str] = None,
+):
     """Admin companies page"""
     # Check authentication
     try:
@@ -3243,6 +3571,7 @@ async def admin_companies(request: Request, page: int = 1, sort_by: str = "jobs_
             return RedirectResponse(url="/admin/login", status_code=302)
     except:
         return RedirectResponse(url="/admin/login", status_code=302)
+
 
 @admin_router.get("/cache", response_class=HTMLResponse)
 async def admin_cache_management(request: Request):
@@ -3254,16 +3583,16 @@ async def admin_cache_management(request: Request):
             return RedirectResponse(url="/admin/login", status_code=302)
     except:
         return RedirectResponse(url="/admin/login", status_code=302)
-    
+
     try:
         # Render cache management template
-        return templates.TemplateResponse("cache_management.html", {
-            "request": request,
-            "title": "Cache Management"
-        })
+        return templates.TemplateResponse(
+            "cache_management.html", {"request": request, "title": "Cache Management"}
+        )
     except Exception as e:
         logger.error(f"Error rendering cache management page: {e}")
-        return HTMLResponse(content=f"""
+        return HTMLResponse(
+            content=f"""
         <html>
         <head><title>Cache Management - Error</title></head>
         <body>
@@ -3272,10 +3601,15 @@ async def admin_cache_management(request: Request):
             <a href="/admin/dashboard">Back to Dashboard</a>
         </body>
         </html>
-        """, status_code=500)
+        """,
+            status_code=500,
+        )
+
 
 @admin_router.get("/crawler-progress/{process_id}")
-async def get_crawler_progress(process_id: str, admin_auth: bool = Depends(get_admin_auth)):
+async def get_crawler_progress(
+    process_id: str, admin_auth: bool = Depends(get_admin_auth)
+):
     """Get crawler progress status"""
     try:
         db = await get_db()
@@ -3288,9 +3622,9 @@ async def get_crawler_progress(process_id: str, admin_auth: bool = Depends(get_a
                 "error_count": 2,
                 "latest_logs": [
                     {"message": "Processing company career pages...", "level": "info"}
-                ]
+                ],
             }
-        
+
         # Get process status from database
         process = await db.processes.find_one({"process_id": process_id})
         if not process:
@@ -3299,13 +3633,17 @@ async def get_crawler_progress(process_id: str, admin_auth: bool = Depends(get_a
                 "companies_processed": 0,
                 "total_companies": 0,
                 "jobs_found": 0,
-                "error_count": 0
+                "error_count": 0,
             }
-        
+
         # Get latest logs
-        logs_cursor = db.crawler_logs.find({"process_id": process_id}).sort("timestamp", -1).limit(5)
+        logs_cursor = (
+            db.crawler_logs.find({"process_id": process_id})
+            .sort("timestamp", -1)
+            .limit(5)
+        )
         latest_logs = await logs_cursor.to_list(5)
-        
+
         return {
             "status": process.get("status", "unknown"),
             "companies_processed": process.get("companies_processed", 0),
@@ -3315,9 +3653,9 @@ async def get_crawler_progress(process_id: str, admin_auth: bool = Depends(get_a
             "latest_logs": [
                 {"message": log.get("message", ""), "level": log.get("level", "info")}
                 for log in latest_logs
-            ]
+            ],
         }
-        
+
     except Exception as e:
         logger.error(f"Error getting crawler progress: {e}")
         return {
@@ -3326,22 +3664,26 @@ async def get_crawler_progress(process_id: str, admin_auth: bool = Depends(get_a
             "total_companies": 0,
             "jobs_found": 0,
             "error_count": 0,
-            "error": str(e)
+            "error": str(e),
         }
 
+
 @admin_router.post("/send-telegram")
-async def send_telegram_notification(request: Request, admin_auth: bool = Depends(get_admin_auth)):
+async def send_telegram_notification(
+    request: Request, admin_auth: bool = Depends(get_admin_auth)
+):
     """Send Telegram notification"""
     try:
         data = await request.json()
         message = data.get("message", "")
-        
+
         # Send to Telegram
         from services.telegram_service import send_telegram_message
+
         await send_telegram_message(message)
-        
+
         return {"status": "success", "message": "Telegram notification sent"}
-        
+
     except Exception as e:
         logger.error(f"Error sending Telegram notification: {e}")
         return {"status": "error", "message": str(e)}

@@ -1,7 +1,9 @@
 from datetime import datetime
-from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from typing import Any, Dict, List, Optional
+
 from bson import ObjectId
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
 
 class PyObjectId(ObjectId):
     @classmethod
@@ -19,6 +21,7 @@ class PyObjectId(ObjectId):
         schema = handler(core_schema)
         schema.update(type="string")
         return schema
+
 
 class UserProfile(BaseModel):
     name: Optional[str] = None
@@ -39,6 +42,7 @@ class UserProfile(BaseModel):
     cover_letter_text: Optional[str] = None
     cover_letter_file: Optional[Dict[str, Any]] = None
 
+
 class UserBase(BaseModel):
     email: EmailStr
     full_name: str
@@ -58,8 +62,10 @@ class UserBase(BaseModel):
     profile: Optional[UserProfile] = None
     subscription_type: Optional[str] = None
 
+
 class UserCreate(UserBase):
     password: str
+
 
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
@@ -79,6 +85,7 @@ class UserUpdate(BaseModel):
     linkedin: Optional[str] = None
     twitter: Optional[str] = None
 
+
 class UserResponse(UserBase):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -87,12 +94,10 @@ class UserResponse(UserBase):
     model_config = ConfigDict(
         populate_by_name=True,
         arbitrary_types_allowed=True,
-        json_encoders={
-            ObjectId: str,
-            datetime: lambda dt: dt.isoformat()
-        },
-        json_schema_serialization_defaults_required=True
+        json_encoders={ObjectId: str, datetime: lambda dt: dt.isoformat()},
+        json_schema_serialization_defaults_required=True,
     )
 
+
 class UserInDB(UserResponse):
-    hashed_password: str 
+    hashed_password: str

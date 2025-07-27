@@ -1,75 +1,82 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from typing import List, Optional
-from backend.schemas.company import Company
-from backend.database import get_async_db
-from bson import ObjectId
-from datetime import datetime
-from motor.motor_asyncio import AsyncIOMotorDatabase
-from backend.schemas.company import CompanyCreate, CompanyUpdate, CompanyResponse, CompanyListResponse
-from backend.utils.auth import get_current_active_user, get_current_user, get_current_admin
 import logging
+from datetime import datetime
+from typing import List, Optional
+
+from bson import ObjectId
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from motor.motor_asyncio import AsyncIOMotorDatabase
+
+from backend.database import get_async_db
+from backend.schemas.company import (Company, CompanyCreate,
+                                     CompanyListResponse, CompanyResponse,
+                                     CompanyUpdate)
+from backend.utils.auth import (get_current_active_user, get_current_admin,
+                                get_current_user)
 
 router = APIRouter(tags=["companies"])
 logger = logging.getLogger(__name__)
 
+
 @router.get("/companies/statistics", response_model=dict)
-async def get_companies_statistics(
-    db: AsyncIOMotorDatabase = Depends(get_async_db)
-):
+async def get_companies_statistics(db: AsyncIOMotorDatabase = Depends(get_async_db)):
     """Get companies statistics for admin dashboard."""
     try:
         # Total companies count
         total_companies = await db.companies.count_documents({})
-        
+
         # Active companies count
-        active_companies = await db.companies.count_documents({"is_active": {"$ne": False}})
-        
+        active_companies = await db.companies.count_documents(
+            {"is_active": {"$ne": False}}
+        )
+
         # Companies with jobs
-        companies_with_jobs = await db.companies.aggregate([
-            {
-                "$lookup": {
-                    "from": "jobs",
-                    "localField": "name",
-                    "foreignField": "company",
-                    "as": "jobs"
-                }
-            },
-            {
-                "$match": {
-                    "jobs": {"$ne": []}
-                }
-            },
-            {
-                "$count": "total"
-            }
-        ]).to_list(length=None)
-        
-        companies_with_jobs_count = companies_with_jobs[0]["total"] if companies_with_jobs else 0
-        
+        companies_with_jobs = await db.companies.aggregate(
+            [
+                {
+                    "$lookup": {
+                        "from": "jobs",
+                        "localField": "name",
+                        "foreignField": "company",
+                        "as": "jobs",
+                    }
+                },
+                {"$match": {"jobs": {"$ne": []}}},
+                {"$count": "total"},
+            ]
+        ).to_list(length=None)
+
+        companies_with_jobs_count = (
+            companies_with_jobs[0]["total"] if companies_with_jobs else 0
+        )
+
         return {
             "total_companies": total_companies,
             "active_companies": active_companies,
-            "companies_with_jobs": companies_with_jobs_count
+            "companies_with_jobs": companies_with_jobs_count,
         }
-        
+
     except Exception as e:
         logger.error(f"Error getting companies statistics: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Statistics not available")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Statistics not available",
+        )
+
 
 @router.post("/companies/", response_model=CompanyResponse)
 async def create_company(
-    company: CompanyCreate,
-    db: AsyncIOMotorDatabase = Depends(get_async_db)
+    company: CompanyCreate, db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
     """Create a new company."""
     company_dict = company.dict()
     company_dict["created_at"] = datetime.utcnow()
     company_dict["updated_at"] = datetime.utcnow()
     company_dict["is_active"] = True
-    
+
     result = await db.companies.insert_one(company_dict)
     created_company = await db.companies.find_one({"_id": result.inserted_id})
     return created_company
+
 
 @router.get("/companies/", response_model=CompanyListResponse)
 async def get_companies(
@@ -77,7 +84,7 @@ async def get_companies(
     limit: int = Query(10, ge=1, le=100),
     is_active: Optional[bool] = None,
     search: Optional[str] = None,
-    db: AsyncIOMotorDatabase = Depends(get_async_db)
+    db: AsyncIOMotorDatabase = Depends(get_async_db),
 ):
     """Get a list of companies with optional filtering."""
     query = {}
@@ -86,16 +93,16 @@ async def get_companies(
     if search:
         query["$or"] = [
             {"name": {"$regex": search, "$options": "i"}},
-            {"description": {"$regex": search, "$options": "i"}}
+            {"description": {"$regex": search, "$options": "i"}},
         ]
-    
+
     # Get total count
     total = await db.companies.count_documents(query)
-    
+
     # Get companies
     cursor = db.companies.find(query).sort("created_at", -1).skip(skip).limit(limit)
     companies = await cursor.to_list(length=limit)
-    
+
     # Convert ObjectIds to strings for JSON serialization
     for company in companies:
         if "_id" in company and isinstance(company["_id"], ObjectId):
@@ -103,20 +110,22 @@ async def get_companies(
             company["_id"] = str(company["_id"])
         # Add jobs_count if not present
         if "jobs_count" not in company:
-            company["jobs_count"] = await db.jobs.count_documents({"company": company["name"]})
-    
+            company["jobs_count"] = await db.jobs.count_documents(
+                {"company": company["name"]}
+            )
+
     return {
         "items": companies,
         "total": total,
         "page": skip // limit + 1,
         "per_page": limit,
-        "total_pages": (total + limit - 1) // limit
+        "total_pages": (total + limit - 1) // limit,
     }
+
 
 @router.get("/companies/{company_id}", response_model=CompanyResponse)
 async def get_company(
-    company_id: str,
-    db: AsyncIOMotorDatabase = Depends(get_async_db)
+    company_id: str, db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
     """Get a specific company."""
     # Try to convert to ObjectId if it's a valid ObjectId string
@@ -124,56 +133,59 @@ async def get_company(
         query = {"_id": ObjectId(company_id)}
     else:
         query = {"_id": company_id}
-        
+
     company = await db.companies.find_one(query)
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
-    
+
     # Convert ObjectId to string for JSON serialization
     if "_id" in company and isinstance(company["_id"], ObjectId):
         company["id"] = str(company["_id"])
         company["_id"] = str(company["_id"])
-    
+
     # Add jobs_count if not present
     if "jobs_count" not in company:
-        company["jobs_count"] = await db.jobs.count_documents({"company": company["name"]})
-        
+        company["jobs_count"] = await db.jobs.count_documents(
+            {"company": company["name"]}
+        )
+
     return company
+
 
 @router.put("/companies/{company_id}", response_model=CompanyResponse)
 async def update_company(
     company_id: str,
     company: CompanyUpdate,
-    db: AsyncIOMotorDatabase = Depends(get_async_db)
+    db: AsyncIOMotorDatabase = Depends(get_async_db),
 ):
     """Update a company."""
     update_data = company.dict(exclude_unset=True)
     update_data["updated_at"] = datetime.utcnow()
-    
+
     # Try to convert to ObjectId if it's a valid ObjectId string
     if ObjectId.is_valid(company_id):
         query = {"_id": ObjectId(company_id)}
     else:
         query = {"_id": company_id}
-    
+
     result = await db.companies.update_one(query, {"$set": update_data})
-    
+
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Company not found")
-    
+
     updated_company = await db.companies.find_one(query)
-    
+
     # Convert ObjectId to string for JSON serialization
     if "_id" in updated_company and isinstance(updated_company["_id"], ObjectId):
         updated_company["id"] = str(updated_company["_id"])
         updated_company["_id"] = str(updated_company["_id"])
-        
+
     return updated_company
+
 
 @router.delete("/companies/{company_id}", status_code=204)
 async def delete_company(
-    company_id: str,
-    db: AsyncIOMotorDatabase = Depends(get_async_db)
+    company_id: str, db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
     """Delete a company."""
     # Try to convert to ObjectId if it's a valid ObjectId string
@@ -181,10 +193,11 @@ async def delete_company(
         query = {"_id": ObjectId(company_id)}
     else:
         query = {"_id": company_id}
-        
+
     result = await db.companies.delete_one(query)
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Company not found")
+
 
 @router.get("/companies/{company_id}/jobs", response_model=dict)
 async def get_company_jobs(
@@ -192,35 +205,35 @@ async def get_company_jobs(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
     is_active: Optional[bool] = None,
-    db: AsyncIOMotorDatabase = Depends(get_async_db)
+    db: AsyncIOMotorDatabase = Depends(get_async_db),
 ):
     """Get jobs for a specific company."""
     # First get the company to ensure it exists
     company = await db.companies.find_one({"_id": company_id})
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
-        
+
     query = {"company": company["name"]}  # Use company name for job lookup
     if is_active is not None:
         query["is_active"] = is_active
-    
+
     # Get total count
     total = await db.jobs.count_documents(query)
-    
+
     # Get jobs
     cursor = db.jobs.find(query).sort("created_at", -1).skip(skip).limit(limit)
     jobs = await cursor.to_list(length=limit)
-    
+
     # Convert ObjectIds to strings
     for job in jobs:
         if "_id" in job and isinstance(job["_id"], ObjectId):
             job["id"] = str(job["_id"])
             job["_id"] = str(job["_id"])
-            
+
     return {
         "jobs": jobs,
         "total": total,
         "page": skip // limit + 1,
         "per_page": limit,
-        "total_pages": (total + limit - 1) // limit
-    } 
+        "total_pages": (total + limit - 1) // limit,
+    }

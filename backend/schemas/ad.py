@@ -1,6 +1,8 @@
-from pydantic import BaseModel, Field, field_validator, ConfigDict
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
 
 class AdBase(BaseModel):
     title: str = Field(..., min_length=1, description="Title must not be empty")
@@ -10,13 +12,15 @@ class AdBase(BaseModel):
     target_audience: Optional[List[str]] = []
     is_active: bool = True
 
+
 class AdCreate(AdBase):
-    @field_validator('title')
+    @field_validator("title")
     @classmethod
     def title_must_not_be_empty(cls, v):
         if not v or not v.strip():
-            raise ValueError('Title must not be empty')
+            raise ValueError("Title must not be empty")
         return v
+
 
 class AdUpdate(BaseModel):
     title: Optional[str] = None
@@ -25,6 +29,7 @@ class AdUpdate(BaseModel):
     target_url: Optional[str] = None
     target_audience: Optional[List[str]] = None
     is_active: Optional[bool] = None
+
 
 class AdResponse(AdBase):
     id: str
@@ -41,12 +46,14 @@ class AdResponse(AdBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 # Alias for backward compatibility
 Ad = AdResponse
+
 
 class AdListResponse(BaseModel):
     items: List[AdResponse]
     total: int
     page: int
     per_page: int
-    total_pages: int 
+    total_pages: int

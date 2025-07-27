@@ -1,18 +1,20 @@
-import pytest
 import asyncio
 import os
-from motor.motor_asyncio import AsyncIOMotorClient
-from httpx import AsyncClient
-from main import app
-from backend.database import get_async_db
-import mongomock
-from unittest.mock import patch, MagicMock, AsyncMock, Mock
+import sys
 from datetime import datetime
-from config import Settings
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
+import mongomock
+import pytest
 import pytest_asyncio
 from bson import ObjectId
 from fastapi.testclient import TestClient
-import sys
+from httpx import AsyncClient
+from motor.motor_asyncio import AsyncIOMotorClient
+
+from backend.database import get_async_db
+from config import Settings
+from main import app
 
 # Set testing environment before importing the app
 os.environ["TESTING"] = "true"
@@ -35,9 +37,10 @@ os.environ["ENVIRONMENT"] = "test"
 os.environ["MONGODB_URI"] = "mongodb://localhost:27017/test_buzz2remote"
 
 # Add project root to path to allow imports from backend
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from backend.database.db import get_db
+
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -49,6 +52,7 @@ def event_loop():
     yield loop
     loop.close()
 
+
 @pytest.fixture(scope="module")
 def client():
     """
@@ -58,6 +62,7 @@ def client():
     with TestClient(app) as test_client:
         yield test_client
 
+
 @pytest.fixture(scope="function")
 def db_mock():
     """
@@ -65,7 +70,7 @@ def db_mock():
     This is ideal for unit tests of services or CRUD operations.
     """
     db = MagicMock()
-    
+
     # Create mock collections
     db.users = MagicMock()
     db.jobs = MagicMock()
@@ -79,18 +84,27 @@ def db_mock():
     db.notifications = MagicMock()
     db.test_collection = MagicMock()
     db.test_concurrent = MagicMock()
-    
+
     # Default return values for common methods
     db.users.find_one.return_value = None
     db.jobs.find_one.return_value = None
     db.companies.find_one.return_value = None
     db.user_activities.find_one.return_value = None
     db.user_sessions.find_one.return_value = None
-    
+
     # Mock collection methods
-    for collection in [db.users, db.jobs, db.companies, db.user_activities, 
-                      db.user_sessions, db.activity_summaries, db.crawl_errors,
-                      db.service_logs, db.ads, db.notifications]:
+    for collection in [
+        db.users,
+        db.jobs,
+        db.companies,
+        db.user_activities,
+        db.user_sessions,
+        db.activity_summaries,
+        db.crawl_errors,
+        db.service_logs,
+        db.ads,
+        db.notifications,
+    ]:
         collection.insert_one = MagicMock()
         collection.insert_many = MagicMock()
         collection.update_one = MagicMock()
@@ -103,8 +117,9 @@ def db_mock():
         collection.aggregate = MagicMock()
         collection.create_index = MagicMock()
         collection.drop = MagicMock()
-    
+
     return db
+
 
 @pytest.fixture(autouse=True)
 def override_db(db_mock):
@@ -112,12 +127,14 @@ def override_db(db_mock):
     Automatically override the `get_database` dependency for all tests
     to use the mock database.
     """
+
     def _override_get_db():
         return db_mock
 
     app.dependency_overrides[get_db] = _override_get_db
     yield
     app.dependency_overrides.clear()
+
 
 @pytest_asyncio.fixture(scope="session")
 async def mongodb_client():
@@ -130,8 +147,10 @@ async def mongodb_client():
     except Exception:
         # If MongoDB is not available, use mongomock
         import mongomock_motor
+
         client = mongomock_motor.AsyncMongoMockClient()
         yield client
+
 
 @pytest_asyncio.fixture(scope="function")
 async def mongodb(mongodb_client):
@@ -146,28 +165,32 @@ async def mongodb(mongodb_client):
         pass
     yield db
 
+
 @pytest_asyncio.fixture
 async def async_client(mongodb):
     """Create an async client for testing API endpoints."""
     with patch("backend.database.get_async_db", autospec=True) as mock_get_async_db:
+
         async def async_db_mock():
             yield mongodb
+
         mock_get_async_db.side_effect = async_db_mock
         async with AsyncClient(app=app, base_url="http://test") as client:
             yield client
 
+
 class MockCollection:
     """Mock collection that mimics MongoDB collection behavior."""
-    
+
     def __init__(self):
         self._storage = {}
         # Create a mock for find that supports side_effect
         self.find = MagicMock(side_effect=self._find_implementation)
-    
+
     def _find_implementation(self, query=None):
         """Internal find implementation."""
         return MockCursor(self._storage, query)
-    
+
     async def count_documents(self, query=None):
         """Mock count_documents."""
         if not query:
@@ -178,7 +201,7 @@ class MockCollection:
             if self._matches_query(doc, query):
                 count += 1
         return count
-    
+
     async def find_one(self, query):
         """Mock find_one."""
         if "_id" in query:
@@ -187,7 +210,7 @@ class MockCollection:
                 target_id = str(target_id)
             return self._storage.get(target_id)
         return None
-    
+
     async def insert_one(self, document):
         """Mock insert_one."""
         doc_id = document.get("_id", ObjectId())
@@ -198,12 +221,12 @@ class MockCollection:
         result = MagicMock()
         result.inserted_id = doc_id
         return result
-    
+
     async def update_one(self, query, update):
         """Mock update_one."""
         result = MagicMock()
         result.modified_count = 0
-        
+
         if "_id" in query:
             target_id = query["_id"]
             if isinstance(target_id, ObjectId):
@@ -213,16 +236,18 @@ class MockCollection:
                     self._storage[target_id].update(update["$set"])
                 if "$inc" in update:
                     for key, value in update["$inc"].items():
-                        self._storage[target_id][key] = self._storage[target_id].get(key, 0) + value
+                        self._storage[target_id][key] = (
+                            self._storage[target_id].get(key, 0) + value
+                        )
                 result.modified_count = 1
-        
+
         return result
-    
+
     async def delete_one(self, query):
         """Mock delete_one."""
         result = MagicMock()
         result.deleted_count = 0
-        
+
         if "_id" in query:
             target_id = query["_id"]
             if isinstance(target_id, ObjectId):
@@ -230,9 +255,9 @@ class MockCollection:
             if target_id in self._storage:
                 del self._storage[target_id]
                 result.deleted_count = 1
-        
+
         return result
-    
+
     def _matches_query(self, doc, query):
         """Simple query matching for tests."""
         if not query:
@@ -242,16 +267,17 @@ class MockCollection:
                 return False
         return True
 
+
 class MockCursor:
     """Mock cursor that mimics MongoDB cursor behavior."""
-    
+
     def __init__(self, storage, query=None):
         self.storage = storage
         self.query = query or {}
         self._sort_spec = []
         self._skip_val = 0
         self._limit_val = None
-    
+
     def sort(self, *args):
         """Mock sort."""
         if args:
@@ -261,37 +287,37 @@ class MockCursor:
                 # Single sort spec
                 self._sort_spec = [(args[0], args[1] if len(args) > 1 else 1)]
         return self
-    
+
     def skip(self, count):
         """Mock skip."""
         self._skip_val = count
         return self
-    
+
     def limit(self, count):
         """Mock limit."""
         self._limit_val = count
         return self
-    
+
     async def to_list(self, length=None):
         """Mock to_list."""
         docs = []
         for doc in self.storage.values():
             if self._matches_query(doc, self.query):
                 docs.append(doc)
-        
+
         # Apply sorting
         if self._sort_spec:
             for sort_key, sort_dir in reversed(self._sort_spec):
                 docs.sort(key=lambda x: x.get(sort_key, ""), reverse=(sort_dir == -1))
-        
+
         # Apply skip and limit
         if self._skip_val:
-            docs = docs[self._skip_val:]
+            docs = docs[self._skip_val :]
         if self._limit_val:
-            docs = docs[:self._limit_val]
-        
+            docs = docs[: self._limit_val]
+
         return docs
-    
+
     def _matches_query(self, doc, query):
         """Simple query matching for tests."""
         if not query:
@@ -301,9 +327,10 @@ class MockCursor:
                 return False
         return True
 
+
 class MockDatabase:
     """Mock database that mimics MongoDB database behavior."""
-    
+
     def __init__(self):
         self.ads = MockCollection()
         self.jobs = MockCollection()
@@ -315,15 +342,17 @@ class MockDatabase:
         self.test_concurrent = MockCollection()
         # Add common database properties
         self.name = "test_database"
-    
+
     def list_collection_names(self):
         """Mock list_collection_names method."""
         return ["ads", "jobs", "users", "companies", "crawl_errors", "service_logs"]
+
 
 @pytest.fixture
 def mock_database():
     """Mock database fixture for tests that expect mock_database parameter."""
     return MockDatabase()
+
 
 @pytest.fixture
 def test_user_data():
@@ -331,8 +360,9 @@ def test_user_data():
     return {
         "email": "test@example.com",
         "password": "testpassword123",
-        "full_name": "Test User"
+        "full_name": "Test User",
     }
+
 
 @pytest.fixture
 def test_job_data():
@@ -348,8 +378,9 @@ def test_job_data():
         "experience_level": "Mid-level",
         "apply_url": "https://example.com/apply",
         "url": "https://example.com/job",
-        "source": "test"
+        "source": "test",
     }
+
 
 @pytest.fixture
 def mock_jobs_collection():
@@ -365,63 +396,74 @@ def mock_jobs_collection():
     mock_collection.aggregate = Mock()
     return mock_collection
 
+
 @pytest.fixture
 def mock_users_collection(mongodb):
     """Mock users collection with sample data."""
     collection = mongodb["users"]
-    collection.insert_many([
-        {
-            "_id": ObjectId(),
-            "email": "test@example.com",
-            "hashed_password": "hashed_password",
-            "is_active": True,
-            "created_at": datetime.utcnow()
-        }
-    ])
+    collection.insert_many(
+        [
+            {
+                "_id": ObjectId(),
+                "email": "test@example.com",
+                "hashed_password": "hashed_password",
+                "is_active": True,
+                "created_at": datetime.utcnow(),
+            }
+        ]
+    )
     return collection
+
 
 @pytest.fixture
 def mock_companies_collection(mongodb):
     """Mock companies collection with sample data."""
     collection = mongodb["companies"]
-    collection.insert_many([
-        {
-            "_id": ObjectId(),
-            "name": "TechCorp",
-            "website": "https://techcorp.com",
-            "careers_url": "https://techcorp.com/careers",
-            "job_count": 15
-        },
-        {
-            "_id": ObjectId(),
-            "name": "StartupXYZ",
-            "website": "https://startupxyz.com",
-            "careers_url": "https://startupxyz.com/careers",
-            "job_count": 8
-        }
-    ])
+    collection.insert_many(
+        [
+            {
+                "_id": ObjectId(),
+                "name": "TechCorp",
+                "website": "https://techcorp.com",
+                "careers_url": "https://techcorp.com/careers",
+                "job_count": 15,
+            },
+            {
+                "_id": ObjectId(),
+                "name": "StartupXYZ",
+                "website": "https://startupxyz.com",
+                "careers_url": "https://startupxyz.com/careers",
+                "job_count": 8,
+            },
+        ]
+    )
     return collection
+
 
 @pytest.fixture
 def mock_notifications_collection(mongodb):
     """Mock notifications collection."""
     return mongodb["notifications"]
 
+
 @pytest.fixture
 def mock_ads_collection(mongodb):
     """Mock ads collection."""
     return mongodb["ads"]
+
 
 @pytest.fixture
 def mock_token():
     """Mock JWT token for authentication."""
     return "mock.jwt.token"
 
+
 @pytest_asyncio.fixture
 async def client_with_auth(async_client, mock_token):
     """Test client with authentication headers."""
     async_client.headers = {"Authorization": f"Bearer {mock_token}"}
     return async_client
+
 
 @pytest.fixture
 def mock_companies_data():
@@ -431,31 +473,28 @@ def mock_companies_data():
             "name": "TechCorp",
             "website": "https://techcorp.com",
             "careers_url": "https://techcorp.com/careers",
-            "job_count": 15
+            "job_count": 15,
         },
         {
             "name": "StartupXYZ",
             "website": "https://startupxyz.com",
             "careers_url": "https://startupxyz.com/careers",
-            "job_count": 8
-        }
+            "job_count": 8,
+        },
     ]
+
 
 @pytest.fixture
 def auth_headers():
     """Mock authentication headers for testing."""
-    return {
-        "Authorization": "Bearer test-token",
-        "Content-Type": "application/json"
-    }
+    return {"Authorization": "Bearer test-token", "Content-Type": "application/json"}
+
 
 @pytest.fixture
 def admin_headers():
     """Mock admin authentication headers for testing (admin role)."""
-    return {
-        "Authorization": "Bearer admin-token",
-        "Content-Type": "application/json"
-    }
+    return {"Authorization": "Bearer admin-token", "Content-Type": "application/json"}
+
 
 @pytest.fixture
 def sample_job_data():
@@ -471,24 +510,21 @@ def sample_job_data():
         "requirements": "Python, FastAPI, MongoDB",
         "salary_range": "$50,000 - $80,000",
         "job_type": "Full-time",
-        "experience_level": "Mid-level"
+        "experience_level": "Mid-level",
     }
+
 
 @pytest.fixture
 def mock_google_oauth():
     """Mock Google OAuth data."""
-    return {
-        "code": "mock_auth_code",
-        "state": "mock_state"
-    }
+    return {"code": "mock_auth_code", "state": "mock_state"}
+
 
 @pytest.fixture
 def mock_linkedin_oauth():
     """Mock LinkedIn OAuth data."""
-    return {
-        "code": "mock_linkedin_code",
-        "state": "mock_state"
-    }
+    return {"code": "mock_linkedin_code", "state": "mock_state"}
+
 
 @pytest.fixture
 def mock_cv_file():
@@ -496,35 +532,39 @@ def mock_cv_file():
     return {
         "filename": "test_cv.pdf",
         "content": b"Mock CV content",
-        "content_type": "application/pdf"
+        "content_type": "application/pdf",
     }
+
 
 @pytest.fixture(autouse=True)
 def mock_external_services(monkeypatch):
     """Mock external services like Telegram bot, external APIs etc."""
-    
+
     def mock_send_notification(*args, **kwargs):
         return True
-    
+
     def mock_send_deployment_notification(*args, **kwargs):
         return True
-    
+
     def mock_fetch_external_jobs(*args, **kwargs):
         return []
-    
+
     try:
         monkeypatch.setattr("external_job_apis.fetch_jobs", mock_fetch_external_jobs)
     except AttributeError:
         pass
 
+
 def test_pytest_is_working():
     """A simple sanity check to ensure pytest runs."""
     assert 1 + 1 == 2
+
 
 def test_can_import_fastapi_app():
     """Checks if the main FastAPI app instance can be imported without errors."""
     try:
         from main import app
+
         assert app is not None
     except ImportError as e:
-        pytest.fail(f"Failed to import the FastAPI app from main: {e}") 
+        pytest.fail(f"Failed to import the FastAPI app from main: {e}")

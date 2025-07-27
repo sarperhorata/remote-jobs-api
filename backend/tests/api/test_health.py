@@ -1,12 +1,15 @@
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
+
 from main import app
+
 
 @pytest.fixture
 def client():
     """Create a test client for the FastAPI app."""
     return TestClient(app)
+
 
 @pytest.mark.api
 class TestHealthAPI:
@@ -26,4 +29,4 @@ class TestHealthAPI:
     def test_docs_endpoint(self, client):
         """Test docs endpoint is accessible."""
         response = client.get("/docs")
-        assert response.status_code == status.HTTP_200_OK 
+        assert response.status_code == status.HTTP_200_OK

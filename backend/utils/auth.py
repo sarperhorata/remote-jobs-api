@@ -1,10 +1,12 @@
 from datetime import datetime, timedelta
 from typing import Optional
+
 import jwt
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from jwt import InvalidTokenError as JWTError
 from passlib.context import CryptContext
-from fastapi import HTTPException, status, Depends
-from fastapi.security import OAuth2PasswordBearer
+
 from backend.core.config import get_settings
 from backend.database.db import get_async_db
 
@@ -21,13 +23,16 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
     return pwd_context.verify(plain_password, hashed_password)
 
+
 def get_password_hash(password: str) -> str:
     """Generate password hash."""
     return pwd_context.hash(password)
+
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Create a new JWT access token."""
@@ -39,6 +44,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     """Get the current user from the JWT token."""
@@ -56,6 +62,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
     return user_id
 
+
 def verify_token(token: str) -> dict:
     """Verify a JWT token and return its payload."""
     try:
@@ -68,10 +75,12 @@ def verify_token(token: str) -> dict:
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+
 async def get_current_active_user(current_user: dict = get_current_user):
     if not current_user.get("is_active", True):
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
 
 async def get_current_admin(current_user: dict = Depends(get_current_user)):
     """
@@ -79,15 +88,14 @@ async def get_current_admin(current_user: dict = Depends(get_current_user)):
     """
     if not current_user.get("is_active", True):
         raise HTTPException(status_code=400, detail="Inactive user")
-    
+
     # Check if user has admin role
     user_role = current_user.get("role", "user")
     is_admin = current_user.get("is_admin", False)
-    
+
     if user_role != "admin" and not is_admin:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
         )
-    
-    return current_user 
+
+    return current_user

@@ -1,9 +1,12 @@
 from datetime import datetime
-from typing import List, Optional, Annotated
-from pydantic import BaseModel, Field, GetCoreSchemaHandler, GetJsonSchemaHandler, ConfigDict
+from typing import Annotated, List, Optional
+
+from bson import ObjectId
+from pydantic import (BaseModel, ConfigDict, Field, GetCoreSchemaHandler,
+                      GetJsonSchemaHandler)
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema
-from bson import ObjectId
+
 
 class PyObjectId(ObjectId):
     @classmethod
@@ -11,15 +14,20 @@ class PyObjectId(ObjectId):
         cls, source_type, handler: GetCoreSchemaHandler
     ) -> CoreSchema:
         from pydantic_core import core_schema
+
         return core_schema.json_or_python_schema(
             json_schema=core_schema.str_schema(),
-            python_schema=core_schema.union_schema([
-                core_schema.is_instance_schema(ObjectId),
-                core_schema.chain_schema([
-                    core_schema.str_schema(),
-                    core_schema.no_info_plain_validator_function(cls.validate),
-                ])
-            ]),
+            python_schema=core_schema.union_schema(
+                [
+                    core_schema.is_instance_schema(ObjectId),
+                    core_schema.chain_schema(
+                        [
+                            core_schema.str_schema(),
+                            core_schema.no_info_plain_validator_function(cls.validate),
+                        ]
+                    ),
+                ]
+            ),
             serialization=core_schema.plain_serializer_function_ser_schema(
                 str, return_schema=core_schema.str_schema()
             ),
@@ -39,6 +47,7 @@ class PyObjectId(ObjectId):
             raise ValueError("Invalid ObjectId")
         return ObjectId(v)
 
+
 class JobBase(BaseModel):
     title: str
     company: str
@@ -54,10 +63,13 @@ class JobBase(BaseModel):
     skills: Optional[List[str]] = None
     application_deadline: Optional[datetime] = None
 
+
 class JobCreate(JobBase):
     """Model for creating a job - datetime fields are set automatically by the API"""
+
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
 
 class JobUpdate(BaseModel):
     title: Optional[str] = None
@@ -75,6 +87,7 @@ class JobUpdate(BaseModel):
     application_deadline: Optional[datetime] = None
     is_active: Optional[bool] = None
 
+
 class JobResponse(JobBase):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     is_active: bool = True
@@ -86,16 +99,14 @@ class JobResponse(JobBase):
     model_config = ConfigDict(
         populate_by_name=True,
         arbitrary_types_allowed=True,
-        json_encoders={
-            ObjectId: str,
-            datetime: lambda dt: dt.isoformat()
-        },
-        json_schema_serialization_defaults_required=True
+        json_encoders={ObjectId: str, datetime: lambda dt: dt.isoformat()},
+        json_schema_serialization_defaults_required=True,
     )
+
 
 class JobListResponse(BaseModel):
     items: List[JobResponse]
     total: int
     page: int
     per_page: int
-    total_pages: int 
+    total_pages: int

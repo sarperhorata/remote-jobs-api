@@ -1,15 +1,11 @@
-import pytest
 import os
 from unittest.mock import patch
-from backend.utils.config import (
-    get_db_url, 
-    get_crawler_headers, 
-    get_all_config,
-    DATABASE_URL,
-    USER_AGENT,
-    API_HOST,
-    API_PORT
-)
+
+import pytest
+
+from backend.utils.config import (API_HOST, API_PORT, DATABASE_URL, USER_AGENT,
+                                  get_all_config, get_crawler_headers,
+                                  get_db_url)
 
 
 class TestConfigFunctions:
@@ -26,21 +22,23 @@ class TestConfigFunctions:
         """Test get_db_url with custom DATABASE_URL"""
         # Reload module to pick up new env var
         import importlib
+
         import utils.config
+
         importlib.reload(utils.config)
-        
+
         result = utils.config.get_db_url()
         assert "mongodb://test:27017/testdb" in result
 
     def test_get_crawler_headers_structure(self):
         """Test get_crawler_headers returns correct structure"""
         headers = get_crawler_headers()
-        
+
         assert isinstance(headers, dict)
         assert "User-Agent" in headers
         assert "Accept-Language" in headers
         assert "Accept" in headers
-        
+
         # Check values
         assert headers["User-Agent"] == USER_AGENT
         assert headers["Accept-Language"] == "en-US,en;q=0.9"
@@ -49,7 +47,7 @@ class TestConfigFunctions:
     def test_get_crawler_headers_content(self):
         """Test get_crawler_headers returns expected values"""
         headers = get_crawler_headers()
-        
+
         # Should contain realistic browser headers
         assert "Mozilla" in headers["User-Agent"]
         assert "Chrome" in headers["User-Agent"]
@@ -58,16 +56,27 @@ class TestConfigFunctions:
     def test_get_all_config_structure(self):
         """Test get_all_config returns complete config structure"""
         config = get_all_config()
-        
+
         assert isinstance(config, dict)
-        
+
         # Check main sections exist
         required_sections = [
-            "api", "database", "email", "telegram", "monitor",
-            "crawler", "cors", "jwt", "cache", "rate_limit",
-            "file_upload", "premium", "notification", "security"
+            "api",
+            "database",
+            "email",
+            "telegram",
+            "monitor",
+            "crawler",
+            "cors",
+            "jwt",
+            "cache",
+            "rate_limit",
+            "file_upload",
+            "premium",
+            "notification",
+            "security",
         ]
-        
+
         for section in required_sections:
             assert section in config
             assert isinstance(config[section], dict)
@@ -76,7 +85,7 @@ class TestConfigFunctions:
         """Test API section in config"""
         config = get_all_config()
         api_config = config["api"]
-        
+
         assert api_config["host"] == API_HOST
         assert api_config["port"] == API_PORT
         assert isinstance(api_config["debug"], bool)
@@ -86,7 +95,7 @@ class TestConfigFunctions:
         """Test database section in config"""
         config = get_all_config()
         db_config = config["database"]
-        
+
         assert "url" in db_config
         assert "is_production" in db_config
         assert isinstance(db_config["is_production"], bool)
@@ -96,11 +105,11 @@ class TestConfigFunctions:
         """Test email section in config"""
         config = get_all_config()
         email_config = config["email"]
-        
+
         required_fields = ["host", "port", "user", "from", "enabled"]
         for field in required_fields:
             assert field in email_config
-        
+
         assert isinstance(email_config["port"], int)
         assert isinstance(email_config["enabled"], bool)
 
@@ -108,7 +117,7 @@ class TestConfigFunctions:
         """Test security section in config"""
         config = get_all_config()
         security_config = config["security"]
-        
+
         assert security_config["password_min_length"] >= 8
         assert isinstance(security_config["require_uppercase"], bool)
         assert isinstance(security_config["require_lowercase"], bool)
@@ -119,7 +128,7 @@ class TestConfigFunctions:
         """Test crawler section in config"""
         config = get_all_config()
         crawler_config = config["crawler"]
-        
+
         assert isinstance(crawler_config["timeout"], int)
         assert isinstance(crawler_config["delay"], float)
         assert crawler_config["user_agent"] == USER_AGENT
@@ -130,7 +139,7 @@ class TestConfigFunctions:
         """Test premium section in config"""
         config = get_all_config()
         premium_config = config["premium"]
-        
+
         assert isinstance(premium_config["price"], float)
         assert isinstance(premium_config["free_trial_days"], int)
         assert isinstance(premium_config["max_free_job_views"], int)
@@ -142,9 +151,11 @@ class TestConfigFunctions:
         """Test config with environment variable overrides"""
         # Reload module to pick up new env vars
         import importlib
+
         import utils.config
+
         importlib.reload(utils.config)
-        
+
         config = utils.config.get_all_config()
         # Note: Due to module loading, this might not reflect changes
         # but tests the function behavior
@@ -155,16 +166,16 @@ class TestConfigFunctions:
         """Test that config functions return consistent data"""
         config1 = get_all_config()
         config2 = get_all_config()
-        
+
         # Should return same structure
         assert config1.keys() == config2.keys()
-        
+
         # Database URL should be consistent
         db_url1 = get_db_url()
         db_url2 = get_db_url()
         assert db_url1 == db_url2
-        
+
         # Headers should be consistent
         headers1 = get_crawler_headers()
         headers2 = get_crawler_headers()
-        assert headers1 == headers2 
+        assert headers1 == headers2

@@ -1,18 +1,21 @@
-from typing import Dict, Any
 import logging
+from typing import Any, Dict
+
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+
 from ..config import settings
 
 logger = logging.getLogger(__name__)
+
 
 class GoogleSheetsArchiver:
     def __init__(self):
         self.spreadsheet_id = settings.GOOGLE_SHEETS_SPREADSHEET_ID
         self.credentials = None
         self.service = None
-        
+
     async def initialize(self):
         """Initialize Google Sheets service"""
         try:
@@ -24,7 +27,7 @@ class GoogleSheetsArchiver:
                     "client_secret": settings.GOOGLE_SHEETS_CLIENT_SECRET,
                 }
             )
-            self.service = build('sheets', 'v4', credentials=self.credentials)
+            self.service = build("sheets", "v4", credentials=self.credentials)
             logger.info("Google Sheets service initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize Google Sheets service: {str(e)}")
@@ -34,7 +37,7 @@ class GoogleSheetsArchiver:
         """Archive a job to Google Sheets"""
         if not self.service:
             await self.initialize()
-            
+
         try:
             # Prepare job data for sheets
             row_data = [
@@ -45,24 +48,27 @@ class GoogleSheetsArchiver:
                 job.get("created_at", "").isoformat(),
                 job.get("archived_at", "").isoformat(),
                 str(job.get("_id", "")),
-                job.get("url", "")
+                job.get("url", ""),
             ]
-            
+
             # Append to sheet
-            body = {
-                'values': [row_data]
-            }
-            result = self.service.spreadsheets().values().append(
-                spreadsheetId=self.spreadsheet_id,
-                range='Archive!A:H',
-                valueInputOption='RAW',
-                insertDataOption='INSERT_ROWS',
-                body=body
-            ).execute()
-            
+            body = {"values": [row_data]}
+            result = (
+                self.service.spreadsheets()
+                .values()
+                .append(
+                    spreadsheetId=self.spreadsheet_id,
+                    range="Archive!A:H",
+                    valueInputOption="RAW",
+                    insertDataOption="INSERT_ROWS",
+                    body=body,
+                )
+                .execute()
+            )
+
             logger.info(f"Successfully archived job {job['_id']} to Google Sheets")
             return True
-            
+
         except HttpError as e:
             logger.error(f"Google Sheets API error: {str(e)}")
             return False
@@ -70,5 +76,6 @@ class GoogleSheetsArchiver:
             logger.error(f"Failed to archive job to Google Sheets: {str(e)}")
             return False
 
+
 # Create singleton instance
-sheets_archiver = GoogleSheetsArchiver() 
+sheets_archiver = GoogleSheetsArchiver()

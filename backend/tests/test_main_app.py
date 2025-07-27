@@ -1,11 +1,13 @@
+import asyncio
+from unittest.mock import Mock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch, Mock
-import asyncio
 
 from main import app, lifespan
 
 client = TestClient(app)
+
 
 class TestMainApplication:
     """Tests for main application startup and routes"""
@@ -73,7 +75,7 @@ class TestMainApplication:
         assert data["info"]["title"]
         assert "version" in data["info"]
 
-    @patch('main.logger')
+    @patch("main.logger")
     def test_exception_handling(self, mock_logger):
         """Test global exception handling"""
         # Test with malformed request
@@ -121,11 +123,11 @@ class TestMainApplication:
         assert response.status_code == 200
         # If database is properly injected, this should work
 
-    @patch('database.db.get_database')
+    @patch("database.db.get_database")
     def test_database_error_handling(self, mock_get_db):
         """Test application handles database errors gracefully"""
         mock_get_db.side_effect = Exception("Database connection failed")
-        
+
         response = client.get("/api/v1/jobs/search?limit=1")
         # Should handle database errors gracefully
         assert response.status_code in [200, 500, 503]
@@ -143,6 +145,7 @@ class TestMainApplication:
         # Should have basic security considerations
         assert len(headers) > 0
 
+
 class TestApplicationLifespan:
     """Test application lifespan events"""
 
@@ -150,7 +153,7 @@ class TestApplicationLifespan:
     async def test_lifespan_startup(self):
         """Test application startup lifespan"""
         mock_app = Mock()
-        
+
         try:
             async with lifespan(mock_app):
                 # Startup should complete without errors
@@ -169,7 +172,7 @@ class TestApplicationLifespan:
     def test_route_registration(self):
         """Test all routes are properly registered"""
         routes = [route.path for route in app.routes]
-        
+
         # Should have essential routes
         assert any("/health" in path for path in routes)
         assert any("/api/v1" in path for path in routes)
@@ -177,8 +180,9 @@ class TestApplicationLifespan:
     def test_middleware_registration(self):
         """Test middleware is properly registered"""
         # Check if app has middleware_stack attribute and it's not empty
-        assert hasattr(app, 'middleware_stack')
+        assert hasattr(app, "middleware_stack")
         assert app.middleware_stack is not None  # Should have middleware
+
 
 class TestApplicationConfiguration:
     """Test application configuration and settings"""
@@ -200,7 +204,7 @@ class TestApplicationConfiguration:
         # Check if app is configured for production
         response = client.get("/health")
         assert response.status_code == 200
-        
+
         # Should have proper error handling
         response = client.get("/nonexistent")
         assert response.status_code == 404
@@ -209,7 +213,7 @@ class TestApplicationConfiguration:
         """Test API versioning is implemented"""
         response = client.get("/api/v1/jobs/search?limit=1")
         assert response.status_code == 200
-        
+
         # v1 routes should work
         assert "v1" in str(app.routes)
 

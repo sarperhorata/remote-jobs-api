@@ -1,18 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
+
 from bson import ObjectId
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
+
 from backend.database import get_async_db
-from backend.schemas.ad import AdCreate, AdUpdate, AdResponse, AdListResponse
+from backend.schemas.ad import AdCreate, AdListResponse, AdResponse, AdUpdate
 
 router = APIRouter()
 
+
 @router.post("/ads/", response_model=AdResponse, status_code=status.HTTP_201_CREATED)
-async def create_ad(
-    ad: AdCreate,
-    db: AsyncIOMotorDatabase = Depends(get_async_db)
-):
+async def create_ad(ad: AdCreate, db: AsyncIOMotorDatabase = Depends(get_async_db)):
     """Create a new advertisement."""
     ad_dict = ad.model_dump()
     ad_dict["created_at"] = datetime.utcnow()
@@ -20,15 +20,15 @@ async def create_ad(
     ad_dict["is_active"] = True
     ad_dict["views_count"] = 0
     ad_dict["clicks_count"] = 0
-    
+
     result = await db.ads.insert_one(ad_dict)
     created_ad = await db.ads.find_one({"_id": result.inserted_id})
-    
+
     # Handle case where ad might not be found (e.g., in mock database)
     if not created_ad:
         created_ad = ad_dict.copy()
         created_ad["_id"] = result.inserted_id
-    
+
     # Convert ObjectId to string for JSON serialization and set id field
     if "_id" in created_ad and isinstance(created_ad["_id"], ObjectId):
         created_ad["id"] = str(created_ad["_id"])
@@ -36,8 +36,9 @@ async def create_ad(
         created_ad["id"] = str(created_ad["_id"])
     else:
         created_ad["id"] = str(result.inserted_id)
-    
+
     return created_ad
+
 
 @router.get("/ads/")
 async def get_ads(
@@ -50,7 +51,7 @@ async def get_ads(
     position: Optional[str] = None,
     sort_by: Optional[str] = None,
     sort_order: str = Query("desc"),
-    db: AsyncIOMotorDatabase = Depends(get_async_db)
+    db: AsyncIOMotorDatabase = Depends(get_async_db),
 ):
     """Get a list of advertisements with optional filtering."""
     try:
@@ -61,37 +62,37 @@ async def get_ads(
             query["status"] = status
         if position:
             query["position"] = position
-        
+
         # Handle pagination parameters
         if page is not None and per_page is not None:
             skip = (page - 1) * per_page
             limit = per_page
-        
+
         # Get total count
         total = await db.ads.count_documents(query)
-        
+
         # Build sort criteria
         sort_criteria = []
         if sort_by:
             sort_direction = -1 if sort_order == "desc" else 1
             sort_criteria.append((sort_by, sort_direction))
         sort_criteria.append(("created_at", -1))
-        
+
         # Get ads
         cursor = db.ads.find(query).sort(sort_criteria).skip(skip).limit(limit)
         ads = await cursor.to_list(length=limit)
-        
+
         # Convert ObjectIds to strings
         for ad in ads:
             if "_id" in ad and isinstance(ad["_id"], ObjectId):
                 ad["_id"] = str(ad["_id"])
-        
+
         return {
             "ads": ads,  # Return as "ads" to match test expectation
             "total": total,
             "page": skip // limit + 1,
             "per_page": limit,
-            "total_pages": (total + limit - 1) // limit
+            "total_pages": (total + limit - 1) // limit,
         }
     except Exception as e:
         # Handle database errors gracefully
@@ -101,36 +102,33 @@ async def get_ads(
             "page": 1,
             "per_page": limit,
             "total_pages": 0,
-            "error": "Database temporarily unavailable"
+            "error": "Database temporarily unavailable",
         }
 
+
 @router.get("/ads/{ad_id}", response_model=AdResponse)
-async def get_ad(
-    ad_id: str,
-    db: AsyncIOMotorDatabase = Depends(get_async_db)
-):
+async def get_ad(ad_id: str, db: AsyncIOMotorDatabase = Depends(get_async_db)):
     """Get a specific advertisement."""
     # Try to convert to ObjectId if it's a valid ObjectId string
     if ObjectId.is_valid(ad_id):
         query = {"_id": ObjectId(ad_id)}
     else:
         query = {"_id": ad_id}
-        
+
     ad = await db.ads.find_one(query)
     if not ad:
         raise HTTPException(status_code=404, detail="Advertisement not found")
-        
+
     # Convert ObjectId to string for JSON serialization
     if "_id" in ad and isinstance(ad["_id"], ObjectId):
         ad["id"] = str(ad["_id"])
-        
+
     return ad
+
 
 @router.put("/ads/{ad_id}", response_model=AdResponse)
 async def update_ad(
-    ad_id: str,
-    ad: AdUpdate,
-    db: AsyncIOMotorDatabase = Depends(get_async_db)
+    ad_id: str, ad: AdUpdate, db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
     """Update an advertisement."""
     # Try to convert to ObjectId if it's a valid ObjectId string
@@ -138,17 +136,17 @@ async def update_ad(
         query = {"_id": ObjectId(ad_id)}
     else:
         query = {"_id": ad_id}
-        
+
     update_data = ad.model_dump(exclude_unset=True)
     update_data["updated_at"] = datetime.utcnow()
-    
+
     result = await db.ads.update_one(query, {"$set": update_data})
-    
+
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Advertisement not found")
-    
+
     updated_ad = await db.ads.find_one(query)
-    
+
     # Handle case where ad might not be found (e.g., in mock database)
     if not updated_ad:
         updated_ad = {
@@ -160,71 +158,64 @@ async def update_ad(
             "updated_at": datetime.utcnow(),
             "views_count": 0,
             "clicks_count": 0,
-            "_id": ObjectId(ad_id) if ObjectId.is_valid(ad_id) else ad_id
+            "_id": ObjectId(ad_id) if ObjectId.is_valid(ad_id) else ad_id,
         }
         updated_ad.update(update_data)
-    
+
     # Convert ObjectId to string for JSON serialization
     if "_id" in updated_ad and isinstance(updated_ad["_id"], ObjectId):
         updated_ad["id"] = str(updated_ad["_id"])
-        
+
     return updated_ad
 
+
 @router.delete("/ads/{ad_id}", status_code=204)
-async def delete_ad(
-    ad_id: str,
-    db: AsyncIOMotorDatabase = Depends(get_async_db)
-):
+async def delete_ad(ad_id: str, db: AsyncIOMotorDatabase = Depends(get_async_db)):
     """Delete an advertisement."""
     # Try to convert to ObjectId if it's a valid ObjectId string
     if ObjectId.is_valid(ad_id):
         query = {"_id": ObjectId(ad_id)}
     else:
         query = {"_id": ad_id}
-        
+
     result = await db.ads.delete_one(query)
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Advertisement not found")
 
+
 @router.post("/ads/{ad_id}/view")
-async def record_ad_view(
-    ad_id: str,
-    db: AsyncIOMotorDatabase = Depends(get_async_db)
-):
+async def record_ad_view(ad_id: str, db: AsyncIOMotorDatabase = Depends(get_async_db)):
     """Record a view for an advertisement."""
     # Try to convert to ObjectId if it's a valid ObjectId string
     if ObjectId.is_valid(ad_id):
         query = {"_id": ObjectId(ad_id)}
     else:
         query = {"_id": ad_id}
-        
+
     result = await db.ads.update_one(query, {"$inc": {"views_count": 1}})
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Advertisement not found")
     return {"message": "View recorded successfully"}
 
+
 @router.post("/ads/{ad_id}/click")
-async def record_ad_click(
-    ad_id: str,
-    db: AsyncIOMotorDatabase = Depends(get_async_db)
-):
+async def record_ad_click(ad_id: str, db: AsyncIOMotorDatabase = Depends(get_async_db)):
     """Record a click for an advertisement."""
     # Try to convert to ObjectId if it's a valid ObjectId string
     if ObjectId.is_valid(ad_id):
         query = {"_id": ObjectId(ad_id)}
     else:
         query = {"_id": ad_id}
-        
+
     result = await db.ads.update_one(query, {"$inc": {"clicks_count": 1}})
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Advertisement not found")
     return {"message": "Click recorded successfully"}
 
+
 # Additional endpoints that the tests expect
 @router.get("/ads/analytics")
-async def get_ads_analytics(
-    db: AsyncIOMotorDatabase = Depends(get_async_db)
-):
+async def get_ads_analytics(db: AsyncIOMotorDatabase = Depends(get_async_db)):
     """Get ads analytics."""
     # This is a placeholder implementation for the test
     return {
@@ -232,29 +223,29 @@ async def get_ads_analytics(
         "active_ads": 0,
         "total_clicks": 0,
         "total_impressions": 0,
-        "avg_ctr": 0.0
+        "avg_ctr": 0.0,
     }
+
 
 @router.get("/ads/company/{company_name}")
 async def get_ads_by_company(
-    company_name: str,
-    db: AsyncIOMotorDatabase = Depends(get_async_db)
+    company_name: str, db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
     """Get ads for a specific company."""
     cursor = db.ads.find({"company": company_name})
     ads = await cursor.to_list(length=100)
-    
+
     # Convert ObjectIds to strings
     for ad in ads:
         if "_id" in ad and isinstance(ad["_id"], ObjectId):
             ad["_id"] = str(ad["_id"])
-    
+
     return {"ads": ads}
+
 
 @router.post("/ads/{ad_id}/impression")
 async def record_ad_impression(
-    ad_id: str,
-    db: AsyncIOMotorDatabase = Depends(get_async_db)
+    ad_id: str, db: AsyncIOMotorDatabase = Depends(get_async_db)
 ):
     """Record an impression for an advertisement."""
     # Try to convert to ObjectId if it's a valid ObjectId string
@@ -262,8 +253,8 @@ async def record_ad_impression(
         query = {"_id": ObjectId(ad_id)}
     else:
         query = {"_id": ad_id}
-        
+
     result = await db.ads.update_one(query, {"$inc": {"impressions": 1}})
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Advertisement not found")
-    return {"message": "Impression recorded successfully"} 
+    return {"message": "Impression recorded successfully"}

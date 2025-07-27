@@ -1,8 +1,11 @@
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, Field, HttpUrl, ConfigDict
+
 from bson import ObjectId
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+
 from .common import PyObjectId
+
 
 class JobBase(BaseModel):
     title: str = Field(...)
@@ -12,8 +15,10 @@ class JobBase(BaseModel):
     apply_url: HttpUrl
     tags: Optional[List[str]] = []
 
+
 class JobCreate(JobBase):
     pass
+
 
 class JobUpdate(BaseModel):
     title: Optional[str] = None
@@ -24,20 +29,28 @@ class JobUpdate(BaseModel):
     tags: Optional[List[str]] = None
     is_active: Optional[bool] = None
 
+
 class Job(JobBase):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     is_active: bool = True
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True, json_encoders={ObjectId: str})
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+        json_encoders={ObjectId: str},
+    )
+
 
 class JobListResponse(BaseModel):
     items: List[Job]
     total: int
 
+
 class JobSearchQuery(BaseModel):
     """Search query schema for job filtering"""
+
     query: Optional[str] = None
     location: Optional[str] = None
     job_type: Optional[str] = None
@@ -49,15 +62,20 @@ class JobSearchQuery(BaseModel):
     remote_type: Optional[str] = None
     page: int = Field(default=1, ge=1)
     limit: int = Field(default=20, ge=1, le=100)
-    sort_by: Optional[str] = Field(default="created_at", pattern="^(created_at|title|company|salary)$")
+    sort_by: Optional[str] = Field(
+        default="created_at", pattern="^(created_at|title|company|salary)$"
+    )
     sort_order: Optional[str] = Field(default="desc", pattern="^(asc|desc)$")
+
 
 class ApplicationCreate(BaseModel):
     """Schema for job application creation"""
+
     job_id: str
     cover_letter: Optional[str] = None
     application_type: str = Field(default="external", pattern="^(external|internal)$")
     additional_notes: Optional[str] = None
+
 
 class JobResponse(JobBase):
     id: str = Field(alias="_id")
@@ -68,9 +86,9 @@ class JobResponse(JobBase):
     applications_count: int
 
     model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
-    
+
     @classmethod
     def __get_pydantic_json_schema__(cls, core_schema, handler):
         json_schema = handler(core_schema)
         json_schema["properties"]["id"] = {"type": "string"}
-        return json_schema 
+        return json_schema

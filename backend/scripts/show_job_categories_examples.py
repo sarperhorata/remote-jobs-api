@@ -1,11 +1,16 @@
-import sys, os; sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import asyncio
-from motor.motor_asyncio import AsyncIOMotorClient
 import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import asyncio
+import os
+
+from motor.motor_asyncio import AsyncIOMotorClient
 
 MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017/buzz2remote")
 DB_NAME = os.getenv("DB_NAME", "buzz2remote")
 COLLECTION_NAME = "jobs"
+
 
 async def show_job_categories_examples():
     client = AsyncIOMotorClient(MONGODB_URL)
@@ -17,15 +22,25 @@ async def show_job_categories_examples():
 
     # Kategorileri tanımlayalım
     categories = [
-        "Technology", "Management", "Marketing", "Sales", 
-        "HR", "Finance", "Legal", "Operations", "Design", 
-        "Customer Service", "Education", "Healthcare", "Other"
+        "Technology",
+        "Management",
+        "Marketing",
+        "Sales",
+        "HR",
+        "Finance",
+        "Legal",
+        "Operations",
+        "Design",
+        "Customer Service",
+        "Education",
+        "Healthcare",
+        "Other",
     ]
 
     for category in categories:
         # Her kategoriden bir örnek bul
         job = await jobs_col.find_one({"job_title_category": category})
-        
+
         if job:
             print(f"🔹 {category}:")
             print(f"   ID: {job['_id']}")
@@ -44,25 +59,26 @@ async def show_job_categories_examples():
     # Kategori istatistikleri
     print("\n📊 Kategori İstatistikleri:")
     print("=" * 80)
-    
+
     pipeline = [
         {"$group": {"_id": "$job_title_category", "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}}
+        {"$sort": {"count": -1}},
     ]
-    
+
     category_stats = await jobs_col.aggregate(pipeline).to_list(None)
-    
+
     total_jobs = sum(stat["count"] for stat in category_stats)
-    
+
     for stat in category_stats:
         category = stat["_id"] or "Kategorisiz"
         count = stat["count"]
         percentage = (count / total_jobs) * 100
         print(f"   {category}: {count:,} ilan (%{percentage:.1f})")
-    
+
     print(f"\n📈 Toplam: {total_jobs:,} iş ilanı")
-    
+
     client.close()
 
+
 if __name__ == "__main__":
-    asyncio.run(show_job_categories_examples()) 
+    asyncio.run(show_job_categories_examples())

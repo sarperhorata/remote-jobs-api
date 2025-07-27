@@ -1,6 +1,8 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List
 from datetime import datetime
+from typing import List, Optional
+
+from pydantic import BaseModel, Field
+
 
 class Company(BaseModel):
     id: str = Field(alias="_id")
@@ -24,6 +26,4 @@ class Company(BaseModel):
 
     class Config:
         populate_by_name = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        } 
+        json_encoders = {datetime: lambda v: v.isoformat()}

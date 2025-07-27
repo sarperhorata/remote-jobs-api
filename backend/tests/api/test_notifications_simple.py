@@ -1,6 +1,7 @@
 import pytest
 from bson import ObjectId
 
+
 class TestNotificationsAPI:
     """Basic Notifications API endpoint tests."""
 
@@ -20,11 +21,11 @@ class TestNotificationsAPI:
     def test_create_notification_endpoint(self, client):
         """Test notification creation endpoint."""
         notification_data = {
-            "title": "Test Notification", 
+            "title": "Test Notification",
             "message": "Test message",
-            "type": "info"
+            "type": "info",
         }
-        
+
         response = client.post("/api/notifications/", json=notification_data)
         # Check endpoint responds properly
         assert response.status_code in [201, 401, 404, 405, 422]

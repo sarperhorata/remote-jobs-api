@@ -1,75 +1,86 @@
 version: 2
 updates:
-  # Frontend dependencies
+  # JavaScript/npm paketleri için ayarlar (Frontend)
   - package-ecosystem: "npm"
     directory: "/frontend"
     schedule:
-      interval: "daily"
-      time: "03:00"
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    # Tüm npm güncellemelerini tek bir PR'da topla
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"
+    # Güvenlik güncellemelerini hemen yap
     open-pull-requests-limit: 10
     reviewers:
       - "sarperhorata"
     assignees:
       - "sarperhorata"
     commit-message:
-      prefix: "🔧"
-      prefix-development: "🔧"
+      prefix: "chore"
       include: "scope"
-    labels:
-      - "dependencies"
-      - "frontend"
-    ignore:
-      # Ignore major version updates for critical packages
-      - dependency-name: "react"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "react-dom"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "typescript"
-        update-types: ["version-update:semver-major"]
 
-  # Backend dependencies
+  # Python/pip paketleri için ayarlar (Backend)
   - package-ecosystem: "pip"
     directory: "/backend"
     schedule:
-      interval: "daily"
-      time: "04:00"
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    # Tüm pip güncellemelerini tek bir PR'da topla
+    groups:
+      pip-dependencies:
+        patterns:
+          - "*"
+    # Güvenlik güncellemelerini hemen yap
     open-pull-requests-limit: 10
     reviewers:
       - "sarperhorata"
     assignees:
       - "sarperhorata"
     commit-message:
-      prefix: "🔧"
-      prefix-development: "🔧"
+      prefix: "chore"
       include: "scope"
-    labels:
-      - "dependencies"
-      - "backend"
-    ignore:
-      # Ignore major version updates for critical packages
-      - dependency-name: "fastapi"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "pydantic"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "uvicorn"
-        update-types: ["version-update:semver-major"]
 
-  # GitHub Actions
+  # GitHub Actions için ayarlar
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "05:00"
+      time: "09:00"
+    # GitHub Actions güncellemelerini grupla
+    groups:
+      github-actions:
+        patterns:
+          - "*"
     open-pull-requests-limit: 5
     reviewers:
       - "sarperhorata"
     assignees:
       - "sarperhorata"
     commit-message:
-      prefix: "🔧"
-      prefix-development: "🔧"
+      prefix: "ci"
       include: "scope"
-    labels:
-      - "dependencies"
-      - "github-actions" 
+
+  # Docker için ayarlar (eğer varsa)
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    groups:
+      docker-dependencies:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "sarperhorata"
+    assignees:
+      - "sarperhorata"
+    commit-message:
+      prefix: "chore"
+      include: "scope" 

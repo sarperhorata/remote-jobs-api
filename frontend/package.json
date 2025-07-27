@@ -42,16 +42,17 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "build:analyze": "ANALYZE=true react-scripts build",
-    "build:production": "NODE_ENV=production react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "cypress:open": "cypress open",
-    "cypress:run": "cypress run",
+    "test:performance": "jest --testPathPattern=performance --passWithNoTests",
+    "test:integration": "jest --testPathPattern=integration --passWithNoTests",
     "test:e2e": "cypress run",
-    "test:coverage": "react-scripts test --coverage --silent --watchAll=false",
-    "bundle:analyze": "npx webpack-bundle-analyzer build/static/js/*.js",
-    "bundle:size": "npx bundlesize"
+    "test:all": "npm run test && npm run test:performance && npm run test:integration",
+    "test:coverage": "jest --coverage --passWithNoTests",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "type-check": "tsc --noEmit",
+    "build:analyze": "npm run build && npx webpack-bundle-analyzer build/static/js/*.js"
   },
   "jest": {
     "collectCoverageFrom": [

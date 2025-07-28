@@ -393,7 +393,6 @@ jobs:
     timeout-minutes: 15
     needs: build
     if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging')
-    environment: staging
     
     steps:
     - name: Checkout code

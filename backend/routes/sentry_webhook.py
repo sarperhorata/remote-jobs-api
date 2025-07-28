@@ -1,9 +1,11 @@
 import json
 import logging
+import os
 from datetime import datetime
 from typing import Any, Dict
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -282,4 +284,131 @@ async def test_sentry_webhook():
         "success": True,
         "message": "Test Sentry webhook processed",
         "data": mock_data,
+    }
+
+
+import logging
+import os
+from typing import Dict, Any
+
+from fastapi import APIRouter, HTTPException, Request, status
+from pydantic import BaseModel
+
+# Optional imports
+try:
+    from backend.services.notification_manager import NotificationManager
+    NOTIFICATION_MANAGER_AVAILABLE = True
+except ImportError:
+    NOTIFICATION_MANAGER_AVAILABLE = False
+
+try:
+    from backend.telegram_bot.bot_manager import get_managed_bot
+    TELEGRAM_BOT_AVAILABLE = True
+except ImportError:
+    TELEGRAM_BOT_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/webhook/sentry", tags=["Sentry Webhook"])
+
+class SentryAlert(BaseModel):
+    """Sentry alert payload model"""
+    project_name: str
+    project_slug: str
+    url: str
+    level: str
+    message: str
+    culprit: str
+    event_id: str
+    tags: Dict[str, str] = {}
+    metadata: Dict[str, Any] = {}
+
+@router.post("/alert")
+async def sentry_alert_webhook(request: Request, alert: SentryAlert):
+    """Handle Sentry alert webhooks"""
+    
+    # Verify webhook secret (optional but recommended)
+    webhook_secret = os.getenv("SENTRY_WEBHOOK_SECRET")
+    if webhook_secret:
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or auth_header != f"Bearer {webhook_secret}":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid webhook secret"
+            )
+    
+    try:
+        # Log the alert
+        logger.warning(f"Sentry Alert: {alert.level} - {alert.message}")
+        
+        # Only send notifications for critical errors to stay within free tier
+        if alert.level in ["fatal", "error"]:
+            await send_sentry_notification(alert)
+        
+        return {"status": "success", "message": "Alert processed"}
+        
+    except Exception as e:
+        logger.error(f"Error processing Sentry alert: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error processing alert"
+        )
+
+async def send_sentry_notification(alert: SentryAlert):
+    """Send Sentry alert notifications"""
+    
+    # Prepare notification message
+    message = f"""
+🚨 **Sentry Alert - {alert.project_name}**
+
+**Level:** {alert.level.upper()}
+**Message:** {alert.message}
+**Culprit:** {alert.culprit}
+**Event ID:** {alert.event_id}
+
+**URL:** {alert.url}
+
+**Tags:** {', '.join([f'{k}={v}' for k, v in alert.tags.items()])}
+"""
+    
+    # Send to Telegram (if available)
+    try:
+        bot = get_managed_bot()
+        if bot:
+            chat_id = os.getenv("TELEGRAM_CHAT_ID")
+            if chat_id:
+                await bot.send_message(
+                    chat_id=chat_id,
+                    text=message,
+                    parse_mode="Markdown"
+                )
+                logger.info(f"Sentry alert sent to Telegram: {alert.event_id}")
+    except Exception as e:
+        logger.error(f"Failed to send Sentry alert to Telegram: {e}")
+    
+    # Send to notification manager (if available)
+    try:
+        if NOTIFICATION_MANAGER_AVAILABLE:
+            notification_manager = NotificationManager()
+            await notification_manager.send_admin_notification(
+                title=f"Sentry Alert: {alert.level.upper()}",
+                message=alert.message,
+                level=alert.level,
+                metadata={
+                    "event_id": alert.event_id,
+                    "culprit": alert.culprit,
+                    "url": alert.url,
+                    "tags": alert.tags
+                }
+            )
+            logger.info(f"Sentry alert sent to notification manager: {alert.event_id}")
+    except Exception as e:
+        logger.error(f"Failed to send Sentry alert to notification manager: {e}")
+
+@router.get("/health")
+async def sentry_webhook_health():
+    """Health check for Sentry webhook"""
+    return {
+        "status": "healthy",
+        "service": "sentry-webhook",
+        "environment": os.getenv("ENVIRONMENT", "development")
     }

@@ -53,11 +53,11 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def client():
     """
-    Create a test client for the FastAPI app for each test module.
-    This fixture is used for API-level tests.
+    Create a test client for the FastAPI app for the entire test session.
+    This fixture is used for API-level tests and is optimized for performance.
     """
     with TestClient(app) as test_client:
         yield test_client

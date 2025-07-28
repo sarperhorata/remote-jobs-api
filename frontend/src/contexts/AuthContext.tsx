@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { setUserContext, clearUserContext } from '../config/sentry';
 
 interface UserProfile {
   email: string;
@@ -218,6 +219,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setUser(data.user);
       localStorage.setItem('token', data.token);
+      
+      // Set Sentry user context
+      if (data.user) {
+        setUserContext({
+          id: data.user.id || data.user._id,
+          email: data.user.email,
+          username: data.user.name
+        });
+      }
       return;
     }
 
@@ -231,8 +241,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await response.json();
       
       if (response.ok) {
-        setUser(data.user || staticMockUser);
+        const userData = data.user || staticMockUser;
+        setUser(userData);
         localStorage.setItem('token', data.token || 'demo-token');
+        
+        // Set Sentry user context
+        setUserContext({
+          id: userData.id || userData._id,
+          email: userData.email,
+          username: userData.name
+        });
       } else {
         throw new Error(data.message || 'Login failed');
       }
@@ -284,6 +302,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setUser(null);
     localStorage.removeItem('token');
+    
+    // Clear Sentry user context
+    clearUserContext();
   };
 
   const refreshUser = async () => {

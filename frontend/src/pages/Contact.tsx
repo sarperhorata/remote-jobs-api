@@ -1,16 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Clock, 
-  Send, 
-  MessageSquare, 
-  HelpCircle, 
+import {
+  Mail,
+  Phone,
+  MapPin,
+  Clock,
+  Send,
+  MessageSquare,
+  HelpCircle,
   Globe,
-  CheckCircle,
-  AlertCircle,
   Users
 } from 'lucide-react';
 import toast from 'react-hot-toast';

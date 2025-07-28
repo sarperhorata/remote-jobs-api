@@ -148,7 +148,7 @@ const CoverLetterManager: React.FC<CoverLetterManagerProps> = ({
 
   // Delete cover letter
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete your cover letter?')) {
+    if (!window.confirm('Are you sure you want to delete your cover letter?')) {
       return;
     }
 

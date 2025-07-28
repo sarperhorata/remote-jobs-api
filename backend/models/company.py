@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
@@ -16,14 +16,15 @@ class Company(BaseModel):
     industry: Optional[str] = None
     founded: Optional[int] = None
     is_active: bool = True
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     jobs_count: Optional[int] = 0
     benefits: Optional[List[str]] = []
     tech_stack: Optional[List[str]] = []
     social_links: Optional[dict] = {}
     remote_policy: Optional[str] = None
 
-    class Config:
-        populate_by_name = True
-        json_encoders = {datetime: lambda v: v.isoformat()}
+    model_config = {
+        "populate_by_name": True,
+        "json_encoders": {datetime: lambda v: v.isoformat()}
+    }

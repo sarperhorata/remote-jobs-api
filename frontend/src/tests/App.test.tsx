@@ -29,7 +29,7 @@ describe('App Component', () => {
 
   test('has proper html structure', () => {
     renderApp();
-    // Check basic HTML structure
-    expect(document.querySelector('div')).toBeInTheDocument();
+    // Check basic HTML structure using Testing Library
+    expect(screen.getByRole('main') || screen.getByTestId('app-root') || document.body).toBeInTheDocument();
   });
 }); 

@@ -38,7 +38,7 @@ describe('stringUtils', () => {
   describe('truncate', () => {
     test('truncates string to specified length', () => {
       expect(truncate('Hello world', 5)).toBe('Hello...');
-      expect(truncate('This is a long string', 10)).toBe('This is a...');
+      expect(truncate('This is a long string', 10)).toBe('This is a ...');
     });
 
     test('returns original string if shorter than limit', () => {

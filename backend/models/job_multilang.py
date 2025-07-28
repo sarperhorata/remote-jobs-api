@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Dict, List, Optional
 
 from bson import ObjectId
@@ -47,8 +47,8 @@ class JobMultiLang(BaseModel):
     source_lang: str = Field(..., description="Primary language of the job source")
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     is_active: bool = True
 
     # Translation status
@@ -60,10 +60,11 @@ class JobMultiLang(BaseModel):
         default_factory=list, description="Languages that were auto-translated"
     )
 
-    class Config:
-        populate_by_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
+    model_config = {
+        "populate_by_name": True,
+        "arbitrary_types_allowed": True,
+        "json_encoders": {ObjectId: str}
+    }
 
     def get_localized_job(self, lang: str = "en") -> dict:
         """Get job data localized to specific language"""
@@ -138,7 +139,7 @@ class TranslationService(BaseModel):
             # Update translation status
             job.translation_status[target_lang] = "translated"
             job.auto_translated.append(target_lang)
-            job.updated_at = datetime.utcnow()
+            job.updated_at = datetime.now(UTC)
 
             return True
 

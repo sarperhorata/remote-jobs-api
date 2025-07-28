@@ -61,6 +61,16 @@ const JobList = () => {
   
   const PAGE_SIZE = 10;
 
+  // Sort options for the dropdown
+  const sortOptions = [
+    { value: 'date_posted:desc', label: 'Newest First' },
+    { value: 'date_posted:asc', label: 'Oldest First' },
+    { value: 'salary_max:desc', label: 'Highest Salary' },
+    { value: 'salary_max:asc', label: 'Lowest Salary' },
+    { value: 'title:asc', label: 'Title A-Z' },
+    { value: 'title:desc', label: 'Title Z-A' }
+  ];
+
   useEffect(() => {
     fetchJobs();
     fetchSavedJobs();

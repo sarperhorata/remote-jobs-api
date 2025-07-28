@@ -63,7 +63,7 @@ from backend.routes.ai_cv_analysis import router as ai_cv_analysis_router
 from backend.routes.ai_recommendations import router as ai_router
 from backend.routes.ai_services import router as ai_services_router
 from backend.routes.auto_apply import router as auto_apply_router
-from backend.routes.backup import router as backup_router
+# from backend.routes.backup import router as backup_router
 from backend.routes.cronjobs import router as cronjobs_router
 from backend.routes.email_test import router as email_test_router
 from backend.routes.fake_job_detection import router as fake_job_router
@@ -155,6 +155,26 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
+    openapi_tags=[
+        {"name": "General", "description": "General API endpoints and health checks"},
+        {"name": "Jobs", "description": "Job-related operations (search, create, update, delete)"},
+        {"name": "Companies", "description": "Company-related operations"},
+        {"name": "Auth", "description": "Authentication and authorization operations"},
+        {"name": "Profile", "description": "User profile management"},
+        {"name": "Applications", "description": "Job application management"},
+        {"name": "Notifications", "description": "Notification settings and management"},
+        {"name": "Search", "description": "Search and autocomplete functionality"},
+        {"name": "Admin", "description": "Administrative operations"},
+        {"name": "Performance", "description": "Performance monitoring and statistics"},
+        {"name": "Monitoring", "description": "System monitoring and error tracking"},
+        {"name": "Metrics", "description": "Dashboard metrics and analytics"},
+        {"name": "Cron Jobs", "description": "Automated background tasks"},
+        {"name": "Security", "description": "Security-related endpoints"},
+        {"name": "Legal", "description": "Legal documents and compliance"},
+        {"name": "AI Services", "description": "AI-powered features and recommendations"},
+        {"name": "Payments", "description": "Payment processing and billing"},
+        {"name": "Ads", "description": "Advertisement management"},
+    ],
 )
 
 # Middleware setup
@@ -269,6 +289,12 @@ from backend.middleware.activity_middleware import ActivityTrackingMiddleware
 
 app.add_middleware(ActivityTrackingMiddleware)
 
+# Add performance monitoring middleware
+from backend.middleware.performance_monitoring import initialize_performance_monitoring
+
+performance_middleware = initialize_performance_monitoring(app)
+app.add_middleware(type(performance_middleware))
+
 # Add session middleware
 app.add_middleware(
     SessionMiddleware, secret_key=os.getenv("SESSION_SECRET_KEY", "a_very_secret_key")
@@ -300,7 +326,7 @@ routers_to_include = [
     (ai_services_router, "/api/v1", ["ai-services"]),
     (ai_cv_analysis_router, "/api/v1", ["ai-cv-analysis"]),
     (skills_extraction_router, "/api/v1", ["skills-extraction"]),
-    (backup_router, "", ["backup"]),
+    # (backup_router, "", ["backup"]), # Commented out to fix startup issue
     (profile_auto_fill_router, "/api/v1", ["profile-auto-fill"]),
     (fake_job_router, "/api/v1", ["fake-job-detection"]),
     (sentry_webhook_router, "/api/v1", ["webhooks"]),
@@ -405,6 +431,36 @@ async def clear_cache_pattern(pattern: str):
         cleared = await cache_manager.clear_pattern(pattern)
         return {"cleared": cleared, "pattern": pattern}
     return {"error": "Cache not initialized"}
+
+
+@app.get("/api/performance-stats", tags=["Performance"])
+async def performance_stats():
+    """Get performance monitoring statistics."""
+    try:
+        # Get performance stats from middleware
+        performance_middleware = getattr(app.state, "performance_middleware", None)
+        if performance_middleware:
+            stats = performance_middleware.get_performance_stats()
+        else:
+            stats = {
+                "total_requests": 0,
+                "slow_requests": 0,
+                "average_response_time": 0.0,
+                "slow_request_percentage": 0.0
+            }
+        
+        return {
+            "performance_stats": stats,
+            "timestamp": datetime.utcnow().isoformat(),
+            "status": "active"
+        }
+    except Exception as e:
+        logger.error(f"Error getting performance stats: {e}")
+        return {
+            "performance_stats": {},
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }
 
 
 @app.get("/api/error-stats", tags=["Monitoring"])

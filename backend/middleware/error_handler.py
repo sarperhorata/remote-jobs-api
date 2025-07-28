@@ -8,7 +8,7 @@ import logging
 import time
 import traceback
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any, Dict, Optional
 
 from fastapi import HTTPException, Request, status
@@ -74,7 +74,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                 ),
                 "type": self._get_error_type(exc.status_code),
                 "error_id": error_id,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "path": request.url.path,
                 "method": request.method,
             }
@@ -114,7 +114,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                 "message": "Internal server error",
                 "type": "internal_error",
                 "error_id": error_id,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "path": request.url.path,
                 "method": request.method,
             }
@@ -149,7 +149,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             "duration_ms": round(duration * 1000, 2),
             "client_ip": self._get_client_ip(request),
             "user_agent": request.headers.get("user-agent", "unknown"),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         # Log level based on status code
@@ -174,7 +174,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             "duration_ms": round(duration * 1000, 2),
             "client_ip": self._get_client_ip(request),
             "user_agent": request.headers.get("user-agent", "unknown"),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "traceback": traceback.format_exc(),
         }
 
@@ -194,7 +194,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             "method": request.method,
             "duration_ms": round(duration * 1000, 2),
             "client_ip": self._get_client_ip(request),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         if response.status_code >= 500:

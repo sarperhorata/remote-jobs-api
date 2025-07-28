@@ -19,6 +19,7 @@ from backend.schemas.job import (ApplicationCreate, Job, JobCreate,
                                  JobListResponse, JobResponse, JobSearchQuery,
                                  JobUpdate)
 from backend.services.auto_application_service import AutoApplicationService
+from backend.services.cache_service import cache
 from backend.services.job_scraping_service import JobScrapingService
 from backend.services.job_title_parser import job_title_parser
 from backend.utils.auth import (get_current_active_user, get_current_admin,
@@ -3154,3 +3155,45 @@ async def update_cache():
     except Exception as e:
         logger.error(f"Error updating cache: {e}")
         raise HTTPException(status_code=500, detail=f"Error updating cache: {str(e)}")
+
+
+@router.get("/popular")
+@cache(expire=3600)  # 1 hour cache
+async def get_popular_jobs(
+    limit: int = Query(10, ge=1, le=50, description="Number of popular jobs to return"),
+    db: AsyncIOMotorDatabase = Depends(get_async_db),
+):
+    """
+    Get popular jobs with caching for better performance.
+    Returns jobs that are frequently viewed or applied to.
+    """
+    try:
+        # Use aggregation pipeline for better performance
+        pipeline = [
+            {"$match": {"is_active": True}},
+            {"$sort": {"posted_date": -1}},
+            {"$limit": limit},
+            {"$project": {
+                "title": 1,
+                "company": 1,
+                "location": 1,
+                "posted_date": 1,
+                "salary_min": 1,
+                "salary_max": 1,
+                "isRemote": 1,
+                "tags": 1,
+                "id": 1
+            }}
+        ]
+        
+        jobs = await db.jobs.aggregate(pipeline).to_list(None)
+        
+        return {
+            "jobs": jobs,
+            "total": len(jobs),
+            "cached_at": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting popular jobs: {e}")
+        return {"jobs": [], "total": 0, "error": str(e)}

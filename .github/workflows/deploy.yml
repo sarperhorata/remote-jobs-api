@@ -1,29 +1,67 @@
-name: Deploy to Render (Manual Only)
+name: Deploy Backend
 
 on:
-  # Removed automatic push trigger for development phase
-  # push:
-  #   branches: [main]
-  workflow_dispatch:
-    inputs:
-      confirm_deploy:
-        description: 'Type "deploy" to confirm deployment'
-        required: true
-        default: 'no'
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy.yml'
+  workflow_run:
+    workflows: ["Backend Tests"]
+    types:
+      - completed
+    branches: [ main ]
 
 jobs:
   deploy:
-    name: Deploy Backend to Render
     runs-on: ubuntu-latest
-    if: github.event.inputs.confirm_deploy == 'deploy'
+    needs: []
+    
     steps:
-      - name: Deploy to Render
-        run: |
-          if [ "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
-            echo "🚀 Deploying to production..."
-            curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
-            echo "✅ Deployment triggered successfully"
-          else
-            echo "❌ RENDER_DEPLOY_HOOK_URL secret not set"
-            exit 1
-          fi 
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run pre-deployment tests
+      run: |
+        cd backend
+        python -m pytest tests/test_sanity.py -v --timeout=10
+      env:
+        TESTING: true
+        MONGODB_URI: mongodb://localhost:27017
+        DATABASE_NAME: test_buzz2remote
+    
+    - name: Deploy to staging (if develop branch)
+      if: github.ref == 'refs/heads/develop'
+      run: |
+        echo "Deploying to staging environment..."
+        # Add your staging deployment commands here
+        # Example: docker build, docker push, kubectl apply, etc.
+    
+    - name: Deploy to production (if main branch)
+      if: github.ref == 'refs/heads/main'
+      run: |
+        echo "Deploying to production environment..."
+        # Add your production deployment commands here
+        # Example: docker build, docker push, kubectl apply, etc.
+    
+    - name: Health check
+      run: |
+        echo "Running health checks..."
+        # Add health check commands here
+        # Example: curl endpoints, check database connectivity, etc.
+    
+    - name: Notify deployment status
+      run: |
+        echo "Deployment completed successfully!"
+        # Add notification commands here (Slack, Discord, etc.) 

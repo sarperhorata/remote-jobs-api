@@ -1,33 +1,43 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
 import Footer from '../../components/Footer';
+
+const renderFooter = () => {
+  return render(
+    <BrowserRouter>
+      <Footer />
+    </BrowserRouter>
+  );
+};
 
 describe('Footer', () => {
   test('renders footer with current year', () => {
     const currentYear = new Date().getFullYear();
-    render(<Footer />);
+    renderFooter();
     
     expect(screen.getByText(`© ${currentYear} Buzz2Remote. All rights reserved.`)).toBeInTheDocument();
   });
 
   test('renders footer with correct styling classes', () => {
-    render(<Footer />);
+    renderFooter();
     
     const footer = screen.getByRole('contentinfo');
-    expect(footer).toHaveClass('bg-white/5', 'backdrop-blur-sm', 'border-t', 'border-white/10');
+    expect(footer).toHaveClass('bg-gradient-to-r', 'from-gray-900', 'via-purple-900', 'to-gray-900', 'text-white');
   });
 
   test('renders footer text with correct styling', () => {
-    render(<Footer />);
+    renderFooter();
     
-    const text = screen.getByText(/Buzz2Remote/);
-    expect(text).toHaveClass('text-sm', 'text-gray-400');
+    const copyrightText = screen.getByText(/©.*Buzz2Remote.*All rights reserved/);
+    const parentDiv = copyrightText.parentElement;
+    expect(parentDiv).toHaveClass('text-sm', 'text-gray-400');
   });
 
   test('renders container with proper styling', () => {
-    render(<Footer />);
+    renderFooter();
     
-    const container = screen.getByText(/Buzz2Remote/).parentElement;
+    const container = screen.getByText(/©.*Buzz2Remote.*All rights reserved/).closest('.container');
     expect(container).toHaveClass('container', 'mx-auto');
   });
 });

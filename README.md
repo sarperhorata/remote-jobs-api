@@ -5,6 +5,32 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![GitHub Actions](https://github.com/sarperhorata/remote-jobs-api/workflows/Auto%20Deploy%20on%20Success/badge.svg)](https://github.com/sarperhorata/remote-jobs-api/actions)
 
+## 📁 **PROJE YAPISI**
+
+Bu proje düzenli bir klasör yapısına sahiptir. Detaylı bilgi için [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) dosyasını inceleyin.
+
+### 🏗️ Ana Klasörler
+- **`/backend/`** - FastAPI tabanlı REST API
+- **`/frontend/`** - React tabanlı web uygulaması
+- **`/scripts/`** - Otomasyon scriptleri (cron, deployment, testing)
+- **`/reports/`** - Proje raporları ve analizler
+- **`/docs/`** - Teknik dokümantasyon
+- **`/config/`** - Konfigürasyon dosyaları
+
+### 🚀 Hızlı Başlangıç
+```bash
+# Backend geliştirme
+cd backend && python -m pytest tests/
+
+# Frontend geliştirme
+cd frontend && npm run dev
+
+# Test çalıştırma
+./scripts/testing/test_api_performance.sh
+```
+
+---
+
 ## 🌟 **OVERVIEW**
 
 Buzz2Remote is a comprehensive AI-powered platform connecting remote workers with global opportunities. Built with modern technologies and optimized for performance, security, and scalability.

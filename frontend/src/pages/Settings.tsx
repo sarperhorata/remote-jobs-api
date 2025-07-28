@@ -1,24 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  User, 
-  Bell, 
-  Shield, 
-  Palette, 
-  Globe, 
-  Mail, 
-  Smartphone,
+import {
+  ArrowLeft,
+  User,
+  Bell,
+  Shield,
+  Palette,
   Eye,
   EyeOff,
   Save,
   Trash2,
   Download,
-  Upload,
   Key,
   CreditCard,
-  HelpCircle,
-  Info,
   Sun,
   Moon,
   Check,

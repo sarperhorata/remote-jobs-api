@@ -28,6 +28,36 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             "/api/user/password-reset": 3,  # 3 requests per minute
         }
 
+        # Enhanced security headers
+        self.security_headers = {
+            "X-Frame-Options": "DENY",
+            "X-Content-Type-Options": "nosniff",
+            "X-XSS-Protection": "1; mode=block",
+            "Referrer-Policy": "strict-origin-when-cross-origin",
+            "X-Download-Options": "noopen",
+            "X-Permitted-Cross-Domain-Policies": "none",
+            "X-DNS-Prefetch-Control": "off",
+            "X-Robots-Tag": "noindex, nofollow",
+            "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
+        }
+
+        # Enhanced CSP headers
+        self.csp_headers = {
+            "Content-Security-Policy": (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google-analytics.com; "
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+                "img-src 'self' data: https: blob:; "
+                "font-src 'self' https://fonts.gstatic.com; "
+                "connect-src 'self' https://api.buzz2remote.com; "
+                "media-src 'self' data: blob:; "
+                "object-src 'none'; "
+                "frame-ancestors 'self'; "
+                "base-uri 'self'; "
+                "form-action 'self'"
+            )
+        }
+
         logger.info(
             f"Security middleware initialized with {len(self.blocked_ips)} blocked IPs"
         )
@@ -99,54 +129,46 @@ class SecurityMiddleware(BaseHTTPMiddleware):
                     logger.warning(f"Invalid captcha from IP {client_ip}")
                     return JSONResponse(
                         status_code=400,
-                        content={"detail": "Captcha verification failed"},
+                        content={"detail": "Invalid captcha"},
                     )
+
             except Exception as e:
-                logger.error(f"Error during captcha verification: {str(e)}")
-
-        # Process the request
-        start_time = time.time()
-
-        try:
-            response = await call_next(request)
-            process_time = time.time() - start_time
-
-            # Log slow requests
-            if process_time > 1.0:
-                logger.warning(
-                    f"Slow request: {request.method} {request.url.path} took {process_time:.2f}s"
+                logger.error(f"Error verifying captcha: {e}")
+                return JSONResponse(
+                    status_code=500,
+                    content={"detail": "Captcha verification failed"},
                 )
 
-            # Add security headers to the response
+        # Process the request
+        response = await call_next(request)
+
+        # Add enhanced security headers to all responses
+        for header_name, header_value in self.security_headers.items():
+            response.headers[header_name] = header_value
+
+        # Add CSP headers
+        for header_name, header_value in self.csp_headers.items():
+            response.headers[header_name] = header_value
+
+        # Add additional security headers based on response type
+        if "application/json" in response.headers.get("content-type", ""):
             response.headers["X-Content-Type-Options"] = "nosniff"
-            response.headers["X-Frame-Options"] = "DENY"
-            response.headers["X-XSS-Protection"] = "1; mode=block"
-            response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
-            # Content Security Policy
-            response.headers["Content-Security-Policy"] = (
-                "default-src 'self'; script-src 'self' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; frame-src 'self' https://www.google.com/recaptcha/ https://hcaptcha.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.example.com"
-            )
+        # Add timing headers for performance monitoring
+        response.headers["X-Response-Time"] = f"{time.time() * 1000:.2f}ms"
 
-            # Add rate limit headers
-            response.headers["X-RateLimit-Limit"] = str(rate_limit)
-            response.headers["X-RateLimit-Remaining"] = str(remaining)
-
-            return response
-
-        except Exception as e:
-            logger.error(f"Error processing request: {str(e)}")
-            return JSONResponse(
-                status_code=500, content={"detail": "Internal server error"}
-            )
+        return response
 
     def _get_client_ip(self, request: Request) -> str:
-        """Extract client's real IP address from various headers or connection info"""
-        forwarded = request.headers.get("X-Forwarded-For")
+        """Get the real client IP address."""
+        # Check for forwarded headers (when behind proxy)
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            return forwarded_for.split(",")[0].strip()
 
-        if forwarded:
-            # Get the first IP in the list (client's original IP)
-            return forwarded.split(",")[0].strip()
+        real_ip = request.headers.get("X-Real-IP")
+        if real_ip:
+            return real_ip
 
-        client_host = request.client.host if request.client else None
-        return client_host or "unknown"
+        # Fallback to direct connection
+        return request.client.host if request.client else "unknown"

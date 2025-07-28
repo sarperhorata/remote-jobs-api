@@ -126,7 +126,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       };
 
       // Add listener for system theme changes
-      if (mediaQuery.addEventListener) {
+      if (mediaQuery && mediaQuery.addEventListener) {
         mediaQuery.addEventListener('change', handleSystemThemeChange);
         
         // Also check initial system preference
@@ -139,15 +139,15 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
             console.warn('Could not save initial theme to localStorage:', error);
           }
         }
-      } else {
+      } else if (mediaQuery && mediaQuery.addListener) {
         // Fallback for older browsers
         mediaQuery.addListener(handleSystemThemeChange);
       }
 
       return () => {
-        if (mediaQuery.removeEventListener) {
+        if (mediaQuery && mediaQuery.removeEventListener) {
           mediaQuery.removeEventListener('change', handleSystemThemeChange);
-        } else {
+        } else if (mediaQuery && mediaQuery.removeListener) {
           // Fallback for older browsers
           mediaQuery.removeListener(handleSystemThemeChange);
         }

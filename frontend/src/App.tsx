@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect } from 'react';
+import React, { lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { HelmetProvider } from 'react-helmet-async';
@@ -12,8 +12,12 @@ import { NotFound } from './pages/NotFound';
 import PaymentSuccess from './pages/PaymentSuccess';
 import { Toaster } from 'react-hot-toast';
 import AutocompleteTest from './pages/AutocompleteTest';
-import { LazyRoute, PageLoadingSkeleton } from './components/LazyComponent';
+import { LazyRoute } from './components/LazyComponent';
 import { initializeBundleOptimization, bundleTracker } from './utils/bundleOptimization';
+import { initSentry, SentryErrorBoundary } from './config/sentry';
+
+// Initialize Sentry
+initSentry();
 
 // Critical pages (loaded immediately)
 const HomePage = lazy(() => import('./pages/Home'));
@@ -85,141 +89,143 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <HelmetProvider>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <ThemeProvider>
-            <Router future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
-              <Toaster 
-                position="top-center" 
-                reverseOrder={false}
-                toastOptions={{
-                  duration: 10000,
-                  style: {
-                    background: '#1f2937',
-                    color: '#f3f4f6',
-                    border: '1px solid #374151',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    maxWidth: '500px',
-                  },
-                  success: {
+    <SentryErrorBoundary fallback={<div>Something went wrong. Please refresh the page.</div>}>
+      <HelmetProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <ThemeProvider>
+              <Router future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+                <Toaster 
+                  position="top-center" 
+                  reverseOrder={false}
+                  toastOptions={{
+                    duration: 10000,
                     style: {
-                      background: '#065f46',
-                      color: '#d1fae5',
-                      border: '1px solid #047857',
+                      background: '#1f2937',
+                      color: '#f3f4f6',
+                      border: '1px solid #374151',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      maxWidth: '500px',
                     },
-                  },
-                  error: {
-                    style: {
-                      background: '#7f1d1d',
-                      color: '#fed7d7',
-                      border: '1px solid #dc2626',
+                    success: {
+                      style: {
+                        background: '#065f46',
+                        color: '#d1fae5',
+                        border: '1px solid #047857',
+                      },
                     },
-                  },
-                }}
-              />
-              
-              <Routes>
-                {/* Critical routes with optimized loading */}
-                <Route path="/" element={<LazyRoute component={HomePage} />} />
-                <Route path="/login" element={<LazyRoute component={LoginPage} />} />
-                <Route path="/register" element={<LazyRoute component={RegisterPage} />} />
+                    error: {
+                      style: {
+                        background: '#7f1d1d',
+                        color: '#fed7d7',
+                        border: '1px solid #dc2626',
+                      },
+                    },
+                  }}
+                />
                 
-                {/* Job-related routes */}
-                <Route path="/jobs" element={<LazyRoute component={JobSearchResultsPage} />} />
-                <Route path="/jobs/:id" element={<LazyRoute component={JobDetailPage} />} />
-                <Route path="/job/:id" element={<LazyRoute component={JobDetailPage} />} />
-                <Route path="/search" element={<LazyRoute component={JobSearchResultsPage} />} />
-                
-                {/* User routes with authentication */}
-                <Route path="/profile" element={
-                  <ProtectedRoute>
-                    <LazyRoute component={UserProfilePage} />
-                  </ProtectedRoute>
-                } />
-                <Route path="/myprofile" element={
-                  <ProtectedRoute>
-                    <LazyRoute component={MyProfilePage} />
-                  </ProtectedRoute>
-                } />
-                <Route path="/resume-upload" element={
-                  <ProtectedRoute>
-                    <LazyRoute component={ResumeUploadPage} />
-                  </ProtectedRoute>
-                } />
-                <Route path="/applications" element={
-                  <ProtectedRoute>
-                    <LazyRoute component={ApplicationsPage} />
-                  </ProtectedRoute>
-                } />
-                <Route path="/my-applications" element={
-                  <ProtectedRoute>
-                    <LazyRoute component={MyApplicationsPage} />
-                  </ProtectedRoute>
-                } />
-                <Route path="/favorites" element={
-                  <ProtectedRoute>
-                    <LazyRoute component={FavoritesPage} />
-                  </ProtectedRoute>
-                } />
-                <Route path="/settings" element={
-                  <ProtectedRoute>
-                    <LazyRoute component={SettingsPage} />
-                  </ProtectedRoute>
-                } />
-                
-                {/* Static pages with lower priority loading */}
-                <Route path="/pricing" element={<LazyRoute component={PricingPage} />} />
-                <Route path="/salary-guide" element={<LazyRoute component={SalaryGuidePage} />} />
-                <Route path="/help" element={<LazyRoute component={HelpPage} />} />
-                <Route path="/remote-tips" element={<LazyRoute component={RemoteTipsPage} />} />
-                <Route path="/career-tips" element={<LazyRoute component={CareerTipsPage} />} />
-                <Route path="/about" element={<LazyRoute component={AboutPage} />} />
-                <Route path="/contact" element={<LazyRoute component={ContactPage} />} />
-                <Route path="/visa-sponsorship" element={<LazyRoute component={VisaSponsorshipPage} />} />
-                <Route path="/relocation-guide" element={<LazyRoute component={RelocationGuidePage} />} />
-                
-                {/* Legal pages */}
-                <Route path="/terms" element={<LazyRoute component={TermsConditionsPage} />} />
-                <Route path="/privacy" element={<LazyRoute component={PrivacyPolicyPage} />} />
-                <Route path="/cookies" element={<LazyRoute component={CookiePolicyPage} />} />
-                
-                {/* Auth flow pages */}
-                <Route path="/auth/callback" element={<AuthCallback />} />
-                <Route path="/auth/error" element={<AuthError />} />
-                <Route path="/auth/google/callback" element={<LazyRoute component={GoogleCallbackPage} />} />
-                <Route path="/auth/linkedin/callback" element={<LazyRoute component={LinkedInCallbackPage} />} />
-                <Route path="/forgot-password" element={<LazyRoute component={ForgotPasswordPage} />} />
-                <Route path="/reset-password" element={<LazyRoute component={ResetPasswordPage} />} />
-                
-                {/* Onboarding flow */}
-                <Route path="/check-email" element={<LazyRoute component={CheckEmailPage} />} />
-                <Route path="/verify-email" element={<LazyRoute component={EmailVerificationPage} />} />
-                <Route path="/set-password" element={<LazyRoute component={SetPasswordPage} />} />
-                <Route path="/onboarding/profile-setup" element={<LazyRoute component={OnboardingProfileSetupPage} />} />
-                <Route path="/onboarding/complete-profile" element={<LazyRoute component={OnboardingCompleteProfilePage} />} />
-                
-                {/* Payment and external services */}
-                <Route path="/payment/success" element={<PaymentSuccess />} />
-                <Route path="/external-api-services" element={
-                  <ProtectedRoute>
-                    <LazyRoute component={ExternalAPIServicesPage} />
-                  </ProtectedRoute>
-                } />
-                
-                {/* Test routes */}
-                <Route path="/autocomplete-test" element={<AutocompleteTest />} />
-                
-                {/* 404 page */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Router>
-          </ThemeProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </HelmetProvider>
+                <Routes>
+                  {/* Critical routes with optimized loading */}
+                  <Route path="/" element={<LazyRoute component={HomePage} />} />
+                  <Route path="/login" element={<LazyRoute component={LoginPage} />} />
+                  <Route path="/register" element={<LazyRoute component={RegisterPage} />} />
+                  
+                  {/* Job-related routes */}
+                  <Route path="/jobs" element={<LazyRoute component={JobSearchResultsPage} />} />
+                  <Route path="/jobs/:id" element={<LazyRoute component={JobDetailPage} />} />
+                  <Route path="/job/:id" element={<LazyRoute component={JobDetailPage} />} />
+                  <Route path="/search" element={<LazyRoute component={JobSearchResultsPage} />} />
+                  
+                  {/* User routes with authentication */}
+                  <Route path="/profile" element={
+                    <ProtectedRoute>
+                      <LazyRoute component={UserProfilePage} />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/myprofile" element={
+                    <ProtectedRoute>
+                      <LazyRoute component={MyProfilePage} />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/resume-upload" element={
+                    <ProtectedRoute>
+                      <LazyRoute component={ResumeUploadPage} />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/applications" element={
+                    <ProtectedRoute>
+                      <LazyRoute component={ApplicationsPage} />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/my-applications" element={
+                    <ProtectedRoute>
+                      <LazyRoute component={MyApplicationsPage} />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/favorites" element={
+                    <ProtectedRoute>
+                      <LazyRoute component={FavoritesPage} />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/settings" element={
+                    <ProtectedRoute>
+                      <LazyRoute component={SettingsPage} />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Static pages with lower priority loading */}
+                  <Route path="/pricing" element={<LazyRoute component={PricingPage} />} />
+                  <Route path="/salary-guide" element={<LazyRoute component={SalaryGuidePage} />} />
+                  <Route path="/help" element={<LazyRoute component={HelpPage} />} />
+                  <Route path="/remote-tips" element={<LazyRoute component={RemoteTipsPage} />} />
+                  <Route path="/career-tips" element={<LazyRoute component={CareerTipsPage} />} />
+                  <Route path="/about" element={<LazyRoute component={AboutPage} />} />
+                  <Route path="/contact" element={<LazyRoute component={ContactPage} />} />
+                  <Route path="/visa-sponsorship" element={<LazyRoute component={VisaSponsorshipPage} />} />
+                  <Route path="/relocation-guide" element={<LazyRoute component={RelocationGuidePage} />} />
+                  
+                  {/* Legal pages */}
+                  <Route path="/terms" element={<LazyRoute component={TermsConditionsPage} />} />
+                  <Route path="/privacy" element={<LazyRoute component={PrivacyPolicyPage} />} />
+                  <Route path="/cookies" element={<LazyRoute component={CookiePolicyPage} />} />
+                  
+                  {/* Auth flow pages */}
+                  <Route path="/auth/callback" element={<AuthCallback />} />
+                  <Route path="/auth/error" element={<AuthError />} />
+                  <Route path="/auth/google/callback" element={<LazyRoute component={GoogleCallbackPage} />} />
+                  <Route path="/auth/linkedin/callback" element={<LazyRoute component={LinkedInCallbackPage} />} />
+                  <Route path="/forgot-password" element={<LazyRoute component={ForgotPasswordPage} />} />
+                  <Route path="/reset-password" element={<LazyRoute component={ResetPasswordPage} />} />
+                  
+                  {/* Onboarding flow */}
+                  <Route path="/check-email" element={<LazyRoute component={CheckEmailPage} />} />
+                  <Route path="/verify-email" element={<LazyRoute component={EmailVerificationPage} />} />
+                  <Route path="/set-password" element={<LazyRoute component={SetPasswordPage} />} />
+                  <Route path="/onboarding/profile-setup" element={<LazyRoute component={OnboardingProfileSetupPage} />} />
+                  <Route path="/onboarding/complete-profile" element={<LazyRoute component={OnboardingCompleteProfilePage} />} />
+                  
+                  {/* Payment and external services */}
+                  <Route path="/payment/success" element={<PaymentSuccess />} />
+                  <Route path="/external-api-services" element={
+                    <ProtectedRoute>
+                      <LazyRoute component={ExternalAPIServicesPage} />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Test routes */}
+                  <Route path="/autocomplete-test" element={<AutocompleteTest />} />
+                  
+                  {/* 404 page */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Router>
+            </ThemeProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </HelmetProvider>
+    </SentryErrorBoundary>
   );
 };
 

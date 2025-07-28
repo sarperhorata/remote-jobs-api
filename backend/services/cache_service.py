@@ -283,7 +283,35 @@ def get_cache_service() -> CacheService:
 
 
 async def init_cache_service(max_size: int = 100, ttl_hours: int = 24) -> CacheService:
-    """Initialize global cache service."""
+    """Initialize and return cache service instance."""
     global _cache_service
-    _cache_service = CacheService(max_size=max_size, ttl_hours=ttl_hours)
+    if _cache_service is None:
+        _cache_service = CacheService(max_size=max_size, ttl_hours=ttl_hours)
     return _cache_service
+
+
+def cache(expire: int = 3600):
+    """
+    Simple cache decorator for FastAPI endpoints.
+    expire: Cache expiration time in seconds (default: 1 hour)
+    """
+    def decorator(func):
+        async def wrapper(*args, **kwargs):
+            # Create cache key from function name and arguments
+            cache_key = f"{func.__name__}:{hash(str(args) + str(kwargs))}"
+            
+            # Get cache service
+            cache_service = get_cache_service()
+            
+            # Try to get from cache
+            cached_result = await cache_service.get(cache_key)
+            if cached_result is not None:
+                return cached_result
+            
+            # Execute function and cache result
+            result = await func(*args, **kwargs)
+            await cache_service.set(cache_key, result, ttl_hours=expire // 3600)
+            
+            return result
+        return wrapper
+    return decorator

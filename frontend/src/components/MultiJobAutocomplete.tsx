@@ -52,7 +52,7 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
     } else {
       setAnimatedPlaceholder(placeholder);
     }
-  }, [placeholderIndex, isFocused, inputValue, placeholder]);
+  }, [placeholderIndex, isFocused, inputValue, placeholder, placeholders.length]);
 
   // Debug logging
   useEffect(() => {
@@ -94,14 +94,28 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
     return null;
   }, []);
 
+  // Update dropdown position
+  const updateDropdownPosition = useCallback(() => {
+    if (inputRef.current && containerRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width
+      });
+    }
+  }, []);
+
   // Handle input focus
   const handleInputFocus = async () => {
+    console.log('🎯 Input focused');
     setIsFocused(true);
     updateDropdownPosition();
   };
 
   // Handle input blur
   const handleInputBlur = () => {
+    console.log('🎯 Input blurred');
     // Don't close dropdown on blur - let the click outside handler manage this
     // This prevents the dropdown from closing when clicking on suggestions
   };
@@ -119,11 +133,16 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
     
     if (value.trim().length >= 1) {
       console.log('🔍 Starting search for:', value);
+      setIsLoading(true);
+      
       // For keyword search, show single line result
       searchTimeoutRef.current = setTimeout(async () => {
         console.log('⏰ Search timeout fired for:', value);
         const keywordResult = await fetchKeywordCount(value);
         console.log('📊 Keyword result:', keywordResult);
+        
+        setIsLoading(false);
+        
         if (keywordResult && keywordResult.count > 0) {
           const suggestion = {
             title: `${value} (${keywordResult.count} jobs)`,
@@ -133,6 +152,7 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
           console.log('🔍 Setting keyword suggestion:', suggestion);
           setAllSuggestions([suggestion]);
           setShowDropdown(true);
+          updateDropdownPosition();
           console.log('👁️ Dropdown should be visible now');
         } else {
           console.log('❌ No results or error, hiding dropdown');
@@ -144,6 +164,7 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
       console.log('🧹 Input too short, clearing suggestions');
       setAllSuggestions([]);
       setShowDropdown(false);
+      setIsLoading(false);
     }
   };
 
@@ -163,18 +184,18 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
         category: 'keyword'
       };
       
-                  // Check if keyword already selected
-            const exists = selectedKeywords.find(k => k.title === keyword);
-            if (!exists) {
-              const updatedKeywords = [...selectedKeywords, newKeyword];
-              setSelectedKeywords(updatedKeywords);
-              console.log('✅ Added keyword:', keyword, 'Total selected:', updatedKeywords.length);
+      // Check if keyword already selected
+      const exists = selectedKeywords.find(k => k.title === keyword);
+      if (!exists) {
+        const updatedKeywords = [...selectedKeywords, newKeyword];
+        setSelectedKeywords(updatedKeywords);
+        console.log('✅ Added keyword:', keyword, 'Total selected:', updatedKeywords.length);
 
-              // Automatically search when keyword is selected
-              onSelect(updatedKeywords);
-            } else {
-              console.log('⚠️ Keyword already selected:', keyword);
-            }
+        // Automatically search when keyword is selected
+        onSelect(updatedKeywords);
+      } else {
+        console.log('⚠️ Keyword already selected:', keyword);
+      }
       
       // Clear input and suggestions
       setInputValue('');
@@ -201,63 +222,49 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
     onSelect(updatedKeywords);
   };
 
-  // Clear all selected keywords
+  // Clear all keywords
   const clearAllKeywords = () => {
     setSelectedKeywords([]);
-    console.log('🧹 Cleared all keywords');
+    console.log('🗑️ Cleared all keywords');
     onSelect([]);
   };
 
-  // Update dropdown position
-  const updateDropdownPosition = useCallback(() => {
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      setDropdownPosition({
-        top: rect.bottom,
-        left: rect.left,
-        width: rect.width
-      });
-    }
-  }, []);
-
-  // Handle clicks outside dropdown
+  // Handle click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        // Only close dropdown if there are no suggestions
-        if (allSuggestions.length === 0) {
-          setShowDropdown(false);
-        }
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        console.log('🖱️ Click outside detected, closing dropdown');
+        setShowDropdown(false);
+        setIsFocused(false);
       }
     };
 
+    const handleScroll = () => updateDropdownPosition();
+    const handleResize = () => updateDropdownPosition();
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [allSuggestions.length]);
+    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('resize', handleResize);
 
-  // Update dropdown position on scroll and resize
-  useEffect(() => {
-    if (showDropdown) {
-      const handleScroll = () => updateDropdownPosition();
-      const handleResize = () => updateDropdownPosition();
-      
-      window.addEventListener('scroll', handleScroll);
-      window.addEventListener('resize', handleResize);
-      
-      return () => {
-        window.removeEventListener('scroll', handleScroll);
-        window.removeEventListener('resize', handleResize);
-      };
-    }
-  }, [showDropdown, updateDropdownPosition]);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [updateDropdownPosition]);
 
-  // RTL text detection
+  // RTL support
   const isRTL = (text: string): boolean => {
     const rtlRegex = /[\u0591-\u07FF\uFB1D-\uFDFD\uFE70-\uFEFC]/;
     return rtlRegex.test(text);
   };
 
-  // Handle Enter key
+  // Handle keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && allSuggestions.length > 0) {
       e.preventDefault();
@@ -266,45 +273,45 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
   };
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className={`relative ${className || ''}`}
       style={{ direction: isRTL(inputValue) ? 'rtl' : 'ltr' }}
     >
-              {/* Selected Keywords Display */}
-        {selectedKeywords.length > 0 && (
-          <div className="mb-3">
-            <div className="flex flex-wrap gap-2 mb-3">
-              {selectedKeywords.map((keyword, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium"
-                >
-                  <span>{keyword.title} ({keyword.count})</span>
-                  <button
-                    onClick={() => removeKeyword(keyword.title)}
-                    className="text-blue-600 hover:text-blue-800 font-bold text-lg leading-none"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-              <button
-                onClick={clearAllKeywords}
-                className="text-gray-500 hover:text-gray-700 text-sm underline"
+      {/* Selected Keywords Display */}
+      {selectedKeywords.length > 0 && (
+        <div className="mb-3">
+          <div className="flex flex-wrap gap-2 mb-3">
+            {selectedKeywords.map((keyword, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium"
               >
-                Clear all
-              </button>
-            </div>
-            
-            {/* Selected Keywords Summary */}
-            <div className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
-              <span className="text-sm text-gray-600">
-                {selectedKeywords.length} keyword{selectedKeywords.length > 1 ? 's' : ''} selected ({selectedKeywords.reduce((sum, k) => sum + k.count, 0)} jobs)
-              </span>
-            </div>
+                <span>{keyword.title} ({keyword.count})</span>
+                <button
+                  onClick={() => removeKeyword(keyword.title)}
+                  className="text-blue-600 hover:text-blue-800 font-bold text-lg leading-none"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={clearAllKeywords}
+              className="text-gray-500 hover:text-gray-700 text-sm underline"
+            >
+              Clear all
+            </button>
           </div>
-        )}
+          
+          {/* Selected Keywords Summary */}
+          <div className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
+            <span className="text-sm text-gray-600">
+              {selectedKeywords.length} keyword{selectedKeywords.length > 1 ? 's' : ''} selected ({selectedKeywords.reduce((sum, k) => sum + k.count, 0)} jobs)
+            </span>
+          </div>
+        </div>
+      )}
 
       <div className="relative">
         <input

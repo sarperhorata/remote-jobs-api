@@ -1,2 +1,0 @@
-"use strict";(self.webpackChunkremote_jobs_frontend=self.webpackChunkremote_jobs_frontend||[]).push([[173],{1173:(e,s,n)=>{n.r(s),n.d(s,{default:()=>d});n(5043);var l=n(579);const d=()=>(0,l.jsxs)("div",{children:[(0,l.jsx)("h1",{children:"Upload Resume"}),(0,l.jsx)("p",{children:"Resume upload and analysis functionality will be here."})]})}}]);
-//# sourceMappingURL=173.cbc564b6.chunk.js.map

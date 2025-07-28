@@ -4,15 +4,10 @@ import {
   Users,
   Globe,
   Target,
-  Award,
   Heart,
   Zap,
   Shield,
-  TrendingUp,
   CheckCircle,
-  Star,
-  MapPin,
-  Calendar,
   Building,
   Rocket
 } from 'lucide-react';

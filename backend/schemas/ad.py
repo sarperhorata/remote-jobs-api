@@ -14,6 +14,12 @@ class AdBase(BaseModel):
 
 
 class AdCreate(AdBase):
+    company: Optional[str] = None
+    position: Optional[str] = None
+    budget: Optional[float] = None
+    duration_days: Optional[int] = None
+    status: Optional[str] = None
+    
     @field_validator("title")
     @classmethod
     def title_must_not_be_empty(cls, v):

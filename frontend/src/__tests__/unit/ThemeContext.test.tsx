@@ -1,6 +1,8 @@
 import React from 'react';
 import { renderHook } from '@testing-library/react';
 
+import { ThemeProvider, useTheme } from '../../contexts/ThemeContext';
+
 // Mock the entire ThemeContext module
 jest.mock('../../contexts/ThemeContext', () => {
   return {
@@ -14,8 +16,6 @@ jest.mock('../../contexts/ThemeContext', () => {
     }),
   };
 });
-
-import { ThemeProvider, useTheme } from '../../contexts/ThemeContext';
 
 describe('ThemeContext', () => {
   const wrapper = ({ children }: { children: React.ReactNode }) => (

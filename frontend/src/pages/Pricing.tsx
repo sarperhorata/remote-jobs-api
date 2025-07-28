@@ -1,18 +1,12 @@
 import React, { useState } from 'react';
 import Layout from '../components/Layout';
-import { 
-  Check, 
-  Star, 
-  Zap, 
-  Crown, 
-  Users, 
-  Building, 
-  DollarSign,
-  ArrowRight,
-  Badge,
+import {
+  Check,
+  Star,
+  Zap,
   Shield,
-  Clock,
-  Target
+  Users,
+  Globe
 } from 'lucide-react';
 
 const Pricing: React.FC = () => {
@@ -68,7 +62,7 @@ const Pricing: React.FC = () => {
         "Priority customer support"
       ],
       popular: false,
-      icon: <Crown className="w-8 h-8" />,
+      icon: <Shield className="w-8 h-8" />,
       color: "from-yellow-400 to-orange-500"
     }
   ];
@@ -87,7 +81,7 @@ const Pricing: React.FC = () => {
         "Basic analytics"
       ],
       popular: false,
-      icon: <Building className="w-8 h-8" />,
+      icon: <Globe className="w-8 h-8" />,
       color: "from-green-400 to-green-600"
     },
     {
@@ -125,7 +119,7 @@ const Pricing: React.FC = () => {
         "24/7 priority support"
       ],
       popular: false,
-      icon: <Crown className="w-8 h-8" />,
+      icon: <Shield className="w-8 h-8" />,
       color: "from-purple-500 to-pink-600"
     }
   ];
@@ -311,7 +305,7 @@ const Pricing: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
               <div className="text-center p-6">
                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Target className="w-8 h-8 text-blue-600" />
+                  <Globe className="w-8 h-8 text-blue-600" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Smart Matching</h3>
                 <p className="text-gray-600 text-sm">AI-powered job matching based on your skills and preferences</p>
@@ -327,7 +321,7 @@ const Pricing: React.FC = () => {
               
               <div className="text-center p-6">
                 <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Clock className="w-8 h-8 text-purple-600" />
+                  <Globe className="w-8 h-8 text-purple-600" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Real-time Updates</h3>
                 <p className="text-gray-600 text-sm">Get instant notifications when new matching jobs are posted</p>
@@ -335,7 +329,7 @@ const Pricing: React.FC = () => {
               
               <div className="text-center p-6">
                 <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Badge className="w-8 h-8 text-orange-600" />
+                  <Shield className="w-8 h-8 text-orange-600" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Premium Support</h3>
                 <p className="text-gray-600 text-sm">Dedicated support team to help you succeed in remote work</p>
@@ -389,7 +383,7 @@ const Pricing: React.FC = () => {
               </p>
               <button className="bg-white text-blue-600 font-semibold px-8 py-3 rounded-lg hover:bg-gray-100 transition-colors flex items-center space-x-2 mx-auto">
                 <span>Get Started Today</span>
-                <ArrowRight className="w-5 h-5" />
+                <Globe className="w-5 h-5" />
               </button>
             </div>
           </div>

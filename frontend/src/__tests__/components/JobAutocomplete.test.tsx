@@ -63,7 +63,7 @@ describe('JobAutocomplete', () => {
     const input = screen.getByRole('textbox');
     fireEvent.focus(input);
     
-    await waitFor(() => screen.getByText('React Developer'));
+    await screen.findByText('React Developer');
     fireEvent.click(screen.getByText('React Developer'));
     
     expect(window.location.href).toContain('/job-search-results?q=React%20Developer');
@@ -84,7 +84,7 @@ describe('JobAutocomplete', () => {
     const input = screen.getByRole('textbox');
     fireEvent.change(input, { target: { value: 'react' } });
     
-    await waitFor(() => screen.getByText(/We have found 92 'react' jobs/i));
+    await screen.findByText(/We have found 92 'react' jobs/i);
     fireEvent.click(screen.getByText(/We have found 92 'react' jobs/i));
     
     expect(window.location.href).toContain('/job-search-results?q=react');

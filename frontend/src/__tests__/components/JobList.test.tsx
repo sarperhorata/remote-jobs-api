@@ -3,6 +3,9 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import JobList from '../../components/JobList';
 
+// Import the mocked service
+import { jobService } from '../../services/AllServices';
+
 // Increase timeout for all tests in this file
 jest.setTimeout(15000);
 
@@ -12,9 +15,6 @@ jest.mock('../../services/AllServices', () => ({
     getJobs: jest.fn()
   }
 }));
-
-// Import the mocked service
-import { jobService } from '../../services/AllServices';
 const mockGetJobs = jobService.getJobs as jest.MockedFunction<typeof jobService.getJobs>;
 
 const renderJobList = (props = {}) => {

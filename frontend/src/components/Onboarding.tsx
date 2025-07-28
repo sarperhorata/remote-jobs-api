@@ -395,9 +395,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ isOpen, onClose, onComplete }) 
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="px-8 py-6 border-b border-gray-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl h-[90vh] flex flex-col">
+        {/* Header - Fixed */}
+        <div className="px-8 py-6 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="text-sm text-gray-500">
@@ -423,13 +423,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ isOpen, onClose, onComplete }) 
           </div>
         </div>
 
-        {/* Content */}
-        <div className="px-8 py-8">
+        {/* Content - Scrollable */}
+        <div className="px-8 py-8 flex-1 overflow-y-auto">
           {renderStep()}
         </div>
 
-        {/* Footer */}
-        <div className="px-8 py-6 border-t border-gray-200 flex items-center justify-between">
+        {/* Footer - Fixed */}
+        <div className="px-8 py-6 border-t border-gray-200 flex items-center justify-between flex-shrink-0">
           <button
             onClick={handlePrevious}
             disabled={currentStep === 1}

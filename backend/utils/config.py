@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     CORS_ALLOW_CREDENTIALS: bool = True
 
     # JWT settings
-    JWT_SECRET: str = "your-secret-key"
+    JWT_SECRET: str = "change-this-jwt-secret-in-production"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 30
 
@@ -96,7 +96,7 @@ class Settings(BaseSettings):
 
     # Admin Panel
     ADMIN_USERNAME: str = "admin"
-    ADMIN_PASSWORD: str = "buzz2remote2024"
+    ADMIN_PASSWORD: str = "change-this-password-in-production"
     ADMIN_PANEL_ENABLED: bool = True
 
     # Sentry
@@ -130,9 +130,9 @@ class Settings(BaseSettings):
                 else:
                     # Fallback for Render production without proper env vars
                     logger.warning(
-                        "No production database URL found, using MongoDB Atlas default pattern"
+                        "No production database URL found, using local MongoDB"
                     )
-                    self.DATABASE_URL = "mongodb+srv://buzz2remote:buzz2remote@cluster0.mongodb.net/buzz2remote"
+                    self.DATABASE_URL = "mongodb://localhost:27017/buzz2remote"
             else:
                 self.DATABASE_URL = (
                     mongodb_uri

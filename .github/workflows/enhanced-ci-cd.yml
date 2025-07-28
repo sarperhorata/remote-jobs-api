@@ -177,7 +177,7 @@ jobs:
         
     - name: 📊 Upload Security Reports
       if: always()
-              uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v4
       with:
         name: security-reports-${{ github.run_number }}
         path: |
@@ -216,7 +216,7 @@ jobs:
       continue-on-error: true
       
     - name: ⚡ Lighthouse CI
-      uses: treosh/lighthouse-ci-action@v9
+      uses: treosh/lighthouse-ci-action@v12
       with:
         configPath: './frontend/.lighthouserc.json'
         temporaryPublicStorage: true

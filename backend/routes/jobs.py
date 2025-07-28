@@ -520,7 +520,12 @@ async def search_jobs(
         )
 
         # Execute aggregation pipeline
-        jobs = await db.jobs.aggregate(pipeline).to_list(None)
+        try:
+            cursor = db.jobs.aggregate(pipeline)
+            jobs = await cursor.to_list(None)
+        except Exception as e:
+            logger.error(f"Error in job search: {e}")
+            jobs = []
 
         # Get total count efficiently (separate query for count)
         total = (

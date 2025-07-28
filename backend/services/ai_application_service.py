@@ -17,9 +17,10 @@ logger = logging.getLogger(__name__)
 class AIApplicationService:
     """AI-powered job application service with form scraping and intelligent responses"""
 
-    def __init__(self):
+    def __init__(self, db=None):
         self.openai_client = openai.AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.session = None
+        self.db = db
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession(

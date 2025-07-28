@@ -27,10 +27,11 @@ class SchedulerService:
     Scheduler service for managing background jobs
     """
 
-    def __init__(self):
+    def __init__(self, db=None):
         self.scheduler = AsyncIOScheduler()
         self.is_running = False
         self.job_logs = {}  # Store last 1 week of logs per job
+        self.db = db
 
     async def start(self):
         """Start the scheduler service"""

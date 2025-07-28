@@ -1,7 +1,7 @@
 import asyncio
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import mongomock
@@ -71,7 +71,7 @@ def db_mock():
     """
     db = MagicMock()
 
-    # Create mock collections
+    # Create mock collections with sample data
     db.users = MagicMock()
     db.jobs = MagicMock()
     db.companies = MagicMock()
@@ -85,12 +85,91 @@ def db_mock():
     db.test_collection = MagicMock()
     db.test_concurrent = MagicMock()
 
-    # Default return values for common methods
-    db.users.find_one.return_value = None
-    db.jobs.find_one.return_value = None
-    db.companies.find_one.return_value = None
-    db.user_activities.find_one.return_value = None
-    db.user_sessions.find_one.return_value = None
+    # Sample data for testing
+    sample_jobs = [
+        {
+            "_id": "job1",
+            "title": "Software Engineer",
+            "company": "TechCorp",
+            "location": "Remote",
+            "salary_min": 80000,
+            "salary_max": 120000,
+            "created_at": datetime.now(timezone.utc),
+            "job_type": "Full-time",
+            "work_type": "Remote",
+            "isRemote": True,
+            "posted_date": datetime.now(timezone.utc).isoformat(),
+            "required_skills": ["Python", "JavaScript"],
+            "description": "We are looking for a skilled developer",
+            "seniority_level": "Mid Level"
+        },
+        {
+            "_id": "job2", 
+            "title": "Product Manager",
+            "company": "StartupXYZ",
+            "location": "San Francisco",
+            "salary_min": 100000,
+            "salary_max": 150000,
+            "created_at": datetime.now(timezone.utc),
+            "job_type": "Full-time",
+            "work_type": "Hybrid",
+            "isRemote": False,
+            "posted_date": datetime.now(timezone.utc).isoformat(),
+            "required_skills": ["Product Management", "Agile"],
+            "description": "Lead product development",
+            "seniority_level": "Senior"
+        }
+    ]
+
+    sample_companies = [
+        {
+            "_id": "company1",
+            "name": "TechCorp",
+            "location": "Remote",
+            "industry": "Technology"
+        },
+        {
+            "_id": "company2", 
+            "name": "StartupXYZ",
+            "location": "San Francisco",
+            "industry": "Technology"
+        }
+    ]
+
+    sample_users = [
+        {
+            "_id": "user1",
+            "email": "test@example.com",
+            "password_hash": "hashed_password",
+            "is_active": True
+        }
+    ]
+
+    # Mock aggregate method to return sample data
+    async def mock_aggregate(pipeline):
+        cursor = MagicMock()
+        cursor.to_list = AsyncMock(return_value=sample_jobs)
+        return cursor
+    
+    async def mock_count_documents(query=None):
+        return len(sample_jobs)
+    
+    async def mock_find_one(query=None):
+        if query and "_id" in query:
+            if query["_id"] == "user1":
+                return sample_users[0]
+            elif query["_id"] in ["job1", "job2"]:
+                return next((job for job in sample_jobs if job["_id"] == query["_id"]), None)
+            elif query["_id"] in ["company1", "company2"]:
+                return next((company for company in sample_companies if company["_id"] == query["_id"]), None)
+        return None
+
+    # Set up mock methods
+    db.jobs.aggregate = mock_aggregate
+    db.jobs.count_documents = mock_count_documents
+    db.jobs.find_one = mock_find_one
+    db.users.find_one = mock_find_one
+    db.companies.find_one = mock_find_one
 
     # Mock collection methods
     for collection in [
@@ -112,9 +191,6 @@ def db_mock():
         collection.delete_one = MagicMock()
         collection.delete_many = MagicMock()
         collection.find = MagicMock()
-        collection.find_one = MagicMock()
-        collection.count_documents = MagicMock()
-        collection.aggregate = MagicMock()
         collection.create_index = MagicMock()
         collection.drop = MagicMock()
 
@@ -269,7 +345,7 @@ class MockCollection:
 
 
 class MockCursor:
-    """Mock cursor that mimics MongoDB cursor behavior."""
+    """Mock cursor that mimics MongoDB cursor behavior with proper async iteration."""
 
     def __init__(self, storage, query=None):
         self.storage = storage
@@ -277,6 +353,7 @@ class MockCursor:
         self._sort_spec = []
         self._skip_val = 0
         self._limit_val = None
+        self._processed_docs = None
 
     def sort(self, *args):
         """Mock sort."""
@@ -298,8 +375,11 @@ class MockCursor:
         self._limit_val = count
         return self
 
-    async def to_list(self, length=None):
-        """Mock to_list."""
+    def _process_docs(self):
+        """Process documents according to query, sort, skip, and limit."""
+        if self._processed_docs is not None:
+            return self._processed_docs
+            
         docs = []
         for doc in self.storage.values():
             if self._matches_query(doc, self.query):
@@ -316,7 +396,29 @@ class MockCursor:
         if self._limit_val:
             docs = docs[: self._limit_val]
 
+        self._processed_docs = docs
         return docs
+
+    async def to_list(self, length=None):
+        """Mock to_list."""
+        docs = self._process_docs()
+        if length:
+            return docs[:length]
+        return docs
+
+    def __aiter__(self):
+        """Async iterator implementation."""
+        return self
+
+    async def __anext__(self):
+        """Async next implementation."""
+        if not hasattr(self, '_iterator_docs'):
+            self._iterator_docs = iter(self._process_docs())
+        
+        try:
+            return next(self._iterator_docs)
+        except StopIteration:
+            raise StopAsyncIteration
 
     def _matches_query(self, doc, query):
         """Simple query matching for tests."""

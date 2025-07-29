@@ -187,7 +187,7 @@ class SearchSchema(BaseSchema):
     query: Optional[str] = Field(default=None, max_length=200, description="Search query")
     filters: Optional[Dict[str, Any]] = Field(default=None, description="Search filters")
     sort_by: Optional[str] = Field(default=None, description="Sort field")
-    sort_order: Optional[str] = Field(default="desc", regex="^(asc|desc)$", description="Sort order")
+    sort_order: Optional[str] = Field(default="desc", pattern="^(asc|desc)$", description="Sort order")
     
     @validator('query', pre=True)
     def clean_query(cls, v):

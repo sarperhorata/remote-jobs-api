@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider } from '../../contexts/ThemeContext';
 import { AuthProvider } from '../../contexts/AuthContext';
-import { setupMockFetch } from '../mocks/apiMocks';
+// import { setupMockFetch } from '../mocks/apiMocks'; // Temporarily disabled
 
 // Custom render function that includes providers
 const AllTheProviders: React.FC<{ children: React.ReactNode }> = ({ children }) => {

@@ -176,7 +176,7 @@ describe('JobService Comprehensive Tests', () => {
       const result = await jobService.searchJobs(searchParams);
 
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/jobs/search?location=Remote&q=React&job_type=Full-time'),
+        expect.stringContaining('http://localhost:8001/api/v1/jobs/search?location=Remote&q=React&job_type=Full-time'),
         expect.objectContaining({
           method: 'GET',
           headers: expect.objectContaining({
@@ -199,7 +199,7 @@ describe('JobService Comprehensive Tests', () => {
       const result = await jobService.searchJobs({});
 
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/jobs/search?'),
+        expect.stringContaining('http://localhost:8001/api/v1/jobs/search?'),
         expect.objectContaining({
           method: 'GET',
           headers: expect.objectContaining({
@@ -287,7 +287,7 @@ describe('JobService Comprehensive Tests', () => {
       const result = await jobService.getJobStats();
 
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/jobs/statistics/'),
+        expect.stringContaining('http://localhost:8001/api/v1/jobs/statistics/'),
         expect.objectContaining({
           method: 'GET',
           headers: expect.objectContaining({
@@ -327,7 +327,7 @@ describe('JobService Comprehensive Tests', () => {
       const result = await jobService.getJobTitleSuggestions('React');
 
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/jobs/job-titles/search?q=React&limit=10'),
+        expect.stringContaining('http://localhost:8001/api/v1/jobs/job-titles/search?q=React&limit=10'),
         expect.objectContaining({
           method: 'GET',
           headers: expect.objectContaining({
@@ -350,7 +350,7 @@ describe('JobService Comprehensive Tests', () => {
       const result = await jobService.getJobTitleSuggestions('React', 2);
 
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/jobs/job-titles/search?q=React&limit=2'),
+        expect.stringContaining('http://localhost:8001/api/v1/jobs/job-titles/search?q=React&limit=2'),
         expect.objectContaining({
           method: 'GET',
           headers: expect.objectContaining({

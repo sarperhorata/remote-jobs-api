@@ -34,11 +34,7 @@ const mockJob = {
 };
 
 const renderWithRouter = (component: React.ReactElement) => {
-  return render(
-    <BrowserRouter>
-      {component}
-    </BrowserRouter>
-  );
+  return render(component);
 };
 
 describe('JobCard Component', () => {

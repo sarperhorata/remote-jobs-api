@@ -5,27 +5,27 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![GitHub Actions](https://github.com/sarperhorata/remote-jobs-api/workflows/Auto%20Deploy%20on%20Success/badge.svg)](https://github.com/sarperhorata/remote-jobs-api/actions)
 
-## 📁 **PROJE YAPISI**
+## 📁 **PROJECT STRUCTURE**
 
-Bu proje düzenli bir klasör yapısına sahiptir. Detaylı bilgi için [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) dosyasını inceleyin.
+This project has a well-organized folder structure. For detailed information, see the [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) file.
 
-### 🏗️ Ana Klasörler
-- **`/backend/`** - FastAPI tabanlı REST API
-- **`/frontend/`** - React tabanlı web uygulaması
-- **`/scripts/`** - Otomasyon scriptleri (cron, deployment, testing)
-- **`/reports/`** - Proje raporları ve analizler
-- **`/docs/`** - Teknik dokümantasyon
-- **`/config/`** - Konfigürasyon dosyaları
+### 🏗️ Main Folders
+- **`/backend/`** - FastAPI-based REST API
+- **`/frontend/`** - React-based web application
+- **`/scripts/`** - Automation scripts (cron, deployment, testing)
+- **`/reports/`** - Project reports and analyses
+- **`/docs/`** - Technical documentation
+- **`/config/`** - Configuration files
 
-### 🚀 Hızlı Başlangıç
+### 🚀 Quick Start
 ```bash
-# Backend geliştirme
+# Backend development
 cd backend && python -m pytest tests/
 
-# Frontend geliştirme
+# Frontend development
 cd frontend && npm run dev
 
-# Test çalıştırma
+# Run tests
 ./scripts/testing/test_api_performance.sh
 ```
 

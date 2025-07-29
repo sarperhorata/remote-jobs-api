@@ -28,13 +28,11 @@ const mockJobService = jobService as jest.Mocked<typeof jobService>;
 
 const renderApp = () => {
   return render(
-    <BrowserRouter>
-      <ThemeProvider>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </ThemeProvider>
-    </BrowserRouter>
+    <ThemeProvider>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </ThemeProvider>
   );
 };
 
@@ -152,10 +150,10 @@ describe('Complete User Journey Integration Tests', () => {
       renderApp();
 
       // 1. Search for jobs
-      const searchInput = screen.getByPlaceholderText(/İş ara/i);
+      const searchInput = screen.getByPlaceholderText(/Search jobs/i);
       fireEvent.change(searchInput, { target: { value: 'React Developer' } });
       
-      const searchButton = screen.getByText(/Ara/i);
+      const searchButton = screen.getByText(/Search/i);
       fireEvent.click(searchButton);
 
       // 2. Wait for search results
@@ -236,7 +234,7 @@ describe('Complete User Journey Integration Tests', () => {
       renderApp();
 
       // 1. Navigate to favorites
-      const favoritesLink = screen.getByText(/Favoriler/i);
+      const favoritesLink = screen.getByText(/Favorites/i);
       fireEvent.click(favoritesLink);
 
       // 2. Verify favorites page

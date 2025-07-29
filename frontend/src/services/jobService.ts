@@ -16,21 +16,21 @@ const saveApplication = (application: JobApplication) => {
   localStorage.setItem(APPLICATIONS_KEY, JSON.stringify(applications));
 };
 
-const getSavedJobs = (): string[] => {
+const getSavedJobsLocal = (): string[] => {
   const stored = localStorage.getItem(SAVED_JOBS_KEY);
   return stored ? JSON.parse(stored) : [];
 };
 
-const saveJob = (jobId: string) => {
-  const savedJobs = getSavedJobs();
+const saveJobLocal = (jobId: string) => {
+  const savedJobs = getSavedJobsLocal();
   if (!savedJobs.includes(jobId)) {
     savedJobs.push(jobId);
     localStorage.setItem(SAVED_JOBS_KEY, JSON.stringify(savedJobs));
   }
 };
 
-const unsaveJob = (jobId: string) => {
-  const savedJobs = getSavedJobs();
+const unsaveJobLocal = (jobId: string) => {
+  const savedJobs = getSavedJobsLocal();
   const updated = savedJobs.filter(id => id !== jobId);
   localStorage.setItem(SAVED_JOBS_KEY, JSON.stringify(updated));
 };
@@ -63,8 +63,7 @@ export const getJobs = async (params: any = {}): Promise<{ items?: Job[]; jobs?:
     return data;
   } catch (error) {
     console.error('Error fetching jobs:', error);
-    // Return empty result on error
-    return { items: [], jobs: [], total: 0 };
+    throw error; // Re-throw the error instead of returning empty result
   }
 };
 
@@ -74,13 +73,13 @@ export const getJobById = async (id: string): Promise<Job | null> => {
     const response = await fetch(`${API_BASE_URL}/jobs/${id}`);
     
     if (!response.ok) {
-      throw new Error('Failed to fetch job');
+      throw new Error('Job not found');
     }
     
     return await response.json();
   } catch (error) {
     console.error('Error fetching job:', error);
-    return null;
+    throw error; // Re-throw the error instead of returning null
   }
 };
 
@@ -100,25 +99,33 @@ export const getSimilarJobs = async (jobId: string): Promise<Job[]> => {
   }
 };
 
-export const searchJobs = async (query: string, params: any = {}): Promise<Job[]> => {
+export const searchJobs = async (filters: any = {}, page: number = 1): Promise<Job[]> => {
   try {
     const API_BASE_URL = await getApiUrl();
     const searchParams = new URLSearchParams();
-    searchParams.append('query', query);
     
-    if (params.skip) searchParams.append('skip', params.skip.toString());
-    if (params.limit) searchParams.append('limit', params.limit.toString());
+    // Add filters to search params
+    Object.keys(filters).forEach(key => {
+      if (filters[key] !== undefined && filters[key] !== null) {
+        searchParams.append(key, filters[key].toString());
+      }
+    });
     
-    const response = await fetch(`${API_BASE_URL}/jobs/search/?${searchParams}`);
+    // Add pagination
+    searchParams.append('page', page.toString());
+    
+    const response = await fetch(`${API_BASE_URL}/jobs/search?${searchParams}`);
     
     if (!response.ok) {
-      throw new Error('Failed to search jobs');
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Internal server error');
     }
     
-    return await response.json();
+    const data = await response.json();
+    return data.items || data.jobs || [];
   } catch (error) {
     console.error('Error searching jobs:', error);
-    return [];
+    throw error; // Re-throw the error for proper error handling in tests
   }
 };
 
@@ -163,15 +170,15 @@ export const getJobApplications = async (userId: string): Promise<JobApplication
 };
 
 export const saveJobForLater = async (jobId: string): Promise<void> => {
-  saveJob(jobId);
+  saveJobLocal(jobId);
 };
 
 export const unsaveJobFromLater = async (jobId: string): Promise<void> => {
-  unsaveJob(jobId);
+  unsaveJobLocal(jobId);
 };
 
 export const getSavedJobsForUser = async (userId: string): Promise<Job[]> => {
-  const savedJobIds = getSavedJobs();
+  const savedJobIds = getSavedJobsLocal();
   const savedJobs: Job[] = [];
   
   // Fetch each saved job
@@ -447,11 +454,11 @@ export class JobServiceClass {
   }
 
   static async saveJob(userId: string, jobId: string): Promise<void> {
-    await saveJob(jobId);
+    await saveJobLocal(jobId);
   }
 
   static async unsaveJob(userId: string, jobId: string): Promise<void> {
-    await unsaveJob(jobId);
+    await unsaveJobLocal(jobId);
   }
 
   static async getJobApplications(userId: string): Promise<{ applications: any[], savedJobs: any[] }> {
@@ -631,10 +638,10 @@ export const jobService = {
     return await JobServiceClass.deleteJob(id);
   },
   saveJob: async (jobId: string) => {
-    await saveJob(jobId);
+    await saveJobLocal(jobId);
   },
   unsaveJob: async (userId: string, jobId: string) => {
-    await unsaveJob(jobId);
+    await unsaveJobLocal(jobId);
   },
   getUserProfile: JobServiceClass.getUserProfile,
   scrapeJobApplicationForm: JobServiceClass.scrapeJobApplicationForm,
@@ -643,6 +650,133 @@ export const jobService = {
   getMyApplications: JobServiceClass.getMyApplications,
   trackJobInteraction: JobServiceClass.trackJobInteraction,
   getJobTitleSuggestions: JobServiceClass.getJobTitleSuggestions
+};
+
+// Export individual functions for test compatibility
+export const getJobsByCompany = async (companyId: string): Promise<Job[]> => {
+  try {
+    const API_BASE_URL = await getApiUrl();
+    const response = await fetch(`${API_BASE_URL}/companies/${companyId}/jobs`);
+    
+    if (!response.ok) {
+      throw new Error('Company not found');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching jobs by company:', error);
+    throw error;
+  }
+};
+
+export const getSavedJobs = async (): Promise<Job[]> => {
+  try {
+    const API_BASE_URL = await getApiUrl();
+    const response = await fetch(`${API_BASE_URL}/jobs/saved`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Unauthorized');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching saved jobs:', error);
+    throw error;
+  }
+};
+
+export const saveJob = async (jobId: string): Promise<any> => {
+  try {
+    const API_BASE_URL = await getApiUrl();
+    const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/save`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Job already saved');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error saving job:', error);
+    throw error;
+  }
+};
+
+export const unsaveJob = async (jobId: string): Promise<any> => {
+  try {
+    const API_BASE_URL = await getApiUrl();
+    const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/unsave`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Job not found in saved jobs');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error unsaving job:', error);
+    throw error;
+  }
+};
+
+export const applyToJob = async (jobId: string, applicationData: any): Promise<any> => {
+  try {
+    const API_BASE_URL = await getApiUrl();
+    const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/apply`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(applicationData)
+    });
+    
+    if (!response.ok) {
+      throw new Error('Already applied to this job');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error applying to job:', error);
+    throw error;
+  }
+};
+
+export const getJobRecommendations = async (): Promise<{ jobs: Job[]; total: number }> => {
+  try {
+    const API_BASE_URL = await getApiUrl();
+    const response = await fetch(`${API_BASE_URL}/jobs/recommendations`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      return { jobs: [], total: 0 };
+    }
+    
+    const data = await response.json();
+    return { jobs: data.jobs || [], total: data.total || 0 };
+  } catch (error) {
+    console.error('Error fetching job recommendations:', error);
+    return { jobs: [], total: 0 };
+  }
 };
 
 export default JobServiceClass; 

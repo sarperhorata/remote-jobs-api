@@ -19,9 +19,7 @@ const mockGetJobs = jobService.getJobs as jest.MockedFunction<typeof jobService.
 
 const renderJobList = (props = {}) => {
   return render(
-    <BrowserRouter>
-      <JobList {...props} />
-    </BrowserRouter>
+    <JobList {...props} />
   );
 };
 

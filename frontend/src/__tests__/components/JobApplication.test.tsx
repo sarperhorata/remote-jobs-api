@@ -36,9 +36,7 @@ const mockJob: Job = {
 
 const renderJobApplication = (job: Job = mockJob) => {
   return render(
-    <BrowserRouter>
-      <JobApplication job={job} />
-    </BrowserRouter>
+    <JobApplication job={job} />
   );
 };
 

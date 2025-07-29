@@ -20,14 +20,22 @@ const localStorageMock = {
   removeItem: jest.fn(),
   clear: jest.fn(),
 };
+
+// Mock window.localStorage
 Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock
+  value: localStorageMock,
+  writable: true
 });
 
 describe('jobService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockFetch.mockClear();
+    // Reset localStorage mock
+    localStorageMock.getItem.mockReturnValue('mock-token');
+    localStorageMock.setItem.mockClear();
+    localStorageMock.removeItem.mockClear();
+    localStorageMock.clear.mockClear();
   });
 
   describe('searchJobs', () => {
@@ -64,7 +72,7 @@ describe('jobService', () => {
       const result = await searchJobs(filters, 1);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/jobs/search'),
+        expect.stringContaining('http://localhost:8001/api/v1/jobs/search'),
         expect.objectContaining({
           method: 'GET',
           headers: expect.objectContaining({
@@ -114,7 +122,7 @@ describe('jobService', () => {
       const result = await getJobById('1');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/jobs/1'),
+        expect.stringContaining('http://localhost:8001/api/v1/jobs/1'),
         expect.objectContaining({
           method: 'GET',
           headers: expect.objectContaining({
@@ -165,7 +173,7 @@ describe('jobService', () => {
       const result = await getJobsByCompany('tech-corp');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/companies/tech-corp/jobs'),
+        expect.stringContaining('http://localhost:8001/api/v1/companies/tech-corp/jobs'),
         expect.objectContaining({
           method: 'GET',
           headers: expect.objectContaining({
@@ -212,7 +220,7 @@ describe('jobService', () => {
       const result = await getSavedJobs();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/jobs/saved'),
+        expect.stringContaining('http://localhost:8001/api/v1/jobs/saved'),
         expect.objectContaining({
           method: 'GET',
           headers: expect.objectContaining({
@@ -250,7 +258,7 @@ describe('jobService', () => {
       const result = await saveJob('1');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/jobs/1/save'),
+        expect.stringContaining('http://localhost:8001/api/v1/jobs/1/save'),
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
@@ -288,7 +296,7 @@ describe('jobService', () => {
       const result = await unsaveJob('1');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/jobs/1/unsave'),
+        expect.stringContaining('http://localhost:8001/api/v1/jobs/1/unsave'),
         expect.objectContaining({
           method: 'DELETE',
           headers: expect.objectContaining({
@@ -331,7 +339,7 @@ describe('jobService', () => {
       const result = await applyToJob('1', applicationData);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/jobs/1/apply'),
+        expect.stringContaining('/api/v1/jobs/1/apply'),
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
@@ -381,7 +389,7 @@ describe('jobService', () => {
       const result = await getJobRecommendations();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/jobs/recommendations'),
+        expect.stringContaining('http://localhost:8001/api/v1/jobs/recommendations'),
         expect.objectContaining({
           method: 'GET',
           headers: expect.objectContaining({

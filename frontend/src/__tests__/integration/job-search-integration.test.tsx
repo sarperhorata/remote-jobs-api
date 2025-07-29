@@ -13,11 +13,9 @@ global.fetch = mockFetch;
 
 // Test wrapper with all providers
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
-  <BrowserRouter>
-    <AuthProvider>
-      {children}
-    </AuthProvider>
-  </BrowserRouter>
+  <AuthProvider>
+    {children}
+  </AuthProvider>
 );
 
 describe('Job Search Integration Tests', () => {

@@ -89,7 +89,7 @@ const MyProfile: React.FC = () => {
   const [skillInput, setSkillInput] = useState('');
   const [skillSuggestions, setSkillSuggestions] = useState<string[]>([]);
   const [showSkillDropdown, setShowSkillDropdown] = useState(false);
-  const skillTimeoutRef = useRef<NodeJS.Timeout>();
+  const skillTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const loadUserProfile = useCallback(async () => {
     try {

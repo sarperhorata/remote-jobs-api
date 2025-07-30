@@ -235,7 +235,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLButtonElement>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Update inputValue when selectedLocation changes

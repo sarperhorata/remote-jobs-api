@@ -80,9 +80,9 @@ const OnboardingCompleteProfile: React.FC = () => {
   const [notificationPermission, setNotificationPermission] = useState<'default' | 'granted' | 'denied'>('default');
 
   // Refs
-  const locationTimeoutRef = useRef<NodeJS.Timeout>();
-  const jobTitleTimeoutRef = useRef<NodeJS.Timeout>();
-  const skillTimeoutRef = useRef<NodeJS.Timeout>();
+  const locationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const jobTitleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const skillTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const experienceLevels: ExperienceLevel[] = [
     { value: 'entry', label: 'Entry Level (0-2 years)', minYears: 0, maxYears: 2 },

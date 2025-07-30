@@ -94,7 +94,7 @@ const App: React.FC = () => {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <ThemeProvider>
-              <Router future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+              <Router>
                 <Toaster 
                   position="top-center" 
                   reverseOrder={false}

@@ -54,7 +54,7 @@ const Profile: React.FC = () => {
       
       try {
         setIsLoading(true);
-        const data = await jobService.getJobApplications(user.id);
+        const data = await jobService.getMyApplications();
         setApplicationHistory(data || { applications: [], savedJobs: [] });
       } catch (error) {
         console.error('Error fetching application history:', error);

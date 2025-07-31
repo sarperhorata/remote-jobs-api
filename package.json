@@ -1,0 +1,42 @@
+{
+  "name": "buzz2remote",
+  "version": "1.0.0",
+  "description": "Buzz2Remote - Remote Job Platform",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"cd backend && python main.py\" \"cd frontend && npm start\"",
+    "dev:backend": "cd backend && python main.py",
+    "dev:frontend": "cd frontend && npm start",
+    "build": "cd frontend && npm run build",
+    "test": "concurrently \"cd backend && python -m pytest\" \"cd frontend && npm test\"",
+    "test:backend": "cd backend && python -m pytest",
+    "test:frontend": "cd frontend && npm test",
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && pip install -r requirements.txt",
+    "deploy": "npm run build && echo 'Build completed. Deploy to your hosting platform.'",
+    "monitor": "node scripts/deployment-monitor-cron.js",
+    "monitor:once": "node scripts/deployment-monitor-cron.js --once",
+    "monitor:report": "node scripts/deployment-monitor-cron.js --report",
+    "monitor:dashboard": "bash scripts/monitor-dashboard.sh",
+    "setup:monitor": "sudo bash scripts/setup-deployment-monitor.sh"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "concurrently": "^8.2.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "remote-jobs",
+    "job-platform",
+    "fastapi",
+    "react",
+    "typescript"
+  ],
+  "author": "Sarper Horata",
+  "license": "MIT"
+} 

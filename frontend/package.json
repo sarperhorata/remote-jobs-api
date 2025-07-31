@@ -8,7 +8,7 @@
     "@heroicons/react": "^2.2.0",
     "@mui/icons-material": "^7.2.0",
     "@mui/material": "^7.2.0",
-    "@sentry/react": "^9.42.0",
+    "@sentry/react": "^9.43.0",
     "@sentry/tracing": "^7.120.3",
     "@stripe/react-stripe-js": "^3.7.0",
     "@stripe/stripe-js": "^7.6.1",
@@ -69,7 +69,11 @@
       "!src/**/*.d.ts",
       "!src/index.tsx",
       "!src/reportWebVitals.ts"
-    ]
+    ],
+    "moduleNameMapper": {
+      "^react-router-dom$": "<rootDir>/node_modules/react-router-dom",
+      "^@/(.*)$": "<rootDir>/src/$1"
+    }
   },
   "eslintConfig": {
     "extends": [

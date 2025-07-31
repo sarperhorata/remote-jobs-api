@@ -1,10 +1,10 @@
 // jest-dom adds custom jest matchers for asserting on DOM nodes.
+// allows you to do things like:
+// expect(element).toHaveTextContent(/react/i)
+// learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 
-// Mock fetch globally
-global.fetch = jest.fn();
-
-// Mock window.matchMedia for Jest environment
+// Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: jest.fn().mockImplementation(query => ({
@@ -18,6 +18,31 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: jest.fn(),
   })),
 });
+
+// Mock IntersectionObserver
+global.IntersectionObserver = class IntersectionObserver {
+  constructor() {}
+  disconnect() {}
+  observe() {}
+  unobserve() {}
+};
+
+// Mock ResizeObserver
+global.ResizeObserver = class ResizeObserver {
+  constructor() {}
+  disconnect() {}
+  observe() {}
+  unobserve() {}
+};
+
+// Mock WebSocket
+global.WebSocket = class WebSocket {
+  constructor() {}
+  close() {}
+  send() {}
+  addEventListener() {}
+  removeEventListener() {}
+};
 
 // Mock localStorage
 const localStorageMock = {
@@ -37,33 +62,16 @@ const sessionStorageMock = {
 };
 global.sessionStorage = sessionStorageMock;
 
-// Mock IntersectionObserver
-global.IntersectionObserver = jest.fn().mockImplementation(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
-}));
-
-// Mock ResizeObserver
-global.ResizeObserver = jest.fn().mockImplementation(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
-}));
-
-// Mock URL.createObjectURL
-global.URL.createObjectURL = jest.fn(() => 'mock-url');
+// Mock fetch
+global.fetch = jest.fn();
 
 // Mock console methods to reduce noise in tests
-const originalConsoleError = console.error;
-const originalConsoleWarn = console.warn;
-
-beforeAll(() => {
-  console.error = jest.fn();
-  console.warn = jest.fn();
-});
-
-afterAll(() => {
-  console.error = originalConsoleError;
-  console.warn = originalConsoleWarn;
-});
+global.console = {
+  ...console,
+  // Uncomment to ignore a specific log level
+  // log: jest.fn(),
+  // debug: jest.fn(),
+  // info: jest.fn(),
+  // warn: jest.fn(),
+  // error: jest.fn(),
+};

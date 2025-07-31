@@ -59,6 +59,23 @@ Tüm cron job endpoint'leri API key gerektirir:
 - **Schedule:** Her 5 dakikada bir (test için)
 - **Amaç:** Hızlı response test etmek
 
+### 🆕 8. Deployment Monitor (YENİ!)
+- **URL:** `https://buzz2remote-api.onrender.com/api/monitor/check`
+- **Method:** POST
+- **Headers:** 
+  - `Content-Type: application/json`
+  - `Authorization: Bearer YOUR_MONITOR_TOKEN`
+- **Body:** 
+  ```json
+  {
+    "action": "check",
+    "timestamp": "{{timestamp}}",
+    "source": "cron-job.org"
+  }
+  ```
+- **Schedule:** Her 15 dakikada bir
+- **Amaç:** Render, GitHub Actions, Netlify deployment'larını izlemek ve otomatik düzeltmek
+
 ## 📋 Cron-job.org Kurulum Adımları
 
 ### 1. Hesap Oluşturma
@@ -109,8 +126,8 @@ Tüm cron job endpoint'leri API key gerektirir:
 5. **Headers:** `X-API-Key: buzz2remote-cron-2024`
 6. **Save**
 
-#### Monitoring
-1. **Title:** `Buzz2Remote Status Monitor`
+#### Cron Status
+1. **Title:** `Buzz2Remote Cron Status`
 2. **URL:** `https://buzz2remote-api.onrender.com/api/v1/cron/status`
 3. **Schedule:** `0 * * * *` (Her saat başı)
 4. **Method:** GET
@@ -124,101 +141,121 @@ Tüm cron job endpoint'leri API key gerektirir:
 5. **Headers:** `X-API-Key: buzz2remote-cron-2024`
 6. **Save**
 
-## ⚙️ Cron Expression Açıklamaları
+#### 🆕 Deployment Monitor (YENİ!)
+1. **Title:** `Buzz2Remote Deployment Monitor`
+2. **URL:** `https://buzz2remote-api.onrender.com/api/monitor/check`
+3. **Schedule:** `*/15 * * * *` (Her 15 dakikada bir)
+4. **Method:** POST
+5. **Headers:** 
+   - `Content-Type: application/json`
+   - `Authorization: Bearer YOUR_MONITOR_TOKEN`
+6. **Body (JSON):**
+   ```json
+   {
+     "action": "check",
+     "timestamp": "{{timestamp}}",
+     "source": "cron-job.org"
+   }
+   ```
+7. **Save**
 
-- `*/10 * * * *` - Her 10 dakikada bir (cron-job.org max 30s timeout)
-- `*/5 * * * *` - Her 5 dakikada bir (test için)
-- `0 9 * * *` - Her gün saat 09:00
-- `0 10 * * *` - Her gün saat 10:00
-- `0 2 * * 0` - Her Pazar saat 02:00
-- `0 8 * * *` - Her gün saat 08:00
-- `0 * * * *` - Her saat başı
+## 🔧 Environment Variables
 
-## 🔧 Ek Ayarlar
+Render'da aşağıdaki environment variables'ları ayarlayın:
 
-### Notification Settings
-Her cron job için:
-1. **Notifications** sekmesine gidin
-2. **Email notifications** aktif edin
-3. **Failure notifications** aktif edin
-4. **Success notifications** isteğe bağlı
+```bash
+# Mevcut cron job'lar için
+CRON_API_KEY=buzz2remote-cron-2024
 
-### Retry Settings
-1. **Retry on failure** aktif edin
-2. **Max retries:** 3
-3. **Retry delay:** 5 minutes
+# Yeni monitoring sistemi için
+RENDER_API_KEY=your_render_api_key
+GITHUB_TOKEN=your_github_token
+NETLIFY_ACCESS_TOKEN=your_netlify_token
+NETLIFY_SITE_ID=your_netlify_site_id
+MONITOR_TOKEN=your_secure_monitor_token
+WEBHOOK_URL=your_webhook_url
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+TELEGRAM_CHAT_ID=your_telegram_chat_id
+```
 
-### Timeout Settings
-1. **Request timeout:** 30 seconds (cron-job.org maximum)
-2. **Grace time:** 10 seconds
+## 📊 Monitoring Dashboard
 
-## 📊 Monitoring
+Yeni monitoring sistemi için dashboard:
+- **URL:** `https://buzz2remote-api.onrender.com/api/monitor/dashboard`
+- **Status:** `https://buzz2remote-api.onrender.com/api/monitor/status`
+- **Logs:** `https://buzz2remote-api.onrender.com/api/monitor/logs`
 
-### Dashboard
-- Cron-job.org dashboard'ında tüm job'ların durumunu görebilirsiniz
-- Başarı/başarısızlık oranlarını takip edebilirsiniz
-- Son çalışma zamanlarını kontrol edebilirsiniz
+## 🔒 Güvenlik
 
-### Logs
-Her job için detaylı loglar:
-- HTTP response codes
-- Response times
-- Error messages
-- Success confirmations
+### API Token Oluşturma
+```bash
+# Güçlü monitor token oluştur
+openssl rand -hex 32
+# Çıktıyı MONITOR_TOKEN olarak ayarlayın
+```
 
-## 🚨 Troubleshooting
+### IP Whitelisting
+Cron-job.org IP'leri otomatik olarak allow edilir:
+- `165.227.83.0/24`
+- `159.89.49.0/24`
 
-### Common Issues
+## 🐛 Troubleshooting
 
-#### 1. 404 Error
-- URL'lerin doğru olduğundan emin olun
-- Backend servisinin çalıştığını kontrol edin
+### Yaygın Sorunlar
 
-#### 2. Timeout Errors
-- Request timeout'u artırın
-- Backend servisinin yavaş olduğunu kontrol edin
+#### 1. Timeout Errors
+```
+Error: Request timeout after 30 seconds
+Solution: cron-job.org maximum timeout'u 30 saniye
+```
 
-#### 3. Authentication Errors
-- Endpoint'ler public olduğu için auth gerekmez
-- CORS ayarlarını kontrol edin
+#### 2. Authentication Errors
+```
+Error: 401 Unauthorized
+Solution: API key'leri kontrol edin
+```
 
-### Debug Steps
-1. **Manual Test:** URL'leri tarayıcıda test edin
-2. **Logs Check:** Backend loglarını kontrol edin
-3. **Status Endpoint:** `/api/v1/cron/status` endpoint'ini kontrol edin
+#### 3. Monitoring Token Errors
+```
+Error: Invalid monitor token
+Solution: MONITOR_TOKEN environment variable'ını kontrol edin
+```
 
-## 📈 Performance Monitoring
+### Debug Komutları
+```bash
+# Health check test
+curl -X POST https://buzz2remote-api.onrender.com/api/v1/cron/health-check \
+  -H "X-API-Key: buzz2remote-cron-2024"
 
-### Metrics to Track
-- **Success Rate:** %95+ olmalı
-- **Response Time:** < 30 saniye
-- **Uptime:** %99+ olmalı
+# Monitoring test
+curl -X POST https://buzz2remote-api.onrender.com/api/monitor/check \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_MONITOR_TOKEN" \
+  -d '{"action":"check","timestamp":"2025-07-31T08:48:00.484Z","source":"test"}'
 
-### Alerts
-- Failure rate > %5
-- Response time > 60 saniye
-- Consecutive failures > 3
+# Status check
+curl https://buzz2remote-api.onrender.com/api/monitor/status
+```
 
-## 🔄 Backup Plan
+## 📈 Monitoring Features
 
-Eğer cron-job.org kullanılamazsa:
-1. Render'ın built-in cron job'larını kullanın
-2. GitHub Actions scheduled workflows kullanın
-3. Local scheduler service'i aktif edin
+### Yeni Monitoring Sistemi Özellikleri:
+- ✅ **Render Deployment Monitoring**
+- ✅ **GitHub Actions Workflow Monitoring**
+- ✅ **Netlify Deployment Monitoring**
+- ✅ **External Health Checks**
+- ✅ **Auto-Fix Mechanisms**
+- ✅ **Real-Time Notifications**
+- ✅ **Web Dashboard**
+- ✅ **JSON Reports**
 
-## 📝 Notes
+### Mevcut Cron Job'lar:
+- ✅ **Health Check** (Render wake-up)
+- ✅ **External API Crawler**
+- ✅ **Distill Crawler**
+- ✅ **Database Cleanup**
+- ✅ **Job Statistics**
+- ✅ **Cron Status**
+- ✅ **Test Timeout**
 
-- Tüm endpoint'ler POST method kullanır (status hariç)
-- Health check her 14 dakikada bir çalışır (Render'ı uyanık tutmak için)
-- UTC timezone kullanılır
-- Response format: JSON
-- Error handling built-in
-
-## 🎯 Success Criteria
-
-✅ Tüm cron job'lar başarıyla kuruldu
-✅ Health check Render'ı uyanık tutuyor
-✅ Job'lar zamanında çalışıyor
-✅ Monitoring aktif
-✅ Notifications çalışıyor
-✅ Error handling çalışıyor 
+Bu güncelleme ile hem mevcut cron job'larınız çalışmaya devam edecek hem de yeni monitoring sistemi eklenmiş olacak! 🚀 

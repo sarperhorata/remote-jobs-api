@@ -85,6 +85,14 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
         const data = await response.json();
         console.log('✅ API Response data:', data);
         return data;
+          count: item.count || 1,
+          category: item.category || 'Technology'
+        })).filter(item => item.title && item.title.trim());
+        
+        console.log('🔄 MultiJobAutocomplete transformed data:', transformedData);
+        setAllSuggestions(transformedData);
+        setShowDropdown(transformedData.length > 0);
+>>>>>>> origin/dependabot/github_actions/actions/checkout-4
       } else {
         console.log('❌ API Response not OK:', response.status, response.statusText);
       }
@@ -103,6 +111,51 @@ const MultiJobAutocomplete: React.FC<MultiJobAutocompleteProps> = ({
         left: rect.left + window.scrollX,
         width: rect.width
       });
+<<<<<<< HEAD
+=======
+      
+      if (!response.ok) {
+        throw new Error(`Statistics API failed with status ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('📊 MultiJobAutocomplete statistics response:', data);
+      
+      // Handle different response formats
+      let popularTitles = [];
+      if (data.positions && Array.isArray(data.positions)) {
+        popularTitles = data.positions.slice(0, 5);
+      } else if (Array.isArray(data)) {
+        popularTitles = data.slice(0, 5);
+      } else if (data.job_titles && Array.isArray(data.job_titles)) {
+        popularTitles = data.job_titles.slice(0, 5);
+      }
+      
+      // Transform to expected format
+      const transformedTitles = popularTitles.map(item => ({
+        title: item.title || item.name || '',
+        count: item.count || 1,
+        category: item.category || 'Technology'
+      })).filter(item => item.title && item.title.trim());
+      
+      console.log('🔄 MultiJobAutocomplete popular titles:', transformedTitles);
+      setAllSuggestions(transformedTitles);
+      setShowDropdown(transformedTitles.length > 0);
+    } catch (error: any) {
+      console.error('Error fetching popular titles:', error);
+      
+      // Fallback popular titles
+      const fallbackTitles = [
+        { title: "Software Engineer", count: 100, category: "Technology" },
+        { title: "Product Manager", count: 80, category: "Management" },
+        { title: "Data Scientist", count: 60, category: "Technology" },
+        { title: "DevOps Engineer", count: 50, category: "Technology" },
+        { title: "UX Designer", count: 40, category: "Design" }
+      ];
+      
+      setAllSuggestions(fallbackTitles);
+      setShowDropdown(true);
+>>>>>>> origin/dependabot/github_actions/actions/checkout-4
     }
   }, []);
 

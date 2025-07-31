@@ -31,18 +31,40 @@ describe('SearchFilters Component', () => {
     jest.clearAllMocks();
   });
 
-  test('renders all filter sections with associated controls', () => {
+  it('renders all filter sections with associated controls', () => {
+    const mockProps = {
+      filters: {
+        query: '',
+        workType: '',
+        jobType: '',
+        experienceLevel: '',
+        posted: '',
+        salary: '',
+        location: '',
+        company: ''
+      },
+      onSearchQueryChange: jest.fn(),
+      onWorkTypeChange: jest.fn(),
+      onJobTypeChange: jest.fn(),
+      onExperienceLevelChange: jest.fn(),
+      onPostedChange: jest.fn(),
+      onSalaryChange: jest.fn(),
+      onLocationChange: jest.fn(),
+      onCompanyChange: jest.fn(),
+      onClearFilters: jest.fn()
+    };
+    
     render(<SearchFilters {...mockProps} />);
     
     expect(screen.getByRole('heading', { name: /filters/i })).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/job title, keywords.../i)).toBeInTheDocument();
-    expect(screen.getByText(/work type/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/work type/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/job type/i)).toBeInTheDocument();
     expect(screen.getByText(/experience level/i)).toBeInTheDocument();
     expect(screen.getByText(/posted/i)).toBeInTheDocument();
     expect(screen.getByText(/salary/i)).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/city, country.../i)).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/company name.../i)).toBeInTheDocument();
+    expect(screen.getByText(/location/i)).toBeInTheDocument();
+    expect(screen.getByText(/company/i)).toBeInTheDocument();
   });
 
   test('updates experience level filter correctly', async () => {

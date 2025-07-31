@@ -1,16 +1,12 @@
 security:
   ignore-vulnerabilities:
-    # python-jose vulnerabilities - these are in JWT handling, not critical for our use
-    70716:  # CVE-2024-33664 - DoS in JWE token decode
-    70715:  # CVE-2024-33664 - Algorithm confusion with OpenSSH keys
+    # All critical vulnerabilities have been fixed:
+    # - ecdsa (CVE-2024-23342) -> Replaced with cryptography library
+    # - python-jose (CVE-2024-33663, CVE-2024-33664) -> Replaced with PyJWT
+    # - pypdf2 (CVE-2023-36464) -> Replaced with pypdf
     
-    # pypdf2 vulnerability - only affects PDF parsing, we have fallbacks
-    59234:  # CVE-2023-36464 - Infinite loop in PDF parsing
-    
-    # ecdsa vulnerabilities - these are cryptographic side-channel attacks
-    # We're not using ECDSA for critical security operations
-    64459:  # CVE-2024-23342 - Minerva attack vulnerability
-    64396:  # PVE-2024-64396 - Side-channel attack vulnerability
+    # Only keep non-critical vulnerabilities that don't affect our use case
+    # No vulnerabilities to ignore currently
 
   # Only report high and critical vulnerabilities
   ignore-cvss-severity-below: 7.0

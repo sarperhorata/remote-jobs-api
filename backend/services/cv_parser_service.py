@@ -9,13 +9,13 @@ logger = logging.getLogger(__name__)
 
 # Optional imports for CV parsing
 try:
-    import PyPDF2
+    import pypdf  # Using pypdf instead of vulnerable PyPDF2
 
     PDF_AVAILABLE = True
 except ImportError:
     PDF_AVAILABLE = False
-    PyPDF2 = None
-    logger.warning("PyPDF2 not available - PDF parsing disabled")
+    pypdf = None
+    logger.warning("pypdf not available - PDF parsing disabled")
 
 try:
     import docx
@@ -75,10 +75,10 @@ class CVParserService:
     def _extract_text_from_pdf(self, file_content: bytes) -> str:
         """Extract text from PDF file"""
         if not PDF_AVAILABLE:
-            raise ValueError("PDF parsing not available - PyPDF2 not installed")
+            raise ValueError("PDF parsing not available - pypdf not installed")
 
         try:
-            pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_content))
+            pdf_reader = pypdf.PdfReader(io.BytesIO(file_content))
             text = ""
             for page in pdf_reader.pages:
                 text += page.extract_text() + "\n"

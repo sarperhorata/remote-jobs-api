@@ -817,7 +817,7 @@ class TestUtilsLowCoverage:
         except ImportError:
             pytest.skip("utils.archive module not importable")
 
-    @patch("backend.utils.cv_parser.PyPDF2.PdfReader")
+    @patch("backend.utils.cv_parser.pypdf.PdfReader")
     @patch("backend.utils.cv_parser.docx.Document")
     def test_utils_cv_parser_comprehensive(self, mock_docx, mock_pdf):
         """Test utils/cv_parser.py - 12% coverage"""

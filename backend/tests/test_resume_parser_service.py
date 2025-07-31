@@ -128,7 +128,7 @@ class TestResumeParserService:
         assert "experienced software engineer" in summary.lower()
         assert len(summary) > 0
 
-    @patch("services.resume_parser_service.PyPDF2.PdfReader")
+    @patch("services.resume_parser_service.pypdf.PdfReader")
     def test_extract_text_from_pdf(self, mock_pdf_reader, parser, sample_pdf_content):
         """Test PDF text extraction"""
         # Mock PDF reader

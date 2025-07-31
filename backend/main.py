@@ -80,7 +80,7 @@ from backend.database.db import (close_db_connections, get_async_db,
                                  init_database)
 from backend.routes import (ads, applications, auth, companies, jobs,
                             notification_routes, onboarding, payment, profile,
-                            translation)
+                            translation, monitor)
 from backend.routes.ai_cv_analysis import router as ai_cv_analysis_router
 from backend.routes.ai_recommendations import router as ai_router
 from backend.routes.ai_services import router as ai_services_router
@@ -353,6 +353,7 @@ routers_to_include = [
     (email_test_router, "/email-test", ["email-test"]),
     (salary_estimation_router, "/api/v1/salary", ["salary-estimation"]),
     (cronjobs_router, "", ["cronjobs"]),
+    (monitor.router, "", ["monitoring"]),
 ]
 
 # Include admin cleanup router

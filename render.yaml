@@ -1,0 +1,47 @@
+services:
+  # Main backend service
+  - type: web
+    name: buzz2remote-backend
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && python main.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.12
+      - key: RENDER
+        value: true
+      - key: RENDER_SERVICE_ID
+        value: buzz2remote-backend
+      - key: GITHUB_REPO
+        value: sarperhorata/remote-jobs-api
+      - key: CHECK_INTERVAL
+        value: 900000
+      - key: MAX_RETRIES
+        value: 3
+      - key: LOG_FILE
+        value: /opt/render/project/src/logs/deployment-monitor.log
+
+  # Deployment monitoring cron service
+  - type: cron
+    name: buzz2remote-monitor
+    env: node
+    buildCommand: npm install
+    startCommand: node scripts/deployment-monitor-cron.js --once
+    schedule: "*/15 * * * *"  # Every 15 minutes
+    envVars:
+      - key: NODE_VERSION
+        value: 18.19.0
+      - key: RENDER
+        value: true
+      - key: EXTERNAL_CRON
+        value: true
+      - key: RENDER_SERVICE_ID
+        value: buzz2remote-backend
+      - key: GITHUB_REPO
+        value: sarperhorata/remote-jobs-api
+      - key: CHECK_INTERVAL
+        value: 900000
+      - key: MAX_RETRIES
+        value: 3
+      - key: LOG_FILE
+        value: /opt/render/project/src/logs/deployment-monitor.log 

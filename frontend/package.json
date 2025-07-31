@@ -69,11 +69,7 @@
       "!src/**/*.d.ts",
       "!src/index.tsx",
       "!src/reportWebVitals.ts"
-    ],
-    "moduleNameMapper": {
-      "^react-router-dom$": "<rootDir>/node_modules/react-router-dom",
-      "^@/(.*)$": "<rootDir>/src/$1"
-    }
+    ]
   },
   "eslintConfig": {
     "extends": [
@@ -154,6 +150,7 @@
     "craco": "^0.0.3",
     "husky": "^9.1.7",
     "image-webpack-loader": "^8.1.0",
+    "jest-axe": "^10.0.0",
     "lint-staged": "^15.5.2",
     "postcss": "^8.4.31",
     "tslib": "^2.8.1",

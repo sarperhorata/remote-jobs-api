@@ -6,7 +6,13 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 
 # Sentry configuration for error monitoring
-import sentry_sdk
+try:
+    import sentry_sdk
+    SENTRY_AVAILABLE = True
+except ImportError:
+    SENTRY_AVAILABLE = False
+    sentry_sdk = None
+
 import stripe
 from bson import ObjectId
 from fastapi import Body, Depends, FastAPI, HTTPException, Request, status
@@ -16,34 +22,50 @@ from fastapi.responses import (FileResponse, HTMLResponse, JSONResponse,
                                RedirectResponse)
 from fastapi.staticfiles import StaticFiles
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-from sentry_sdk.integrations.logging import LoggingIntegration
+# Sentry integrations
+if SENTRY_AVAILABLE:
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.logging import LoggingIntegration
+else:
+    FastApiIntegration = None
+    LoggingIntegration = None
 from starlette.middleware.sessions import SessionMiddleware
 
+# Configure logging first
+logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper())
+logger = logging.getLogger(__name__)
+
 # Initialize Sentry for error monitoring
-sentry_sdk.init(
-    dsn=os.getenv(
-        "SENTRY_DSN",
-        "https://e307d92640eb7e8b60a7ebabf76db882@o4509547047616512.ingest.us.sentry.io/4509547146575872",
-    ),
-    traces_sample_rate=0.2,  # 20% of transactions for performance monitoring
-    profiles_sample_rate=0.2,  # 20% of profiles for performance monitoring
-    environment=os.getenv(
-        "ENVIRONMENT", "development"
-    ),  # 'development' or 'production'
-    release="buzz2remote@1.0.0",  # App version
-    integrations=[
-        FastApiIntegration(transaction_style="endpoint"),
-        LoggingIntegration(
-            level=logging.INFO,  # Capture info and above as breadcrumbs
-            event_level=logging.ERROR,  # Send errors as events
-        ),
-    ],
-    # Do not send 404 errors to Sentry
-    before_send=lambda event, hint: (
-        None if "Not Found" in event.get("logentry", {}).get("message", "") else event
-    ),
-)
+if SENTRY_AVAILABLE and sentry_sdk:
+    try:
+        sentry_sdk.init(
+            dsn=os.getenv(
+                "SENTRY_DSN",
+                "https://e307d92640eb7e8b60a7ebabf76db882@o4509547047616512.ingest.us.sentry.io/4509547146575872",
+            ),
+            traces_sample_rate=0.2,  # 20% of transactions for performance monitoring
+            profiles_sample_rate=0.2,  # 20% of profiles for performance monitoring
+            environment=os.getenv(
+                "ENVIRONMENT", "development"
+            ),  # 'development' or 'production'
+            release="buzz2remote@1.0.0",  # App version
+            integrations=[
+                FastApiIntegration(transaction_style="endpoint"),
+                LoggingIntegration(
+                    level=logging.INFO,  # Capture info and above as breadcrumbs
+                    event_level=logging.ERROR,  # Send errors as events
+                ),
+            ],
+            # Do not send 404 errors to Sentry
+            before_send=lambda event, hint: (
+                None if "Not Found" in event.get("logentry", {}).get("message", "") else event
+            ),
+        )
+        logger.info("✅ Sentry initialized successfully")
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to initialize Sentry: {e}")
+else:
+    logger.info("ℹ️ Sentry not available - error monitoring disabled")
 
 # Add project root to path for different environments
 current_dir = os.path.dirname(__file__)
@@ -92,9 +114,7 @@ try:
 except ImportError:
     SCHEDULER_AVAILABLE = False
 
-# Configure logging
-logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper())
-logger = logging.getLogger(__name__)
+
 
 # Global instances
 telegram_bot = None

@@ -71,3 +71,13 @@ urllib3>=2.4.0
 # CRITICAL: Remove vulnerable ecdsa package
 # # ecdsa==0.19.1  # VULNERABLE - CVE-2024-23342 (Minerva attack) - REMOVED  # VULNERABLE - CVE-2024-23342 (Minerva attack)
 # Using cryptography library's built-in ECDSA support instead
+
+# Error monitoring and logging
+sentry-sdk[fastapi]>=2.33.0
+
+# Payment processing
+stripe>=12.0.0
+
+# Additional dependencies
+motor>=3.3.0
+starlette>=0.27.0

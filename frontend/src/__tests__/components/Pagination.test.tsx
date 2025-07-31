@@ -1,88 +1,28 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import Pagination from '../../components/Pagination';
-
-// Mock data
-const mockProps = {
-  currentPage: 1,
-  totalPages: 10,
-  onPageChange: jest.fn(),
-  totalItems: 100,
-  itemsPerPage: 10,
-};
+import { Pagination } from '../../components/Pagination';
 
 describe('Pagination Component', () => {
+  const defaultProps = {
+    currentPage: 1,
+    totalPages: 10,
+    onPageChange: jest.fn(),
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  test('renders pagination controls', () => {
-    render(<Pagination {...mockProps} />);
+  it('should render pagination with current page and total pages', () => {
+    render(<Pagination {...defaultProps} />);
     
-    expect(screen.getByRole('navigation')).toBeInTheDocument();
+    expect(screen.getByText(/Showing page 1 of 10/)).toBeInTheDocument();
   });
 
-  test('displays current page information', () => {
-    render(<Pagination {...mockProps} />);
+  it('should render page numbers correctly', () => {
+    render(<Pagination {...defaultProps} />);
     
-    expect(screen.getByText('Page 1 of 10')).toBeInTheDocument();
-  });
-
-  test('displays total items information', () => {
-    render(<Pagination {...mockProps} />);
-    
-    expect(screen.getByText('Showing 1-10 of 100 results')).toBeInTheDocument();
-  });
-
-  test('shows previous button when not on first page', () => {
-    render(<Pagination {...mockProps} currentPage={2} />);
-    
-    const prevButton = screen.getByRole('button', { name: /previous/i });
-    expect(prevButton).toBeInTheDocument();
-  });
-
-  test('does not show previous button on first page', () => {
-    render(<Pagination {...mockProps} currentPage={1} />);
-    
-    const prevButton = screen.queryByRole('button', { name: /previous/i });
-    expect(prevButton).not.toBeInTheDocument();
-  });
-
-  test('shows next button when not on last page', () => {
-    render(<Pagination {...mockProps} currentPage={1} />);
-    
-    const nextButton = screen.getByRole('button', { name: /next/i });
-    expect(nextButton).toBeInTheDocument();
-  });
-
-  test('does not show next button on last page', () => {
-    render(<Pagination {...mockProps} currentPage={10} />);
-    
-    const nextButton = screen.queryByRole('button', { name: /next/i });
-    expect(nextButton).not.toBeInTheDocument();
-  });
-
-  test('calls onPageChange when next button is clicked', () => {
-    render(<Pagination {...mockProps} currentPage={1} />);
-    
-    const nextButton = screen.getByRole('button', { name: /next/i });
-    fireEvent.click(nextButton);
-    
-    expect(mockProps.onPageChange).toHaveBeenCalledWith(2);
-  });
-
-  test('calls onPageChange when previous button is clicked', () => {
-    render(<Pagination {...mockProps} currentPage={2} />);
-    
-    const prevButton = screen.getByRole('button', { name: /previous/i });
-    fireEvent.click(prevButton);
-    
-    expect(mockProps.onPageChange).toHaveBeenCalledWith(1);
-  });
-
-  test('displays page numbers when total pages is small', () => {
-    render(<Pagination {...mockProps} totalPages={5} />);
-    
+    // Should show pages 1-5 (max 5 visible pages)
     expect(screen.getByText('1')).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
     expect(screen.getByText('3')).toBeInTheDocument();
@@ -90,46 +30,115 @@ describe('Pagination Component', () => {
     expect(screen.getByText('5')).toBeInTheDocument();
   });
 
-  test('shows ellipsis when total pages is large', () => {
-    render(<Pagination {...mockProps} totalPages={20} currentPage={10} />);
+  it('should call onPageChange when page number is clicked', () => {
+    const onPageChange = jest.fn();
+    render(<Pagination {...defaultProps} onPageChange={onPageChange} />);
     
-    expect(screen.getByText('...')).toBeInTheDocument();
+    const pageButton = screen.getByText('2');
+    fireEvent.click(pageButton);
+    
+    expect(onPageChange).toHaveBeenCalledWith(2);
   });
 
-  test('calls onPageChange when page number is clicked', () => {
-    render(<Pagination {...mockProps} totalPages={5} />);
+  it('should call onPageChange when previous button is clicked', () => {
+    const onPageChange = jest.fn();
+    render(<Pagination {...defaultProps} currentPage={2} onPageChange={onPageChange} />);
     
-    const page2Button = screen.getByText('2');
-    fireEvent.click(page2Button);
+    const previousButtons = screen.getAllByText('Previous');
+    const mobilePreviousButton = previousButtons[0]; // Mobile version
+    fireEvent.click(mobilePreviousButton);
     
-    expect(mockProps.onPageChange).toHaveBeenCalledWith(2);
+    expect(onPageChange).toHaveBeenCalledWith(1);
   });
 
-  test('highlights current page', () => {
-    render(<Pagination {...mockProps} currentPage={3} totalPages={5} />);
+  it('should call onPageChange when next button is clicked', () => {
+    const onPageChange = jest.fn();
+    render(<Pagination {...defaultProps} currentPage={2} onPageChange={onPageChange} />);
     
-    const currentPageButton = screen.getByText('3');
-    expect(currentPageButton).toHaveClass('bg-blue-600', 'text-white');
+    const nextButtons = screen.getAllByText('Next');
+    const mobileNextButton = nextButtons[0]; // Mobile version
+    fireEvent.click(mobileNextButton);
+    
+    expect(onPageChange).toHaveBeenCalledWith(3);
   });
 
-  test('handles single page gracefully', () => {
-    render(<Pagination {...mockProps} totalPages={1} currentPage={1} />);
+  it('should disable previous button on first page', () => {
+    render(<Pagination {...defaultProps} currentPage={1} />);
     
-    // Should render without crashing
-    expect(screen.getByText('Page 1 of 1')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /next/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /previous/i })).not.toBeInTheDocument();
+    const previousButtons = screen.getAllByText('Previous');
+    const mobilePreviousButton = previousButtons[0];
+    expect(mobilePreviousButton).toBeDisabled();
   });
 
-  test('displays correct items range for last page', () => {
-    render(<Pagination {...mockProps} currentPage={10} totalItems={95} itemsPerPage={10} />);
+  it('should disable next button on last page', () => {
+    render(<Pagination {...defaultProps} currentPage={10} />);
     
-    expect(screen.getByText('Showing 91-95 of 95 results')).toBeInTheDocument();
+    const nextButtons = screen.getAllByText('Next');
+    const mobileNextButton = nextButtons[0];
+    expect(mobileNextButton).toBeDisabled();
   });
 
-  test('handles zero total items', () => {
-    render(<Pagination {...mockProps} totalItems={0} />);
+  it('should show correct page numbers when current page is in the middle', () => {
+    render(<Pagination {...defaultProps} currentPage={5} />);
     
-    expect(screen.getByText('Showing 0-0 of 0 results')).toBeInTheDocument();
+    // Should show pages 3-7 (centered around page 5)
+    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(screen.getByText('4')).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByText('6')).toBeInTheDocument();
+    expect(screen.getByText('7')).toBeInTheDocument();
+  });
+
+  it('should handle single page correctly', () => {
+    render(<Pagination {...defaultProps} totalPages={1} />);
+    
+    expect(screen.getByText(/Showing page 1 of 1/)).toBeInTheDocument();
+    expect(screen.getByText('1')).toBeInTheDocument();
+  });
+
+  it('should handle two pages correctly', () => {
+    render(<Pagination {...defaultProps} totalPages={2} />);
+    
+    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
+  });
+
+  it('should have proper navigation styling', () => {
+    render(<Pagination {...defaultProps} />);
+    
+    const nav = screen.getByLabelText('Pagination');
+    expect(nav).toHaveAttribute('aria-label', 'Pagination');
+  });
+
+  it('should have proper accessibility attributes', () => {
+    render(<Pagination {...defaultProps} />);
+    
+    const nav = screen.getByLabelText('Pagination');
+    expect(nav).toHaveAttribute('aria-label', 'Pagination');
+    
+    expect(screen.getAllByText('Previous').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Next').length).toBeGreaterThan(0);
+  });
+
+  it('should not call onPageChange when clicking disabled previous button', () => {
+    const onPageChange = jest.fn();
+    render(<Pagination {...defaultProps} currentPage={1} onPageChange={onPageChange} />);
+    
+    const previousButtons = screen.getAllByText('Previous');
+    const mobilePreviousButton = previousButtons[0]; // Mobile version
+    fireEvent.click(mobilePreviousButton);
+    
+    expect(onPageChange).not.toHaveBeenCalled();
+  });
+
+  it('should not call onPageChange when clicking disabled next button', () => {
+    const onPageChange = jest.fn();
+    render(<Pagination {...defaultProps} currentPage={10} onPageChange={onPageChange} />);
+    
+    const nextButtons = screen.getAllByText('Next');
+    const mobileNextButton = nextButtons[0]; // Mobile version
+    fireEvent.click(mobileNextButton);
+    
+    expect(onPageChange).not.toHaveBeenCalled();
   });
 }); 

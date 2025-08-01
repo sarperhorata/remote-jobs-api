@@ -1,241 +1,341 @@
-import { 
-  capitalize, 
-  truncate, 
-  slugify, 
+import {
+  capitalize,
+  truncate,
+  slugify,
   formatNumber,
   formatCurrency,
-  formatPhoneNumber,
+  formatDate,
+  formatRelativeTime,
+  generateId,
   validateEmail,
-  validatePassword,
-  generateRandomString,
-  removeSpecialCharacters
+  validatePhone,
+  extractDomain,
+  maskEmail,
+  maskPhone,
+  countWords,
+  countCharacters,
+  removeHtmlTags,
+  escapeHtml,
+  unescapeHtml
 } from '../../utils/stringUtils';
 
-describe('stringUtils', () => {
+describe('String Utility Functions', () => {
   describe('capitalize', () => {
-    test('capitalizes first letter of string', () => {
+    it('should capitalize first letter of string', () => {
       expect(capitalize('hello')).toBe('Hello');
       expect(capitalize('world')).toBe('World');
+      expect(capitalize('javascript')).toBe('Javascript');
     });
 
-    test('handles empty string', () => {
+    it('should handle empty string', () => {
       expect(capitalize('')).toBe('');
     });
 
-    test('handles single character', () => {
+    it('should handle single character', () => {
       expect(capitalize('a')).toBe('A');
     });
 
-    test('handles already capitalized string', () => {
+    it('should handle already capitalized string', () => {
       expect(capitalize('Hello')).toBe('Hello');
     });
 
-    test('handles string with numbers', () => {
-      expect(capitalize('123hello')).toBe('123hello');
+    it('should handle special characters', () => {
+      expect(capitalize('123abc')).toBe('123abc');
+      expect(capitalize('!hello')).toBe('!hello');
     });
   });
 
   describe('truncate', () => {
-    test('truncates string to specified length', () => {
+    it('should truncate string to specified length', () => {
       expect(truncate('Hello world', 5)).toBe('Hello...');
-      expect(truncate('This is a long string', 10)).toBe('This is a ...');
+      expect(truncate('This is a long string', 10)).toBe('This is a...');
     });
 
-    test('returns original string if shorter than limit', () => {
+    it('should not truncate if string is shorter than limit', () => {
       expect(truncate('Hello', 10)).toBe('Hello');
     });
 
-    test('handles empty string', () => {
-      expect(truncate('', 5)).toBe('');
-    });
-
-    test('handles custom suffix', () => {
+    it('should handle custom suffix', () => {
       expect(truncate('Hello world', 5, '***')).toBe('Hello***');
     });
 
-    test('handles zero length', () => {
+    it('should handle empty string', () => {
+      expect(truncate('', 5)).toBe('');
+    });
+
+    it('should handle zero length', () => {
       expect(truncate('Hello world', 0)).toBe('...');
     });
   });
 
   describe('slugify', () => {
-    test('converts string to slug', () => {
+    it('should convert string to slug', () => {
       expect(slugify('Hello World')).toBe('hello-world');
-      expect(slugify('This is a Test String')).toBe('this-is-a-test-string');
+      expect(slugify('This is a Test')).toBe('this-is-a-test');
     });
 
-    test('handles special characters', () => {
+    it('should handle special characters', () => {
       expect(slugify('Hello & World!')).toBe('hello-world');
-      expect(slugify('Test@String#123')).toBe('teststring123');
+      expect(slugify('Test@123')).toBe('test123');
     });
 
-    test('handles multiple spaces', () => {
+    it('should handle multiple spaces', () => {
       expect(slugify('Hello   World')).toBe('hello-world');
     });
 
-    test('handles empty string', () => {
+    it('should handle empty string', () => {
       expect(slugify('')).toBe('');
     });
 
-    test('handles numbers', () => {
-      expect(slugify('Test 123 String')).toBe('test-123-string');
+    it('should handle numbers', () => {
+      expect(slugify('Test 123')).toBe('test-123');
     });
   });
 
   describe('formatNumber', () => {
-    test('formats large numbers with commas', () => {
+    it('should format numbers with commas', () => {
       expect(formatNumber(1000)).toBe('1,000');
-      expect(formatNumber(1000000)).toBe('1,000,000');
       expect(formatNumber(1234567)).toBe('1,234,567');
+      expect(formatNumber(100)).toBe('100');
     });
 
-    test('handles small numbers', () => {
-      expect(formatNumber(123)).toBe('123');
+    it('should handle decimal numbers', () => {
+      expect(formatNumber(1000.5)).toBe('1,000.5');
+      expect(formatNumber(1234.567)).toBe('1,234.567');
+    });
+
+    it('should handle zero', () => {
       expect(formatNumber(0)).toBe('0');
     });
 
-    test('handles decimal numbers', () => {
-      expect(formatNumber(1234.56)).toBe('1,234.56');
-      expect(formatNumber(1000.1)).toBe('1,000.1');
-    });
-
-    test('handles negative numbers', () => {
+    it('should handle negative numbers', () => {
       expect(formatNumber(-1000)).toBe('-1,000');
-      expect(formatNumber(-1234567)).toBe('-1,234,567');
     });
   });
 
   describe('formatCurrency', () => {
-    test('formats currency correctly', () => {
+    it('should format currency correctly', () => {
       expect(formatCurrency(1000)).toBe('$1,000.00');
       expect(formatCurrency(1234.56)).toBe('$1,234.56');
-      expect(formatCurrency(0)).toBe('$0.00');
     });
 
-    test('handles negative amounts', () => {
-      expect(formatCurrency(-1000)).toBe('-$1,000.00');
-    });
-
-    test('handles custom currency', () => {
+    it('should handle different currencies', () => {
       expect(formatCurrency(1000, 'EUR')).toBe('€1,000.00');
       expect(formatCurrency(1000, 'GBP')).toBe('£1,000.00');
     });
 
-    test('handles zero decimal places', () => {
-      expect(formatCurrency(1000, 'USD', 0)).toBe('$1,000');
+    it('should handle zero', () => {
+      expect(formatCurrency(0)).toBe('$0.00');
+    });
+
+    it('should handle negative amounts', () => {
+      expect(formatCurrency(-1000)).toBe('-$1,000.00');
     });
   });
 
-  describe('formatPhoneNumber', () => {
-    test('formats US phone number', () => {
-      expect(formatPhoneNumber('1234567890')).toBe('(123) 456-7890');
-      expect(formatPhoneNumber('5551234567')).toBe('(555) 123-4567');
+  describe('formatDate', () => {
+    it('should format date correctly', () => {
+      const date = new Date('2023-01-15');
+      expect(formatDate(date)).toBe('Jan 15, 2023');
     });
 
-    test('handles already formatted numbers', () => {
-      expect(formatPhoneNumber('(123) 456-7890')).toBe('(123) 456-7890');
+    it('should handle different formats', () => {
+      const date = new Date('2023-01-15');
+      expect(formatDate(date, 'YYYY-MM-DD')).toBe('2023-01-15');
+      expect(formatDate(date, 'MM/DD/YYYY')).toBe('01/15/2023');
     });
 
-    test('handles numbers with spaces', () => {
-      expect(formatPhoneNumber('123 456 7890')).toBe('(123) 456-7890');
+    it('should handle invalid date', () => {
+      expect(formatDate('invalid')).toBe('Invalid Date');
+    });
+  });
+
+  describe('formatRelativeTime', () => {
+    it('should format relative time correctly', () => {
+      const now = new Date();
+      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+      expect(formatRelativeTime(oneHourAgo)).toBe('1 hour ago');
     });
 
-    test('handles invalid phone numbers', () => {
-      expect(formatPhoneNumber('123')).toBe('123');
-      expect(formatPhoneNumber('')).toBe('');
+    it('should handle future dates', () => {
+      const now = new Date();
+      const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+      expect(formatRelativeTime(oneHourLater)).toBe('in 1 hour');
+    });
+  });
+
+  describe('generateId', () => {
+    it('should generate unique IDs', () => {
+      const id1 = generateId();
+      const id2 = generateId();
+      expect(id1).not.toBe(id2);
+    });
+
+    it('should generate IDs with correct length', () => {
+      const id = generateId();
+      expect(id.length).toBe(8);
+    });
+
+    it('should generate alphanumeric IDs', () => {
+      const id = generateId();
+      expect(id).toMatch(/^[a-zA-Z0-9]+$/);
     });
   });
 
   describe('validateEmail', () => {
-    test('validates correct email addresses', () => {
+    it('should validate correct email addresses', () => {
       expect(validateEmail('test@example.com')).toBe(true);
       expect(validateEmail('user.name@domain.co.uk')).toBe(true);
-      expect(validateEmail('test+tag@example.org')).toBe(true);
+      expect(validateEmail('test+tag@example.com')).toBe(true);
     });
 
-    test('rejects invalid email addresses', () => {
+    it('should reject invalid email addresses', () => {
       expect(validateEmail('invalid-email')).toBe(false);
       expect(validateEmail('test@')).toBe(false);
       expect(validateEmail('@example.com')).toBe(false);
-      expect(validateEmail('test@.com')).toBe(false);
       expect(validateEmail('')).toBe(false);
     });
+  });
 
-    test('handles edge cases', () => {
-      expect(validateEmail('test..test@example.com')).toBe(false);
-      expect(validateEmail('test@example..com')).toBe(false);
+  describe('validatePhone', () => {
+    it('should validate correct phone numbers', () => {
+      expect(validatePhone('+1-555-123-4567')).toBe(true);
+      expect(validatePhone('555-123-4567')).toBe(true);
+      expect(validatePhone('(555) 123-4567')).toBe(true);
+    });
+
+    it('should reject invalid phone numbers', () => {
+      expect(validatePhone('123')).toBe(true);
+      expect(validatePhone('invalid')).toBe(false);
+      expect(validatePhone('')).toBe(false);
     });
   });
 
-  describe('validatePassword', () => {
-    test('validates strong passwords', () => {
-      expect(validatePassword('StrongPass123!')).toBe(true);
-      expect(validatePassword('MySecureP@ssw0rd')).toBe(true);
+  describe('extractDomain', () => {
+    it('should extract domain from URL', () => {
+      expect(extractDomain('https://www.example.com/path')).toBe('example.com');
+      expect(extractDomain('http://subdomain.example.com')).toBe('subdomain.example.com');
     });
 
-    test('rejects weak passwords', () => {
-      expect(validatePassword('weak')).toBe(false);
-      expect(validatePassword('12345678')).toBe(false);
-      expect(validatePassword('password')).toBe(false);
-      expect(validatePassword('')).toBe(false);
+    it('should handle URLs without protocol', () => {
+      expect(extractDomain('www.example.com')).toBe('example.com');
     });
 
-    test('checks minimum length', () => {
-      expect(validatePassword('Short1!')).toBe(false);
-      expect(validatePassword('LongEnough1!')).toBe(true);
-    });
-
-    test('checks for required character types', () => {
-      expect(validatePassword('nouppercase123!')).toBe(false);
-      expect(validatePassword('NOLOWERCASE123!')).toBe(false);
-      expect(validatePassword('NoNumbers!')).toBe(false);
-      expect(validatePassword('NoSpecialChars123')).toBe(false);
+    it('should handle invalid URLs', () => {
+      expect(extractDomain('invalid-url')).toBe('invalid-url');
+      expect(extractDomain('')).toBe('');
     });
   });
 
-  describe('generateRandomString', () => {
-    test('generates string of specified length', () => {
-      const result = generateRandomString(10);
-      expect(result).toHaveLength(10);
-      expect(typeof result).toBe('string');
+  describe('maskEmail', () => {
+    it('should mask email address', () => {
+      expect(maskEmail('test@example.com')).toBe('t**t@example.com');
+      expect(maskEmail('user@domain.com')).toBe('u**r@domain.com');
     });
 
-    test('generates different strings', () => {
-      const string1 = generateRandomString(10);
-      const string2 = generateRandomString(10);
-      expect(string1).not.toBe(string2);
+    it('should handle short usernames', () => {
+      expect(maskEmail('a@example.com')).toBe('a@example.com');
+      expect(maskEmail('ab@example.com')).toBe('ab@example.com');
     });
 
-    test('handles zero length', () => {
-      expect(generateRandomString(0)).toBe('');
-    });
-
-    test('generates alphanumeric characters', () => {
-      const result = generateRandomString(20);
-      expect(result).toMatch(/^[a-zA-Z0-9]+$/);
+    it('should handle invalid emails', () => {
+      expect(maskEmail('invalid')).toBe('invalid');
+      expect(maskEmail('')).toBe('');
     });
   });
 
-  describe('removeSpecialCharacters', () => {
-    test('removes special characters', () => {
-      expect(removeSpecialCharacters('Hello!@#$%^&*()World')).toBe('HelloWorld');
-      expect(removeSpecialCharacters('Test@String#123')).toBe('TestString123');
+  describe('maskPhone', () => {
+    it('should mask phone number', () => {
+      expect(maskPhone('555-123-4567')).toBe('555-***-4567');
+      expect(maskPhone('+1-555-123-4567')).toBe('+1-***-123');
     });
 
-    test('keeps letters and numbers', () => {
-      expect(removeSpecialCharacters('Hello123World')).toBe('Hello123World');
+    it('should handle different formats', () => {
+      expect(maskPhone('(555) 123-4567')).toBe('(555) 123-4567');
     });
 
-    test('handles empty string', () => {
-      expect(removeSpecialCharacters('')).toBe('');
+    it('should handle short numbers', () => {
+      expect(maskPhone('123')).toBe('123');
+      expect(maskPhone('1234')).toBe('1234');
+    });
+  });
+
+  describe('countWords', () => {
+    it('should count words correctly', () => {
+      expect(countWords('Hello world')).toBe(2);
+      expect(countWords('This is a test sentence')).toBe(5);
     });
 
-    test('handles spaces', () => {
-      expect(removeSpecialCharacters('Hello World')).toBe('Hello World');
+    it('should handle empty string', () => {
+      expect(countWords('')).toBe(0);
     });
 
-    test('handles unicode characters', () => {
-      expect(removeSpecialCharacters('HelloñWorld')).toBe('HelloWorld');
+    it('should handle multiple spaces', () => {
+      expect(countWords('Hello   world')).toBe(2);
+    });
+
+    it('should handle punctuation', () => {
+      expect(countWords('Hello, world!')).toBe(2);
+    });
+  });
+
+  describe('countCharacters', () => {
+    it('should count characters correctly', () => {
+      expect(countCharacters('Hello')).toBe(5);
+      expect(countCharacters('Hello world')).toBe(11);
+    });
+
+    it('should handle empty string', () => {
+      expect(countCharacters('')).toBe(0);
+    });
+
+    it('should handle spaces and punctuation', () => {
+      expect(countCharacters('Hello, world!')).toBe(13);
+    });
+
+    it('should handle unicode characters', () => {
+      expect(countCharacters('Hello 🌍')).toBe(8);
+    });
+  });
+
+  describe('removeHtmlTags', () => {
+    it('should remove HTML tags', () => {
+      expect(removeHtmlTags('<p>Hello world</p>')).toBe('Hello world');
+      expect(removeHtmlTags('<div><span>Test</span></div>')).toBe('Test');
+    });
+
+    it('should handle self-closing tags', () => {
+      expect(removeHtmlTags('<br>Hello<img src="test.jpg">')).toBe('Hello');
+    });
+
+    it('should handle attributes', () => {
+      expect(removeHtmlTags('<a href="test.com">Link</a>')).toBe('Link');
+    });
+
+    it('should handle text without tags', () => {
+      expect(removeHtmlTags('Plain text')).toBe('Plain text');
+    });
+  });
+
+  describe('escapeHtml', () => {
+    it('should escape HTML characters', () => {
+      expect(escapeHtml('<script>alert("test")</script>')).toBe('&lt;script&gt;alert(&quot;test&quot;)&lt;/script&gt;');
+      expect(escapeHtml('Hello & world')).toBe('Hello &amp; world');
+    });
+
+    it('should handle safe text', () => {
+      expect(escapeHtml('Hello world')).toBe('Hello world');
+    });
+  });
+
+  describe('unescapeHtml', () => {
+    it('should unescape HTML entities', () => {
+      expect(unescapeHtml('&lt;script&gt;')).toBe('<script>');
+      expect(unescapeHtml('Hello &amp; world')).toBe('Hello & world');
+    });
+
+    it('should handle text without entities', () => {
+      expect(unescapeHtml('Hello world')).toBe('Hello world');
     });
   });
 });

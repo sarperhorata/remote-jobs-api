@@ -13,7 +13,7 @@ export const capitalize = (str: string): string => {
  */
 export const truncate = (str: string, length: number, suffix: string = '...'): string => {
   if (!str || str.length <= length) return str;
-  return str.substring(0, length) + suffix;
+  return str.substring(0, length).trim() + suffix;
 };
 
 /**
@@ -154,4 +154,145 @@ export const validatePassword = (password: string): boolean => {
 export const removeSpecialCharacters = (str: string): string => {
   if (!str) return str;
   return str.replace(/[^\w\s]/g, '');
+};
+
+/**
+ * Formats a date to a readable string
+ */
+export const formatDate = (date: Date | string, format: string = 'MMM dd, yyyy'): string => {
+  try {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    if (isNaN(dateObj.getTime())) return 'Invalid Date';
+    
+    if (format === 'YYYY-MM-DD') {
+      return dateObj.toISOString().split('T')[0];
+    }
+    if (format === 'MM/DD/YYYY') {
+      return `${(dateObj.getMonth() + 1).toString().padStart(2, '0')}/${dateObj.getDate().toString().padStart(2, '0')}/${dateObj.getFullYear()}`;
+    }
+    
+    return dateObj.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  } catch {
+    return 'Invalid Date';
+  }
+};
+
+/**
+ * Formats relative time (e.g., "2 hours ago")
+ */
+export const formatRelativeTime = (date: Date): string => {
+  const now = new Date();
+  const diffInMs = now.getTime() - date.getTime();
+  const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+  if (diffInMs < 0) {
+    const absDiffInHours = Math.floor(Math.abs(diffInMs) / (1000 * 60 * 60));
+    return `in ${absDiffInHours} hour${absDiffInHours !== 1 ? 's' : ''}`;
+  }
+
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes} minute${diffInMinutes !== 1 ? 's' : ''} ago`;
+  }
+  if (diffInHours < 24) {
+    return `${diffInHours} hour${diffInHours !== 1 ? 's' : ''} ago`;
+  }
+  return `${diffInDays} day${diffInDays !== 1 ? 's' : ''} ago`;
+};
+
+/**
+ * Generates a unique ID
+ */
+export const generateId = (): string => {
+  return Math.random().toString(36).substring(2, 10);
+};
+
+/**
+ * Validates phone number format
+ */
+export const validatePhone = (phone: string): boolean => {
+  if (!phone) return false;
+  const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+  const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
+  return phoneRegex.test(cleanPhone);
+};
+
+/**
+ * Extracts domain from URL
+ */
+export const extractDomain = (url: string): string => {
+  if (!url) return '';
+  try {
+    const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`);
+    return urlObj.hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+};
+
+/**
+ * Masks phone number
+ */
+export const maskPhone = (phone: string): string => {
+  if (!phone || phone.length < 7) return phone;
+  const parts = phone.split('-');
+  if (parts.length >= 3) {
+    return `${parts[0]}-***-${parts[2]}`;
+  }
+  return phone.replace(/(\d{3})\d{3}(\d{4})/, '$1-***-$2');
+};
+
+/**
+ * Counts words in a string
+ */
+export const countWords = (str: string): number => {
+  if (!str) return 0;
+  return str.trim().split(/\s+/).length;
+};
+
+/**
+ * Counts characters in a string
+ */
+export const countCharacters = (str: string): number => {
+  if (!str) return 0;
+  return str.length;
+};
+
+/**
+ * Removes HTML tags from a string
+ */
+export const removeHtmlTags = (str: string): string => {
+  if (!str) return str;
+  return str.replace(/<[^>]*>/g, '');
+};
+
+/**
+ * Escapes HTML characters
+ */
+export const escapeHtml = (str: string): string => {
+  if (!str) return str;
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+
+/**
+ * Unescapes HTML entities
+ */
+export const unescapeHtml = (str: string): string => {
+  if (!str) return str;
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
 };

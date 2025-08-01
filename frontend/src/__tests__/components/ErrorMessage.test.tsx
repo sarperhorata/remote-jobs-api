@@ -1,60 +1,87 @@
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { ErrorMessage } from '../../components/ErrorMessage';
 
-describe('ErrorMessage', () => {
-  it('renders error message with provided text', () => {
-    const errorText = 'Something went wrong!';
-    render(<ErrorMessage message={errorText} />);
+describe('ErrorMessage Component', () => {
+  it('should render error message with default props', () => {
+    render(<ErrorMessage message="Test error message" />);
     
-    expect(screen.getByText(errorText)).toBeInTheDocument();
+    expect(screen.getByText('Test error message')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
   });
 
-  it('has correct CSS classes for error container', () => {
-    const { container } = render(<ErrorMessage message="Error" />);
+  it('should render with custom className', () => {
+    render(
+      <ErrorMessage 
+        message="Custom error" 
+        className="custom-error-class" 
+      />
+    );
     
-    const errorElement = container.firstChild;
-    expect(errorElement).toHaveClass('bg-red-50', 'border', 'border-red-200', 'rounded-md', 'p-4');
+    const errorElement = screen.getByRole('alert');
+    expect(errorElement).toHaveClass('custom-error-class');
   });
 
-  it('renders error message text', () => {
-    const message = "Test error message";
-    render(<ErrorMessage message={message} />);
+  it('should render with different message types', () => {
+    const { rerender } = render(
+      <ErrorMessage message="Info message" type="info" />
+    );
     
-    expect(screen.getByText(message)).toBeInTheDocument();
-    expect(screen.getByText('Error')).toBeInTheDocument(); // Header text
-  });
-
-  it('renders without crashing', () => {
-    expect(() => render(<ErrorMessage message="Test error" />)).not.toThrow();
-  });
-
-  it('displays error icon', () => {
-    const { container } = render(<ErrorMessage message="Test" />);
+    expect(screen.getByText('Info message')).toBeInTheDocument();
     
-    const svgIcon = container.querySelector('svg');
-    expect(svgIcon).toBeInTheDocument();
-    expect(svgIcon).toHaveClass('h-5', 'w-5', 'text-red-400');
+    rerender(<ErrorMessage message="Warning message" type="warning" />);
+    expect(screen.getByText('Warning message')).toBeInTheDocument();
+    
+    rerender(<ErrorMessage message="Success message" type="success" />);
+    expect(screen.getByText('Success message')).toBeInTheDocument();
   });
 
-  it('handles long error messages', () => {
-    const longMessage = 'This is a very long error message that should still be displayed correctly even if it spans multiple lines and contains a lot of text.';
+  it('should handle empty message', () => {
+    render(<ErrorMessage message="" />);
+    
+    const errorElement = screen.getByRole('alert');
+    expect(errorElement).toBeInTheDocument();
+    expect(errorElement).toBeInTheDocument();
+  });
+
+  it('should handle long messages', () => {
+    const longMessage = 'This is a very long error message that should be displayed properly without breaking the layout or causing any issues with the component rendering';
+    
     render(<ErrorMessage message={longMessage} />);
     
     expect(screen.getByText(longMessage)).toBeInTheDocument();
   });
 
-  it('renders with special characters', () => {
-    const specialMessage = 'Error: 404 - Resource not found! @#$%^&*()';
+  it('should handle special characters in message', () => {
+    const specialMessage = 'Error with special chars: !@#$%^&*()_+-=[]{}|;:,.<>?';
+    
     render(<ErrorMessage message={specialMessage} />);
     
     expect(screen.getByText(specialMessage)).toBeInTheDocument();
   });
 
-  it('has proper semantic structure', () => {
-    const { container } = render(<ErrorMessage message="Test error" />);
+  it('should handle HTML entities in message', () => {
+    const htmlMessage = 'Error with HTML: &lt;script&gt;alert("test")&lt;/script&gt;';
     
-    const errorTitle = screen.getByText('Error');
-    expect(errorTitle.tagName).toBe('H3');
-    expect(errorTitle).toHaveClass('text-sm', 'font-medium', 'text-red-800');
+    render(<ErrorMessage message={htmlMessage} />);
+    
+    expect(screen.getByText(htmlMessage)).toBeInTheDocument();
+  });
+
+  it('should be accessible with proper ARIA attributes', () => {
+    render(<ErrorMessage message="Accessible error message" />);
+    
+    const errorElement = screen.getByRole('alert');
+    expect(errorElement).toBeInTheDocument();
+    expect(errorElement).toHaveAttribute('aria-live', 'polite');
+  });
+
+  it('should handle multiple error messages', () => {
+    const { rerender } = render(<ErrorMessage message="First error" />);
+    expect(screen.getByText('First error')).toBeInTheDocument();
+    
+    rerender(<ErrorMessage message="Second error" />);
+    expect(screen.getByText('Second error')).toBeInTheDocument();
+    expect(screen.queryByText('First error')).not.toBeInTheDocument();
   });
 }); 

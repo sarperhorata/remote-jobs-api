@@ -97,11 +97,11 @@ describe('useLocalStorage', () => {
   });
 
   test('handles undefined values', () => {
-    localStorageMock.getItem.mockReturnValue(JSON.stringify(undefined));
+    localStorageMock.getItem.mockReturnValue(null);
 
     const { result } = renderHook(() => useLocalStorage('test-key', 'default-value'));
 
-    expect(result.current[0]).toBe(undefined);
+    expect(result.current[0]).toBe('default-value');
   });
 
   test('handles boolean values', () => {

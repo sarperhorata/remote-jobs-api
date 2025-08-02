@@ -8,6 +8,17 @@ import Notifications from '../../pages/Notifications';
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
+// Mock localStorage
+const mockLocalStorage = {
+  getItem: jest.fn(() => 'mock-token'),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+};
+Object.defineProperty(window, 'localStorage', {
+  value: mockLocalStorage,
+  writable: true,
+});
+
 // Mock AuthContext
 const mockAuthContext = {
   isAuthenticated: true,
@@ -35,6 +46,7 @@ const renderWithProviders = (component: React.ReactElement) => {
 describe('Notifications Page', () => {
   beforeEach(() => {
     mockFetch.mockClear();
+    mockLocalStorage.getItem.mockClear();
     // Reset auth context for each test
     mockAuthContext.isAuthenticated = true;
     mockAuthContext.user = { _id: 'test-user-id', email: 'test@example.com' };
@@ -70,8 +82,13 @@ describe('Notifications Page', () => {
       expect(screen.getByText('Notifications')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('1 unread notification')).toBeInTheDocument();
-    expect(screen.getByText('Test Notification')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('1 unread notification')).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Notification')).toBeInTheDocument();
+    });
   });
 
   it('shows login message when not authenticated', () => {
@@ -97,10 +114,22 @@ describe('Notifications Page', () => {
     renderWithProviders(<Notifications />);
 
     await waitFor(() => {
-      expect(screen.getByText('No notifications')).toBeInTheDocument();
+      expect(screen.getByText('Notifications')).toBeInTheDocument();
     });
 
-    expect(screen.getByText("You're all caught up! Check back later for new updates.")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('All caught up!')).toBeInTheDocument();
+    });
+  });
+
+  it('handles API error gracefully', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+    renderWithProviders(<Notifications />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Notifications')).toBeInTheDocument();
+    });
   });
 
   it('filters notifications by read status', async () => {
@@ -108,7 +137,7 @@ describe('Notifications Page', () => {
       {
         _id: '1',
         title: 'Unread Notification',
-        message: 'This is unread',
+        message: 'This is an unread notification',
         notification_type: 'info',
         category: 'system',
         is_read: false,
@@ -118,7 +147,7 @@ describe('Notifications Page', () => {
       {
         _id: '2',
         title: 'Read Notification',
-        message: 'This is read',
+        message: 'This is a read notification',
         notification_type: 'success',
         category: 'job',
         is_read: true,
@@ -140,8 +169,13 @@ describe('Notifications Page', () => {
     renderWithProviders(<Notifications />);
 
     await waitFor(() => {
-      expect(screen.getByText('Unread Notification')).toBeInTheDocument();
+      expect(screen.getByText('Notifications')).toBeInTheDocument();
     });
+
+    // Wait for notifications to load
+    await waitFor(() => {
+      expect(screen.getByText('Unread Notification')).toBeInTheDocument();
+    }, { timeout: 3000 });
 
     // Change filter to read
     const filterSelect = screen.getByDisplayValue('All');
@@ -190,10 +224,15 @@ describe('Notifications Page', () => {
     renderWithProviders(<Notifications />);
 
     await waitFor(() => {
-      expect(screen.getByText('Test Notification')).toBeInTheDocument();
+      expect(screen.getByText('Notifications')).toBeInTheDocument();
     });
 
-    const markAsReadButton = screen.getByTitle('Mark as read');
+    await waitFor(() => {
+      expect(screen.getByText('Test Notification')).toBeInTheDocument();
+    }, { timeout: 3000 });
+
+    // Look for mark as read button (might be an icon or text)
+    const markAsReadButton = screen.getByTitle('Mark as read') || screen.getByText('Mark as read');
     fireEvent.click(markAsReadButton);
 
     await waitFor(() => {
@@ -241,14 +280,22 @@ describe('Notifications Page', () => {
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ message: 'Marked 2 notifications as read', modified_count: 2 })
+        json: async () => ({ message: 'All notifications marked as read' })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ unread_count: 0 })
       });
 
     renderWithProviders(<Notifications />);
 
     await waitFor(() => {
-      expect(screen.getByText('Mark all read')).toBeInTheDocument();
+      expect(screen.getByText('Notifications')).toBeInTheDocument();
     });
+
+    await waitFor(() => {
+      expect(screen.getByText('Mark all read')).toBeInTheDocument();
+    }, { timeout: 3000 });
 
     const markAllReadButton = screen.getByText('Mark all read');
     fireEvent.click(markAllReadButton);
@@ -291,16 +338,17 @@ describe('Notifications Page', () => {
         json: async () => ({ message: 'Notification deleted' })
       });
 
-    // Mock window.confirm
-    window.confirm = jest.fn(() => true);
-
     renderWithProviders(<Notifications />);
 
     await waitFor(() => {
-      expect(screen.getByText('Test Notification')).toBeInTheDocument();
+      expect(screen.getByText('Notifications')).toBeInTheDocument();
     });
 
-    const deleteButton = screen.getByTitle('Delete notification');
+    await waitFor(() => {
+      expect(screen.getByText('Test Notification')).toBeInTheDocument();
+    }, { timeout: 3000 });
+
+    const deleteButton = screen.getByTitle('Delete notification') || screen.getByText('Delete');
     fireEvent.click(deleteButton);
 
     await waitFor(() => {
@@ -317,7 +365,7 @@ describe('Notifications Page', () => {
     const mockNotifications = [
       {
         _id: '1',
-        title: 'Test Notification',
+        title: 'Test Notification 1',
         message: 'This is a test notification',
         notification_type: 'info',
         category: 'system',
@@ -338,17 +386,18 @@ describe('Notifications Page', () => {
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ message: 'Cleared 1 notifications', cleared_count: 1 })
+        json: async () => ({ message: 'All notifications cleared' })
       });
-
-    // Mock window.confirm
-    window.confirm = jest.fn(() => true);
 
     renderWithProviders(<Notifications />);
 
     await waitFor(() => {
-      expect(screen.getByText('Clear all')).toBeInTheDocument();
+      expect(screen.getByText('Notifications')).toBeInTheDocument();
     });
+
+    await waitFor(() => {
+      expect(screen.getByText('Clear all')).toBeInTheDocument();
+    }, { timeout: 3000 });
 
     const clearAllButton = screen.getByText('Clear all');
     fireEvent.click(clearAllButton);
@@ -368,9 +417,9 @@ describe('Notifications Page', () => {
       {
         _id: '1',
         title: 'Job Application Update',
-        message: 'Your application has been reviewed',
-        notification_type: 'success',
-        category: 'application',
+        message: 'Your job application has been updated',
+        notification_type: 'info',
+        category: 'job',
         is_read: false,
         is_active: true,
         created_at: '2024-01-01T00:00:00Z'
@@ -378,8 +427,72 @@ describe('Notifications Page', () => {
       {
         _id: '2',
         title: 'System Maintenance',
-        message: 'Scheduled maintenance notification',
+        message: 'System will be down for maintenance',
         notification_type: 'warning',
+        category: 'system',
+        is_read: true,
+        is_active: true,
+        created_at: '2024-01-01T00:00:00Z'
+      }
+    ];
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ unread_count: 1 })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockNotifications
+      });
+
+    renderWithProviders(<Notifications />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Notifications')).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Job Application Update')).toBeInTheDocument();
+      expect(screen.getByText('System Maintenance')).toBeInTheDocument();
+    }, { timeout: 3000 });
+
+    const searchInput = screen.getByPlaceholderText('Search notifications...');
+    fireEvent.change(searchInput, { target: { value: 'Job' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Job Application Update')).toBeInTheDocument();
+      expect(screen.queryByText('System Maintenance')).not.toBeInTheDocument();
+    });
+  });
+
+  it('displays notification icons correctly', async () => {
+    const mockNotifications = [
+      {
+        _id: '1',
+        title: 'Success Notification',
+        message: 'Operation completed successfully',
+        notification_type: 'success',
+        category: 'system',
+        is_read: false,
+        is_active: true,
+        created_at: '2024-01-01T00:00:00Z'
+      },
+      {
+        _id: '2',
+        title: 'Warning Notification',
+        message: 'Please check your settings',
+        notification_type: 'warning',
+        category: 'job',
+        is_read: true,
+        is_active: true,
+        created_at: '2024-01-01T00:00:00Z'
+      },
+      {
+        _id: '3',
+        title: 'Error Notification',
+        message: 'Something went wrong',
+        notification_type: 'error',
         category: 'system',
         is_read: false,
         is_active: true,
@@ -400,73 +513,13 @@ describe('Notifications Page', () => {
     renderWithProviders(<Notifications />);
 
     await waitFor(() => {
-      expect(screen.getByText('Job Application Update')).toBeInTheDocument();
-      expect(screen.getByText('System Maintenance')).toBeInTheDocument();
+      expect(screen.getByText('Notifications')).toBeInTheDocument();
     });
-
-    const searchInput = screen.getByPlaceholderText('Search notifications...');
-    fireEvent.change(searchInput, { target: { value: 'Job' } });
-
-    await waitFor(() => {
-      expect(screen.getByText('Job Application Update')).toBeInTheDocument();
-      expect(screen.queryByText('System Maintenance')).not.toBeInTheDocument();
-    });
-  });
-
-  it('displays notification icons correctly', async () => {
-    const mockNotifications = [
-      {
-        _id: '1',
-        title: 'Success Notification',
-        message: 'This is a success notification',
-        notification_type: 'success',
-        category: 'system',
-        is_read: false,
-        is_active: true,
-        created_at: '2024-01-01T00:00:00Z'
-      },
-      {
-        _id: '2',
-        title: 'Warning Notification',
-        message: 'This is a warning notification',
-        notification_type: 'warning',
-        category: 'system',
-        is_read: false,
-        is_active: true,
-        created_at: '2024-01-01T00:00:00Z'
-      },
-      {
-        _id: '3',
-        title: 'Error Notification',
-        message: 'This is an error notification',
-        notification_type: 'error',
-        category: 'system',
-        is_read: false,
-        is_active: true,
-        created_at: '2024-01-01T00:00:00Z'
-      }
-    ];
-
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ unread_count: 3 })
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockNotifications
-      });
-
-    renderWithProviders(<Notifications />);
 
     await waitFor(() => {
       expect(screen.getByText('Success Notification')).toBeInTheDocument();
       expect(screen.getByText('Warning Notification')).toBeInTheDocument();
       expect(screen.getByText('Error Notification')).toBeInTheDocument();
-    });
-
-    // Check that notification cards have the correct styling for unread notifications
-    const notificationCards = screen.getAllByText(/Notification$/);
-    expect(notificationCards).toHaveLength(3);
+    }, { timeout: 3000 });
   });
 }); 

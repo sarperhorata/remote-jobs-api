@@ -243,7 +243,7 @@ const Notifications: React.FC = () => {
     }
   };
 
-  const filteredNotifications = notifications.filter(notification => {
+  const filteredNotifications = Array.isArray(notifications) ? notifications.filter(notification => {
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       return (
@@ -252,7 +252,7 @@ const Notifications: React.FC = () => {
       );
     }
     return true;
-  });
+  }) : [];
 
   if (!isAuthenticated) {
     return (

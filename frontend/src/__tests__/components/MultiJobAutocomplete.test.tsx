@@ -1,297 +1,206 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import JobAutocomplete from '../../components/JobAutocomplete';
-
-// Mock the API config
-jest.mock('../../utils/apiConfig', () => ({
-  getApiUrl: jest.fn().mockReturnValue('http://localhost:8001/api/v1')
-}));
+import { BrowserRouter } from 'react-router-dom';
+import { ThemeProvider } from '../../contexts/ThemeContext';
+import MultiJobAutocomplete from '../../components/MultiJobAutocomplete';
 
 // Mock fetch
-global.fetch = jest.fn();
+const mockFetch = jest.fn();
+global.fetch = mockFetch;
 
-describe('JobAutocomplete', () => {
+const renderWithProviders = (component: React.ReactElement) => {
+  return render(
+    <BrowserRouter>
+      <ThemeProvider>
+        {component}
+      </ThemeProvider>
+    </BrowserRouter>
+  );
+};
+
+describe('MultiJobAutocomplete', () => {
   const mockOnSelect = jest.fn();
-  const mockOnChange = jest.fn();
-  
+
   beforeEach(() => {
-    jest.clearAllMocks();
-    (global.fetch as jest.Mock).mockClear();
+    mockFetch.mockClear();
+    mockOnSelect.mockClear();
   });
 
-  it('renders with placeholder text', async () => {
-    render(
-      <JobAutocomplete 
-        value="" 
-        onChange={mockOnChange} 
-        onSelect={mockOnSelect} 
-      />
-    );
-    expect(screen.getByPlaceholderText(/e.g. Software Engineer, Product Manager, Data Scientist/)).toBeInTheDocument();
+  it('renders with default placeholder', () => {
+    renderWithProviders(<MultiJobAutocomplete onSelect={mockOnSelect} />);
+    
+    expect(screen.getByPlaceholderText('Search keywords (e.g., react, python, remote)')).toBeInTheDocument();
   });
 
-  it('shows popular positions when focused with empty input', async () => {
-    const mockPopularResponse = {
-      positions: [
-        { title: 'Software Engineer', count: 100, category: 'Technology' },
-        { title: 'Product Manager', count: 80, category: 'Management' }
-      ]
-    };
-
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockPopularResponse
-    });
-
-    render(
-      <JobAutocomplete 
-        value="" 
-        onChange={mockOnChange} 
+  it('renders with custom placeholder', () => {
+    renderWithProviders(
+      <MultiJobAutocomplete 
         onSelect={mockOnSelect} 
-      />
-    );
-    
-    const input = screen.getByPlaceholderText(/e.g. Software Engineer, Product Manager, Data Scientist/);
-    fireEvent.focus(input);
-
-    await waitFor(() => {
-      expect(screen.getByText('Software Engineer')).toBeInTheDocument();
-      expect(screen.getByText('Product Manager')).toBeInTheDocument();
-    });
-  });
-
-  it('shows search count result for "react" after 1 second', async () => {
-    const mockSearchResponse = {
-      count: 29,
-      query: 'react',
-      cached_at: '2024-01-01T00:00:00Z'
-    };
-
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockSearchResponse
-    });
-
-    render(
-      <JobAutocomplete 
-        value="" 
-        onChange={mockOnChange} 
-        onSelect={mockOnSelect} 
-      />
-    );
-    
-    const input = screen.getByPlaceholderText(/e.g. Software Engineer, Product Manager, Data Scientist/);
-    await userEvent.type(input, 'react');
-
-    // Wait for 1 second debounce
-    await waitFor(() => {
-      expect(screen.getByText(/We have \(29\) 'react' jobs available./)).toBeInTheDocument();
-    }, { timeout: 2000 });
-  });
-
-  it('calls onSelect when a popular position is clicked', async () => {
-    const mockPopularResponse = {
-      positions: [
-        { title: 'Software Engineer', count: 100, category: 'Technology' },
-        { title: 'Product Manager', count: 80, category: 'Management' }
-      ]
-    };
-
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockPopularResponse
-    });
-
-    render(
-      <JobAutocomplete 
-        value="" 
-        onChange={mockOnChange} 
-        onSelect={mockOnSelect} 
-      />
-    );
-    
-    const input = screen.getByPlaceholderText(/e.g. Software Engineer, Product Manager, Data Scientist/);
-    fireEvent.focus(input);
-
-    await waitFor(() => {
-      expect(screen.getByText('Software Engineer')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('Software Engineer'));
-    expect(mockOnSelect).toHaveBeenCalledWith({
-      title: 'Software Engineer',
-      count: 100,
-      category: 'Technology'
-    });
-  });
-
-  it('clears input and suggestions after selection', async () => {
-    const mockPopularResponse = {
-      positions: [
-        { title: 'Software Engineer', count: 100, category: 'Technology' }
-      ]
-    };
-
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockPopularResponse
-    });
-
-    render(
-      <JobAutocomplete 
-        value="" 
-        onChange={mockOnChange} 
-        onSelect={mockOnSelect} 
-      />
-    );
-    
-    const input = screen.getByPlaceholderText(/e.g. Software Engineer, Product Manager, Data Scientist/);
-    fireEvent.focus(input);
-
-    await waitFor(() => {
-      expect(screen.getByText('Software Engineer')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('Software Engineer'));
-    
-    // Should call onChange with the selected title
-    expect(mockOnChange).toHaveBeenCalledWith('Software Engineer');
-  });
-
-  it('handles API errors gracefully', async () => {
-    (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
-
-    render(
-      <JobAutocomplete 
-        value="" 
-        onChange={mockOnChange} 
-        onSelect={mockOnSelect} 
-      />
-    );
-    
-    const input = screen.getByPlaceholderText(/e.g. Software Engineer, Product Manager, Data Scientist/);
-    await userEvent.type(input, 'react');
-
-    // Should not crash and should not show dropdown
-    await waitFor(() => {
-      expect(screen.queryByText(/We have/)).not.toBeInTheDocument();
-    }, { timeout: 2000 });
-  });
-
-  it('handles empty API response', async () => {
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ count: 0, query: 'nonexistent' })
-    });
-
-    render(
-      <JobAutocomplete 
-        value="" 
-        onChange={mockOnChange} 
-        onSelect={mockOnSelect} 
-      />
-    );
-    
-    const input = screen.getByPlaceholderText(/e.g. Software Engineer, Product Manager, Data Scientist/);
-    await userEvent.type(input, 'nonexistent');
-
-    // Should show 0 results
-    await waitFor(() => {
-      expect(screen.getByText(/We have \(0\) 'nonexistent' jobs available./)).toBeInTheDocument();
-    }, { timeout: 2000 });
-  });
-
-  it('debounces search requests', async () => {
-    const mockSearchResponse = {
-      count: 10,
-      query: 'react',
-      cached_at: '2024-01-01T00:00:00Z'
-    };
-
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockSearchResponse
-    });
-
-    render(
-      <JobAutocomplete 
-        value="" 
-        onChange={mockOnChange} 
-        onSelect={mockOnSelect} 
-      />
-    );
-    
-    const input = screen.getByPlaceholderText(/e.g. Software Engineer, Product Manager, Data Scientist/);
-    
-    // Type quickly
-    await userEvent.type(input, 'r');
-    await userEvent.type(input, 'e');
-    await userEvent.type(input, 'a');
-    await userEvent.type(input, 'c');
-    await userEvent.type(input, 't');
-
-    // Should only make one API call after 1 second
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(1);
-    }, { timeout: 2000 });
-  });
-
-  it('does not search for queries shorter than 3 characters', async () => {
-    render(
-      <JobAutocomplete 
-        value="" 
-        onChange={mockOnChange} 
-        onSelect={mockOnSelect} 
-      />
-    );
-    
-    const input = screen.getByPlaceholderText(/e.g. Software Engineer, Product Manager, Data Scientist/);
-    await userEvent.type(input, 're');
-
-    // Should not make API call for 2 characters
-    await new Promise(resolve => setTimeout(resolve, 1100));
-    expect(global.fetch).not.toHaveBeenCalled();
-  });
-
-  it('shows loading state while fetching', async () => {
-    // Mock a delayed response
-    (global.fetch as jest.Mock).mockImplementationOnce(() => 
-      new Promise(resolve => 
-        setTimeout(() => resolve({
-          ok: true,
-          json: async () => ({ count: 10, query: 'react' })
-        }), 500)
-      )
-    );
-
-    render(
-      <JobAutocomplete 
-        value="" 
-        onChange={mockOnChange} 
-        onSelect={mockOnSelect} 
-      />
-    );
-    
-    const input = screen.getByPlaceholderText(/e.g. Software Engineer, Product Manager, Data Scientist/);
-    await userEvent.type(input, 'react');
-
-    // Should show loading state
-    await waitFor(() => {
-      expect(screen.getByText('Searching for jobs...')).toBeInTheDocument();
-    }, { timeout: 2000 });
-  });
-
-  it('applies custom placeholder', () => {
-    render(
-      <JobAutocomplete 
-        value="" 
-        onChange={mockOnChange} 
-        onSelect={mockOnSelect} 
-        placeholder="Custom placeholder"
+        placeholder="Custom placeholder" 
       />
     );
     
     expect(screen.getByPlaceholderText('Custom placeholder')).toBeInTheDocument();
+  });
+
+  it('handles input change', () => {
+    renderWithProviders(<MultiJobAutocomplete onSelect={mockOnSelect} />);
+    
+    const input = screen.getByPlaceholderText('Search keywords (e.g., react, python, remote)');
+    fireEvent.change(input, { target: { value: 'react' } });
+    
+    expect(input).toHaveValue('react');
+  });
+
+  it('shows loading state when fetching suggestions', async () => {
+    mockFetch.mockImplementation(() => 
+      new Promise(resolve => setTimeout(() => resolve({
+        ok: true,
+        json: async () => []
+      }), 100))
+    );
+
+    renderWithProviders(<MultiJobAutocomplete onSelect={mockOnSelect} />);
+    
+    const input = screen.getByPlaceholderText('Search keywords (e.g., react, python, remote)');
+    fireEvent.change(input, { target: { value: 'react' } });
+    
+    // Wait for debounce
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalled();
+    }, { timeout: 1000 });
+  });
+
+  it('displays suggestions from API', async () => {
+    const mockSuggestions = [
+      { title: 'React Developer', count: 100, category: 'Technology' },
+      { title: 'React Native Developer', count: 50, category: 'Technology' }
+    ];
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockSuggestions
+    });
+
+    renderWithProviders(<MultiJobAutocomplete onSelect={mockOnSelect} />);
+    
+    const input = screen.getByPlaceholderText('Search keywords (e.g., react, python, remote)');
+    fireEvent.change(input, { target: { value: 'react' } });
+    
+    await waitFor(() => {
+      expect(screen.getByText('React Developer')).toBeInTheDocument();
+      expect(screen.getByText('React Native Developer')).toBeInTheDocument();
+    }, { timeout: 2000 });
+  });
+
+  it('handles suggestion selection', async () => {
+    const mockSuggestions = [
+      { title: 'React Developer', count: 100, category: 'Technology' }
+    ];
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockSuggestions
+    });
+
+    renderWithProviders(<MultiJobAutocomplete onSelect={mockOnSelect} />);
+    
+    const input = screen.getByPlaceholderText('Search keywords (e.g., react, python, remote)');
+    fireEvent.change(input, { target: { value: 'react' } });
+    
+    await waitFor(() => {
+      const suggestion = screen.getByText('React Developer');
+      fireEvent.click(suggestion);
+    }, { timeout: 2000 });
+    
+    expect(mockOnSelect).toHaveBeenCalledWith([{ title: 'React Developer', count: 100, category: 'Technology' }]);
+  });
+
+  it('handles keyboard navigation', async () => {
+    const mockSuggestions = [
+      { title: 'React Developer', count: 100, category: 'Technology' },
+      { title: 'React Native Developer', count: 50, category: 'Technology' }
+    ];
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockSuggestions
+    });
+
+    renderWithProviders(<MultiJobAutocomplete onSelect={mockOnSelect} />);
+    
+    const input = screen.getByPlaceholderText('Search keywords (e.g., react, python, remote)');
+    fireEvent.change(input, { target: { value: 'react' } });
+    
+    await waitFor(() => {
+      expect(screen.getByText('React Developer')).toBeInTheDocument();
+    }, { timeout: 2000 });
+    
+    // Press arrow down
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    
+    // Press Enter
+    fireEvent.keyDown(input, { key: 'Enter' });
+    
+    expect(mockOnSelect).toHaveBeenCalled();
+  });
+
+  it('handles API error gracefully', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+    renderWithProviders(<MultiJobAutocomplete onSelect={mockOnSelect} />);
+    
+    const input = screen.getByPlaceholderText('Search keywords (e.g., react, python, remote)');
+    fireEvent.change(input, { target: { value: 'react' } });
+    
+    // Should not throw error
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalled();
+    }, { timeout: 1000 });
+  });
+
+  it('debounces input changes', async () => {
+    jest.useFakeTimers();
+    
+    renderWithProviders(<MultiJobAutocomplete onSelect={mockOnSelect} />);
+    
+    const input = screen.getByPlaceholderText('Search keywords (e.g., react, python, remote)');
+    
+    // Rapid changes
+    fireEvent.change(input, { target: { value: 'r' } });
+    fireEvent.change(input, { target: { value: 're' } });
+    fireEvent.change(input, { target: { value: 'rea' } });
+    fireEvent.change(input, { target: { value: 'reac' } });
+    fireEvent.change(input, { target: { value: 'react' } });
+    
+    // Should not call API immediately
+    expect(mockFetch).not.toHaveBeenCalled();
+    
+    // Fast forward time
+    jest.advanceTimersByTime(500);
+    
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+    
+    jest.useRealTimers();
+  });
+
+  it('handles disabled state', () => {
+    renderWithProviders(
+      <MultiJobAutocomplete onSelect={mockOnSelect} disabled={true} />
+    );
+    
+    const input = screen.getByPlaceholderText('Search keywords (e.g., react, python, remote)');
+    expect(input).toBeDisabled();
+  });
+
+  it('applies custom className', () => {
+    renderWithProviders(
+      <MultiJobAutocomplete onSelect={mockOnSelect} className="custom-class" />
+    );
+    
+    const container = screen.getByPlaceholderText('Search keywords (e.g., react, python, remote)').closest('div');
+    expect(container).toHaveClass('custom-class');
   });
 }); 

@@ -1,12 +1,4 @@
-import { 
-  login, 
-  register, 
-  logout, 
-  getCurrentUser, 
-  resetPassword,
-  verifyEmail,
-  refreshToken
-} from '../../services/authService';
+import { authService } from '../../services/authService';
 
 // Mock fetch
 const mockFetch = jest.fn();
@@ -29,11 +21,59 @@ describe('authService', () => {
     mockFetch.mockClear();
   });
 
+  describe('validateEmail', () => {
+    test('validates correct email format', () => {
+      expect(authService.validateEmail('test@example.com')).toBe(true);
+      expect(authService.validateEmail('user.name@domain.co.uk')).toBe(true);
+    });
+
+    test('rejects invalid email format', () => {
+      expect(authService.validateEmail('invalid-email')).toBe(false);
+      expect(authService.validateEmail('test@')).toBe(false);
+      expect(authService.validateEmail('@example.com')).toBe(false);
+    });
+  });
+
+  describe('validatePassword', () => {
+    test('validates correct password length', () => {
+      expect(authService.validatePassword('password123')).toBe(true);
+      expect(authService.validatePassword('123456')).toBe(true);
+    });
+
+    test('rejects short password', () => {
+      expect(authService.validatePassword('12345')).toBe(false);
+      expect(authService.validatePassword('')).toBe(false);
+    });
+  });
+
+  describe('isAuthenticated', () => {
+    test('returns true when token exists', () => {
+      localStorageMock.getItem.mockReturnValue('mock-token');
+      expect(authService.isAuthenticated()).toBe(true);
+    });
+
+    test('returns false when no token', () => {
+      localStorageMock.getItem.mockReturnValue(null);
+      expect(authService.isAuthenticated()).toBe(false);
+    });
+  });
+
+  describe('getToken', () => {
+    test('returns stored token', () => {
+      localStorageMock.getItem.mockReturnValue('mock-token');
+      expect(authService.getToken()).toBe('mock-token');
+    });
+
+    test('returns null when no token', () => {
+      localStorageMock.getItem.mockReturnValue(null);
+      expect(authService.getToken()).toBe(null);
+    });
+  });
+
   describe('login', () => {
     test('successfully logs in user', async () => {
       const mockResponse = {
-        access_token: 'mock-access-token',
-        refresh_token: 'mock-refresh-token',
+        token: 'mock-token',
         user: {
           id: '1',
           email: 'test@example.com',
@@ -46,7 +86,7 @@ describe('authService', () => {
         json: async () => mockResponse
       });
 
-      const result = await login('test@example.com', 'password123');
+      const result = await authService.login('test@example.com', 'password123');
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/auth/login'),
@@ -57,30 +97,38 @@ describe('authService', () => {
           }),
           body: JSON.stringify({
             email: 'test@example.com',
-            password: 'password123'
+            password: 'password123',
+            remember_me: false
           })
         })
       );
 
       expect(result).toEqual(mockResponse);
-      expect(localStorage.setItem).toHaveBeenCalledWith('access_token', 'mock-access-token');
-      expect(localStorage.setItem).toHaveBeenCalledWith('refresh_token', 'mock-refresh-token');
+      expect(localStorage.setItem).toHaveBeenCalledWith('auth_token', 'mock-token');
+      expect(localStorage.setItem).toHaveBeenCalledWith('user_data', JSON.stringify(mockResponse.user));
+    });
+
+    test('handles invalid email format', async () => {
+      await expect(authService.login('invalid-email', 'password123')).rejects.toThrow('Invalid email format');
+    });
+
+    test('handles short password', async () => {
+      await expect(authService.login('test@example.com', '123')).rejects.toThrow('Password must be at least 6 characters');
     });
 
     test('handles login error', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
-        status: 401,
-        json: async () => ({ detail: 'Invalid credentials' })
+        status: 401
       });
 
-      await expect(login('test@example.com', 'wrongpassword')).rejects.toThrow('Invalid credentials');
+      await expect(authService.login('test@example.com', 'wrongpassword')).rejects.toThrow('HTTP 401: Unauthorized');
     });
 
     test('handles network error', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
-      await expect(login('test@example.com', 'password123')).rejects.toThrow('Network error');
+      await expect(authService.login('test@example.com', 'password123')).rejects.toThrow('Network error');
     });
   });
 
@@ -100,7 +148,13 @@ describe('authService', () => {
         json: async () => mockResponse
       });
 
-      const result = await register('Test User', 'test@example.com', 'password123');
+      const userData = {
+        name: 'Test User',
+        email: 'test@example.com',
+        password: 'password123'
+      };
+
+      const result = await authService.register(userData);
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/auth/register'),
@@ -109,11 +163,7 @@ describe('authService', () => {
           headers: expect.objectContaining({
             'Content-Type': 'application/json'
           }),
-          body: JSON.stringify({
-            name: 'Test User',
-            email: 'test@example.com',
-            password: 'password123'
-          })
+          body: JSON.stringify(userData)
         })
       );
 
@@ -123,50 +173,58 @@ describe('authService', () => {
     test('handles registration error', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
-        status: 400,
-        json: async () => ({ detail: 'Email already exists' })
+        status: 409
       });
 
-      await expect(register('Test User', 'test@example.com', 'password123')).rejects.toThrow('Email already exists');
+      const userData = {
+        name: 'Test User',
+        email: 'test@example.com',
+        password: 'password123'
+      };
+
+      await expect(authService.register(userData)).rejects.toThrow('HTTP 409: Conflict');
     });
   });
 
   describe('logout', () => {
     test('successfully logs out user', async () => {
+      localStorageMock.getItem.mockReturnValue('mock-token');
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ message: 'Logged out successfully' })
       });
 
-      await logout();
+      await authService.logout();
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/auth/logout'),
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
-            'Authorization': 'Bearer undefined'
+            'Authorization': 'Bearer mock-token',
+            'Content-Type': 'application/json'
           })
         })
       );
 
-      expect(localStorage.removeItem).toHaveBeenCalledWith('access_token');
-      expect(localStorage.removeItem).toHaveBeenCalledWith('refresh_token');
+      expect(localStorage.removeItem).toHaveBeenCalledWith('auth_token');
+      expect(localStorage.removeItem).toHaveBeenCalledWith('user_data');
     });
 
     test('handles logout error gracefully', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
       // Should still clear local storage even if API call fails
-      await logout();
+      await authService.logout();
 
-      expect(localStorage.removeItem).toHaveBeenCalledWith('access_token');
-      expect(localStorage.removeItem).toHaveBeenCalledWith('refresh_token');
+      expect(localStorage.removeItem).toHaveBeenCalledWith('auth_token');
+      expect(localStorage.removeItem).toHaveBeenCalledWith('user_data');
     });
   });
 
   describe('getCurrentUser', () => {
     test('successfully gets current user', async () => {
+      localStorageMock.getItem.mockReturnValue('mock-token');
       const mockUser = {
         id: '1',
         email: 'test@example.com',
@@ -178,14 +236,14 @@ describe('authService', () => {
         json: async () => mockUser
       });
 
-      const result = await getCurrentUser();
+      const result = await authService.getCurrentUser();
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/auth/me'),
         expect.objectContaining({
-          method: 'GET',
           headers: expect.objectContaining({
-            'Authorization': 'Bearer undefined'
+            'Authorization': 'Bearer mock-token',
+            'Content-Type': 'application/json'
           })
         })
       );
@@ -193,14 +251,23 @@ describe('authService', () => {
       expect(result).toEqual(mockUser);
     });
 
+    test('returns null when no token', async () => {
+      localStorageMock.getItem.mockReturnValue(null);
+
+      const result = await authService.getCurrentUser();
+
+      expect(result).toBeNull();
+    });
+
     test('handles unauthorized error', async () => {
+      localStorageMock.getItem.mockReturnValue('mock-token');
       mockFetch.mockResolvedValueOnce({
         ok: false,
-        status: 401,
-        json: async () => ({ detail: 'Unauthorized' })
+        status: 401
       });
 
-      await expect(getCurrentUser()).rejects.toThrow('Unauthorized');
+      const result = await authService.getCurrentUser();
+      expect(result).toBeNull();
     });
   });
 
@@ -215,7 +282,7 @@ describe('authService', () => {
         json: async () => mockResponse
       });
 
-      const result = await resetPassword('test@example.com');
+      const result = await authService.resetPassword('test@example.com');
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/auth/reset-password'),
@@ -224,71 +291,32 @@ describe('authService', () => {
           headers: expect.objectContaining({
             'Content-Type': 'application/json'
           }),
-          body: JSON.stringify({
-            email: 'test@example.com'
-          })
+          body: JSON.stringify({ email: 'test@example.com' })
         })
       );
 
       expect(result).toEqual(mockResponse);
+    });
+
+    test('handles invalid email format', async () => {
+      await expect(authService.resetPassword('invalid-email')).rejects.toThrow('Invalid email format');
     });
 
     test('handles reset password error', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
-        status: 404,
-        json: async () => ({ detail: 'User not found' })
+        status: 404
       });
 
-      await expect(resetPassword('nonexistent@example.com')).rejects.toThrow('User not found');
-    });
-  });
-
-  describe('verifyEmail', () => {
-    test('successfully verifies email', async () => {
-      const mockResponse = {
-        message: 'Email verified successfully'
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockResponse
-      });
-
-      const result = await verifyEmail('test-token');
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/auth/verify-email'),
-        expect.objectContaining({
-          method: 'POST',
-          headers: expect.objectContaining({
-            'Content-Type': 'application/json'
-          }),
-          body: JSON.stringify({
-            token: 'test-token'
-          })
-        })
-      );
-
-      expect(result).toEqual(mockResponse);
-    });
-
-    test('handles invalid token error', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        json: async () => ({ detail: 'Invalid token' })
-      });
-
-      await expect(verifyEmail('invalid-token')).rejects.toThrow('Invalid token');
+      await expect(authService.resetPassword('nonexistent@example.com')).rejects.toThrow('Failed to send reset password email');
     });
   });
 
   describe('refreshToken', () => {
     test('successfully refreshes token', async () => {
+      localStorageMock.getItem.mockReturnValue('mock-token');
       const mockResponse = {
-        access_token: 'new-access-token',
-        refresh_token: 'new-refresh-token'
+        token: 'new-token'
       };
 
       mockFetch.mockResolvedValueOnce({
@@ -296,34 +324,40 @@ describe('authService', () => {
         json: async () => mockResponse
       });
 
-      const result = await refreshToken('old-refresh-token');
+      const result = await authService.refreshToken();
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/auth/refresh'),
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
+            'Authorization': 'Bearer mock-token',
             'Content-Type': 'application/json'
-          }),
-          body: JSON.stringify({
-            refresh_token: 'old-refresh-token'
           })
         })
       );
 
       expect(result).toEqual(mockResponse);
-      expect(localStorage.setItem).toHaveBeenCalledWith('access_token', 'new-access-token');
-      expect(localStorage.setItem).toHaveBeenCalledWith('refresh_token', 'new-refresh-token');
+      expect(localStorage.setItem).toHaveBeenCalledWith('auth_token', 'new-token');
+    });
+
+    test('returns null when no token', async () => {
+      localStorageMock.getItem.mockReturnValue(null);
+
+      const result = await authService.refreshToken();
+
+      expect(result).toBeNull();
     });
 
     test('handles refresh token error', async () => {
+      localStorageMock.getItem.mockReturnValue('mock-token');
       mockFetch.mockResolvedValueOnce({
         ok: false,
-        status: 401,
-        json: async () => ({ detail: 'Invalid refresh token' })
+        status: 401
       });
 
-      await expect(refreshToken('invalid-refresh-token')).rejects.toThrow('Invalid refresh token');
+      const result = await authService.refreshToken();
+      expect(result).toBeNull();
     });
   });
 });

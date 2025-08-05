@@ -81,3 +81,6 @@ stripe>=12.0.0
 # Additional dependencies
 motor>=3.3.0
 starlette>=0.27.0
+
+# Ping service dependencies
+flask>=3.0.0

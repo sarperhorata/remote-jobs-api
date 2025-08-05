@@ -1,47 +1,127 @@
 services:
-  # Main backend service
+  # Ana web servisi
   - type: web
     name: buzz2remote-backend
     env: python
-    buildCommand: pip install -r backend/requirements.txt
-    startCommand: cd backend && python main.py
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.12
-      - key: RENDER
-        value: true
-      - key: RENDER_SERVICE_ID
-        value: buzz2remote-backend
-      - key: GITHUB_REPO
-        value: sarperhorata/remote-jobs-api
-      - key: CHECK_INTERVAL
-        value: 900000
-      - key: MAX_RETRIES
-        value: 3
-      - key: LOG_FILE
-        value: /opt/render/project/src/logs/deployment-monitor.log
+      - key: MONGODB_URI
+        value: mongodb://localhost:27017/buzz2remote
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
 
-  # Deployment monitoring cron service
+  # Cronjob servisleri
   - type: cron
-    name: buzz2remote-monitor
-    env: node
-    buildCommand: npm install
-    startCommand: node scripts/deployment-monitor-cron.js --once
-    schedule: "*/15 * * * *"  # Every 15 minutes
+    name: render-keep-alive
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/cron/cron_workflow_monitor.py
+    schedule: "*/14 * * * *"  # Her 14 dakikada
     envVars:
-      - key: NODE_VERSION
-        value: 18.19.0
-      - key: RENDER
-        value: true
-      - key: EXTERNAL_CRON
-        value: true
-      - key: RENDER_SERVICE_ID
-        value: buzz2remote-backend
-      - key: GITHUB_REPO
-        value: sarperhorata/remote-jobs-api
-      - key: CHECK_INTERVAL
-        value: 900000
-      - key: MAX_RETRIES
-        value: 3
-      - key: LOG_FILE
-        value: /opt/render/project/src/logs/deployment-monitor.log 
+      - key: MONGODB_URI
+        value: mongodb://localhost:27017/buzz2remote
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+
+  - type: cron
+    name: health-check
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/cron/cron_status_monitor.py
+    schedule: "0 * * * *"  # Her saat başı
+    envVars:
+      - key: MONGODB_URI
+        value: mongodb://localhost:27017/buzz2remote
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+
+  - type: cron
+    name: external-api-crawler
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/cron/cron_external_apis.py
+    schedule: "0 9 * * *"  # Her gün saat 9:00
+    envVars:
+      - key: MONGODB_URI
+        value: mongodb://localhost:27017/buzz2remote
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+
+  - type: cron
+    name: database-cleanup
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/cron/cron_database_cleanup.py
+    schedule: "0 2 * * *"  # Her gün saat 2:00
+    envVars:
+      - key: MONGODB_URI
+        value: mongodb://localhost:27017/buzz2remote
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+
+  - type: cron
+    name: job-statistics
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/cron/cron_job_statistics.py
+    schedule: "0 6 * * *"  # Her gün saat 6:00
+    envVars:
+      - key: MONGODB_URI
+        value: mongodb://localhost:27017/buzz2remote
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+
+  - type: cron
+    name: distill-crawler
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/cron/cron_distill_crawler.py
+    schedule: "0 10 * * *"  # Her gün saat 10:00
+    envVars:
+      - key: MONGODB_URI
+        value: mongodb://localhost:27017/buzz2remote
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+
+  - type: cron
+    name: cron-status-monitor
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/cron/cron_status_monitor.py
+    schedule: "0 */2 * * *"  # Her 2 saatte
+    envVars:
+      - key: MONGODB_URI
+        value: mongodb://localhost:27017/buzz2remote
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+
+  - type: cron
+    name: test-timeout-monitor
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/cron/cron_test_timeout.py
+    schedule: "30 * * * *"  # Her saat başı :30'da
+    envVars:
+      - key: MONGODB_URI
+        value: mongodb://localhost:27017/buzz2remote
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false 

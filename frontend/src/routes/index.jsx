@@ -21,6 +21,7 @@ const RemoteTips = lazy(() => import('../pages/RemoteTips'));
 const CareerTips = lazy(() => import('../pages/CareerTips'));
 const RemoteHints = lazy(() => import('../pages/RemoteHints'));
 const Pricing = lazy(() => import('../pages/Pricing'));
+const CompanyProfile = lazy(() => import('../pages/CompanyProfile'));
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
@@ -36,6 +37,7 @@ const AppRoutes = () => {
         <Route path="/jobs" element={<Jobs />} />
         <Route path="/search" element={<SearchResults />} />
         <Route path="/jobs/:id" element={<JobDetail />} />
+        <Route path="/companies/:companyId" element={<CompanyProfile />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/remote-tips" element={<RemoteTips />} />

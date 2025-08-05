@@ -392,4 +392,20 @@ export const Brain = ({ className = "", size = 16, onClick }: IconProps) => (
 
 export const Cookie = ({ className = "", size = 16, onClick }: IconProps) => (
   <span className={`inline-block ${className}`} style={{ fontSize: size }} onClick={onClick}>🍪</span>
+);
+
+export const BarChart3 = ({ className = "", size = 16, onClick }: IconProps) => (
+  <span className={`inline-block ${className}`} style={{ fontSize: size }} onClick={onClick}>📊</span>
+);
+
+export const CheckSquare = ({ className = "", size = 16, onClick }: IconProps) => (
+  <span className={`inline-block ${className}`} style={{ fontSize: size }} onClick={onClick}>☑️</span>
+);
+
+export const Square = ({ className = "", size = 16, onClick }: IconProps) => (
+  <span className={`inline-block ${className}`} style={{ fontSize: size }} onClick={onClick}>⬜</span>
+);
+
+export const Trash2 = ({ className = "", size = 16, onClick }: IconProps) => (
+  <span className={`inline-block ${className}`} style={{ fontSize: size }} onClick={onClick}>🗑️</span>
 ); 

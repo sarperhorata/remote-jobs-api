@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import AuthModal from './AuthModal';
-import { Menu, X, User, LogOut, Settings, Heart, FileText, Bell, Sun, Moon } from 'lucide-react';
+import { Menu, X, User, LogOut, Settings, Heart, FileText, Bell, Sun, Moon, Zap } from 'lucide-react';
 
 const Header: React.FC = () => {
   const { user, logout } = useAuth();
@@ -61,6 +61,13 @@ const Header: React.FC = () => {
     { name: 'Remote Tips', href: '/remote-tips' },
     { name: 'Salary Guide', href: '/salary-guide' },
     { name: 'Pricing', href: '/pricing' },
+  ];
+
+  const userNavigation = [
+    { name: 'Bulk Apply', href: '/bulk-apply', icon: 'Zap' },
+    { name: 'My Applications', href: '/my-applications', icon: 'FileText' },
+    { name: 'Favorites', href: '/favorites', icon: 'Heart' },
+    { name: 'Settings', href: '/settings', icon: 'Settings' },
   ];
 
   const handleProfileAction = (action: string) => {
@@ -195,6 +202,14 @@ const Header: React.FC = () => {
                           >
                             <FileText className="w-4 h-4 mr-3 text-gray-600 dark:text-gray-300" />
                             Applications
+                          </button>
+                          
+                          <button
+                            onClick={() => navigate('/bulk-apply')}
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                          >
+                            <Zap className="w-4 h-4 mr-3 text-gray-600 dark:text-gray-300" />
+                            Bulk Apply
                           </button>
                           
                           <button

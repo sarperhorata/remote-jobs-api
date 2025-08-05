@@ -57,8 +57,8 @@ class RateLimiter:
         request: Request, 
         max_requests: int = 100, 
         window_seconds: int = 60,
-        cron_max_requests: int = 10,
-        cron_window_seconds: int = 300  # 5 minutes for cron jobs
+        cron_max_requests: int = 50,  # Increased for cron-job.org
+        cron_window_seconds: int = 600  # 10 minutes for cron jobs
     ) -> bool:
         """
         Check rate limit for request

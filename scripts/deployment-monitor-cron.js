@@ -79,18 +79,23 @@ class NotificationManager {
   }
 
   static async sendTelegramNotification(message) {
-    if (!CONFIG.TELEGRAM_BOT_TOKEN || !CONFIG.TELEGRAM_CHAT_ID) return;
+    // DISABLED - only log instead of sending to Telegram
+    await Logger.info(`TELEGRAM NOTIFICATION (DISABLED): ${message}`);
+    return;
+    
+    // Original code commented out to disable Telegram notifications
+    // if (!CONFIG.TELEGRAM_BOT_TOKEN || !CONFIG.TELEGRAM_CHAT_ID) return;
 
-    try {
-      const telegramUrl = `https://api.telegram.org/bot${CONFIG.TELEGRAM_BOT_TOKEN}/sendMessage`;
-      await axios.post(telegramUrl, {
-        chat_id: CONFIG.TELEGRAM_CHAT_ID,
-        text: message,
-        parse_mode: 'HTML'
-      });
-    } catch (error) {
-      await Logger.error(`Failed to send Telegram notification: ${error.message}`);
-    }
+    // try {
+    //   const telegramUrl = `https://api.telegram.org/bot${CONFIG.TELEGRAM_BOT_TOKEN}/sendMessage`;
+    //   await axios.post(telegramUrl, {
+    //     chat_id: CONFIG.TELEGRAM_CHAT_ID,
+    //     text: message,
+    //     parse_mode: 'HTML'
+    //   });
+    // } catch (error) {
+    //   await Logger.error(`Failed to send Telegram notification: ${error.message}`);
+    // }
   }
 
   static async sendNotification(message, severity = 'info') {

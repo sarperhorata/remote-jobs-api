@@ -264,7 +264,7 @@ class TestJobResponse:
         assert isinstance(schema, dict)
         assert "properties" in schema
         assert "title" in schema["properties"]
-        assert "id" in schema["properties"]
+        assert "_id" in schema["properties"]  # Pydantic v2 uses _id instead of id
 
 
 class TestJobListResponse:

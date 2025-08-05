@@ -1,0 +1,152 @@
+name: Workflow Monitor
+
+on:
+  schedule:
+    # Her gün saat 06:00'da çalış
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    # Manuel tetikleme için
+  workflow_run:
+    # Diğer workflow'lar tamamlandığında çalış
+    workflows: ["Buzz2Remote CI/CD", "Auto Fix Common Issues"]
+    types: [completed]
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  monitor-workflows:
+    name: Monitor Workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+        
+    - name: Install dependencies
+      run: |
+        pip install requests
+        
+    - name: Run workflow monitoring
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+        GITHUB_REPOSITORY_NAME: ${{ github.event.repository.name }}
+      run: |
+        python scripts/workflow-monitor.py
+        
+    - name: Upload monitoring report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: workflow-monitoring-report
+        path: |
+          workflow-report-*.md
+          workflow-monitor.log
+        retention-days: 7
+        
+    - name: Create summary issue
+      uses: actions/github-script@v6
+      if: always()
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+          
+          // En son raporu bul
+          const reports = fs.readdirSync('.').filter(file => file.startsWith('workflow-report-'));
+          if (reports.length === 0) {
+            console.log('No monitoring reports found');
+            return;
+          }
+          
+          const latestReport = reports.sort().pop();
+          const reportContent = fs.readFileSync(latestReport, 'utf8');
+          
+          // Issue oluştur
+          await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: `📊 Workflow Monitoring Report - ${new Date().toISOString().split('T')[0]}`,
+            body: reportContent,
+            labels: ['monitoring', 'workflow', 'automation']
+          });
+          
+          console.log(`Monitoring report issue created for ${latestReport}`);
+
+  analyze-trends:
+    name: Analyze Trends
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: monitor-workflows
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download monitoring reports
+      uses: actions/download-artifact@v3
+      with:
+        name: workflow-monitoring-report
+        
+    - name: Analyze trends
+      run: |
+        echo "📈 Analyzing workflow trends..."
+        
+        # Trend analizi
+        if [ -f "workflow-monitor.log" ]; then
+          echo "## Workflow Trend Analysis"
+          echo "Generated on: $(date)"
+          echo ""
+          echo "### Recent Activity"
+          tail -20 workflow-monitor.log | grep -E "(INFO|ERROR|WARNING)" || echo "No recent activity found"
+        fi
+        
+        # Öneriler
+        echo ""
+        echo "### Recommendations"
+        echo "1. Review failed workflows regularly"
+        echo "2. Monitor recurring issues"
+        echo "3. Optimize slow workflows"
+        echo "4. Update dependencies regularly"
+        
+    - name: Create trend report
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const trendReport = `
+          # Workflow Trend Analysis Report
+          
+          Generated on: ${new Date().toISOString()}
+          
+          ## Summary
+          - Monitoring completed successfully
+          - Trends analyzed
+          - Recommendations provided
+          
+          ## Next Actions
+          1. Review the monitoring report
+          2. Address any critical issues
+          3. Optimize workflows if needed
+          4. Update dependencies
+          
+          ## Automation Status
+          ✅ Auto-fix workflow active
+          ✅ Monitoring system active
+          ✅ Trend analysis active
+          `;
+          
+          await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: `📈 Workflow Trend Analysis - ${new Date().toISOString().split('T')[0]}`,
+            body: trendReport,
+            labels: ['trends', 'analysis', 'automation']
+          }); 

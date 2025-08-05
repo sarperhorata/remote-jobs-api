@@ -24,8 +24,8 @@ def test_create_job(client, test_job_data: dict, db_mock):
 
 def test_get_jobs(client, test_job_data: dict, db_mock):
     """Test getting all jobs via API."""
-    # Mock database operations
-    db_mock.jobs.find.return_value.to_list.return_value = [test_job_data]
+    # Mock database operations - use aggregation pipeline
+    db_mock.jobs.aggregate.return_value.to_list.return_value = [test_job_data]
     db_mock.jobs.count_documents.return_value = 1
 
     response = client.get("/api/v1/jobs/")
@@ -97,8 +97,8 @@ def test_delete_job(client, test_job_data: dict, db_mock):
 
 def test_search_jobs(client, test_job_data: dict, db_mock):
     """Test searching jobs via API."""
-    # Mock database operations
-    db_mock.jobs.find.return_value.to_list.return_value = [test_job_data]
+    # Mock database operations - use aggregation pipeline
+    db_mock.jobs.aggregate.return_value.to_list.return_value = [test_job_data]
 
     response = client.get("/api/v1/jobs/search", params={"q": "Test"})
     assert response.status_code == 200
@@ -125,9 +125,19 @@ def test_get_job_statistics(client, test_job_data: dict, db_mock):
             {"location": "London", "count": 3},
         ],
     }
-    db_mock.jobs.aggregate.return_value.to_list.return_value = mock_stats[
-        "jobs_by_company"
-    ]
+    
+    # Mock aggregation pipeline results
+    def mock_aggregate(pipeline):
+        mock_result = MagicMock()
+        if "company" in str(pipeline):
+            mock_result.to_list.return_value = mock_stats["jobs_by_company"]
+        elif "location" in str(pipeline):
+            mock_result.to_list.return_value = mock_stats["jobs_by_location"]
+        else:
+            mock_result.to_list.return_value = [{"total": 3}]
+        return mock_result
+    
+    db_mock.jobs.aggregate.side_effect = mock_aggregate
     db_mock.jobs.count_documents.return_value = mock_stats["total_jobs"]
 
     response = client.get("/api/v1/jobs/statistics")

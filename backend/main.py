@@ -29,7 +29,6 @@ if SENTRY_AVAILABLE:
 else:
     FastApiIntegration = None
     LoggingIntegration = None
-from starlette.middleware.sessions import SessionMiddleware
 
 # Configure logging first
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper())
@@ -80,13 +79,15 @@ from backend.database.db import (close_db_connections, get_async_db,
                                  init_database)
 from backend.routes import (ads, applications, auth, companies, jobs,
                             notification_routes, onboarding, payment, profile,
-                            translation, monitor)
+                            translation, monitor, performance)
 from backend.routes.ai_cv_analysis import router as ai_cv_analysis_router
 from backend.routes.ai_recommendations import router as ai_router
 from backend.routes.ai_services import router as ai_services_router
 from backend.routes.auto_apply import router as auto_apply_router
 # from backend.routes.backup import router as backup_router
 from backend.routes.cronjobs import router as cronjobs_router
+from backend.routes.cron import router as cron_router
+from backend.routes.cron_external import router as cron_external_router
 from backend.routes.email_test import router as email_test_router
 from backend.routes.fake_job_detection import router as fake_job_router
 from backend.routes.legal import router as legal_router
@@ -315,10 +316,7 @@ from backend.middleware.performance_monitoring import initialize_performance_mon
 performance_middleware = initialize_performance_monitoring(app)
 app.add_middleware(type(performance_middleware))
 
-# Add session middleware
-app.add_middleware(
-    SessionMiddleware, secret_key=os.getenv("SESSION_SECRET_KEY", "a_very_secret_key")
-)
+# Session middleware removed - not needed
 
 # Mount static files for admin panel if it exists
 admin_static_path = os.path.join(os.path.dirname(__file__), "admin_panel", "static")
@@ -353,8 +351,19 @@ routers_to_include = [
     (email_test_router, "/email-test", ["email-test"]),
     (salary_estimation_router, "/api/v1/salary", ["salary-estimation"]),
     (cronjobs_router, "", ["cronjobs"]),
+    (cron_router, "", ["cron"]),
+    (cron_external_router, "", ["cron-external"]),
     (monitor.router, "", ["monitoring"]),
+    (performance.router, "", ["performance"]),
 ]
+
+# Include Glassdoor router
+try:
+    from backend.routes.glassdoor import router as glassdoor_router
+    routers_to_include.append((glassdoor_router, "", ["glassdoor"]))
+    logger.info("Glassdoor router successfully included.")
+except ImportError as e:
+    logger.warning(f"Glassdoor router not available: {str(e)}")
 
 # Include admin cleanup router
 try:
@@ -1628,3 +1637,14 @@ async def cron_test_timeout(request: Request):
             "message": str(e),
             "timestamp": datetime.utcnow().isoformat(),
         }
+
+# Start the server
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8001,
+        reload=True,
+        log_level="info"
+    )

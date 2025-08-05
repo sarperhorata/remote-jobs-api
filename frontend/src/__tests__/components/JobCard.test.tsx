@@ -1,125 +1,247 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
+import { ThemeProvider } from '../../contexts/ThemeContext';
 import JobCard from '../../components/JobCard';
 
-// Mock the useAuth hook
+// Mock AuthContext
+const mockAuthContext = {
+  isAuthenticated: false,
+  user: null,
+  login: jest.fn(),
+  logout: jest.fn(),
+  signup: jest.fn(),
+  isLoading: false
+};
+
 jest.mock('../../contexts/AuthContext', () => ({
-  useAuth: () => ({
-    isAuthenticated: true,
-    user: { id: '1', email: 'test@example.com' },
-    login: jest.fn(),
-    logout: jest.fn(),
-    register: jest.fn(),
-  }),
+  useAuth: () => mockAuthContext
 }));
 
-// Mock data
-const mockJob = {
-  id: '1',
-  title: 'Senior React Developer',
-  company: 'Tech Corp',
-  location: 'Remote',
-  salary: '$80k - $120k',
-  description: 'We are looking for a senior React developer...',
-  job_type: 'Full-time',
-  work_type: 'Remote',
-  experience_level: 'Senior',
-  posted_date: '2024-01-01',
-  company_logo: 'https://example.com/logo.png',
-  skills: ['React', 'TypeScript', 'Node.js'],
-  benefits: ['Health Insurance', '401k', 'Flexible Hours'],
-  is_saved: false,
-  is_applied: false,
+const renderWithProviders = (component: React.ReactElement) => {
+  return render(
+    <BrowserRouter>
+      <ThemeProvider>
+        {component}
+      </ThemeProvider>
+    </BrowserRouter>
+  );
 };
 
-const renderWithRouter = (component: React.ReactElement) => {
-  return render(component);
-};
+describe('JobCard', () => {
+  const mockJob = {
+    _id: '1',
+    id: '1',
+    title: 'Senior Frontend Developer',
+    company: {
+      id: 'company1',
+      name: 'TechCorp',
+      logo: '💻'
+    },
+    location: 'Remote',
+    job_type: 'Full-time',
+    salary_min: 80000,
+    salary_max: 120000,
+    salary_currency: 'USD',
+    description: 'We are looking for a senior frontend developer...',
+    requirements: ['React', 'TypeScript', '5+ years experience'],
+    benefits: ['Health insurance', 'Remote work', 'Flexible hours'],
+    created_at: '2024-01-15T10:00:00Z',
+    url: 'https://example.com/job/1',
+    is_active: true,
+    is_featured: false,
+    is_remote: true,
+    experience_level: 'Senior',
+    skills: ['React', 'TypeScript', 'JavaScript']
+  };
 
-describe('JobCard Component', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    mockAuthContext.isAuthenticated = false;
+    mockAuthContext.user = null;
   });
 
-  test('renders job information correctly', () => {
-    renderWithRouter(<JobCard job={mockJob} />);
-    
-    expect(screen.getByText('Senior React Developer')).toBeInTheDocument();
-    expect(screen.getByText('Tech Corp')).toBeInTheDocument();
+  it('renders job information correctly', () => {
+    renderWithProviders(<JobCard job={mockJob} />);
+
+    expect(screen.getByText('Senior Frontend Developer')).toBeInTheDocument();
+    expect(screen.getByText('TechCorp')).toBeInTheDocument();
     expect(screen.getByText('Remote')).toBeInTheDocument();
-    expect(screen.getByText('$80k - $120k')).toBeInTheDocument();
-  });
-
-  test('displays job type and work type', () => {
-    renderWithRouter(<JobCard job={mockJob} />);
-    
     expect(screen.getByText('Full-time')).toBeInTheDocument();
-    expect(screen.getByText('Remote')).toBeInTheDocument();
+    expect(screen.getByText('$80,000 - $120,000')).toBeInTheDocument();
   });
 
-  test('shows experience level', () => {
-    renderWithRouter(<JobCard job={mockJob} />);
-    
+  it('displays company logo', () => {
+    renderWithProviders(<JobCard job={mockJob} />);
+
+    expect(screen.getByText('💻')).toBeInTheDocument();
+  });
+
+  it('shows remote badge for remote jobs', () => {
+    renderWithProviders(<JobCard job={mockJob} />);
+
+    expect(screen.getByText('🌍 Remote')).toBeInTheDocument();
+  });
+
+  it('shows featured badge for featured jobs', () => {
+    const featuredJob = { ...mockJob, is_featured: true };
+    renderWithProviders(<JobCard job={featuredJob} />);
+
+    expect(screen.getByText('⭐ Featured')).toBeInTheDocument();
+  });
+
+  it('displays experience level', () => {
+    renderWithProviders(<JobCard job={mockJob} />);
+
     expect(screen.getByText('Senior')).toBeInTheDocument();
   });
 
-  test('displays skills', () => {
-    renderWithRouter(<JobCard job={mockJob} />);
-    
+  it('shows skills tags', () => {
+    renderWithProviders(<JobCard job={mockJob} />);
+
     expect(screen.getByText('React')).toBeInTheDocument();
     expect(screen.getByText('TypeScript')).toBeInTheDocument();
-    expect(screen.getByText('Node.js')).toBeInTheDocument();
+    expect(screen.getByText('JavaScript')).toBeInTheDocument();
   });
 
-  test('shows company logo when available', () => {
-    renderWithRouter(<JobCard job={mockJob} />);
-    
-    const logo = screen.getByAltText('Tech Corp logo');
-    expect(logo).toBeInTheDocument();
-    expect(logo).toHaveAttribute('src', 'https://example.com/logo.png');
+  it('handles missing salary information', () => {
+    const jobWithoutSalary = { ...mockJob, salary_min: null, salary_max: null };
+    renderWithProviders(<JobCard job={jobWithoutSalary} />);
+
+    expect(screen.queryByText('$80,000 - $120,000')).not.toBeInTheDocument();
   });
 
-  test('handles missing company logo gracefully', () => {
-    const jobWithoutLogo = { ...mockJob, company_logo: null };
-    renderWithRouter(<JobCard job={jobWithoutLogo} />);
-    
-    // Should still render without crashing
-    expect(screen.getByText('Tech Corp')).toBeInTheDocument();
+  it('handles missing company logo', () => {
+    const jobWithoutLogo = { 
+      ...mockJob, 
+      company: { ...mockJob.company, logo: null } 
+    };
+    renderWithProviders(<JobCard job={jobWithoutLogo} />);
+
+    // Should show default company initial
+    expect(screen.getByText('T')).toBeInTheDocument();
   });
 
-  test('displays posted date', () => {
-    renderWithRouter(<JobCard job={mockJob} />);
-    
-    expect(screen.getByText(/2024-01-01/)).toBeInTheDocument();
+  it('handles missing skills', () => {
+    const jobWithoutSkills = { ...mockJob, skills: null };
+    renderWithProviders(<JobCard job={jobWithoutSkills} />);
+
+    expect(screen.queryByText('React')).not.toBeInTheDocument();
   });
 
-  test('shows save button when not saved', () => {
-    renderWithRouter(<JobCard job={mockJob} />);
-    
-    const saveButton = screen.getByRole('button', { name: /save/i });
-    expect(saveButton).toBeInTheDocument();
+  it('navigates to job detail page when clicked', () => {
+    renderWithProviders(<JobCard job={mockJob} />);
+
+    const jobCard = screen.getByRole('link', { name: /senior frontend developer/i });
+    expect(jobCard).toHaveAttribute('href', '/job/1');
   });
 
-  test('shows unsave button when already saved', () => {
-    const savedJob = { ...mockJob, is_saved: true };
-    renderWithRouter(<JobCard job={savedJob} />);
-    
-    const unsaveButton = screen.getByRole('button', { name: /unsave/i });
-    expect(unsaveButton).toBeInTheDocument();
+  it('shows apply button for authenticated users', () => {
+    mockAuthContext.isAuthenticated = true;
+    mockAuthContext.user = { _id: 'user1', email: 'test@example.com' };
+
+    renderWithProviders(<JobCard job={mockJob} />);
+
+    expect(screen.getByRole('button', { name: /apply/i })).toBeInTheDocument();
   });
 
-  test('shows apply button when not applied', () => {
-    renderWithRouter(<JobCard job={mockJob} />);
-    
+  it('shows login prompt for unauthenticated users', () => {
+    renderWithProviders(<JobCard job={mockJob} />);
+
+    expect(screen.getByRole('button', { name: /login to apply/i })).toBeInTheDocument();
+  });
+
+  it('handles apply button click for authenticated users', () => {
+    mockAuthContext.isAuthenticated = true;
+    mockAuthContext.user = { _id: 'user1', email: 'test@example.com' };
+
+    renderWithProviders(<JobCard job={mockJob} />);
+
     const applyButton = screen.getByRole('button', { name: /apply/i });
-    expect(applyButton).toBeInTheDocument();
+    fireEvent.click(applyButton);
+
+    // Should navigate to application page
+    expect(window.location.pathname).toBe('/job/1/apply');
   });
 
-  test('shows applied status when already applied', () => {
-    const appliedJob = { ...mockJob, is_applied: true };
-    renderWithRouter(<JobCard job={appliedJob} />);
-    
-    expect(screen.getByText(/applied/i)).toBeInTheDocument();
+  it('handles save job functionality', () => {
+    renderWithProviders(<JobCard job={mockJob} />);
+
+    const saveButton = screen.getByRole('button', { name: /save/i });
+    fireEvent.click(saveButton);
+
+    // Should show saved state
+    expect(screen.getByRole('button', { name: /saved/i })).toBeInTheDocument();
+  });
+
+  it('handles share job functionality', () => {
+    renderWithProviders(<JobCard job={mockJob} />);
+
+    const shareButton = screen.getByRole('button', { name: /share/i });
+    fireEvent.click(shareButton);
+
+    // Should show share options or copy link
+    expect(screen.getByText(/link copied/i)).toBeInTheDocument();
+  });
+
+  it('displays job posting date', () => {
+    renderWithProviders(<JobCard job={mockJob} />);
+
+    // Should show relative time like "2 hours ago" or "Today"
+    expect(screen.getByText(/ago|today|yesterday/i)).toBeInTheDocument();
+  });
+
+  it('handles different job types', () => {
+    const partTimeJob = { ...mockJob, job_type: 'Part-time' };
+    renderWithProviders(<JobCard job={partTimeJob} />);
+
+    expect(screen.getByText('Part-time')).toBeInTheDocument();
+  });
+
+  it('handles different experience levels', () => {
+    const juniorJob = { ...mockJob, experience_level: 'Junior' };
+    renderWithProviders(<JobCard job={juniorJob} />);
+
+    expect(screen.getByText('Junior')).toBeInTheDocument();
+  });
+
+  it('handles non-remote jobs', () => {
+    const onSiteJob = { ...mockJob, is_remote: false, location: 'New York, NY' };
+    renderWithProviders(<JobCard job={onSiteJob} />);
+
+    expect(screen.getByText('New York, NY')).toBeInTheDocument();
+    expect(screen.queryByText('🌍 Remote')).not.toBeInTheDocument();
+  });
+
+  it('handles jobs without requirements', () => {
+    const jobWithoutRequirements = { ...mockJob, requirements: null };
+    renderWithProviders(<JobCard job={jobWithoutRequirements} />);
+
+    // Should still render without crashing
+    expect(screen.getByText('Senior Frontend Developer')).toBeInTheDocument();
+  });
+
+  it('handles jobs without benefits', () => {
+    const jobWithoutBenefits = { ...mockJob, benefits: null };
+    renderWithProviders(<JobCard job={jobWithoutBenefits} />);
+
+    // Should still render without crashing
+    expect(screen.getByText('Senior Frontend Developer')).toBeInTheDocument();
+  });
+
+  it('applies custom className prop', () => {
+    renderWithProviders(<JobCard job={mockJob} className="custom-class" />);
+
+    const jobCard = screen.getByRole('article');
+    expect(jobCard).toHaveClass('custom-class');
+  });
+
+  it('handles compact view mode', () => {
+    renderWithProviders(<JobCard job={mockJob} compact={true} />);
+
+    // Should render in compact mode with less information
+    expect(screen.getByText('Senior Frontend Developer')).toBeInTheDocument();
+    expect(screen.getByText('TechCorp')).toBeInTheDocument();
+    // Should not show detailed description in compact mode
+    expect(screen.queryByText('We are looking for a senior frontend developer...')).not.toBeInTheDocument();
   });
 });

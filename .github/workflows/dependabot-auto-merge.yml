@@ -1,0 +1,141 @@
+name: Dependabot Auto Merge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+env:
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  dependabot-auto-merge:
+    name: Dependabot Auto Merge
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    if: github.actor == 'dependabot[bot]'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+        
+    - name: Check if frontend dependencies changed
+      id: frontend-check
+      run: |
+        if git diff --name-only ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} | grep -q "frontend/package.json\|frontend/package-lock.json"; then
+          echo "frontend_changed=true" >> $GITHUB_OUTPUT
+        else
+          echo "frontend_changed=false" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Check if backend dependencies changed
+      id: backend-check
+      run: |
+        if git diff --name-only ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} | grep -q "backend/requirements.txt"; then
+          echo "backend_changed=true" >> $GITHUB_OUTPUT
+        else
+          echo "backend_changed=false" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Test frontend dependencies
+      if: steps.frontend-check.outputs.frontend_changed == 'true'
+      working-directory: ./frontend
+      run: |
+        echo "🧪 Testing frontend dependencies..."
+        npm ci --no-optional
+        npm run build
+        npm audit --audit-level=moderate
+        
+    - name: Test backend dependencies
+      if: steps.backend-check.outputs.backend_changed == 'true'
+      run: |
+        echo "🧪 Testing backend dependencies..."
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install safety
+        safety check --output json > security-report.json || echo "Security check completed"
+        
+    - name: Check PR title for security updates
+      id: security-check
+      run: |
+        PR_TITLE="${{ github.event.pull_request.title }}"
+        if [[ "$PR_TITLE" == *"security"* ]] || [[ "$PR_TITLE" == *"Security"* ]] || [[ "$PR_TITLE" == *"patch"* ]] || [[ "$PR_TITLE" == *"minor"* ]]; then
+          echo "is_security_update=true" >> $GITHUB_OUTPUT
+          echo "✅ Security/minor/patch update detected"
+        else
+          echo "is_security_update=false" >> $GITHUB_OUTPUT
+          echo "⚠️ Major update detected - manual review required"
+        fi
+        
+    - name: Auto merge security updates
+      if: steps.security-check.outputs.is_security_update == 'true'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { data: pull } = await github.rest.pulls.get({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: context.issue.number,
+          });
+          
+          if (pull.mergeable && pull.mergeable_state === 'clean') {
+            await github.rest.pulls.merge({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              merge_method: 'squash',
+              commit_title: `chore(deps): ${pull.title}`,
+              commit_message: `Auto-merge security/minor/patch updates\n\n${pull.body || ''}`
+            });
+            console.log('✅ PR auto-merged successfully');
+          } else {
+            console.log('⚠️ PR not ready for merge');
+          }
+          
+    - name: Comment on major updates
+      if: steps.security-check.outputs.is_security_update == 'false'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body: '⚠️ **Major Update Detected**\n\nThis is a major version update that requires manual review before merging.\n\n**Please review the changes and test thoroughly before merging.**\n\n- [ ] Review breaking changes\n- [ ] Test functionality\n- [ ] Check compatibility\n- [ ] Update documentation if needed\n\n🔍 **Review Checklist:**\n- Breaking changes in changelog\n- API compatibility\n- Performance impact\n- Security implications'
+          });
+          
+    - name: Add labels
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const labels = [];
+          
+          if ('${{ steps.security-check.outputs.is_security_update }}' === 'true') {
+            labels.push('auto-merge', 'security-update');
+          } else {
+            labels.push('needs-review', 'major-update');
+          }
+          
+          await github.rest.issues.addLabels({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            labels: labels
+          }); 

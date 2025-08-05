@@ -19,6 +19,53 @@ env:
   PYTHON_VERSION: '3.11'
 
 jobs:
+  # Auto Fix Common Issues
+  auto-fix:
+    name: Auto Fix Issues
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+        
+    - name: Install dependencies
+      run: |
+        cd frontend && npm ci --no-optional
+        cd ../backend && pip install -r requirements.txt black isort autopep8
+        
+    - name: Auto fix issues
+      run: |
+        chmod +x scripts/auto-fix-common-issues.sh
+        ./scripts/auto-fix-common-issues.sh
+        
+    - name: Commit fixes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        if [[ -n "$(git status --porcelain)" ]]; then
+          git add .
+          git commit -m "🔧 Auto-fix: Common issues resolved [skip ci]"
+          git push
+        fi
+
   # Frontend Tests
   frontend-tests:
     name: Frontend Tests
@@ -174,7 +221,7 @@ jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [frontend-tests, backend-tests, security-audit]
+    needs: [auto-fix, frontend-tests, backend-tests, security-audit]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     timeout-minutes: 30
     

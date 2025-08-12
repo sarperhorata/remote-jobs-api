@@ -43,11 +43,11 @@ services:
       # External APIs
       - key: OPENAI_API_KEY
         sync: false
-      # Telegram settings
+      # Telegram settings (DISABLED)
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: TELEGRAM_ENABLED
-        value: true
+        value: false
       - key: TELEGRAM_CHAT_ID
         sync: false
       # Email settings (optional)
@@ -73,15 +73,118 @@ services:
         sync: false
       - key: STRIPE_PUBLISHABLE_KEY
         sync: false
+      # Dependabot Configuration
+      - key: DEPENDABOT_ENABLED
+        value: true
+      - key: AUTO_MERGE_ENABLED
+        value: true
+      - key: SECURITY_UPDATES_ONLY
+        value: true
     disk:
       name: tmp
       mountPath: /tmp
       sizeGB: 1
 
+  # Dependabot Auto-Merge Service (Cron Job)
+  - type: cron
+    name: dependabot-auto-merge
+    runtime: python
+    rootDir: .
+    buildCommand: |
+      pip install -r backend/requirements.txt
+      npm install --prefix frontend
+    startCommand: python scripts/dependabot-monitor.py
+    plan: starter
+    schedule: "0 */6 * * *"  # Her 6 saatte bir çalış
+    branch: main
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: NODE_VERSION
+        value: 18
+      - key: ENVIRONMENT
+        value: production
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GITHUB_REPO
+        value: sarperhorata/buzz2remote
+      - key: DEPENDABOT_ENABLED
+        value: true
+      - key: AUTO_MERGE_ENABLED
+        value: true
+      - key: SECURITY_UPDATES_ONLY
+        value: true
+      - key: TELEGRAM_ENABLED
+        value: false
+
+  # Dependency Security Monitor (Cron Job)
+  - type: cron
+    name: dependency-security-monitor
+    runtime: python
+    rootDir: .
+    buildCommand: |
+      pip install -r backend/requirements.txt
+      npm install --prefix frontend
+    startCommand: python scripts/security-monitor.py
+    plan: starter
+    schedule: "0 2 * * *"  # Her gün saat 02:00'de çalış
+    branch: main
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: NODE_VERSION
+        value: 18
+      - key: ENVIRONMENT
+        value: production
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: TELEGRAM_ENABLED
+        value: false
+
+  # External API Crawler (Cron Job)
+  - type: cron
+    name: external-api-crawler
+    runtime: python
+    rootDir: .
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: python scripts/cron/cron_external_apis.py
+    plan: starter
+    schedule: "0 9 * * *"  # Her gün saat 09:00'da çalış
+    branch: main
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: ENVIRONMENT
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: TELEGRAM_ENABLED
+        value: false
+
+  # Database Cleanup (Cron Job)
+  - type: cron
+    name: database-cleanup
+    runtime: python
+    rootDir: .
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: python scripts/cron/cron_database_cleanup.py
+    plan: starter
+    schedule: "0 2 * * 0"  # Her Pazar saat 02:00'de çalış
+    branch: main
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: ENVIRONMENT
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: TELEGRAM_ENABLED
+        value: false
+
 # Add these environment variables manually in Render dashboard:
 # MONGODB_URI=mongodb+srv://your-mongodb-connection-string
-# TELEGRAM_BOT_TOKEN=your-telegram-bot-token
-# TELEGRAM_CHAT_ID=your-telegram-chat-id
+# TELEGRAM_BOT_TOKEN=your-telegram-bot-token (DISABLED)
+# TELEGRAM_CHAT_ID=your-telegram-chat-id (DISABLED)
 # OPENAI_API_KEY=your-openai-api-key
 # ADMIN_PASSWORD=your-secure-admin-password
 # EMAIL_HOST=smtp.gmail.com (optional)
@@ -91,4 +194,5 @@ services:
 # EMAIL_FROM=your-email@gmail.com (optional)
 # STRIPE_SECRET_KEY=your-stripe-secret-key
 # STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
-# STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key 
+# STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key
+# GITHUB_TOKEN=your-github-personal-access-token (for Dependabot) 

@@ -16,11 +16,9 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-    # Güvenlik güncellemelerini otomatik merge et
+    # Güncelleme kapsamını sınırla
     allow:
       - dependency-type: "direct"
-    # Güvenlik güncellemelerini otomatik merge et
-    automerge: true
     # Major version güncellemelerini manuel onay için bırak
     ignore:
       - dependency-name: "react"
@@ -35,13 +33,8 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "firebase"
         update-types: ["version-update:semver-major"]
-    # Güvenlik güncellemelerini grupla
+    # Minor ve patch güncellemelerini grupla
     groups:
-      security-updates:
-        patterns:
-          - "*"
-        update-types:
-          - "security"
       minor-patch-updates:
         patterns:
           - "*"
@@ -63,7 +56,7 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    # Güvenlik güncellemelerini hemen yap
+    # PR limitini belirle
     open-pull-requests-limit: 5
     reviewers:
       - "sarperhorata"
@@ -72,11 +65,9 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-    # Güvenlik güncellemelerini otomatik merge et
+    # Güncelleme kapsamını sınırla
     allow:
       - dependency-type: "direct"
-    # Güvenlik güncellemelerini otomatik merge et
-    automerge: true
     # Major version güncellemelerini manuel onay için bırak
     ignore:
       - dependency-name: "fastapi"
@@ -89,13 +80,8 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "sqlalchemy"
         update-types: ["version-update:semver-major"]
-    # Güvenlik güncellemelerini grupla
+    # Minor ve patch güncellemelerini grupla
     groups:
-      security-updates:
-        patterns:
-          - "*"
-        update-types:
-          - "security"
       minor-patch-updates:
         patterns:
           - "*"
@@ -129,8 +115,7 @@ updates:
     commit-message:
       prefix: "ci"
       include: "scope"
-    # Güvenlik güncellemelerini otomatik merge et
-    automerge: true
+    # Otomatik merge workflow ile yönetilir (config dosyasında desteklenmez)
 
   # Docker için ayarlar (eğer varsa)
   - package-ecosystem: "docker"
@@ -151,5 +136,4 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-    # Güvenlik güncellemelerini otomatik merge et
-    automerge: true 
+    # Otomatik merge workflow ile yönetilir (config dosyasında desteklenmez)

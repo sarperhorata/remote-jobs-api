@@ -78,15 +78,7 @@ Dependabot hatalarını düzeltmek ve otomatik dependency güncellemelerini opti
 
 ## 🔄 Gruplandırma Stratejisi
 
-### Security Updates:
-```yaml
-groups:
-  security-updates:
-    patterns:
-      - "*"
-    update-types:
-      - "security"
-```
+Not: Dependabot konfigürasyonunda (YAML) "security" türü için doğrudan bir `update-types` desteği bulunmuyor. Güvenlik PR'larının otomatik birleştirilmesi workflow ile yönetilmektedir. Gruplandırma sadece minor/patch güncellemeleri için kullanılır.
 
 ### Minor/Patch Updates:
 ```yaml

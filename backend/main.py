@@ -1112,6 +1112,19 @@ async def get_user_preferences(
             "salary_range": user.get("preferred_salary_range", ""),
             "skills": user.get("preferred_skills", []),
             "companies": user.get("preferred_companies", []),
+            # Phase 1 extended preferences
+            "followed_companies": user.get("followed_companies", []),
+            "hidden_companies": user.get("hidden_companies", []),
+            "preferred_technologies": user.get("preferred_technologies", []),
+            "blocked_technologies": user.get("blocked_technologies", []),
+            "preferred_sectors": user.get("preferred_sectors", []),
+            "blocked_sectors": user.get("blocked_sectors", []),
+            "language_requirements": user.get("language_requirements", []),
+            "visa_sponsorship_preferred": user.get("visa_sponsorship_preferred", False),
+            "company_size_range": user.get("company_size_range", []),
+            "salary_min": user.get("salary_min"),
+            "salary_max": user.get("salary_max"),
+            "salary_currency": user.get("salary_currency", "USD"),
         }
     except Exception as e:
         logger.error(f"Error getting user preferences: {e}")
@@ -1142,6 +1155,19 @@ async def update_user_preferences(
                     "preferred_salary_range": preferences.get("salary_range", ""),
                     "preferred_skills": preferences.get("skills", []),
                     "preferred_companies": preferences.get("companies", []),
+                    # Phase 1 extended preferences
+                    "followed_companies": preferences.get("followed_companies", []),
+                    "hidden_companies": preferences.get("hidden_companies", []),
+                    "preferred_technologies": preferences.get("preferred_technologies", []),
+                    "blocked_technologies": preferences.get("blocked_technologies", []),
+                    "preferred_sectors": preferences.get("preferred_sectors", []),
+                    "blocked_sectors": preferences.get("blocked_sectors", []),
+                    "language_requirements": preferences.get("language_requirements", []),
+                    "visa_sponsorship_preferred": bool(preferences.get("visa_sponsorship_preferred", False)),
+                    "company_size_range": preferences.get("company_size_range", []),
+                    "salary_min": preferences.get("salary_min"),
+                    "salary_max": preferences.get("salary_max"),
+                    "salary_currency": preferences.get("salary_currency", "USD"),
                     "updated_at": datetime.utcnow(),
                 }
             },

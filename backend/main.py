@@ -34,37 +34,83 @@ else:
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper())
 logger = logging.getLogger(__name__)
 
-# Initialize Sentry for error monitoring
+# Initialize Sentry for error monitoring (production only)
+def _sentry_before_send(event, hint):
+    """Filter noisy/non-critical events to stay within free tier and reduce noise."""
+    try:
+        # Skip health and static endpoints
+        request = event.get("request", {})
+        url = (request.get("url") or "").lower()
+        if any(path in url for path in ["/health", "/api/health", "/metrics", "/favicon.ico", "/robots.txt", "/static/"]):
+            return None
+
+        # Don't record 404/route not found noise
+        log_message = event.get("logentry", {}).get("message", "")
+        if "not found" in log_message.lower():
+            return None
+
+        # Downsample warnings and infos aggressively
+        level = event.get("level")
+        if level == "warning":
+            import os as _os
+            return event if _os.urandom(1)[0] < 51 else None  # ~20% keep
+        if level == "info":
+            import os as _os
+            return event if _os.urandom(1)[0] < 26 else None  # ~10% keep
+
+        # Ignore common browser/client disconnect style noise if present
+        if event.get("exception"):
+            for exc in event["exception"].get("values", []):
+                etype = (exc.get("type") or "").lower()
+                evalue = (exc.get("value") or "").lower()
+                noisy_phrases = [
+                    "clientdisconnect",
+                    "cancellederror",
+                    "connection reset",
+                    "connection aborted",
+                    "timeout",
+                    "network error",
+                ]
+                if any(p in etype or p in evalue for p in noisy_phrases):
+                    return None
+        return event
+    except Exception:
+        # Be safe: never block event on filter failure
+        return event
+
+
 if SENTRY_AVAILABLE and sentry_sdk:
     try:
-        sentry_sdk.init(
-            dsn=os.getenv(
-                "SENTRY_DSN",
-                "https://e307d92640eb7e8b60a7ebabf76db882@o4509547047616512.ingest.us.sentry.io/4509547146575872",
-            ),
-            traces_sample_rate=0.2,  # 20% of transactions for performance monitoring
-            profiles_sample_rate=0.2,  # 20% of profiles for performance monitoring
-            environment=os.getenv(
-                "ENVIRONMENT", "development"
-            ),  # 'development' or 'production'
-            release="buzz2remote@1.0.0",  # App version
-            integrations=[
-                FastApiIntegration(transaction_style="endpoint"),
-                LoggingIntegration(
-                    level=logging.INFO,  # Capture info and above as breadcrumbs
-                    event_level=logging.ERROR,  # Send errors as events
-                ),
-            ],
-            # Do not send 404 errors to Sentry
-            before_send=lambda event, hint: (
-                None if "Not Found" in event.get("logentry", {}).get("message", "") else event
-            ),
-        )
-        logger.info("✅ Sentry initialized successfully")
+        # Only initialize in production and when DSN is provided
+        if os.getenv("ENVIRONMENT") == "production":
+            dsn_env = os.getenv("SENTRY_DSN")
+            if not dsn_env:
+                logger.info("ℹ️ Sentry DSN not set - monitoring disabled")
+            else:
+                sentry_sdk.init(
+                    dsn=dsn_env,
+                    traces_sample_rate=0.05,  # 5% of transactions
+                    profiles_sample_rate=0.05,  # 5% of profiles
+                    environment=os.getenv("ENVIRONMENT", "production"),
+                    release=os.getenv("APP_VERSION", "buzz2remote@1.0.0"),
+                    integrations=[
+                        FastApiIntegration(transaction_style="endpoint"),
+                        LoggingIntegration(
+                            level=logging.INFO,       # breadcrumbs
+                            event_level=logging.ERROR # event threshold
+                        ),
+                    ],
+                    before_send=_sentry_before_send,
+                    send_default_pii=False,
+                    max_breadcrumbs=50,
+                )
+                logger.info("✅ Sentry initialized successfully (production)")
+        else:
+            logger.info("ℹ️ Sentry disabled in non-production environment")
     except Exception as e:
         logger.warning(f"⚠️ Failed to initialize Sentry: {e}")
 else:
-    logger.info("ℹ️ Sentry not available - error monitoring disabled")
+    logger.info("ℹ️ Sentry SDK not available - error monitoring disabled")
 
 # Add project root to path for different environments
 current_dir = os.path.dirname(__file__)
@@ -96,6 +142,7 @@ from backend.routes.profile_auto_fill import router as profile_auto_fill_router
 from backend.routes.salary_estimation import router as salary_estimation_router
 from backend.routes.sentry_webhook import router as sentry_webhook_router
 from backend.routes.skills_extraction import router as skills_extraction_router
+from backend.routes.cv_processing import router as cv_processing_router
 from backend.utils.auth import get_current_user
 
 # Import Telegram bot and scheduler with error handling
@@ -344,6 +391,7 @@ routers_to_include = [
     (ai_services_router, "/api/v1", ["ai-services"]),
     (ai_cv_analysis_router, "/api/v1", ["ai-cv-analysis"]),
     (skills_extraction_router, "/api/v1", ["skills-extraction"]),
+    (cv_processing_router, "", ["cv-processing"]),
     # (backup_router, "", ["backup"]), # Commented out to fix startup issue
     (profile_auto_fill_router, "/api/v1", ["profile-auto-fill"]),
     (fake_job_router, "/api/v1", ["fake-job-detection"]),

@@ -12,10 +12,20 @@ from datetime import datetime, UTC
 from typing import Any, Dict, Optional
 
 from fastapi import HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger(__name__)
+
+# Optional Sentry import
+try:
+    import os as _os
+    import sentry_sdk as _sentry
+    _SENTRY_ENABLED = _os.getenv("ENVIRONMENT") == "production" and bool(_os.getenv("SENTRY_DSN"))
+except Exception:
+    _sentry = None
+    _SENTRY_ENABLED = False
 
 
 class ErrorHandlingMiddleware(BaseHTTPMiddleware):
@@ -46,6 +56,11 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
 
         except HTTPException as exc:
             return await self._handle_http_exception(request, exc, start_time, error_id)
+
+        except RequestValidationError as exc:
+            return await self._handle_validation_exception(
+                request, exc, start_time, error_id
+            )
 
         except Exception as exc:
             return await self._handle_generic_exception(
@@ -135,6 +150,52 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             headers=self._get_error_headers(error_id),
         )
 
+    async def _handle_validation_exception(
+        self, request: Request, exc: RequestValidationError, start_time: float, error_id: str
+    ) -> JSONResponse:
+        """Handle request validation errors as 422 without Sentry noise"""
+
+        duration = time.time() - start_time
+
+        log_data = {
+            "error_id": error_id,
+            "status_code": status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "message": "Request validation failed",
+            "errors": exc.errors(),
+            "path": request.url.path,
+            "method": request.method,
+            "duration_ms": round(duration * 1000, 2),
+            "timestamp": datetime.now(UTC).isoformat(),
+        }
+
+        logger.warning(f"Validation Error: {json.dumps(log_data)}")
+
+        error_response = {
+            "error": {
+                "code": status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "message": "Validation error",
+                "type": "validation_error",
+                "error_id": error_id,
+                "timestamp": datetime.now(UTC).isoformat(),
+                "path": request.url.path,
+                "method": request.method,
+                "details": exc.errors(),
+            }
+        }
+
+        if self._is_development():
+            error_response["debug"] = {
+                "body": (await request.body()).decode(errors="ignore") if hasattr(request, "body") else None,
+                "query_params": dict(request.query_params),
+                "headers": dict(request.headers),
+            }
+
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content=error_response,
+            headers=self._get_error_headers(error_id),
+        )
+
     async def _log_http_exception(
         self, request: Request, exc: HTTPException, duration: float, error_id: str
     ):
@@ -155,6 +216,14 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
         # Log level based on status code
         if exc.status_code >= 500:
             logger.error(f"HTTP {exc.status_code} Error: {json.dumps(log_data)}")
+            # Capture to Sentry only for 5xx in production
+            if _SENTRY_ENABLED and _sentry is not None:
+                with _sentry.push_scope() as scope:
+                    scope.set_tag("error_id", error_id)
+                    scope.set_tag("path", request.url.path)
+                    scope.set_tag("method", request.method)
+                    scope.set_context("http_error", log_data)
+                    _sentry.capture_exception(exc)
         elif exc.status_code >= 400:
             logger.warning(f"HTTP {exc.status_code} Error: {json.dumps(log_data)}")
         else:
@@ -179,6 +248,20 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
         }
 
         logger.error(f"Unhandled Exception: {json.dumps(log_data, indent=2)}")
+        # Capture all unhandled exceptions in production
+        if _SENTRY_ENABLED and _sentry is not None:
+            try:
+                with _sentry.push_scope() as scope:
+                    scope.set_tag("error_id", error_id)
+                    scope.set_tag("path", request.url.path)
+                    scope.set_tag("method", request.method)
+                    scope.set_context("unhandled_exception", {
+                        k: v for k, v in log_data.items() if k != "traceback"
+                    })
+                    _sentry.capture_exception(exc)
+            except Exception:
+                # Never break the app due to monitoring
+                pass
 
     async def _log_error_response(
         self, request: Request, response, start_time: float, error_id: str

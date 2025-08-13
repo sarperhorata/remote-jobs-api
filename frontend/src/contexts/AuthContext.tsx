@@ -179,7 +179,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // Try to fetch user data with token
-      const response = await fetch('/api/auth/me', {
+      const response = await fetch('/api/v1/auth/me', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -232,28 +232,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      const response = await fetch('/api/auth/login', {
+      // Backend expects form-urlencoded: username, password
+      const params = new URLSearchParams();
+      params.set('username', email);
+      params.set('password', password);
+
+      const response = await fetch('/api/v1/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString()
       });
 
       const data = await response.json();
-      
-      if (response.ok) {
-        const userData = data.user || staticMockUser;
-        setUser(userData);
-        localStorage.setItem('token', data.token || 'demo-token');
-        
-        // Set Sentry user context
-        setUserContext({
-          id: userData.id || userData._id,
-          email: userData.email,
-          username: userData.name
-        });
-      } else {
-        throw new Error(data.message || 'Login failed');
+      if (!response.ok) {
+        throw new Error(data.detail || data.message || 'Login failed');
       }
+
+      const accessToken: string = data.access_token;
+      localStorage.setItem('token', accessToken);
+
+      // Fetch user info
+      const meResp = await fetch('/api/v1/auth/me', {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const me = await meResp.json();
+      setUser(me);
+
+      // Set Sentry user context
+      setUserContext({
+        id: me.id || me._id,
+        email: me.email,
+        username: me.full_name || me.email
+      });
     } catch (error) {
       throw error;
     }
@@ -280,20 +290,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      const response = await fetch('/api/auth/signup', {
+      const response = await fetch('/api/v1/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password, marketingConsent: options?.marketingConsent })
       });
 
       const data = await response.json();
-      
-      if (response.ok) {
-        setUser(data.user || { ...staticMockUser, name, email });
-        localStorage.setItem('token', data.token || 'demo-token');
-      } else {
-        throw new Error(data.message || 'Signup failed');
+      if (!response.ok) {
+        throw new Error(data.detail || data.message || 'Signup failed');
       }
+
+      const accessToken: string = data.access_token;
+      localStorage.setItem('token', accessToken);
+
+      // Fetch user info
+      const meResp = await fetch('/api/v1/auth/me', {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const me = await meResp.json();
+      setUser(me);
     } catch (error) {
       throw error;
     }
@@ -328,7 +344,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!token) return;
 
     try {
-      const response = await fetch('/api/auth/me', {
+      const response = await fetch('/api/v1/auth/me', {
         headers: { Authorization: `Bearer ${token}` }
       });
 

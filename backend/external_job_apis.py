@@ -77,31 +77,36 @@ class ServiceNotifier:
             )
 
     def _send_message(self, message: str):
-        """Send message to Telegram with better error handling"""
-        if not self.enabled:
-            logger.info(f"Notification (disabled): {message}")
-            return
+        """Send message to Telegram with better error handling (DISABLED - only logs)"""
+        # Log the message instead of sending to Telegram
+        logger.info(f"TELEGRAM NOTIFICATION (DISABLED): {message}")
+        return
 
-        try:
-            url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
-            payload = {
-                "chat_id": self.telegram_chat_id,
-                "text": message,
-                "parse_mode": "HTML",
-                "disable_web_page_preview": True,
-            }
+        # Original code commented out to disable Telegram notifications
+        # if not self.enabled:
+        #     logger.info(f"Notification (disabled): {message}")
+        #     return
 
-            response = requests.post(url, json=payload, timeout=10)
+        # try:
+        #     url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
+        #     payload = {
+        #         "chat_id": self.telegram_chat_id,
+        #         "text": message,
+        #         "parse_mode": "HTML",
+        #         "disable_web_page_preview": True,
+        #     }
 
-            if response.status_code == 200:
-                logger.debug("✅ Telegram notification sent successfully")
-            else:
-                logger.error(
-                    f"❌ Telegram notification failed: {response.status_code} - {response.text}"
-                )
+        #     response = requests.post(url, json=payload, timeout=10)
 
-        except Exception as e:
-            logger.error(f"❌ Error sending Telegram notification: {str(e)}")
+        #     if response.status_code == 200:
+        #         logger.debug("✅ Telegram notification sent successfully")
+        #     else:
+        #         logger.error(
+        #             f"❌ Telegram notification failed: {response.status_code} - {response.text}"
+        #         )
+
+        # except Exception as e:
+        #     logger.error(f"❌ Error sending Telegram notification: {str(e)}")
 
     def send_crawler_summary(self, crawler_data: Dict[str, Any]):
         """Send comprehensive crawler summary"""

@@ -4,6 +4,24 @@ import '@testing-library/jest-dom';
 // Mock fetch globally
 global.fetch = jest.fn();
 
+// Mock React 19 specific features
+if (typeof window !== 'undefined') {
+  // Mock use hook for React 19
+  (window as any).React = {
+    ...(window as any).React,
+    use: jest.fn()
+  };
+}
+
+// Mock React Router for tests
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => jest.fn(),
+  useLocation: () => ({ pathname: '/', search: '', hash: '', state: null }),
+  useParams: () => ({}),
+  useSearchParams: () => [new URLSearchParams(), jest.fn()],
+}));
+
 // Mock window.matchMedia for Jest environment
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

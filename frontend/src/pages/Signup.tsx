@@ -14,6 +14,14 @@ const Signup: React.FC = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordHints, setPasswordHints] = useState({
+    length: false,
+    upper: false,
+    lower: false,
+    digit: false,
+    special: false,
+  });
   const [isLoading, setIsLoading] = useState(false);
   const { signup } = useAuth();
   const navigate = useNavigate();
@@ -23,10 +31,47 @@ const Signup: React.FC = () => {
   const locationState = location.state as LocationState;
   const from = locationState?.from?.pathname || '/dashboard';
   
+  const isValidEmail = (value: string) => {
+    // RFC5322-basics, pragmatic
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    return re.test(value.trim());
+  };
+
+  const evaluatePassword = (value: string) => {
+    setPasswordHints({
+      length: value.length >= 8,
+      upper: /[A-Z]/.test(value),
+      lower: /[a-z]/.test(value),
+      digit: /\d/.test(value),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(value),
+    });
+  };
+
+  const canSubmit = () => {
+    const allRequiredRules = passwordHints.length && passwordHints.upper && passwordHints.lower && passwordHints.digit;
+    return (
+      isValidEmail(email) &&
+      allRequiredRules &&
+      password === confirmPassword &&
+      name.trim().length > 0
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Form validation
+    if (!isValidEmail(email)) {
+      setEmailError('Please enter a valid email like user@example.com');
+      return;
+    }
+    setEmailError('');
+
+    // Password rules (mirror backend)
+    if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
+      return setError('Password must be at least 8 chars and include uppercase, lowercase and a digit');
+    }
+
     if (password !== confirmPassword) {
       return setError('Passwords do not match');
     }
@@ -98,8 +143,14 @@ const Signup: React.FC = () => {
                 className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
                 placeholder="Email address"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (emailError) setEmailError('');
+                }}
               />
+              {emailError && (
+                <p className="mt-1 text-xs text-red-600">{emailError}</p>
+              )}
             </div>
             <div>
               <label htmlFor="password" className="sr-only">
@@ -114,8 +165,30 @@ const Signup: React.FC = () => {
                 className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
                 placeholder="Password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setPassword(v);
+                  evaluatePassword(v);
+                }}
               />
+              {/* Password rules checklist (backend-aligned) */}
+              <ul className="mt-2 space-y-1 text-xs">
+                <li className={passwordHints.length ? 'text-green-600' : 'text-gray-500'}>
+                  • At least 8 characters
+                </li>
+                <li className={passwordHints.upper ? 'text-green-600' : 'text-gray-500'}>
+                  • Contains an uppercase letter (A-Z)
+                </li>
+                <li className={passwordHints.lower ? 'text-green-600' : 'text-gray-500'}>
+                  • Contains a lowercase letter (a-z)
+                </li>
+                <li className={passwordHints.digit ? 'text-green-600' : 'text-gray-500'}>
+                  • Contains a digit (0-9)
+                </li>
+                <li className={passwordHints.special ? 'text-emerald-600' : 'text-gray-400'}>
+                  • Special character (optional)
+                </li>
+              </ul>
             </div>
             <div>
               <label htmlFor="confirm-password" className="sr-only">
@@ -138,7 +211,7 @@ const Signup: React.FC = () => {
           <div>
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !canSubmit()}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
             >
               {isLoading ? 'Creating account...' : 'Sign up'}

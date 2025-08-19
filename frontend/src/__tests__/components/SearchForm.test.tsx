@@ -1,145 +1,365 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
+import { ThemeProvider } from '../../contexts/ThemeContext';
 import SearchForm from '../../components/SearchForm';
-import '@testing-library/jest-dom';
-import userEvent from '@testing-library/user-event';
 
-// Mock useNavigate
-const mockNavigate = jest.fn();
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useNavigate: () => mockNavigate,
+// Mock fetch
+const mockFetch = jest.fn();
+global.fetch = mockFetch;
+
+// Mock AuthContext
+const mockAuthContext = {
+  isAuthenticated: false,
+  user: null,
+  login: jest.fn(),
+  logout: jest.fn(),
+  signup: jest.fn(),
+  isLoading: false
+};
+
+jest.mock('../../contexts/AuthContext', () => ({
+  useAuth: () => mockAuthContext
 }));
 
-// No need to mock API anymore since we use static data
-const renderWithRouter = (component: React.ReactElement) => {
+const renderWithProviders = (component: React.ReactElement) => {
   return render(
     <BrowserRouter>
-      {component}
+      <ThemeProvider>
+        {component}
+      </ThemeProvider>
     </BrowserRouter>
   );
 };
 
 describe('SearchForm', () => {
+  const mockOnSearch = jest.fn();
+
   beforeEach(() => {
-    jest.clearAllMocks();
+    mockFetch.mockClear();
+    mockOnSearch.mockClear();
   });
 
-  it('renders search form with basic elements', () => {
-    renderWithRouter(<SearchForm />);
-    
-    // Check for basic form elements - use actual button text
-    expect(screen.getByText('Find Remote Jobs')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /find remote jobs/i })).toBeInTheDocument();
+  it('renders search form with all fields', () => {
+    renderWithProviders(<SearchForm onSearch={mockOnSearch} />);
+
+    expect(screen.getByPlaceholderText('Job title, keywords, or company')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Location or remote')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /advanced filters/i })).toBeInTheDocument();
   });
 
-  it('renders position autocomplete input', () => {
-    renderWithRouter(<SearchForm />);
-    
-    // Look for the MUI autocomplete input
-    const positionInputs = screen.getAllByRole('combobox');
-    expect(positionInputs.length).toBeGreaterThan(0);
-  });
+  it('handles basic search submission', async () => {
+    renderWithProviders(<SearchForm onSearch={mockOnSearch} />);
 
-  it('renders location autocomplete input with Turkey included', async () => {
-    renderWithRouter(<SearchForm />);
-    
-    // Check that we have autocomplete inputs
-    const comboboxes = screen.getAllByRole('combobox');
-    expect(comboboxes.length).toBe(2); // Position and Location
+    const keywordInput = screen.getByPlaceholderText('Job title, keywords, or company');
+    const locationInput = screen.getByPlaceholderText('Location or remote');
+    const searchButton = screen.getByRole('button', { name: /search/i });
 
-    await waitFor(() => {
-      expect(comboboxes[1]).toBeInTheDocument();
-    });
-  });
-
-  it('shows warning when user tries to search without selecting position', async () => {
-    renderWithRouter(<SearchForm />);
-    
-    const searchButton = screen.getByRole('button', { name: /find remote jobs/i });
+    fireEvent.change(keywordInput, { target: { value: 'React Developer' } });
+    fireEvent.change(locationInput, { target: { value: 'Remote' } });
     fireEvent.click(searchButton);
-    
-    // Should show warning
+
     await waitFor(() => {
-      expect(screen.getByText(/please select a job position/i)).toBeInTheDocument();
+      expect(mockOnSearch).toHaveBeenCalledWith({
+        keywords: 'React Developer',
+        location: 'Remote',
+        jobType: '',
+        experienceLevel: '',
+        salaryMin: '',
+        salaryMax: '',
+        isRemote: false,
+        skills: []
+      });
     });
   });
 
-  it('shows warning when user types position manually and presses Enter', async () => {
-    const user = userEvent.setup();
-    renderWithRouter(<SearchForm />);
-    
-    // Type in position input
-    const positionInput = screen.getAllByRole('combobox')[0];
-    await user.type(positionInput, 'Software');
-    await user.keyboard('{Enter}');
-    
-    // Should show warning about selecting from dropdown
-    await waitFor(() => {
-      expect(screen.getByText(/please select a position from the dropdown/i)).toBeInTheDocument();
-    });
-  });
+  it('handles empty search submission', async () => {
+    renderWithProviders(<SearchForm onSearch={mockOnSearch} />);
 
-  it('loads static position data on mount', async () => {
-    renderWithRouter(<SearchForm />);
-    
-    // No API call needed, data should be loaded immediately
-    await waitFor(() => {
-      // Component should render without errors
-      expect(screen.getByText('Find Remote Jobs')).toBeInTheDocument();
-    });
-  });
-
-  it('displays position and location labels', () => {
-    renderWithRouter(<SearchForm />);
-    
-    // Check for MUI labels - use getAllByText for multiple elements
-    expect(screen.getAllByText('Please enter job title')[0]).toBeInTheDocument();
-    expect(screen.getAllByText('Location')[0]).toBeInTheDocument();
-  });
-
-  it('uses static position data (no API dependency)', async () => {
-    renderWithRouter(<SearchForm />);
-    
-    // Form should be functional with static data
-    expect(screen.getByText('Find Remote Jobs')).toBeInTheDocument();
-    
-    // Should not make any API calls
-    await waitFor(() => {
-      expect(screen.getByText('Find Remote Jobs')).toBeInTheDocument();
-    });
-  });
-
-  it('closes warning when user clicks close button', async () => {
-    const user = userEvent.setup();
-    renderWithRouter(<SearchForm />);
-    
-    // Trigger warning by clicking search without selection
-    const searchButton = screen.getByRole('button', { name: /find remote jobs/i });
+    const searchButton = screen.getByRole('button', { name: /search/i });
     fireEvent.click(searchButton);
-    
-    // Wait for warning to appear
+
     await waitFor(() => {
-      expect(screen.getByText(/please select a job position/i)).toBeInTheDocument();
-    });
-    
-    // Look for close button in the alert and click it
-    const closeButton = screen.getByRole('button', { name: /close/i });
-    await user.click(closeButton);
-    
-    // Warning should disappear
-    await waitFor(() => {
-      expect(screen.queryByText(/please select a job position/i)).not.toBeInTheDocument();
+      expect(mockOnSearch).toHaveBeenCalledWith({
+        keywords: '',
+        location: '',
+        jobType: '',
+        experienceLevel: '',
+        salaryMin: '',
+        salaryMax: '',
+        isRemote: false,
+        skills: []
+      });
     });
   });
 
-  it('has positions sorted by count descending then alphabetically', async () => {
-    renderWithRouter(<SearchForm />);
-    
-    // The first position should be "Software Engineer" with count 180 (highest count)
-    // We can't easily test the dropdown options without opening it, 
-    // but we can verify the component renders correctly
-    expect(screen.getByText('Find Remote Jobs')).toBeInTheDocument();
+  it('toggles advanced filters', () => {
+    renderWithProviders(<SearchForm onSearch={mockOnSearch} />);
+
+    const advancedButton = screen.getByRole('button', { name: /advanced filters/i });
+    fireEvent.click(advancedButton);
+
+    // Should show advanced filter fields
+    expect(screen.getByLabelText('Job Type')).toBeInTheDocument();
+    expect(screen.getByLabelText('Experience Level')).toBeInTheDocument();
+    expect(screen.getByLabelText('Minimum Salary')).toBeInTheDocument();
+    expect(screen.getByLabelText('Maximum Salary')).toBeInTheDocument();
+    expect(screen.getByLabelText('Remote Only')).toBeInTheDocument();
+  });
+
+  it('handles advanced search with all filters', async () => {
+    renderWithProviders(<SearchForm onSearch={mockOnSearch} />);
+
+    // Open advanced filters
+    const advancedButton = screen.getByRole('button', { name: /advanced filters/i });
+    fireEvent.click(advancedButton);
+
+    // Fill in all fields
+    const keywordInput = screen.getByPlaceholderText('Job title, keywords, or company');
+    const locationInput = screen.getByPlaceholderText('Location or remote');
+    const jobTypeSelect = screen.getByLabelText('Job Type');
+    const experienceSelect = screen.getByLabelText('Experience Level');
+    const salaryMinInput = screen.getByLabelText('Minimum Salary');
+    const salaryMaxInput = screen.getByLabelText('Maximum Salary');
+    const remoteCheckbox = screen.getByLabelText('Remote Only');
+    const searchButton = screen.getByRole('button', { name: /search/i });
+
+    fireEvent.change(keywordInput, { target: { value: 'Frontend Developer' } });
+    fireEvent.change(locationInput, { target: { value: 'United States' } });
+    fireEvent.change(jobTypeSelect, { target: { value: 'Full-time' } });
+    fireEvent.change(experienceSelect, { target: { value: 'Senior' } });
+    fireEvent.change(salaryMinInput, { target: { value: '80000' } });
+    fireEvent.change(salaryMaxInput, { target: { value: '120000' } });
+    fireEvent.click(remoteCheckbox);
+    fireEvent.click(searchButton);
+
+    await waitFor(() => {
+      expect(mockOnSearch).toHaveBeenCalledWith({
+        keywords: 'Frontend Developer',
+        location: 'United States',
+        jobType: 'Full-time',
+        experienceLevel: 'Senior',
+        salaryMin: '80000',
+        salaryMax: '120000',
+        isRemote: true,
+        skills: []
+      });
+    });
+  });
+
+  it('handles skills selection', async () => {
+    renderWithProviders(<SearchForm onSearch={mockOnSearch} />);
+
+    // Open advanced filters
+    const advancedButton = screen.getByRole('button', { name: /advanced filters/i });
+    fireEvent.click(advancedButton);
+
+    // Mock skills suggestions
+    const mockSkills = ['React', 'TypeScript', 'JavaScript', 'Node.js'];
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockSkills
+    });
+
+    const skillsInput = screen.getByPlaceholderText('Add skills...');
+    fireEvent.change(skillsInput, { target: { value: 'React' } });
+
+    // Wait for suggestions to appear
+    await waitFor(() => {
+      expect(screen.getByText('React')).toBeInTheDocument();
+    });
+
+    // Select a skill
+    fireEvent.click(screen.getByText('React'));
+
+    // Should show selected skill as a tag
+    expect(screen.getByText('React')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /remove react/i })).toBeInTheDocument();
+  });
+
+  it('removes selected skills', async () => {
+    renderWithProviders(<SearchForm onSearch={mockOnSearch} />);
+
+    // Open advanced filters
+    const advancedButton = screen.getByRole('button', { name: /advanced filters/i });
+    fireEvent.click(advancedButton);
+
+    // Mock skills suggestions
+    const mockSkills = ['React', 'TypeScript'];
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockSkills
+    });
+
+    const skillsInput = screen.getByPlaceholderText('Add skills...');
+    fireEvent.change(skillsInput, { target: { value: 'React' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('React')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('React'));
+
+    // Remove the skill
+    const removeButton = screen.getByRole('button', { name: /remove react/i });
+    fireEvent.click(removeButton);
+
+    expect(screen.queryByText('React')).not.toBeInTheDocument();
+  });
+
+  it('handles salary validation', async () => {
+    renderWithProviders(<SearchForm onSearch={mockOnSearch} />);
+
+    // Open advanced filters
+    const advancedButton = screen.getByRole('button', { name: /advanced filters/i });
+    fireEvent.click(advancedButton);
+
+    const salaryMinInput = screen.getByLabelText('Minimum Salary');
+    const salaryMaxInput = screen.getByLabelText('Maximum Salary');
+
+    // Test invalid salary range (min > max)
+    fireEvent.change(salaryMinInput, { target: { value: '120000' } });
+    fireEvent.change(salaryMaxInput, { target: { value: '80000' } });
+
+    const searchButton = screen.getByRole('button', { name: /search/i });
+    fireEvent.click(searchButton);
+
+    // Should show validation error
+    await waitFor(() => {
+      expect(screen.getByText('Minimum salary cannot be greater than maximum salary')).toBeInTheDocument();
+    });
+  });
+
+  it('handles form reset', () => {
+    renderWithProviders(<SearchForm onSearch={mockOnSearch} />);
+
+    const keywordInput = screen.getByPlaceholderText('Job title, keywords, or company');
+    const locationInput = screen.getByPlaceholderText('Location or remote');
+
+    fireEvent.change(keywordInput, { target: { value: 'React Developer' } });
+    fireEvent.change(locationInput, { target: { value: 'Remote' } });
+
+    const resetButton = screen.getByRole('button', { name: /reset/i });
+    fireEvent.click(resetButton);
+
+    expect(keywordInput).toHaveValue('');
+    expect(locationInput).toHaveValue('');
+  });
+
+  it('handles keyboard navigation', async () => {
+    renderWithProviders(<SearchForm onSearch={mockOnSearch} />);
+
+    const keywordInput = screen.getByPlaceholderText('Job title, keywords, or company');
+    const searchButton = screen.getByRole('button', { name: /search/i });
+
+    fireEvent.change(keywordInput, { target: { value: 'React Developer' } });
+    fireEvent.keyDown(keywordInput, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(mockOnSearch).toHaveBeenCalled();
+    });
+  });
+
+  it('shows loading state during search', async () => {
+    renderWithProviders(<SearchForm onSearch={mockOnSearch} />);
+
+    const keywordInput = screen.getByPlaceholderText('Job title, keywords, or company');
+    const searchButton = screen.getByRole('button', { name: /search/i });
+
+    fireEvent.change(keywordInput, { target: { value: 'React Developer' } });
+    fireEvent.click(searchButton);
+
+    // Should show loading state
+    expect(screen.getByText('Searching...')).toBeInTheDocument();
+    expect(searchButton).toBeDisabled();
+  });
+
+  it('handles search suggestions', async () => {
+    renderWithProviders(<SearchForm onSearch={mockOnSearch} />);
+
+    const keywordInput = screen.getByPlaceholderText('Job title, keywords, or company');
+
+    // Mock suggestions API
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ['React Developer', 'React Native Developer', 'Frontend Developer']
+    });
+
+    fireEvent.change(keywordInput, { target: { value: 'React' } });
+
+    // Wait for suggestions to appear
+    await waitFor(() => {
+      expect(screen.getByText('React Developer')).toBeInTheDocument();
+      expect(screen.getByText('React Native Developer')).toBeInTheDocument();
+    });
+
+    // Click on a suggestion
+    fireEvent.click(screen.getByText('React Developer'));
+
+    expect(keywordInput).toHaveValue('React Developer');
+  });
+
+  it('handles location autocomplete', async () => {
+    renderWithProviders(<SearchForm onSearch={mockOnSearch} />);
+
+    const locationInput = screen.getByPlaceholderText('Location or remote');
+
+    // Mock location suggestions
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ['New York, NY', 'San Francisco, CA', 'Remote']
+    });
+
+    fireEvent.change(locationInput, { target: { value: 'New' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('New York, NY')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('New York, NY'));
+
+    expect(locationInput).toHaveValue('New York, NY');
+  });
+
+  it('handles API errors gracefully', async () => {
+    renderWithProviders(<SearchForm onSearch={mockOnSearch} />);
+
+    const keywordInput = screen.getByPlaceholderText('Job title, keywords, or company');
+
+    // Mock API error
+    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+    fireEvent.change(keywordInput, { target: { value: 'React' } });
+
+    // Should not crash and should not show suggestions
+    await waitFor(() => {
+      expect(screen.queryByText('React Developer')).not.toBeInTheDocument();
+    });
+  });
+
+  it('applies custom className prop', () => {
+    renderWithProviders(<SearchForm onSearch={mockOnSearch} className="custom-search-form" />);
+
+    const form = screen.getByRole('form');
+    expect(form).toHaveClass('custom-search-form');
+  });
+
+  it('handles initial values', () => {
+    const initialValues = {
+      keywords: 'React Developer',
+      location: 'Remote',
+      jobType: 'Full-time',
+      experienceLevel: 'Senior',
+      salaryMin: '80000',
+      salaryMax: '120000',
+      isRemote: true,
+      skills: ['React', 'TypeScript']
+    };
+
+    renderWithProviders(<SearchForm onSearch={mockOnSearch} initialValues={initialValues} />);
+
+    expect(screen.getByDisplayValue('React Developer')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Remote')).toBeInTheDocument();
   });
 }); 

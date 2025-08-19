@@ -29,43 +29,88 @@ if SENTRY_AVAILABLE:
 else:
     FastApiIntegration = None
     LoggingIntegration = None
-from starlette.middleware.sessions import SessionMiddleware
 
 # Configure logging first
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper())
 logger = logging.getLogger(__name__)
 
-# Initialize Sentry for error monitoring
+# Initialize Sentry for error monitoring (production only)
+def _sentry_before_send(event, hint):
+    """Filter noisy/non-critical events to stay within free tier and reduce noise."""
+    try:
+        # Skip health and static endpoints
+        request = event.get("request", {})
+        url = (request.get("url") or "").lower()
+        if any(path in url for path in ["/health", "/api/health", "/metrics", "/favicon.ico", "/robots.txt", "/static/"]):
+            return None
+
+        # Don't record 404/route not found noise
+        log_message = event.get("logentry", {}).get("message", "")
+        if "not found" in log_message.lower():
+            return None
+
+        # Downsample warnings and infos aggressively
+        level = event.get("level")
+        if level == "warning":
+            import os as _os
+            return event if _os.urandom(1)[0] < 51 else None  # ~20% keep
+        if level == "info":
+            import os as _os
+            return event if _os.urandom(1)[0] < 26 else None  # ~10% keep
+
+        # Ignore common browser/client disconnect style noise if present
+        if event.get("exception"):
+            for exc in event["exception"].get("values", []):
+                etype = (exc.get("type") or "").lower()
+                evalue = (exc.get("value") or "").lower()
+                noisy_phrases = [
+                    "clientdisconnect",
+                    "cancellederror",
+                    "connection reset",
+                    "connection aborted",
+                    "timeout",
+                    "network error",
+                ]
+                if any(p in etype or p in evalue for p in noisy_phrases):
+                    return None
+        return event
+    except Exception:
+        # Be safe: never block event on filter failure
+        return event
+
+
 if SENTRY_AVAILABLE and sentry_sdk:
     try:
-        sentry_sdk.init(
-            dsn=os.getenv(
-                "SENTRY_DSN",
-                "https://e307d92640eb7e8b60a7ebabf76db882@o4509547047616512.ingest.us.sentry.io/4509547146575872",
-            ),
-            traces_sample_rate=0.2,  # 20% of transactions for performance monitoring
-            profiles_sample_rate=0.2,  # 20% of profiles for performance monitoring
-            environment=os.getenv(
-                "ENVIRONMENT", "development"
-            ),  # 'development' or 'production'
-            release="buzz2remote@1.0.0",  # App version
-            integrations=[
-                FastApiIntegration(transaction_style="endpoint"),
-                LoggingIntegration(
-                    level=logging.INFO,  # Capture info and above as breadcrumbs
-                    event_level=logging.ERROR,  # Send errors as events
-                ),
-            ],
-            # Do not send 404 errors to Sentry
-            before_send=lambda event, hint: (
-                None if "Not Found" in event.get("logentry", {}).get("message", "") else event
-            ),
-        )
-        logger.info("✅ Sentry initialized successfully")
+        # Only initialize in production and when DSN is provided
+        if os.getenv("ENVIRONMENT") == "production":
+            dsn_env = os.getenv("SENTRY_DSN")
+            if not dsn_env:
+                logger.info("ℹ️ Sentry DSN not set - monitoring disabled")
+            else:
+                sentry_sdk.init(
+                    dsn=dsn_env,
+                    traces_sample_rate=0.05,  # 5% of transactions
+                    profiles_sample_rate=0.05,  # 5% of profiles
+                    environment=os.getenv("ENVIRONMENT", "production"),
+                    release=os.getenv("APP_VERSION", "buzz2remote@1.0.0"),
+                    integrations=[
+                        FastApiIntegration(transaction_style="endpoint"),
+                        LoggingIntegration(
+                            level=logging.INFO,       # breadcrumbs
+                            event_level=logging.ERROR # event threshold
+                        ),
+                    ],
+                    before_send=_sentry_before_send,
+                    send_default_pii=False,
+                    max_breadcrumbs=50,
+                )
+                logger.info("✅ Sentry initialized successfully (production)")
+        else:
+            logger.info("ℹ️ Sentry disabled in non-production environment")
     except Exception as e:
         logger.warning(f"⚠️ Failed to initialize Sentry: {e}")
 else:
-    logger.info("ℹ️ Sentry not available - error monitoring disabled")
+    logger.info("ℹ️ Sentry SDK not available - error monitoring disabled")
 
 # Add project root to path for different environments
 current_dir = os.path.dirname(__file__)
@@ -80,13 +125,15 @@ from backend.database.db import (close_db_connections, get_async_db,
                                  init_database)
 from backend.routes import (ads, applications, auth, companies, jobs,
                             notification_routes, onboarding, payment, profile,
-                            translation, monitor)
+                            translation, monitor, performance)
 from backend.routes.ai_cv_analysis import router as ai_cv_analysis_router
 from backend.routes.ai_recommendations import router as ai_router
 from backend.routes.ai_services import router as ai_services_router
 from backend.routes.auto_apply import router as auto_apply_router
 # from backend.routes.backup import router as backup_router
 from backend.routes.cronjobs import router as cronjobs_router
+from backend.routes.cron import router as cron_router
+from backend.routes.cron_external import router as cron_external_router
 from backend.routes.email_test import router as email_test_router
 from backend.routes.fake_job_detection import router as fake_job_router
 from backend.routes.legal import router as legal_router
@@ -95,6 +142,7 @@ from backend.routes.profile_auto_fill import router as profile_auto_fill_router
 from backend.routes.salary_estimation import router as salary_estimation_router
 from backend.routes.sentry_webhook import router as sentry_webhook_router
 from backend.routes.skills_extraction import router as skills_extraction_router
+from backend.routes.cv_processing import router as cv_processing_router
 from backend.utils.auth import get_current_user
 
 # Import Telegram bot and scheduler with error handling
@@ -315,10 +363,7 @@ from backend.middleware.performance_monitoring import initialize_performance_mon
 performance_middleware = initialize_performance_monitoring(app)
 app.add_middleware(type(performance_middleware))
 
-# Add session middleware
-app.add_middleware(
-    SessionMiddleware, secret_key=os.getenv("SESSION_SECRET_KEY", "a_very_secret_key")
-)
+# Session middleware removed - not needed
 
 # Mount static files for admin panel if it exists
 admin_static_path = os.path.join(os.path.dirname(__file__), "admin_panel", "static")
@@ -346,6 +391,7 @@ routers_to_include = [
     (ai_services_router, "/api/v1", ["ai-services"]),
     (ai_cv_analysis_router, "/api/v1", ["ai-cv-analysis"]),
     (skills_extraction_router, "/api/v1", ["skills-extraction"]),
+    (cv_processing_router, "", ["cv-processing"]),
     # (backup_router, "", ["backup"]), # Commented out to fix startup issue
     (profile_auto_fill_router, "/api/v1", ["profile-auto-fill"]),
     (fake_job_router, "/api/v1", ["fake-job-detection"]),
@@ -353,8 +399,19 @@ routers_to_include = [
     (email_test_router, "/email-test", ["email-test"]),
     (salary_estimation_router, "/api/v1/salary", ["salary-estimation"]),
     (cronjobs_router, "", ["cronjobs"]),
+    (cron_router, "", ["cron"]),
+    (cron_external_router, "", ["cron-external"]),
     (monitor.router, "", ["monitoring"]),
+    (performance.router, "", ["performance"]),
 ]
+
+# Include Glassdoor router
+try:
+    from backend.routes.glassdoor import router as glassdoor_router
+    routers_to_include.append((glassdoor_router, "", ["glassdoor"]))
+    logger.info("Glassdoor router successfully included.")
+except ImportError as e:
+    logger.warning(f"Glassdoor router not available: {str(e)}")
 
 # Include admin cleanup router
 try:
@@ -1055,6 +1112,19 @@ async def get_user_preferences(
             "salary_range": user.get("preferred_salary_range", ""),
             "skills": user.get("preferred_skills", []),
             "companies": user.get("preferred_companies", []),
+            # Phase 1 extended preferences
+            "followed_companies": user.get("followed_companies", []),
+            "hidden_companies": user.get("hidden_companies", []),
+            "preferred_technologies": user.get("preferred_technologies", []),
+            "blocked_technologies": user.get("blocked_technologies", []),
+            "preferred_sectors": user.get("preferred_sectors", []),
+            "blocked_sectors": user.get("blocked_sectors", []),
+            "language_requirements": user.get("language_requirements", []),
+            "visa_sponsorship_preferred": user.get("visa_sponsorship_preferred", False),
+            "company_size_range": user.get("company_size_range", []),
+            "salary_min": user.get("salary_min"),
+            "salary_max": user.get("salary_max"),
+            "salary_currency": user.get("salary_currency", "USD"),
         }
     except Exception as e:
         logger.error(f"Error getting user preferences: {e}")
@@ -1085,6 +1155,19 @@ async def update_user_preferences(
                     "preferred_salary_range": preferences.get("salary_range", ""),
                     "preferred_skills": preferences.get("skills", []),
                     "preferred_companies": preferences.get("companies", []),
+                    # Phase 1 extended preferences
+                    "followed_companies": preferences.get("followed_companies", []),
+                    "hidden_companies": preferences.get("hidden_companies", []),
+                    "preferred_technologies": preferences.get("preferred_technologies", []),
+                    "blocked_technologies": preferences.get("blocked_technologies", []),
+                    "preferred_sectors": preferences.get("preferred_sectors", []),
+                    "blocked_sectors": preferences.get("blocked_sectors", []),
+                    "language_requirements": preferences.get("language_requirements", []),
+                    "visa_sponsorship_preferred": bool(preferences.get("visa_sponsorship_preferred", False)),
+                    "company_size_range": preferences.get("company_size_range", []),
+                    "salary_min": preferences.get("salary_min"),
+                    "salary_max": preferences.get("salary_max"),
+                    "salary_currency": preferences.get("salary_currency", "USD"),
                     "updated_at": datetime.utcnow(),
                 }
             },
@@ -1628,3 +1711,14 @@ async def cron_test_timeout(request: Request):
             "message": str(e),
             "timestamp": datetime.utcnow().isoformat(),
         }
+
+# Start the server
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8001,
+        reload=True,
+        log_level="info"
+    )

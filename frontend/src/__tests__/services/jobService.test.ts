@@ -1,117 +1,117 @@
-import { 
-  searchJobs, 
-  getJobById, 
-  getJobsByCompany, 
-  getSavedJobs,
-  saveJob,
-  unsaveJob,
-  applyToJob,
-  getJobRecommendations
-} from '../../services/jobService';
+import { jobService } from '../../services/AllServices';
 
 // Mock fetch
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
 // Mock localStorage
-const localStorageMock = {
-  getItem: jest.fn(() => 'mock-token'),
+const mockLocalStorage = {
+  getItem: jest.fn(),
   setItem: jest.fn(),
   removeItem: jest.fn(),
-  clear: jest.fn(),
 };
-
-// Mock window.localStorage
 Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock,
-  writable: true
+  value: mockLocalStorage,
+  writable: true,
 });
 
-describe('jobService', () => {
+describe('JobService', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
     mockFetch.mockClear();
-    // Reset localStorage mock
-    localStorageMock.getItem.mockReturnValue('mock-token');
-    localStorageMock.setItem.mockClear();
-    localStorageMock.removeItem.mockClear();
-    localStorageMock.clear.mockClear();
+    mockLocalStorage.getItem.mockClear();
+    mockLocalStorage.setItem.mockClear();
+    mockLocalStorage.removeItem.mockClear();
   });
 
-  describe('searchJobs', () => {
-    test('successfully searches jobs with filters', async () => {
+  describe('getJobs', () => {
+    it('fetches jobs successfully', async () => {
       const mockJobs = [
         {
-          id: '1',
-          title: 'React Developer',
-          company: 'Tech Corp',
+          _id: '1',
+          title: 'Senior Frontend Developer',
+          company: { name: 'TechCorp' },
           location: 'Remote',
-          salary: '$80k - $120k'
+          job_type: 'Full-time',
+          salary_min: 80000,
+          salary_max: 120000,
+          created_at: '2024-01-15T10:00:00Z'
         }
       ];
 
-      const mockResponse = {
-        jobs: mockJobs,
-        total: 1,
-        page: 1,
-        total_pages: 1
-      };
-
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => mockResponse
+        json: async () => mockJobs
       });
 
-      const filters = {
-        query: 'react',
-        location: 'remote',
-        jobType: 'full-time',
-        workType: 'remote'
-      };
-
-      const result = await searchJobs(filters, 1);
+      const result = await jobService.getJobs();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('http://localhost:8001/api/v1/jobs/search'),
+        expect.stringContaining('/api/jobs'),
         expect.objectContaining({
           method: 'GET',
           headers: expect.objectContaining({
-            'Authorization': 'Bearer mock-token'
+            'Content-Type': 'application/json'
           })
         })
       );
 
-      expect(result).toEqual(mockResponse);
+      expect(result).toEqual(mockJobs);
     });
 
-    test('handles search error', async () => {
+    it('fetches jobs with filters', async () => {
+      const filters = {
+        keywords: 'React',
+        location: 'Remote',
+        jobType: 'Full-time',
+        experienceLevel: 'Senior',
+        salaryMin: 80000,
+        salaryMax: 120000,
+        isRemote: true,
+        skills: ['React', 'TypeScript']
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => []
+      });
+
+      await jobService.getJobs(filters);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/jobs?keywords=React&location=Remote&jobType=Full-time&experienceLevel=Senior&salaryMin=80000&salaryMax=120000&isRemote=true&skills=React,TypeScript'),
+        expect.any(Object)
+      );
+    });
+
+    it('handles API error', async () => {
+      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+      await expect(jobService.getJobs()).rejects.toThrow('Network error');
+    });
+
+    it('handles non-ok response', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
-        json: async () => ({ detail: 'Internal server error' })
+        statusText: 'Internal Server Error'
       });
 
-      await expect(searchJobs({}, 1)).rejects.toThrow('Internal server error');
-    });
-
-    test('handles network error', async () => {
-      mockFetch.mockRejectedValueOnce(new Error('Network error'));
-
-      await expect(searchJobs({}, 1)).rejects.toThrow('Network error');
+      await expect(jobService.getJobs()).rejects.toThrow('Failed to fetch jobs');
     });
   });
 
   describe('getJobById', () => {
-    test('successfully gets job by id', async () => {
+    it('fetches job by ID successfully', async () => {
       const mockJob = {
-        id: '1',
-        title: 'React Developer',
-        company: 'Tech Corp',
+        _id: '1',
+        title: 'Senior Frontend Developer',
+        company: { name: 'TechCorp' },
         location: 'Remote',
-        salary: '$80k - $120k',
-        description: 'We are looking for a React developer...',
-        requirements: ['React', 'TypeScript'],
-        benefits: ['Health Insurance', '401k']
+        job_type: 'Full-time',
+        description: 'We are looking for a senior frontend developer...',
+        requirements: ['React', 'TypeScript', '5+ years experience'],
+        benefits: ['Health insurance', 'Remote work'],
+        created_at: '2024-01-15T10:00:00Z'
       };
 
       mockFetch.mockResolvedValueOnce({
@@ -119,14 +119,14 @@ describe('jobService', () => {
         json: async () => mockJob
       });
 
-      const result = await getJobById('1');
+      const result = await jobService.getJobById('1');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('http://localhost:8001/api/v1/jobs/1'),
+        expect.stringContaining('/api/jobs/1'),
         expect.objectContaining({
           method: 'GET',
           headers: expect.objectContaining({
-            'Authorization': 'Bearer mock-token'
+            'Content-Type': 'application/json'
           })
         })
       );
@@ -134,131 +134,155 @@ describe('jobService', () => {
       expect(result).toEqual(mockJob);
     });
 
-    test('handles job not found error', async () => {
+    it('handles job not found', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 404,
-        json: async () => ({ detail: 'Job not found' })
+        statusText: 'Not Found'
       });
 
-      await expect(getJobById('999')).rejects.toThrow('Job not found');
+      await expect(jobService.getJobById('999')).rejects.toThrow('Job not found');
     });
   });
 
-  describe('getJobsByCompany', () => {
-    test('successfully gets jobs by company', async () => {
-      const mockJobs = [
+  describe('searchJobs', () => {
+    it('searches jobs with query', async () => {
+      const searchQuery = 'React Developer';
+      const mockResults = [
         {
-          id: '1',
+          _id: '1',
           title: 'React Developer',
-          company: 'Tech Corp',
+          company: { name: 'TechCorp' },
           location: 'Remote'
         }
       ];
 
-      const mockResponse = {
-        jobs: mockJobs,
-        total: 1,
-        company: {
-          name: 'Tech Corp',
-          description: 'A great company'
-        }
-      };
-
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => mockResponse
+        json: async () => mockResults
       });
 
-      const result = await getJobsByCompany('tech-corp');
+      const result = await jobService.searchJobs(searchQuery);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('http://localhost:8001/api/v1/companies/tech-corp/jobs'),
-        expect.objectContaining({
-          method: 'GET',
-          headers: expect.objectContaining({
-            'Authorization': 'Bearer mock-token'
-          })
-        })
+        expect.stringContaining(`/api/jobs/search?q=${encodeURIComponent(searchQuery)}`),
+        expect.any(Object)
       );
 
-      expect(result).toEqual(mockResponse);
+      expect(result).toEqual(mockResults);
     });
 
-    test('handles company not found error', async () => {
+    it('handles empty search query', async () => {
       mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        json: async () => ({ detail: 'Company not found' })
+        ok: true,
+        json: async () => []
       });
 
-      await expect(getJobsByCompany('nonexistent')).rejects.toThrow('Company not found');
+      const result = await jobService.searchJobs('');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/jobs/search?q='),
+        expect.any(Object)
+      );
+
+      expect(result).toEqual([]);
     });
   });
 
-  describe('getSavedJobs', () => {
-    test('successfully gets saved jobs', async () => {
-      const mockJobs = [
+  describe('getSimilarJobs', () => {
+    it('fetches similar jobs', async () => {
+      const jobId = '1';
+      const mockSimilarJobs = [
         {
-          id: '1',
-          title: 'React Developer',
-          company: 'Tech Corp',
-          saved_at: '2024-01-01T00:00:00Z'
+          _id: '2',
+          title: 'Frontend Developer',
+          company: { name: 'AnotherCorp' },
+          location: 'Remote'
         }
       ];
 
-      const mockResponse = {
-        jobs: mockJobs,
-        total: 1
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockSimilarJobs
+      });
+
+      const result = await jobService.getSimilarJobs(jobId);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining(`/api/jobs/${jobId}/similar`),
+        expect.any(Object)
+      );
+
+      expect(result).toEqual(mockSimilarJobs);
+    });
+  });
+
+  describe('applyForJob', () => {
+    it('applies for job successfully', async () => {
+      const jobId = '1';
+      const applicationData = {
+        coverLetter: 'I am interested in this position...',
+        resume: 'resume.pdf',
+        portfolio: 'https://example.com/portfolio'
       };
+
+      mockLocalStorage.getItem.mockReturnValue('mock-token');
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => mockResponse
+        json: async () => ({ message: 'Application submitted successfully' })
       });
 
-      const result = await getSavedJobs();
+      const result = await jobService.applyForJob(jobId, applicationData);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('http://localhost:8001/api/v1/jobs/saved'),
+        expect.stringContaining(`/api/jobs/${jobId}/apply`),
         expect.objectContaining({
-          method: 'GET',
+          method: 'POST',
           headers: expect.objectContaining({
+            'Content-Type': 'application/json',
             'Authorization': 'Bearer mock-token'
-          })
+          }),
+          body: JSON.stringify(applicationData)
         })
       );
 
-      expect(result).toEqual(mockResponse);
+      expect(result).toEqual({ message: 'Application submitted successfully' });
     });
 
-    test('handles unauthorized error', async () => {
+    it('handles unauthorized application', async () => {
+      mockLocalStorage.getItem.mockReturnValue(null);
+
+      await expect(jobService.applyForJob('1', {})).rejects.toThrow('Authentication required');
+    });
+
+    it('handles application error', async () => {
+      mockLocalStorage.getItem.mockReturnValue('mock-token');
+
       mockFetch.mockResolvedValueOnce({
         ok: false,
-        status: 401,
-        json: async () => ({ detail: 'Unauthorized' })
+        status: 400,
+        json: async () => ({ error: 'Invalid application data' })
       });
 
-      await expect(getSavedJobs()).rejects.toThrow('Unauthorized');
+      await expect(jobService.applyForJob('1', {})).rejects.toThrow('Invalid application data');
     });
   });
 
   describe('saveJob', () => {
-    test('successfully saves job', async () => {
-      const mockResponse = {
-        message: 'Job saved successfully',
-        job_id: '1'
-      };
+    it('saves job successfully', async () => {
+      const jobId = '1';
+      mockLocalStorage.getItem.mockReturnValue('mock-token');
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => mockResponse
+        json: async () => ({ message: 'Job saved successfully' })
       });
 
-      const result = await saveJob('1');
+      const result = await jobService.saveJob(jobId);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('http://localhost:8001/api/v1/jobs/1/save'),
+        expect.stringContaining(`/api/jobs/${jobId}/save`),
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
@@ -267,36 +291,30 @@ describe('jobService', () => {
         })
       );
 
-      expect(result).toEqual(mockResponse);
+      expect(result).toEqual({ message: 'Job saved successfully' });
     });
 
-    test('handles job already saved error', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        json: async () => ({ detail: 'Job already saved' })
-      });
+    it('handles unauthorized save', async () => {
+      mockLocalStorage.getItem.mockReturnValue(null);
 
-      await expect(saveJob('1')).rejects.toThrow('Job already saved');
+      await expect(jobService.saveJob('1')).rejects.toThrow('Authentication required');
     });
   });
 
   describe('unsaveJob', () => {
-    test('successfully unsaves job', async () => {
-      const mockResponse = {
-        message: 'Job removed from saved jobs',
-        job_id: '1'
-      };
+    it('unsaves job successfully', async () => {
+      const jobId = '1';
+      mockLocalStorage.getItem.mockReturnValue('mock-token');
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => mockResponse
+        json: async () => ({ message: 'Job unsaved successfully' })
       });
 
-      const result = await unsaveJob('1');
+      const result = await jobService.unsaveJob(jobId);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('http://localhost:8001/api/v1/jobs/1/unsave'),
+        expect.stringContaining(`/api/jobs/${jobId}/save`),
         expect.objectContaining({
           method: 'DELETE',
           headers: expect.objectContaining({
@@ -305,91 +323,32 @@ describe('jobService', () => {
         })
       );
 
-      expect(result).toEqual(mockResponse);
-    });
-
-    test('handles job not saved error', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        json: async () => ({ detail: 'Job not found in saved jobs' })
-      });
-
-      await expect(unsaveJob('1')).rejects.toThrow('Job not found in saved jobs');
+      expect(result).toEqual({ message: 'Job unsaved successfully' });
     });
   });
 
-  describe('applyToJob', () => {
-    test('successfully applies to job', async () => {
-      const mockResponse = {
-        message: 'Application submitted successfully',
-        application_id: 'app-123'
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockResponse
-      });
-
-      const applicationData = {
-        cover_letter: 'I am interested in this position...',
-        resume_url: 'https://example.com/resume.pdf'
-      };
-
-      const result = await applyToJob('1', applicationData);
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/jobs/1/apply'),
-        expect.objectContaining({
-          method: 'POST',
-          headers: expect.objectContaining({
-            'Authorization': 'Bearer mock-token',
-            'Content-Type': 'application/json'
-          }),
-          body: JSON.stringify(applicationData)
-        })
-      );
-
-      expect(result).toEqual(mockResponse);
-    });
-
-    test('handles already applied error', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        json: async () => ({ detail: 'Already applied to this job' })
-      });
-
-      await expect(applyToJob('1', {})).rejects.toThrow('Already applied to this job');
-    });
-  });
-
-  describe('getJobRecommendations', () => {
-    test('successfully gets job recommendations', async () => {
-      const mockJobs = [
+  describe('getSavedJobs', () => {
+    it('fetches saved jobs successfully', async () => {
+      const mockSavedJobs = [
         {
-          id: '1',
-          title: 'React Developer',
-          company: 'Tech Corp',
-          location: 'Remote',
-          match_score: 0.95
+          _id: '1',
+          title: 'Senior Frontend Developer',
+          company: { name: 'TechCorp' },
+          location: 'Remote'
         }
       ];
 
-      const mockResponse = {
-        jobs: mockJobs,
-        total: 1
-      };
+      mockLocalStorage.getItem.mockReturnValue('mock-token');
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => mockResponse
+        json: async () => mockSavedJobs
       });
 
-      const result = await getJobRecommendations();
+      const result = await jobService.getSavedJobs();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('http://localhost:8001/api/v1/jobs/recommendations'),
+        expect.stringContaining('/api/jobs/saved'),
         expect.objectContaining({
           method: 'GET',
           headers: expect.objectContaining({
@@ -398,19 +357,145 @@ describe('jobService', () => {
         })
       );
 
-      expect(result).toEqual(mockResponse);
+      expect(result).toEqual(mockSavedJobs);
     });
 
-    test('handles no recommendations available', async () => {
+    it('handles unauthorized access', async () => {
+      mockLocalStorage.getItem.mockReturnValue(null);
+
+      await expect(jobService.getSavedJobs()).rejects.toThrow('Authentication required');
+    });
+  });
+
+  describe('getAppliedJobs', () => {
+    it('fetches applied jobs successfully', async () => {
+      const mockAppliedJobs = [
+        {
+          _id: '1',
+          title: 'Senior Frontend Developer',
+          company: { name: 'TechCorp' },
+          location: 'Remote',
+          applicationStatus: 'pending'
+        }
+      ];
+
+      mockLocalStorage.getItem.mockReturnValue('mock-token');
+
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ jobs: [], total: 0 })
+        json: async () => mockAppliedJobs
       });
 
-      const result = await getJobRecommendations();
+      const result = await jobService.getAppliedJobs();
 
-      expect(result.jobs).toEqual([]);
-      expect(result.total).toBe(0);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/jobs/applied'),
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer mock-token'
+          })
+        })
+      );
+
+      expect(result).toEqual(mockAppliedJobs);
+    });
+  });
+
+  describe('getJobStats', () => {
+    it('fetches job statistics', async () => {
+      const mockStats = {
+        totalJobs: 1000,
+        remoteJobs: 500,
+        fullTimeJobs: 800,
+        averageSalary: 85000
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockStats
+      });
+
+      const result = await jobService.getJobStats();
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/jobs/stats'),
+        expect.any(Object)
+      );
+
+      expect(result).toEqual(mockStats);
+    });
+  });
+
+  describe('getJobCategories', () => {
+    it('fetches job categories', async () => {
+      const mockCategories = [
+        { name: 'Technology', count: 500 },
+        { name: 'Marketing', count: 200 },
+        { name: 'Sales', count: 150 }
+      ];
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockCategories
+      });
+
+      const result = await jobService.getJobCategories();
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/jobs/categories'),
+        expect.any(Object)
+      );
+
+      expect(result).toEqual(mockCategories);
+    });
+  });
+
+  describe('getJobLocations', () => {
+    it('fetches job locations', async () => {
+      const mockLocations = [
+        { name: 'Remote', count: 500 },
+        { name: 'New York, NY', count: 200 },
+        { name: 'San Francisco, CA', count: 150 }
+      ];
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockLocations
+      });
+
+      const result = await jobService.getJobLocations();
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/jobs/locations'),
+        expect.any(Object)
+      );
+
+      expect(result).toEqual(mockLocations);
+    });
+  });
+
+  describe('getJobSkills', () => {
+    it('fetches job skills', async () => {
+      const mockSkills = [
+        { name: 'React', count: 300 },
+        { name: 'JavaScript', count: 250 },
+        { name: 'Python', count: 200 }
+      ];
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockSkills
+      });
+
+      const result = await jobService.getJobSkills();
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/jobs/skills'),
+        expect.any(Object)
+      );
+
+      expect(result).toEqual(mockSkills);
     });
   });
 });

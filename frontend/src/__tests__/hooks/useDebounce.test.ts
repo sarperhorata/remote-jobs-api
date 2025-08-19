@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useDebounce } from '../../hooks/useDebounce';
 
 describe('useDebounce', () => {
@@ -29,7 +29,9 @@ describe('useDebounce', () => {
     expect(result.current).toBe('initial'); // Should still be initial
 
     // Fast forward time
-    jest.advanceTimersByTime(500);
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
     expect(result.current).toBe('changed'); // Should now be changed
   });
 
@@ -54,7 +56,9 @@ describe('useDebounce', () => {
     expect(result.current).toBe('initial'); // Should still be initial
 
     // Wait for debounce delay
-    jest.advanceTimersByTime(500);
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
     expect(result.current).toBe('change3'); // Should be the last value
   });
 
@@ -67,6 +71,9 @@ describe('useDebounce', () => {
     expect(result.current).toBe('initial');
 
     rerender({ value: 'changed', delay: 0 });
+    act(() => {
+      jest.runAllTimers();
+    });
     expect(result.current).toBe('changed'); // Should change immediately
   });
 
@@ -79,6 +86,9 @@ describe('useDebounce', () => {
     expect(result.current).toBe('initial');
 
     rerender({ value: 'changed', delay: -100 });
+    act(() => {
+      jest.runAllTimers();
+    });
     expect(result.current).toBe('changed'); // Should change immediately
   });
 
@@ -103,7 +113,9 @@ describe('useDebounce', () => {
     expect(result.current).toBe(0);
 
     rerender({ value: 42, delay: 500 });
-    jest.advanceTimersByTime(500);
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
     expect(result.current).toBe(42);
   });
 
@@ -116,7 +128,9 @@ describe('useDebounce', () => {
     expect(result.current).toBe(false);
 
     rerender({ value: true, delay: 500 });
-    jest.advanceTimersByTime(500);
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
     expect(result.current).toBe(true);
   });
 
@@ -132,7 +146,9 @@ describe('useDebounce', () => {
     expect(result.current).toEqual(initialObject);
 
     rerender({ value: changedObject, delay: 500 });
-    jest.advanceTimersByTime(500);
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
     expect(result.current).toEqual(changedObject);
   });
 
@@ -148,7 +164,9 @@ describe('useDebounce', () => {
     expect(result.current).toEqual(initialArray);
 
     rerender({ value: changedArray, delay: 500 });
-    jest.advanceTimersByTime(500);
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
     expect(result.current).toEqual(changedArray);
   });
 
@@ -171,7 +189,9 @@ describe('useDebounce', () => {
     expect(result.current).toBe('initial'); // Should still be initial
 
     // Complete the debounce delay
-    jest.advanceTimersByTime(300);
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
     expect(result.current).toBe('change2'); // Should be the last value
   });
 
@@ -184,7 +204,9 @@ describe('useDebounce', () => {
     expect(result.current).toBe('initial');
 
     rerender({ value: 'changed', delay: 10000 });
-    jest.advanceTimersByTime(10000);
+    act(() => {
+      jest.advanceTimersByTime(10000);
+    });
     expect(result.current).toBe('changed');
   });
 
@@ -197,7 +219,9 @@ describe('useDebounce', () => {
     expect(result.current).toBe('initial');
 
     rerender({ value: 'changed', delay: 1 });
-    jest.advanceTimersByTime(1);
+    act(() => {
+      jest.advanceTimersByTime(1);
+    });
     expect(result.current).toBe('changed');
   });
 });

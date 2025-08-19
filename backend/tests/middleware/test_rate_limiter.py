@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from backend.middleware.rate_limiter import RateLimiter, TokenBucketRateLimiter
+from backend.middleware.rate_limiter import RateLimiter
 from backend.tests.utils.rate_limit_helper import (
     RateLimitTestHelper, 
     RateLimiterTestHelper,

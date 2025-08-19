@@ -148,6 +148,15 @@ async def search_jobs(
     keyword_search: Optional[bool] = Query(
         False, description="Whether this is a keyword search"
     ),
+    # Phase 1: user preference-aware toggles (all optional and off by default)
+    use_user_preferences: Optional[bool] = Query(False, description="Apply logged-in user's preferences for filtering/boosting"),
+    boost_followed_companies: Optional[bool] = Query(True, description="Boost followed companies in results"),
+    filter_hidden_companies: Optional[bool] = Query(True, description="Exclude user's hidden companies"),
+    filter_blocked_sectors: Optional[bool] = Query(True, description="Exclude blocked sectors"),
+    filter_blocked_technologies: Optional[bool] = Query(True, description="Exclude blocked technologies"),
+    require_language: Optional[bool] = Query(False, description="Require user's language requirements to match"),
+    require_visa_pref: Optional[bool] = Query(False, description="Require visa sponsorship if user prefers it"),
+    apply_company_size: Optional[bool] = Query(False, description="Filter by user's company size range"),
     db: AsyncIOMotorDatabase = Depends(get_async_db),
 ):
     """Advanced job search with filtering and pagination - OPTIMIZED"""
@@ -461,6 +470,80 @@ async def search_jobs(
                 {"date_posted": {"$gte": cutoff_date.isoformat()}},
             ]
 
+        # Phase 1: Apply user preferences if requested
+        user_prefs = {}
+        if use_user_preferences:
+            try:
+                # Try request.state.user first (if auth middleware is active)
+                user_id = None
+                state_user = getattr(request.state, "user", None)
+                if isinstance(state_user, dict):
+                    user_id = state_user.get("user_id") or state_user.get("id") or state_user.get("_id")
+
+                # Fallback: decode Authorization token
+                if not user_id:
+                    auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
+                    if auth_header and auth_header.startswith("Bearer "):
+                        token = auth_header.split(" ", 1)[1]
+                        try:
+                            from backend.utils.auth import verify_token as _verify_token
+                            payload = _verify_token(token)
+                            user_id = payload.get("sub")
+                        except Exception:
+                            user_id = None
+
+                if user_id:
+                    users_col = db["users"]
+                    from bson import ObjectId as _ObjectId
+                    query_filter = {"_id": user_id}
+                    # If looks like ObjectId, convert
+                    try:
+                        query_filter = {"_id": _ObjectId(user_id)}
+                    except Exception:
+                        # try alternate fields as last resort
+                        query_filter = {"$or": [{"_id": user_id}, {"id": user_id}]}
+
+                    user_doc = await users_col.find_one(query_filter)
+                    if user_doc:
+                        user_prefs = {
+                            "followed_companies": user_doc.get("followed_companies", []),
+                            "hidden_companies": user_doc.get("hidden_companies", []),
+                            "preferred_technologies": user_doc.get("preferred_technologies", []),
+                            "blocked_technologies": user_doc.get("blocked_technologies", []),
+                            "preferred_sectors": user_doc.get("preferred_sectors", []),
+                            "blocked_sectors": user_doc.get("blocked_sectors", []),
+                            "language_requirements": user_doc.get("language_requirements", []),
+                            "visa_sponsorship_preferred": user_doc.get("visa_sponsorship_preferred", False),
+                            "company_size_range": user_doc.get("company_size_range", []),
+                        }
+            except Exception as _pref_err:
+                logger.warning(f"User preferences not applied: {_pref_err}")
+
+        # Apply preference-based filters
+        if use_user_preferences and user_prefs:
+            # Exclude hidden companies
+            if filter_hidden_companies and user_prefs.get("hidden_companies"):
+                match_stage["company"] = match_stage.get("company", {})
+                match_stage["company"]["$nin"] = user_prefs["hidden_companies"]
+
+            # Exclude blocked sectors / technologies where available
+            if filter_blocked_sectors and user_prefs.get("blocked_sectors"):
+                query["$and"] = query.get("$and", []) + [{"sectors": {"$nin": list(set(user_prefs["blocked_sectors"]))}}]
+            if filter_blocked_technologies and user_prefs.get("blocked_technologies"):
+                query["$and"] = query.get("$and", []) + [{"technologies": {"$nin": list(set(user_prefs["blocked_technologies"]))}}]
+
+            # Require languages
+            if require_language and user_prefs.get("language_requirements"):
+                query["$and"] = query.get("$and", []) + [{"languages": {"$all": user_prefs["language_requirements"]}}]
+
+            # Require visa sponsorship if preferred
+            if require_visa_pref and user_prefs.get("visa_sponsorship_preferred"):
+                query["visa_sponsorship"] = True
+
+            # Company size range
+            if apply_company_size and user_prefs.get("company_size_range"):
+                query["company_size"] = {"$in": user_prefs["company_size_range"]}
+
         # Debug: Log the final query
         logger.info(f"Search query: {query}")
 
@@ -472,24 +555,35 @@ async def search_jobs(
         if query:
             pipeline.append({"$match": query})
 
+        # Add followed companies boost before main sort
+        if use_user_preferences and boost_followed_companies and user_prefs.get("followed_companies"):
+            pipeline.append({
+                "$addFields": {
+                    "_follow_boost": {
+                        "$cond": [{"$in": ["$company", user_prefs["followed_companies"]]}, 1, 0]
+                    }
+                }
+            })
+
         # Add sort stage based on sort_by parameter
         if sort_by == "relevance":
             # Most relevant: prioritize jobs with salary info and sort by creation date
             pipeline.append(
                 {
                     "$sort": {
+                        "_follow_boost": -1 if (use_user_preferences and boost_followed_companies and user_prefs.get("followed_companies")) else 0,
                         "salary_range": -1,  # Jobs with salary info first
                         "created_at": -1,  # Then by newest
                     }
                 }
             )
         elif sort_by == "newest":
-            pipeline.append({"$sort": {"created_at": -1}})
+            pipeline.append({"$sort": {"_follow_boost": -1 if (use_user_preferences and boost_followed_companies and user_prefs.get("followed_companies")) else 0, "created_at": -1}})
         elif sort_by == "oldest":
-            pipeline.append({"$sort": {"created_at": 1}})
+            pipeline.append({"$sort": {"_follow_boost": -1 if (use_user_preferences and boost_followed_companies and user_prefs.get("followed_companies")) else 0, "created_at": 1}})
         else:
             # Default to newest
-            pipeline.append({"$sort": {"created_at": -1}})
+            pipeline.append({"$sort": {"_follow_boost": -1 if (use_user_preferences and boost_followed_companies and user_prefs.get("followed_companies")) else 0, "created_at": -1}})
 
         # Add pagination
         pipeline.extend([{"$skip": skip}, {"$limit": limit}])

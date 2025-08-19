@@ -4,6 +4,7 @@ import { Job } from '../types/job';
 // Companies data
 const companies: Company[] = [
   {
+    _id: '1',
     id: '1',
     name: 'Google',
     website: 'https://careers.google.com',
@@ -15,13 +16,16 @@ const companies: Company[] = [
     remotePolicy: 'Hybrid',
     benefits: ['Health Insurance', '401k', 'Stock Options', 'Flexible Hours', 'Remote Work'],
     techStack: ['Python', 'Java', 'C++', 'Go', 'JavaScript', 'TensorFlow', 'Kubernetes'],
-    socialLinks: {
+    social_links: {
       linkedin: 'https://www.linkedin.com/company/google',
       twitter: 'https://twitter.com/google',
-      github: 'https://github.com/google'
-    }
+      facebook: 'https://github.com/google'
+    },
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   },
   {
+    _id: '2',
     id: '2',
     name: 'Microsoft',
     website: 'https://careers.microsoft.com',
@@ -33,13 +37,16 @@ const companies: Company[] = [
     remotePolicy: 'Hybrid',
     benefits: ['Health Insurance', '401k', 'Stock Options', 'Flexible Hours', 'Remote Work'],
     techStack: ['C#', '.NET', 'Azure', 'TypeScript', 'React', 'PowerShell', 'Docker'],
-    socialLinks: {
+    social_links: {
       linkedin: 'https://www.linkedin.com/company/microsoft',
       twitter: 'https://twitter.com/microsoft',
-      github: 'https://github.com/microsoft'
-    }
+      facebook: 'https://github.com/microsoft'
+    },
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   },
   {
+    _id: '3',
     id: '3',
     name: 'Amazon',
     website: 'https://www.amazon.jobs',
@@ -51,11 +58,13 @@ const companies: Company[] = [
     remotePolicy: 'Hybrid',
     benefits: ['Health Insurance', '401k', 'Stock Options', 'Flexible Hours', 'Remote Work'],
     techStack: ['Java', 'Python', 'AWS', 'React', 'Node.js', 'Docker', 'Kubernetes'],
-    socialLinks: {
+    social_links: {
       linkedin: 'https://www.linkedin.com/company/amazon',
       twitter: 'https://twitter.com/amazon',
-      github: 'https://github.com/aws'
-    }
+      facebook: 'https://github.com/aws'
+    },
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   }
 ];
 

@@ -14,8 +14,7 @@ import requests
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from backend.database.db import get_async_db
-from backend.services.scheduler_service import (get_scheduler, start_scheduler,
-                                                stop_scheduler)
+from backend.services.scheduler_service import SchedulerService
 from backend.utils.cronjob import wake_up_render
 
 

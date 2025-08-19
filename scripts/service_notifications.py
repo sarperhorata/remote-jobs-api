@@ -21,27 +21,44 @@ class ServiceNotifier:
         self.base_url = f"https://api.telegram.org/bot{self.bot_token}"
         
     def send_telegram_message(self, message: str, parse_mode: str = "HTML") -> bool:
-        """Send message to Telegram"""
+        """Send message to Telegram (DISABLED - only logs)"""
+        # Log the message instead of sending to Telegram
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_message = f"[{timestamp}] TELEGRAM NOTIFICATION (DISABLED): {message}"
+        logger.info(log_message)
+        
+        # Write to log file
         try:
-            url = f"{self.base_url}/sendMessage"
-            payload = {
-                'chat_id': self.chat_id,
-                'text': message,
-                'parse_mode': parse_mode
-            }
-            
-            response = requests.post(url, json=payload, timeout=10)
-            
-            if response.status_code == 200:
-                logger.info("Telegram message sent successfully")
-                return True
-            else:
-                logger.error(f"Failed to send Telegram message: {response.status_code} - {response.text}")
-                return False
-                
+            log_file = "logs/telegram_notifications.log"
+            os.makedirs(os.path.dirname(log_file), exist_ok=True)
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(log_message + "\n")
         except Exception as e:
-            logger.error(f"Error sending Telegram message: {e}")
-            return False
+            logger.error(f"Error writing to log file: {e}")
+        
+        return True
+        
+        # Original code commented out to disable Telegram notifications
+        # try:
+        #     url = f"{self.base_url}/sendMessage"
+        #     payload = {
+        #         'chat_id': self.chat_id,
+        #         'text': message,
+        #         'parse_mode': parse_mode
+        #     }
+        #     
+        #     response = requests.post(url, json=payload, timeout=10)
+        #     
+        #     if response.status_code == 200:
+        #         logger.info("Telegram message sent successfully")
+        #         return True
+        #     else:
+        #         logger.error(f"Failed to send Telegram message: {response.status_code} - {response.text}")
+        #         return False
+        #         
+        # except Exception as e:
+        #     logger.error(f"Error sending Telegram message: {e}")
+        #     return False
     
     def notify_cronjob_success(self, job_name: str, details: Dict[str, Any] = None) -> bool:
         """Send success notification for cronjob"""

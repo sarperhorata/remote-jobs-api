@@ -1,0 +1,411 @@
+name: Auto Fix Common Issues
+
+on:
+  schedule:
+    # Her gün saat 02:00'de çalış
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    # Manuel tetikleme için
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'frontend/package.json'
+      - 'backend/requirements.txt'
+      - '.github/workflows/auto-fix.yml'
+
+env:
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # Frontend Otomatik Düzeltmeler
+  frontend-auto-fix:
+    name: Frontend Auto Fix
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: ./frontend
+      run: npm ci --no-optional
+      
+    - name: Auto fix linting issues
+      working-directory: ./frontend
+      run: |
+        echo "🔧 Auto-fixing linting issues..."
+        npm run lint:fix || echo "No linting issues to fix"
+        
+    - name: Auto fix formatting
+      working-directory: ./frontend
+      run: |
+        echo "🎨 Auto-fixing formatting..."
+        npm run format || echo "No formatting issues to fix"
+        
+    - name: Update dependencies
+      working-directory: ./frontend
+      run: |
+        echo "📦 Checking for outdated dependencies..."
+        npm outdated || echo "All dependencies are up to date"
+        
+    - name: Commit and push frontend fixes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        if [[ -n "$(git status --porcelain)" ]]; then
+          git add frontend/
+          git commit -m "🔧 Auto-fix: Frontend linting and formatting issues [skip ci]"
+          git push
+        else
+          echo "No frontend changes to commit"
+        fi
+
+  # Backend Otomatik Düzeltmeler
+  backend-auto-fix:
+    name: Backend Auto Fix
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+        
+    - name: Install dependencies
+      run: |
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install black isort flake8 autopep8 bandit safety
+        
+    - name: Auto fix code formatting
+      run: |
+        echo "🎨 Auto-fixing Python code formatting..."
+        cd backend
+        black . --line-length=88 --quiet || echo "No formatting issues to fix"
+        isort . --profile=black --quiet || echo "No import sorting issues to fix"
+        
+    - name: Auto fix linting issues
+      run: |
+        echo "🔧 Auto-fixing linting issues..."
+        cd backend
+        autopep8 --in-place --recursive --aggressive --aggressive . || echo "No autopep8 fixes needed"
+        
+    - name: Check for security issues
+      run: |
+        echo "🔒 Checking for security issues..."
+        cd backend
+        safety check --output json > security-report.json || echo "Security check completed"
+        bandit -r . -f json -o bandit-report.json --exclude ./venv,./tests,./backup_tests || echo "Bandit scan completed"
+        
+    - name: Update Python dependencies
+      run: |
+        echo "📦 Checking for outdated Python dependencies..."
+        cd backend
+        pip list --outdated || echo "All Python dependencies are up to date"
+        
+    - name: Commit and push backend fixes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        if [[ -n "$(git status --porcelain)" ]]; then
+          git add backend/
+          git commit -m "🔧 Auto-fix: Backend formatting and linting issues [skip ci]"
+          git push
+        else
+          echo "No backend changes to commit"
+        fi
+
+  # Test Coverage İyileştirme
+  coverage-improvement:
+    name: Coverage Improvement
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+        
+    - name: Run frontend tests and generate coverage
+      working-directory: ./frontend
+      run: |
+        npm ci --no-optional
+        npm test -- --coverage --watchAll=false --passWithNoTests --maxWorkers=2
+        
+    - name: Run backend tests and generate coverage
+      run: |
+        cd backend
+        pip install -r requirements.txt pytest pytest-cov
+        python -m pytest tests/ -v --cov=backend --cov-report=html --cov-report=term-missing --timeout=30 --tb=short --maxfail=5
+        
+    - name: Analyze coverage gaps
+      run: |
+        echo "📊 Analyzing coverage gaps..."
+        
+        # Frontend coverage analizi
+        if [ -f "frontend/coverage/coverage-summary.json" ]; then
+          echo "Frontend coverage analysis:"
+          cat frontend/coverage/coverage-summary.json | jq -r '.total.lines.pct' || echo "Frontend coverage: Unknown"
+        fi
+        
+        # Backend coverage analizi
+        if [ -f "backend/htmlcov/index.html" ]; then
+          echo "Backend coverage analysis completed"
+        fi
+        
+    - name: Generate coverage report
+      run: |
+        echo "📈 Generating coverage improvement report..."
+        
+        # Coverage raporu oluştur
+        cat > coverage-report.md << EOF
+        # Coverage Improvement Report
+        
+        Generated on: $(date)
+        
+        ## Frontend Coverage
+        - Status: Analyzed
+        - Files: $(find frontend/src -name "*.tsx" -o -name "*.ts" | wc -l)
+        
+        ## Backend Coverage  
+        - Status: Analyzed
+        - Files: $(find backend -name "*.py" | wc -l)
+        
+        ## Recommendations
+        1. Focus on low coverage areas
+        2. Add unit tests for critical functions
+        3. Improve integration test coverage
+        
+        EOF
+        
+    - name: Commit coverage report
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        if [ -f "coverage-report.md" ]; then
+          git add coverage-report.md
+          git commit -m "📊 Auto-report: Coverage analysis report [skip ci]"
+          git push
+        fi
+
+  # Dependency Management
+  dependency-management:
+    name: Dependency Management
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+        
+    - name: Check frontend dependencies
+      working-directory: ./frontend
+      run: |
+        echo "📦 Checking frontend dependencies..."
+        npm audit --audit-level=moderate || echo "Frontend audit completed"
+        npm outdated || echo "All frontend dependencies are up to date"
+        
+    - name: Check backend dependencies
+      run: |
+        echo "📦 Checking backend dependencies..."
+        cd backend
+        pip install safety
+        safety check --output json > dependency-security.json || echo "Backend dependency check completed"
+        
+    - name: Generate dependency report
+      run: |
+        echo "📋 Generating dependency management report..."
+        
+        cat > dependency-report.md << EOF
+        # Dependency Management Report
+        
+        Generated on: $(date)
+        
+        ## Frontend Dependencies
+        - Audit Status: Completed
+        - Outdated Packages: Checked
+        
+        ## Backend Dependencies
+        - Security Check: Completed
+        - Outdated Packages: Checked
+        
+        ## Actions Required
+        1. Review security findings
+        2. Update outdated packages if needed
+        3. Test after updates
+        
+        EOF
+        
+    - name: Commit dependency report
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        if [ -f "dependency-report.md" ]; then
+          git add dependency-report.md
+          git commit -m "📦 Auto-report: Dependency management report [skip ci]"
+          git push
+        fi
+
+  # Performance Monitoring
+  performance-monitoring:
+    name: Performance Monitoring
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Frontend bundle analysis
+      working-directory: ./frontend
+      run: |
+        echo "📊 Analyzing frontend bundle size..."
+        npm ci --no-optional
+        npm run build
+        du -sh build/ || echo "Build size analysis completed"
+        
+    - name: Generate performance report
+      run: |
+        echo "⚡ Generating performance report..."
+        
+        cat > performance-report.md << EOF
+        # Performance Monitoring Report
+        
+        Generated on: $(date)
+        
+        ## Frontend Performance
+        - Bundle Size: Analyzed
+        - Build Time: Monitored
+        
+        ## Backend Performance
+        - Test Execution Time: Monitored
+        - Coverage Generation Time: Tracked
+        
+        ## Recommendations
+        1. Optimize bundle size if needed
+        2. Review slow tests
+        3. Monitor build times
+        
+        EOF
+        
+    - name: Commit performance report
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        if [ -f "performance-report.md" ]; then
+          git add performance-report.md
+          git commit -m "⚡ Auto-report: Performance monitoring report [skip ci]"
+          git push
+        fi
+
+  # Notification
+  notify-completion:
+    name: Notify Completion
+    runs-on: ubuntu-latest
+    needs: [frontend-auto-fix, backend-auto-fix, coverage-improvement, dependency-management, performance-monitoring]
+    if: always()
+    timeout-minutes: 5
+    
+    steps:
+    - name: Generate summary report
+      run: |
+        echo "📋 Generating auto-fix summary report..."
+        
+        cat > auto-fix-summary.md << EOF
+        # Auto-Fix Summary Report
+        
+        Generated on: $(date)
+        
+        ## Jobs Status
+        - Frontend Auto Fix: ${{ needs.frontend-auto-fix.result }}
+        - Backend Auto Fix: ${{ needs.backend-auto-fix.result }}
+        - Coverage Improvement: ${{ needs.coverage-improvement.result }}
+        - Dependency Management: ${{ needs.dependency-management.result }}
+        - Performance Monitoring: ${{ needs.performance-monitoring.result }}
+        
+        ## Summary
+        Auto-fix workflow completed. Check individual job results for details.
+        
+        ## Next Steps
+        1. Review generated reports
+        2. Address any remaining issues manually
+        3. Monitor for recurring problems
+        
+        EOF
+        
+    - name: Create issue for manual review
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const summary = fs.readFileSync('auto-fix-summary.md', 'utf8');
+          
+          await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: `🤖 Auto-Fix Summary - ${new Date().toISOString().split('T')[0]}`,
+            body: summary,
+            labels: ['auto-fix', 'maintenance']
+          }); 

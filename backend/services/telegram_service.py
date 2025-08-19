@@ -2,7 +2,8 @@ import logging
 import os
 
 import psutil
-from telegram import Bot, CommandHandler, Updater
+from telegram import Bot
+from telegram.ext import CommandHandler, Updater
 from telegram.error import TelegramError
 
 logger = logging.getLogger(__name__)
@@ -86,3 +87,42 @@ class TelegramService:
         except Exception as e:
             logger.error(f"Error stopping telegram service: {str(e)}")
             raise e
+
+    async def send_message(self, message: str):
+        """Send message to Telegram chat (DISABLED - only logs)"""
+        # Log the message instead of sending to Telegram
+        logger.info(f"TELEGRAM NOTIFICATION (DISABLED): {message}")
+        return
+        
+        # Original code commented out to disable Telegram notifications
+        # try:
+        #     if not self.bot:
+        #         token = os.getenv("TELEGRAM_BOT_TOKEN")
+        #         if not token:
+        #         logger.warning("TELEGRAM_BOT_TOKEN not found")
+        #         return
+        #         self.bot = Bot(token=token)
+
+        #     chat_id = os.getenv("TELEGRAM_CHAT_ID")
+        #     if not chat_id:
+        #         logger.warning("TELEGRAM_CHAT_ID not found")
+        #         return
+
+        #     await self.bot.send_message(chat_id=chat_id, text=message)
+        #     logger.info(f"Telegram message sent: {message[:50]}...")
+            
+        # except Exception as e:
+        #     logger.error(f"Failed to send Telegram message: {str(e)}")
+
+    def _start_command(self, update, context):
+        """Handle /start command"""
+        update.message.reply_text("Hello! I'm the Buzz2Remote bot.")
+
+    def _help_command(self, update, context):
+        """Handle /help command"""
+        help_text = """
+Available commands:
+/start - Start the bot
+/help - Show this help message
+        """
+        update.message.reply_text(help_text)

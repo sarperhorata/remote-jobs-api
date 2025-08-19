@@ -40,6 +40,8 @@ const SalaryGuidePage = lazy(() => import('./pages/SalaryGuide'));
 const HelpPage = lazy(() => import('./pages/Help'));
 const RemoteTipsPage = lazy(() => import('./pages/RemoteTips'));
 const CareerTipsPage = lazy(() => import('./pages/CareerTips'));
+const QAPage = lazy(() => import('./pages/QA'));
+const PerformanceDashboardPage = lazy(() => import('./pages/PerformanceDashboard'));
 const AboutPage = lazy(() => import('./pages/About'));
 const ContactPage = lazy(() => import('./pages/Contact'));
 const VisaSponsorshipPage = lazy(() => import('./pages/VisaSponsorship'));
@@ -51,6 +53,13 @@ const MyApplicationsPage = lazy(() => import('./pages/MyApplications'));
 const FavoritesPage = lazy(() => import('./pages/Favorites'));
 const ExternalAPIServicesPage = lazy(() => import('./pages/ExternalAPIServices'));
 const SettingsPage = lazy(() => import('./pages/Settings'));
+
+// AI Services pages
+const AIServicesPage = lazy(() => import('./pages/AIServices'));
+const SkillsExtractionPage = lazy(() => import('./pages/SkillsExtraction'));
+const AutoApplyPage = lazy(() => import('./pages/AutoApply'));
+const FakeJobDetectionPage = lazy(() => import('./pages/FakeJobDetection'));
+const BulkApplyPage = lazy(() => import('./pages/BulkApplyPage'));
 
 // Auth callback pages
 const GoogleCallbackPage = lazy(() => import('./pages/GoogleCallback'));
@@ -179,6 +188,8 @@ const App: React.FC = () => {
                   <Route path="/pricing" element={<LazyRoute component={PricingPage} />} />
                   <Route path="/salary-guide" element={<LazyRoute component={SalaryGuidePage} />} />
                   <Route path="/help" element={<LazyRoute component={HelpPage} />} />
+                  <Route path="/qa" element={<LazyRoute component={QAPage} />} />
+                  <Route path="/performance" element={<LazyRoute component={PerformanceDashboardPage} />} />
                   <Route path="/remote-tips" element={<LazyRoute component={RemoteTipsPage} />} />
                   <Route path="/career-tips" element={<LazyRoute component={CareerTipsPage} />} />
                   <Route path="/about" element={<LazyRoute component={AboutPage} />} />
@@ -211,6 +222,33 @@ const App: React.FC = () => {
                   <Route path="/external-api-services" element={
                     <ProtectedRoute>
                       <LazyRoute component={ExternalAPIServicesPage} />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* AI Services routes */}
+                  <Route path="/ai-services" element={
+                    <ProtectedRoute>
+                      <LazyRoute component={AIServicesPage} />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/skills-extraction" element={
+                    <ProtectedRoute>
+                      <LazyRoute component={SkillsExtractionPage} />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/auto-apply" element={
+                    <ProtectedRoute>
+                      <LazyRoute component={AutoApplyPage} />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/fake-job-detection" element={
+                    <ProtectedRoute>
+                      <LazyRoute component={FakeJobDetectionPage} />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/bulk-apply" element={
+                    <ProtectedRoute>
+                      <LazyRoute component={BulkApplyPage} />
                     </ProtectedRoute>
                   } />
                   

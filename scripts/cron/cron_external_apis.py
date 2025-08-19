@@ -11,16 +11,38 @@ from datetime import datetime, timedelta
 import sys
 import os
 
-# Add tools directory to path
-sys.path.append(os.path.join(os.path.dirname(__file__), 'tools'))
+# Add backend directory to path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'backend'))
 
-from external_job_apis import ExternalJobAPIManager, run_external_api_crawler
-from service_notifications import ServiceNotifier
+try:
+    from external_job_apis import ExternalJobAPIManager, run_external_api_crawler
+    from service_notifications import ServiceNotifier
+except ImportError as e:
+    print(f"Import error: {e}")
+    print("This script requires backend modules to be available")
+    sys.exit(1)
 
 class ExternalAPICronJob:
     def __init__(self):
-        self.notifier = ServiceNotifier()
+        # Disable Telegram notifications by using a dummy notifier
+        self.notifier = DummyNotifier()
         self.manager = ExternalJobAPIManager()
+
+class DummyNotifier:
+    """Dummy notifier that only logs instead of sending Telegram messages"""
+    def _send_message(self, message: str):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_message = f"[{timestamp}] TELEGRAM NOTIFICATION (DISABLED): {message}"
+        print(log_message)
+        
+        # Write to log file
+        try:
+            log_file = "logs/telegram_notifications.log"
+            os.makedirs(os.path.dirname(log_file), exist_ok=True)
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(log_message + "\n")
+        except Exception as e:
+            print(f"Error writing to log file: {e}")
         
     def should_run_today(self) -> bool:
         """
